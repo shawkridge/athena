@@ -77,10 +77,10 @@ else
   message="⚠️ Association Learner: Running in background"
 fi
 
-jq -n \
+jq -c -n \
   --arg status "$status" \
   --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-  '{"continue": true, "suppressOutput": true, "hookSpecificOutput": {"hookEventName": "SessionEndAssociationLearner", "status": $status, "timestamp": $timestamp}}' || jq -n '{"continue": true, "suppressOutput": true}'
+  '{"continue": true, "suppressOutput": true, "hookSpecificOutput": {"hookEventName": "SessionEndAssociationLearner", "status": $status, "timestamp": $timestamp}}' || jq -c -n '{"continue": true, "suppressOutput": true}'
 
 # ============================================================
 # INSTRUMENTATION: Log Hook Result
