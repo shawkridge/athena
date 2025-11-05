@@ -1,0 +1,114 @@
+{
+  "description": "Example benchmark queries for episodic memory evaluation",
+  "created": "2025-10-14",
+  "queries": [
+    {
+      "query": "What happened yesterday?",
+      "type": "temporal",
+      "ground_truth": [
+        26
+      ],
+      "difficulty": "easy",
+      "description": "Basic temporal query for recent events"
+    },
+    {
+      "query": "Show me all authentication-related events",
+      "type": "contextual",
+      "ground_truth": [
+        27,
+        28,
+        29
+      ],
+      "difficulty": "medium",
+      "description": "Semantic query requiring context understanding"
+    },
+    {
+      "query": "What events occurred in the /src/auth/ directory?",
+      "type": "spatial",
+      "spatial_context": "/src/auth/",
+      "ground_truth": [
+        29,
+        28,
+        31,
+        32,
+        33
+      ],
+      "difficulty": "medium",
+      "description": "Spatial filtering query"
+    },
+    {
+      "query": "What files were changed when we fixed the login bug?",
+      "type": "causal",
+      "spatial_context": "/src/auth/",
+      "ground_truth": [
+        31,
+        32,
+        33
+      ],
+      "difficulty": "hard",
+      "description": "Causal reasoning with spatial context"
+    },
+    {
+      "query": "When did we last work on the database migration?",
+      "type": "temporal",
+      "ground_truth": [
+        37,
+        38
+      ],
+      "difficulty": "medium",
+      "description": "Temporal query with semantic filtering"
+    },
+    {
+      "query": "Show events from the last week related to testing",
+      "type": "temporal",
+      "ground_truth": [
+        34,
+        35
+      ],
+      "difficulty": "medium",
+      "description": "Temporal range with semantic filter"
+    },
+    {
+      "query": "What led to the deployment failure?",
+      "type": "causal",
+      "ground_truth": [
+        36,
+        37,
+        38,
+        39
+      ],
+      "difficulty": "hard",
+      "description": "Causal chain reconstruction"
+    },
+    {
+      "query": "Find all error events",
+      "type": "contextual",
+      "ground_truth": [
+        31,
+        37
+      ],
+      "difficulty": "easy",
+      "description": "Event type filtering"
+    },
+    {
+      "query": "What was the context when we implemented JWT tokens?",
+      "type": "contextual",
+      "ground_truth": [
+        28,
+        33
+      ],
+      "difficulty": "hard",
+      "description": "Complex contextual reconstruction"
+    },
+    {
+      "query": "Show me events in /src/api/ from the last 3 days",
+      "type": "spatial",
+      "spatial_context": "/src/api/",
+      "ground_truth": [
+        30
+      ],
+      "difficulty": "medium",
+      "description": "Combined spatial and temporal filtering"
+    }
+  ]
+}

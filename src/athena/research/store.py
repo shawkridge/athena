@@ -1,0 +1,415 @@
+"""Research task orchestration and finding storage."""
+
+import json
+from typing import Optional
+
+from ..core.database import Database
+from ..core.base_store import BaseStore
+from .models import (
+    ResearchTask,
+    ResearchStatus,
+    ResearchFinding,
+    AgentProgress,
+    AgentStatus,
+)
+
+
+class ResearchStore(BaseStore):
+    """Manages research tasks and findings."""
+
+    table_name = "research_tasks"
+    model_class = ResearchTask
+
+    def __init__(self, db: Database):
+        """Initialize research store.
+
+        Args:
+            db: Database instance
+        """
+        super().__init__(db)
+        self._ensure_schema()
+
+    def _row_to_model(self, row) -> ResearchTask:
+        """Convert database row to ResearchTask model.
+
+        Args:
+            row: Database row (sqlite3.Row or dict)
+
+        Returns:
+            ResearchTask instance
+        """
+        # Convert Row to dict if needed (sqlite3.Row is dict-like but needs explicit conversion)
+        row_dict = dict(row) if hasattr(row, 'keys') else row
+
+        agent_results = {}
+        agent_results_str = row_dict.get('agent_results')
+        if agent_results_str:
+            agent_results = json.loads(agent_results_str)
+
+        return ResearchTask(
+            id=row_dict['id'],
+            topic=row_dict['topic'],
+            status=row_dict['status'],
+            project_id=row_dict['project_id'],
+            created_at=row_dict['created_at'],
+            started_at=row_dict['started_at'],
+            completed_at=row_dict['completed_at'],
+            findings_count=row_dict['findings_count'],
+            entities_created=row_dict['entities_created'],
+            relations_created=row_dict['relations_created'],
+            notes=row_dict.get('notes') or "",
+            agent_results=agent_results,
+        )
+
+    def _ensure_schema(self):
+        """Ensure research tables exist."""
+        cursor = self.db.conn.cursor()
+
+        # Research tasks table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS research_tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER,
+                topic TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                created_at INTEGER NOT NULL,
+                started_at INTEGER,
+                completed_at INTEGER,
+                findings_count INTEGER DEFAULT 0,
+                entities_created INTEGER DEFAULT 0,
+                relations_created INTEGER DEFAULT 0,
+                notes TEXT,
+                agent_results TEXT,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            )
+        """)
+
+        # Research findings table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS research_findings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                research_task_id INTEGER NOT NULL,
+                source TEXT NOT NULL,
+                title TEXT NOT NULL,
+                summary TEXT NOT NULL,
+                url TEXT,
+                credibility_score REAL DEFAULT 0.5,
+                created_at INTEGER NOT NULL,
+                stored_to_memory BOOLEAN DEFAULT 0,
+                memory_id INTEGER,
+                FOREIGN KEY (research_task_id) REFERENCES research_tasks(id) ON DELETE CASCADE
+            )
+        """)
+
+        # Agent progress tracking
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS agent_progress (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                research_task_id INTEGER NOT NULL,
+                agent_name TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                findings_count INTEGER DEFAULT 0,
+                started_at INTEGER,
+                completed_at INTEGER,
+                error_message TEXT,
+                FOREIGN KEY (research_task_id) REFERENCES research_tasks(id) ON DELETE CASCADE
+            )
+        """)
+
+        # Indices
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_research_tasks_project ON research_tasks(project_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_research_tasks_status ON research_tasks(status)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_research_findings_task ON research_findings(research_task_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_agent_progress_task ON agent_progress(research_task_id)")
+
+        self.db.conn.commit()
+
+    def create_task(self, topic: str, project_id: Optional[int] = None) -> int:
+        """Create a new research task.
+
+        Args:
+            topic: Research topic
+            project_id: Optional project ID
+
+        Returns:
+            Task ID
+        """
+        now = self.now_timestamp()
+        return self.create(
+            columns=['topic', 'status', 'created_at', 'project_id'],
+            values=(topic, ResearchStatus.PENDING.value, now, project_id)
+        )
+
+    def get_task(self, task_id: int) -> Optional[ResearchTask]:
+        """Get a research task by ID.
+
+        Args:
+            task_id: Task ID
+
+        Returns:
+            ResearchTask or None
+        """
+        return self.get(task_id)
+
+    def update_status(self, task_id: int, status: ResearchStatus) -> bool:
+        """Update research task status.
+
+        Args:
+            task_id: Task ID
+            status: New status
+
+        Returns:
+            Success
+        """
+        now = self.now_timestamp()
+        updates = {'status': status.value}
+
+        # If transitioning to running, set started_at
+        if status == ResearchStatus.RUNNING:
+            updates['started_at'] = now
+        # If transitioning to completed/failed/cancelled, set completed_at
+        elif status in [ResearchStatus.COMPLETED, ResearchStatus.FAILED, ResearchStatus.CANCELLED]:
+            updates['completed_at'] = now
+
+        return self.update(task_id, updates)
+
+    def record_finding(self, finding: ResearchFinding) -> int:
+        """Record a research finding.
+
+        Args:
+            finding: Finding to record
+
+        Returns:
+            Finding ID
+        """
+        return self.create(
+            table_name='research_findings',
+            columns=['research_task_id', 'source', 'title', 'summary', 'url', 'credibility_score', 'created_at', 'stored_to_memory', 'memory_id'],
+            values=(
+                finding.research_task_id,
+                finding.source,
+                finding.title,
+                finding.summary,
+                finding.url,
+                finding.credibility_score,
+                finding.created_at,
+                finding.stored_to_memory,
+                finding.memory_id,
+            )
+        )
+
+    def update_finding_memory_status(self, finding_id: int, memory_id: int) -> bool:
+        """Mark finding as stored to memory.
+
+        Args:
+            finding_id: Finding ID
+            memory_id: Memory ID where stored
+
+        Returns:
+            Success
+        """
+        return self.update(
+            finding_id,
+            {'stored_to_memory': 1, 'memory_id': memory_id},
+            table_name='research_findings'
+        )
+
+    def increment_task_stats(self, task_id: int, findings: int = 0, entities: int = 0, relations: int = 0) -> bool:
+        """Increment task statistics.
+
+        Args:
+            task_id: Task ID
+            findings: Number of findings to add
+            entities: Number of entities to add
+            relations: Number of relations to add
+
+        Returns:
+            Success
+        """
+        query = """
+            UPDATE research_tasks
+            SET findings_count = findings_count + ?,
+                entities_created = entities_created + ?,
+                relations_created = relations_created + ?
+            WHERE id = ?
+        """
+        cursor = self.execute(query, (findings, entities, relations, task_id))
+        self.commit()
+        return cursor.rowcount > 0
+
+    def record_agent_progress(self, progress: AgentProgress) -> int:
+        """Record progress for a research agent.
+
+        Args:
+            progress: Agent progress to record
+
+        Returns:
+            Progress record ID
+        """
+        # Handle status - it might be an enum or a string due to use_enum_values
+        status_str = progress.status if isinstance(progress.status, str) else progress.status.value
+
+        return self.create(
+            table_name='agent_progress',
+            columns=['research_task_id', 'agent_name', 'status', 'findings_count', 'started_at', 'completed_at', 'error_message'],
+            values=(
+                progress.research_task_id,
+                progress.agent_name,
+                status_str,
+                progress.findings_count,
+                progress.started_at,
+                progress.completed_at,
+                progress.error_message,
+            )
+        )
+
+    def update_agent_progress(self, research_task_id: int, agent_name: str, status: AgentStatus, findings_count: int = 0) -> bool:
+        """Update agent progress status.
+
+        Args:
+            research_task_id: Research task ID
+            agent_name: Agent name
+            status: New status
+            findings_count: Number of findings found
+
+        Returns:
+            Success
+        """
+        # Handle status - might be enum or string
+        status_str = status if isinstance(status, str) else status.value
+        status_enum = AgentStatus(status_str) if isinstance(status, str) else status
+        now = self.now_timestamp()
+
+        query = "UPDATE agent_progress SET status = ?"
+        params = [status_str]
+
+        if status_enum == AgentStatus.RUNNING:
+            query += ", started_at = ?"
+            params.append(now)
+        elif status_enum in [AgentStatus.COMPLETED, AgentStatus.FAILED, AgentStatus.SKIPPED]:
+            query += ", completed_at = ?, findings_count = ?"
+            params.extend([now, findings_count])
+
+        query += " WHERE research_task_id = ? AND agent_name = ?"
+        params.extend([research_task_id, agent_name])
+
+        cursor = self.execute(query, tuple(params))
+        self.commit()
+        return cursor.rowcount > 0
+
+    def get_task_findings(self, task_id: int, limit: int = 100) -> list[ResearchFinding]:
+        """Get findings for a research task.
+
+        Args:
+            task_id: Task ID
+            limit: Maximum number of findings
+
+        Returns:
+            List of findings
+        """
+        query = """
+            SELECT id, research_task_id, source, title, summary, url, credibility_score,
+                   created_at, stored_to_memory, memory_id
+            FROM research_findings
+            WHERE research_task_id = ?
+            ORDER BY credibility_score DESC
+            LIMIT ?
+        """
+        rows = self.execute(query, (task_id, limit), fetch_all=True)
+
+        findings = []
+        for row in rows:
+            findings.append(ResearchFinding(
+                id=row[0],
+                research_task_id=row[1],
+                source=row[2],
+                title=row[3],
+                summary=row[4],
+                url=row[5],
+                credibility_score=row[6],
+                created_at=row[7],
+                stored_to_memory=bool(row[8]),
+                memory_id=row[9],
+            ))
+
+        return findings
+
+    def get_agent_progress(self, task_id: int) -> list[AgentProgress]:
+        """Get progress for all agents on a task.
+
+        Args:
+            task_id: Task ID
+
+        Returns:
+            List of agent progress records
+        """
+        query = """
+            SELECT id, research_task_id, agent_name, status, findings_count, started_at, completed_at, error_message
+            FROM agent_progress
+            WHERE research_task_id = ?
+        """
+        rows = self.execute(query, (task_id,), fetch_all=True)
+
+        progress_list = []
+        for row in rows:
+            progress_list.append(AgentProgress(
+                id=row[0],
+                research_task_id=row[1],
+                agent_name=row[2],
+                status=row[3],
+                findings_count=row[4],
+                started_at=row[5],
+                completed_at=row[6],
+                error_message=row[7],
+            ))
+
+        return progress_list
+
+    def list_tasks(self, status: Optional[ResearchStatus] = None, limit: int = 50) -> list[ResearchTask]:
+        """List research tasks.
+
+        Args:
+            status: Filter by status
+            limit: Maximum number of tasks
+
+        Returns:
+            List of tasks
+        """
+        query = """
+            SELECT id, topic, status, project_id, created_at, started_at, completed_at,
+                   findings_count, entities_created, relations_created, notes, agent_results
+            FROM research_tasks
+        """
+        params = []
+
+        if status:
+            query += " WHERE status = ?"
+            params.append(status.value)
+
+        query += " ORDER BY created_at DESC LIMIT ?"
+        params.append(limit)
+
+        rows = self.execute(query, tuple(params), fetch_all=True)
+
+        tasks = []
+        for row in rows:
+            agent_results = {}
+            if row[11]:
+                agent_results = json.loads(row[11])
+
+            tasks.append(ResearchTask(
+                id=row[0],
+                topic=row[1],
+                status=row[2],
+                project_id=row[3],
+                created_at=row[4],
+                started_at=row[5],
+                completed_at=row[6],
+                findings_count=row[7],
+                entities_created=row[8],
+                relations_created=row[9],
+                notes=row[10] or "",
+                agent_results=agent_results,
+            ))
+
+        return tasks

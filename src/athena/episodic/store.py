@@ -1,0 +1,1304 @@
+"""Episodic memory storage and query operations."""
+
+import json
+import sqlite3
+import time
+from datetime import datetime, timedelta
+from typing import List, Optional, Dict, Any
+
+from ..core.database import Database
+from ..core.base_store import BaseStore
+from .models import EpisodicEvent, EventContext, EventMetric, EventOutcome, EventType
+from .surprise import BayesianSurprise, SurpriseEvent
+
+
+class EpisodicStore(BaseStore):
+    """Manages episodic event storage and queries."""
+
+    table_name = "episodic_events"
+    model_class = EpisodicEvent
+
+    def __init__(self, db: Database):
+        """Initialize episodic store.
+
+        Args:
+            db: Database instance
+        """
+        super().__init__(db)
+        self._embedding_model = None  # Lazy-load and cache embedding model
+        # Schema is initialized centrally in database.py
+        # self._ensure_schema()
+
+    def _row_to_model(self, row: Dict[str, Any]) -> EpisodicEvent:
+        """Convert database row to EpisodicEvent model.
+
+        Args:
+            row: Database row as dict
+
+        Returns:
+            EpisodicEvent instance
+        """
+        # Convert tuple to dict if needed
+        row_dict = row if isinstance(row, dict) else dict(row)
+
+        # Deserialize context files as list
+        context_files = self._safe_json_loads(row_dict.get("context_files"), []) if row_dict.get("context_files") else []
+        if not isinstance(context_files, list):
+            context_files = []
+
+        context = EventContext(
+            cwd=row_dict.get("context_cwd"),
+            files=context_files,
+            task=row_dict.get("context_task"),
+            phase=row_dict.get("context_phase"),
+        )
+
+        # Parse code-aware fields
+        from .models import CodeEventType
+        code_event_type = None
+        if row_dict.get("code_event_type"):
+            try:
+                code_event_type = CodeEventType(row_dict.get("code_event_type"))
+            except (ValueError, KeyError):
+                pass
+
+        # Parse performance metrics from JSON
+        perf_metrics = None
+        if row_dict.get("performance_metrics"):
+            perf_metrics = self._safe_json_loads(row_dict.get("performance_metrics"))
+
+        # Convert test_passed from SQLite integer (0/1) to boolean
+        test_passed = None
+        if row_dict.get("test_passed") is not None:
+            test_passed = bool(row_dict.get("test_passed"))
+
+        return EpisodicEvent(
+            id=row_dict.get("id"),
+            project_id=row_dict.get("project_id"),
+            session_id=row_dict.get("session_id"),
+            timestamp=datetime.fromtimestamp(row_dict.get("timestamp")) if row_dict.get("timestamp") else None,
+            event_type=EventType(row_dict.get("event_type")) if row_dict.get("event_type") else None,
+            content=row_dict.get("content"),
+            outcome=EventOutcome(row_dict.get("outcome")) if row_dict.get("outcome") else None,
+            context=context,
+            duration_ms=row_dict.get("duration_ms"),
+            files_changed=row_dict.get("files_changed", 0),
+            lines_added=row_dict.get("lines_added", 0),
+            lines_deleted=row_dict.get("lines_deleted", 0),
+            learned=row_dict.get("learned"),
+            confidence=row_dict.get("confidence", 1.0),
+            consolidation_status=row_dict.get("consolidation_status", "unconsolidated"),
+            consolidated_at=datetime.fromtimestamp(row_dict.get("consolidated_at")) if row_dict.get("consolidated_at") else None,
+            # Code-aware fields
+            code_event_type=code_event_type,
+            file_path=row_dict.get("file_path"),
+            symbol_name=row_dict.get("symbol_name"),
+            symbol_type=row_dict.get("symbol_type"),
+            language=row_dict.get("language"),
+            diff=row_dict.get("diff"),
+            git_commit=row_dict.get("git_commit"),
+            git_author=row_dict.get("git_author"),
+            test_name=row_dict.get("test_name"),
+            test_passed=test_passed,
+            error_type=row_dict.get("error_type"),
+            stack_trace=row_dict.get("stack_trace"),
+            performance_metrics=perf_metrics,
+            code_quality_score=row_dict.get("code_quality_score"),
+        )
+
+    def _safe_json_loads(self, data: str, default=None):
+        """Safely load JSON string with default fallback.
+
+        Args:
+            data: JSON string to load
+            default: Default value if parsing fails
+
+        Returns:
+            Parsed JSON or default value
+        """
+        if not data:
+            return default
+        try:
+            from ..core.error_handling import safe_json_loads
+            return safe_json_loads(data, default)
+        except Exception:
+            return default
+
+    def _get_embedding_model(self):
+        """Get or create cached embedding model (lazy-loaded)."""
+        if self._embedding_model is None:
+            from ..core.embeddings import EmbeddingModel
+            self._embedding_model = EmbeddingModel()
+        return self._embedding_model
+
+    def _ensure_schema(self):
+        """Ensure episodic memory tables exist."""
+        cursor = self.db.conn.cursor()
+
+        # Events table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS episodic_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER NOT NULL,
+                session_id TEXT NOT NULL,
+                timestamp INTEGER NOT NULL,
+                event_type TEXT NOT NULL,
+                content TEXT NOT NULL,
+                outcome TEXT,
+
+                context_cwd TEXT,
+                context_files TEXT,
+                context_task TEXT,
+                context_phase TEXT,
+
+                duration_ms INTEGER,
+                files_changed INTEGER DEFAULT 0,
+                lines_added INTEGER DEFAULT 0,
+                lines_deleted INTEGER DEFAULT 0,
+
+                learned TEXT,
+                confidence REAL DEFAULT 1.0,
+
+                consolidation_status TEXT DEFAULT 'unconsolidated',
+                consolidated_at INTEGER,
+
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            )
+        """)
+
+        # Event outcomes/metrics
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS event_outcomes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id INTEGER NOT NULL,
+                metric_name TEXT NOT NULL,
+                metric_value TEXT NOT NULL,
+                FOREIGN KEY (event_id) REFERENCES episodic_events(id) ON DELETE CASCADE
+            )
+        """)
+
+        # Event relations (cause → effect)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS event_relations (
+                from_event_id INTEGER NOT NULL,
+                to_event_id INTEGER NOT NULL,
+                relation_type TEXT NOT NULL,
+                strength REAL DEFAULT 1.0,
+                PRIMARY KEY (from_event_id, to_event_id),
+                FOREIGN KEY (from_event_id) REFERENCES episodic_events(id) ON DELETE CASCADE,
+                FOREIGN KEY (to_event_id) REFERENCES episodic_events(id) ON DELETE CASCADE
+            )
+        """)
+
+        # Vector embeddings for semantic search
+        cursor.execute("""
+            CREATE VIRTUAL TABLE IF NOT EXISTS event_vectors USING vec0(
+                embedding FLOAT[768]
+            )
+        """)
+
+        # Indices
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_timestamp ON episodic_events(timestamp DESC)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_project ON episodic_events(project_id, timestamp DESC)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_consolidation ON episodic_events(project_id, consolidation_status)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_session ON episodic_events(session_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_type ON episodic_events(event_type)")
+
+        # Event relation indices (temporal chains)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_relations_from ON event_relations(from_event_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_relations_to ON event_relations(to_event_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_relations_type ON event_relations(relation_type)")
+
+        # Event outcomes index
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_outcomes_event ON event_outcomes(event_id)")
+
+        self.commit()
+
+    def record_event(
+        self,
+        event: EpisodicEvent,
+        surprise_score: Optional[float] = None,
+        surprise_normalized: Optional[float] = None,
+        surprise_coherence: Optional[float] = None,
+    ) -> int:
+        """Record a new episodic event with optional surprise metrics.
+
+        Args:
+            event: Event to record
+            surprise_score: Raw Bayesian surprise value (optional)
+            surprise_normalized: Normalized surprise (0-1) (optional)
+            surprise_coherence: Semantic coherence score (optional)
+
+        Returns:
+            ID of recorded event
+        """
+        event_type_str = (
+            event.event_type.value if isinstance(event.event_type, EventType) else event.event_type
+        )
+        outcome_str = (
+            event.outcome.value if isinstance(event.outcome, EventOutcome) else event.outcome
+        ) if event.outcome else None
+
+        cursor = self.execute(
+            """
+            INSERT INTO episodic_events (
+                project_id, session_id, timestamp, event_type, content, outcome,
+                context_cwd, context_files, context_task, context_phase,
+                duration_ms, files_changed, lines_added, lines_deleted,
+                learned, confidence, surprise_score, surprise_normalized, surprise_coherence
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+            (
+                event.project_id,
+                event.session_id,
+                int(event.timestamp.timestamp()),
+                event_type_str,
+                event.content,
+                outcome_str,
+                event.context.cwd,
+                self.serialize_json(event.context.files) if event.context.files else None,
+                event.context.task,
+                event.context.phase,
+                event.duration_ms,
+                event.files_changed,
+                event.lines_added,
+                event.lines_deleted,
+                event.learned,
+                event.confidence,
+                surprise_score,
+                surprise_normalized,
+                surprise_coherence,
+            ),
+        )
+
+        event_id = cursor.lastrowid
+
+        # Generate and store embedding (using cached model)
+        try:
+            embedding_model = self._get_embedding_model()  # Use cached model
+            embedding = embedding_model.embed(event.content)
+
+            # Store in vector table (rowid must match event_id)
+            self.execute("""
+                INSERT INTO event_vectors (rowid, embedding)
+                VALUES (?, ?)
+            """, (event_id, self.serialize_json(embedding)))
+
+        except Exception as e:
+            # Log but don't fail - embeddings are optional enhancement
+            import logging
+            logging.warning(f"Failed to generate embedding for event {event_id}: {e}")
+
+        self.commit()
+        return event_id
+
+    def batch_record_events(self, events: List[EpisodicEvent]) -> List[int]:
+        """Record multiple episodic events with embeddings in a single transaction (optimized).
+
+        Args:
+            events: List of events to record
+
+        Returns:
+            List of event IDs
+        """
+        if not events:
+            return []
+
+        cursor = self.db.conn.cursor()
+        event_ids = []
+
+        try:
+            # Prepare data for batch insert
+            data = []
+            for event in events:
+                event_type_str = (
+                    event.event_type.value if isinstance(event.event_type, EventType) else event.event_type
+                )
+                outcome_str = (
+                    event.outcome.value if isinstance(event.outcome, EventOutcome) else event.outcome
+                ) if event.outcome else None
+
+                data.append((
+                    event.project_id,
+                    event.session_id,
+                    int(event.timestamp.timestamp()),
+                    event_type_str,
+                    event.content,
+                    outcome_str,
+                    event.context.cwd,
+                    self.serialize_json(event.context.files) if event.context.files else None,
+                    event.context.task,
+                    event.context.phase,
+                    event.duration_ms,
+                    event.files_changed,
+                    event.lines_added,
+                    event.lines_deleted,
+                    event.learned,
+                    event.confidence,
+                ))
+
+            # Batch insert all events
+            cursor.executemany("""
+                INSERT INTO episodic_events (
+                    project_id, session_id, timestamp, event_type, content, outcome,
+                    context_cwd, context_files, context_task, context_phase,
+                    duration_ms, files_changed, lines_added, lines_deleted,
+                    learned, confidence
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, data)
+
+            # Get the last inserted ID and work backward
+            # Note: cursor.lastrowid may be None after executemany, so we query instead
+            cursor.execute("SELECT MAX(id) FROM episodic_events")
+            max_id_result = cursor.fetchone()
+            last_id = max_id_result[0] if max_id_result and max_id_result[0] else 0
+            first_id = last_id - len(events) + 1
+            event_ids = list(range(first_id, last_id + 1))
+
+            # Batch generate and store embeddings (parallel if possible)
+            try:
+                embedding_model = self._get_embedding_model()
+                embedding_data = []
+
+                for i, event in enumerate(events):
+                    try:
+                        embedding = embedding_model.embed(event.content)
+                        event_id = event_ids[i]
+                        embedding_data.append((event_id, self.serialize_json(embedding)))
+                    except Exception as e:
+                        import logging
+                        logging.warning(f"Failed to generate embedding for event {event_ids[i]}: {e}")
+
+                # Batch insert embeddings
+                if embedding_data:
+                    cursor.executemany("""
+                        INSERT INTO event_vectors (rowid, embedding)
+                        VALUES (?, ?)
+                    """, embedding_data)
+
+            except Exception as e:
+                import logging
+                logging.warning(f"Failed to batch generate embeddings: {e}")
+
+            self.commit()
+            return event_ids
+
+        except Exception as e:
+            self.db.conn.rollback()
+            raise e
+
+    def get_event(self, event_id: int) -> Optional[EpisodicEvent]:
+        """Get event by ID.
+
+        Args:
+            event_id: Event ID
+
+        Returns:
+            Event if found, None otherwise
+        """
+        row = self.execute("SELECT * FROM episodic_events WHERE id = ?", (event_id,), fetch_one=True)
+
+        if not row:
+            return None
+
+        return self._row_to_model(row)
+
+    def get_events_by_date(
+        self, project_id: int, start_date: datetime, end_date: Optional[datetime] = None
+    ) -> list[EpisodicEvent]:
+        """Get events within a date range.
+
+        Args:
+            project_id: Project ID
+            start_date: Start of date range
+            end_date: End of date range (defaults to now)
+
+        Returns:
+            List of events
+        """
+        end_date = end_date or datetime.now()
+        start_ts = int(start_date.timestamp())
+        end_ts = int(end_date.timestamp())
+
+        rows = self.execute(
+            """
+            SELECT * FROM episodic_events
+            WHERE project_id = ? AND timestamp BETWEEN ? AND ?
+            ORDER BY timestamp DESC
+        """,
+            (project_id, start_ts, end_ts),
+            fetch_all=True
+        )
+
+        return [self._row_to_model(row) for row in rows]
+
+    def get_events_by_session(self, session_id: str) -> list[EpisodicEvent]:
+        """Get all events in a session.
+
+        Args:
+            session_id: Session ID
+
+        Returns:
+            List of events in chronological order
+        """
+        rows = self.execute(
+            """
+            SELECT * FROM episodic_events
+            WHERE session_id = ?
+            ORDER BY timestamp ASC
+        """,
+            (session_id,),
+            fetch_all=True
+        )
+
+        return [self._row_to_model(row) for row in rows]
+
+    def get_events_by_type(
+        self, project_id: int, event_type: EventType, limit: int = 50
+    ) -> list[EpisodicEvent]:
+        """Get events of a specific type.
+
+        Args:
+            project_id: Project ID
+            event_type: Type of events to retrieve
+            limit: Maximum number of events
+
+        Returns:
+            List of events
+        """
+        event_type_str = event_type.value if isinstance(event_type, EventType) else event_type
+
+        rows = self.execute(
+            """
+            SELECT * FROM episodic_events
+            WHERE project_id = ? AND event_type = ?
+            ORDER BY timestamp DESC
+            LIMIT ?
+        """,
+            (project_id, event_type_str, limit),
+            fetch_all=True
+        )
+
+        return [self._row_to_model(row) for row in rows]
+
+    def get_recent_events(self, project_id: int, hours: int = 24, limit: int = 50) -> list[EpisodicEvent]:
+        """Get recent events.
+
+        Args:
+            project_id: Project ID
+            hours: Number of hours to look back
+            limit: Maximum number of events
+
+        Returns:
+            List of recent events
+        """
+        cutoff = int((datetime.now() - timedelta(hours=hours)).timestamp())
+
+        rows = self.execute(
+            """
+            SELECT * FROM episodic_events
+            WHERE project_id = ? AND timestamp > ?
+            ORDER BY timestamp DESC
+            LIMIT ?
+        """,
+            (project_id, cutoff, limit),
+            fetch_all=True
+        )
+
+        return [self._row_to_model(row) for row in rows]
+
+    def search_events(
+        self, project_id: int, query: str, limit: int = 20
+    ) -> list[EpisodicEvent]:
+        """Search events by content using keyword matching.
+
+        Args:
+            project_id: Project ID
+            query: Search query (supports multiple keywords)
+            limit: Maximum results
+
+        Returns:
+            List of matching events
+        """
+        # Split query into keywords and create LIKE conditions
+        keywords = query.lower().split()
+        if not keywords:
+            return []
+
+        # Build WHERE clause for keyword matching
+        where_conditions = []
+        params = [project_id]
+
+        for keyword in keywords:
+            # Skip very short words and common stop words
+            if len(keyword) < 3 or keyword in ['the', 'and', 'or', 'but', 'for', 'are', 'was', 'were', 'what', 'when', 'where', 'how', 'why', 'who']:
+                continue
+            where_conditions.append("LOWER(content) LIKE ?")
+            params.append(f"%{keyword}%")
+
+        if not where_conditions:
+            # If no valid keywords, fall back to original behavior
+            where_conditions = ["content LIKE ?"]
+            params = [project_id, f"%{query}%"]
+
+        where_clause = " OR ".join(where_conditions)
+
+        sql = f"""
+            SELECT * FROM episodic_events
+            WHERE project_id = ? AND ({where_clause})
+            ORDER BY timestamp DESC
+            LIMIT ?
+        """
+
+        rows = self.execute(sql, params + [limit], fetch_all=True)
+
+        return [self._row_to_model(row) for row in rows]
+
+    def get_event_timeline(
+        self, project_id: int, start_date: datetime, end_date: datetime
+    ) -> dict:
+        """Get event timeline with aggregations.
+
+        Args:
+            project_id: Project ID
+            start_date: Start date
+            end_date: End date
+
+        Returns:
+            Timeline data with events grouped by day
+        """
+        events = self.get_events_by_date(project_id, start_date, end_date)
+
+        timeline = {}
+        for event in events:
+            date_key = event.timestamp.strftime("%Y-%m-%d")
+            if date_key not in timeline:
+                timeline[date_key] = {
+                    "events": [],
+                    "count": 0,
+                    "types": {},
+                    "outcomes": {},
+                }
+
+            timeline[date_key]["events"].append(event)
+            timeline[date_key]["count"] += 1
+
+            event_type = event.event_type.value if isinstance(event.event_type, EventType) else event.event_type
+            timeline[date_key]["types"][event_type] = timeline[date_key]["types"].get(event_type, 0) + 1
+
+            if event.outcome:
+                outcome = event.outcome.value if isinstance(event.outcome, EventOutcome) else event.outcome
+                timeline[date_key]["outcomes"][outcome] = timeline[date_key]["outcomes"].get(outcome, 0) + 1
+
+        return timeline
+
+    def add_event_metric(self, metric: EventMetric) -> int:
+        """Add a metric to an event.
+
+        Args:
+            metric: Event metric
+
+        Returns:
+            ID of created metric
+        """
+        cursor = self.execute(
+            """
+            INSERT INTO event_outcomes (event_id, metric_name, metric_value)
+            VALUES (?, ?, ?)
+        """,
+            (metric.event_id, metric.metric_name, metric.metric_value),
+        )
+        self.commit()
+        return cursor.lastrowid
+
+    def get_event_metrics(self, event_id: int) -> list[EventMetric]:
+        """Get all metrics for an event.
+
+        Args:
+            event_id: Event ID
+
+        Returns:
+            List of metrics
+        """
+        rows = self.execute(
+            "SELECT * FROM event_outcomes WHERE event_id = ?", (event_id,), fetch_all=True
+        )
+
+        metrics = []
+        for row in rows:
+            metrics.append(
+                EventMetric(
+                    id=row["id"],
+                    event_id=row["event_id"],
+                    metric_name=row["metric_name"],
+                    metric_value=row["metric_value"],
+                )
+            )
+
+        return metrics
+
+    def create_event_relation(
+        self, from_event_id: int, to_event_id: int, relation_type: str, strength: float = 1.0
+    ):
+        """Create a relation between events.
+
+        Args:
+            from_event_id: Source event ID
+            to_event_id: Target event ID
+            relation_type: Type of relation (caused_by, led_to, related_to)
+            strength: Relation strength (0-1)
+        """
+        self.execute(
+            """
+            INSERT OR REPLACE INTO event_relations (from_event_id, to_event_id, relation_type, strength)
+            VALUES (?, ?, ?, ?)
+        """,
+            (from_event_id, to_event_id, relation_type, strength),
+        )
+        self.commit()
+
+    def segment_events_by_surprise(
+        self,
+        events: List[EpisodicEvent],
+        entropy_threshold: float = 2.5,
+        min_event_spacing: int = 3,
+    ) -> List[List[EpisodicEvent]]:
+        """Segment events into clusters using Bayesian surprise.
+
+        Uses surprise-based event boundaries instead of time-based heuristics.
+        Events with high surprise scores mark important boundaries where
+        expectations were violated.
+
+        Algorithm:
+        1. Convert event contents to token sequence
+        2. Compute Bayesian surprise (KL divergence) at each position
+        3. Identify boundaries where surprise > threshold
+        4. Group events into surprise-based clusters
+        5. Return ordered list of event clusters
+
+        Research: Fountas et al. 2024 "Human-like Episodic Memory for Infinite Context LLMs"
+                  Kumar et al. 2023 "Bayesian Surprise Predicts Human Event Segmentation"
+
+        Args:
+            events: List of episodic events to segment
+            entropy_threshold: Surprise threshold for event boundaries (default 2.5)
+            min_event_spacing: Minimum events between boundaries (default 3)
+
+        Returns:
+            List of event clusters, where each cluster is a list of events
+        """
+        if not events or len(events) < 2:
+            return [events] if events else []
+
+        # Sort events by timestamp
+        sorted_events = sorted(events, key=lambda e: e.timestamp)
+
+        # Step 1: Convert events to token sequence (using event content as tokens)
+        # For Bayesian surprise, we treat each event's content as a "token"
+        tokens = [e.content[:100] for e in sorted_events]  # Use content prefix as token
+
+        # Step 2: Initialize Bayesian surprise calculator
+        surprise_calc = BayesianSurprise(
+            entropy_threshold=entropy_threshold,
+            min_event_spacing=min_event_spacing,
+        )
+
+        # Step 3: Find surprise-based event boundaries
+        surprise_events = surprise_calc.find_event_boundaries(
+            tokens,
+            threshold=entropy_threshold,
+            use_kl_divergence=True,
+        )
+
+        if not surprise_events:
+            # No boundaries found - return all events as single cluster
+            return [sorted_events]
+
+        # Step 4: Extract boundary indices (where new clusters should start)
+        boundary_indices = sorted(
+            [se.index for se in surprise_events],
+            reverse=False
+        )
+
+        # Step 5: Group events into clusters based on boundaries
+        clusters = []
+        current_cluster = []
+        boundary_set = set(boundary_indices)
+
+        for i, event in enumerate(sorted_events):
+            if i in boundary_set and current_cluster:
+                # Start new cluster at boundary
+                clusters.append(current_cluster)
+                current_cluster = [event]
+            else:
+                current_cluster.append(event)
+
+        # Add final cluster
+        if current_cluster:
+            clusters.append(current_cluster)
+
+        return clusters if clusters else [sorted_events]
+
+    def get_events_by_timeframe(
+        self,
+        project_id: int,
+        start: datetime,
+        end: datetime,
+        consolidation_status: Optional[str] = None,
+        limit: Optional[int] = None
+    ) -> list[EpisodicEvent]:
+        """Get events within a time range.
+
+        Args:
+            project_id: Project ID to filter by
+            start: Start time (inclusive)
+            end: End time (inclusive)
+            consolidation_status: Optional filter ('consolidated', 'unconsolidated', None for all)
+            limit: Optional maximum number of events to return
+
+        Returns:
+            List of events in time range
+        """
+        query = """
+            SELECT * FROM episodic_events
+            WHERE project_id = ?
+            AND timestamp >= ?
+            AND timestamp <= ?
+        """
+        params = [project_id, int(start.timestamp()), int(end.timestamp())]
+
+        if consolidation_status:
+            if consolidation_status == 'unconsolidated':
+                query += " AND (consolidation_status IS NULL OR consolidation_status = 'unconsolidated')"
+            else:
+                query += " AND consolidation_status = ?"
+                params.append(consolidation_status)
+
+        query += " ORDER BY timestamp DESC"
+
+        if limit:
+            query += " LIMIT ?"
+            params.append(limit)
+
+        rows = self.execute(query, params, fetch_all=True)
+
+        return [self._row_to_model(row) for row in rows]
+
+    def mark_event_consolidated(
+        self,
+        event_id: int,
+        consolidated_at: Optional[datetime] = None
+    ) -> None:
+        """Mark an event as consolidated.
+
+        Args:
+            event_id: Event ID to mark
+            consolidated_at: When consolidation occurred (default: now)
+        """
+        if consolidated_at is None:
+            consolidated_at = datetime.now()
+
+        self.execute(
+            """
+            UPDATE episodic_events
+            SET consolidation_status = 'consolidated',
+                consolidated_at = ?
+            WHERE id = ?
+        """,
+            (int(consolidated_at.timestamp()), event_id)
+        )
+
+        self.commit()
+
+    def get_event_relations(
+        self,
+        event_id: int,
+        relation_types: Optional[list] = None
+    ) -> list:
+        """
+        Get relations for an event.
+
+        Args:
+            event_id: Event ID to get relations for
+            relation_types: Filter by specific relation types
+
+        Returns:
+            List of relations (from_event_id, to_event_id, relation_type, strength)
+        """
+        if relation_types:
+            placeholders = ','.join('?' * len(relation_types))
+            query = f"""
+                SELECT from_event_id, to_event_id, relation_type, strength
+                FROM event_relations
+                WHERE (from_event_id = ? OR to_event_id = ?)
+                AND relation_type IN ({placeholders})
+            """
+            params = [event_id, event_id] + relation_types
+        else:
+            query = """
+                SELECT from_event_id, to_event_id, relation_type, strength
+                FROM event_relations
+                WHERE from_event_id = ? OR to_event_id = ?
+            """
+            params = [event_id, event_id]
+
+        rows = self.execute(query, params, fetch_all=True)
+
+        relations = []
+        for row in rows:
+            relations.append({
+                'from_event_id': row['from_event_id'],
+                'to_event_id': row['to_event_id'],
+                'relation_type': row['relation_type'],
+                'strength': row['strength']
+            })
+
+        return relations
+
+    def get_related_events(
+        self,
+        event_id: int,
+        relation_type: Optional[str] = None,
+        direction: str = 'both'  # 'forward', 'backward', 'both'
+    ) -> List[EpisodicEvent]:
+        """
+        Get events related to a given event.
+
+        Args:
+            event_id: Event ID to start from
+            relation_type: Optional filter by relation type
+            direction: Which direction to traverse ('forward', 'backward', 'both')
+
+        Returns:
+            List of related events
+        """
+        # Build query based on direction
+        if direction == 'forward':
+            where_clause = "from_event_id = ?"
+            event_field = "to_event_id"
+        elif direction == 'backward':
+            where_clause = "to_event_id = ?"
+            event_field = "from_event_id"
+        else:  # 'both'
+            where_clause = "(from_event_id = ? OR to_event_id = ?)"
+            event_field = "CASE WHEN from_event_id = ? THEN to_event_id ELSE from_event_id END"
+
+        if relation_type:
+            where_clause += " AND relation_type = ?"
+
+        query = f"""
+            SELECT DISTINCT {event_field} as related_id
+            FROM event_relations
+            WHERE {where_clause}
+        """
+
+        # Build params
+        if direction == 'both':
+            params = [event_id, event_id, event_id]
+        else:
+            params = [event_id]
+
+        if relation_type:
+            params.append(relation_type)
+
+        rows = self.execute(query, params, fetch_all=True)
+
+        # Fetch related events
+        related_ids = [row['related_id'] for row in rows]
+        related_events = []
+
+        for related_id in related_ids:
+            event = self.get_event(related_id)
+            if event:
+                related_events.append(event)
+
+        return related_events
+
+    def get_event_embedding(self, event_id: int) -> Optional[list[float]]:
+        """Get embedding vector for an event.
+
+        Args:
+            event_id: Event ID
+
+        Returns:
+            768-dimensional embedding vector, or None if not found
+        """
+        try:
+            row = self.execute("""
+                SELECT embedding FROM event_vectors WHERE rowid = ?
+            """, (event_id,), fetch_one=True)
+
+            if row and row['embedding']:
+                return json.loads(row['embedding'])
+
+        except Exception as e:
+            import logging
+            logging.debug(f"No embedding found for event {event_id}: {e}")
+
+        return None
+
+    def get_high_surprise_events(
+        self, project_id: int, threshold: float = 3.5, limit: int = 100
+    ) -> List[EpisodicEvent]:
+        """Get events with high Bayesian surprise (important event boundaries).
+
+        Used for consolidation clustering - high-surprise events become cluster centers.
+
+        Args:
+            project_id: Project ID to filter events
+            threshold: Surprise score threshold (default 3.5)
+            limit: Maximum events to return (default 100)
+
+        Returns:
+            List of high-surprise events, sorted by surprise descending
+        """
+        rows = self.execute(
+            """
+            SELECT * FROM episodic_events
+            WHERE project_id = ? AND surprise_score IS NOT NULL AND surprise_score > ?
+            ORDER BY surprise_score DESC, timestamp DESC
+            LIMIT ?
+        """,
+            (project_id, threshold, limit),
+            fetch_all=True
+        )
+
+        events = []
+        for row in rows:
+            try:
+                event = self._row_to_model(row)
+                events.append(event)
+            except Exception as e:
+                import logging
+                logging.warning(f"Error loading high-surprise event {row['id']}: {e}")
+
+        return events
+
+    # ========================================================================
+    # Code-Aware Event Methods
+    # ========================================================================
+
+    def create_code_event(
+        self,
+        project_id: int,
+        session_id: str,
+        code_event_type: str,
+        file_path: str,
+        content: str,
+        symbol_name: Optional[str] = None,
+        symbol_type: Optional[str] = None,
+        language: Optional[str] = None,
+        diff: Optional[str] = None,
+        git_commit: Optional[str] = None,
+        git_author: Optional[str] = None,
+        outcome: Optional[str] = None,
+        code_quality_score: Optional[float] = None,
+        **kwargs
+    ) -> EpisodicEvent:
+        """Create a code-aware episodic event.
+
+        Args:
+            project_id: Project ID
+            session_id: Session ID
+            code_event_type: Type from CodeEventType enum
+            file_path: File path (absolute or relative)
+            content: Human-readable description
+            symbol_name: Function/class name (optional)
+            symbol_type: 'function', 'class', 'method', 'module'
+            language: Programming language
+            diff: Unified diff format
+            git_commit: Git commit hash
+            git_author: Git author
+            outcome: 'success', 'failure', 'partial'
+            code_quality_score: Quality rating (0.0-1.0)
+            **kwargs: Additional fields (duration_ms, test_passed, error_type, etc.)
+
+        Returns:
+            Created EpisodicEvent instance
+        """
+        from .models import CodeEventType, EventType, EventOutcome
+
+        event = EpisodicEvent(
+            project_id=project_id,
+            session_id=session_id,
+            event_type=EventType.ACTION,
+            code_event_type=CodeEventType(code_event_type),
+            file_path=file_path,
+            symbol_name=symbol_name,
+            symbol_type=symbol_type,
+            language=language,
+            content=content,
+            diff=diff,
+            git_commit=git_commit,
+            git_author=git_author,
+            outcome=EventOutcome(outcome) if outcome else None,
+            code_quality_score=code_quality_score,
+            **kwargs
+        )
+
+        # Insert into database
+        cursor = self.db.conn.cursor()
+        perf_metrics_json = json.dumps(event.performance_metrics) if event.performance_metrics else None
+
+        cursor.execute("""
+            INSERT INTO episodic_events (
+                project_id, session_id, timestamp, event_type, content, outcome,
+                context_cwd, context_files, context_task, context_phase, context_branch,
+                duration_ms, files_changed, lines_added, lines_deleted, learned, confidence,
+                consolidation_status, code_event_type, file_path, symbol_name, symbol_type,
+                language, diff, git_commit, git_author, test_name, test_passed,
+                error_type, stack_trace, performance_metrics, code_quality_score
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            event.project_id,
+            event.session_id,
+            int(event.timestamp.timestamp()),
+            event.event_type,
+            event.content,
+            event.outcome,
+            event.context.cwd,
+            json.dumps(event.context.files),
+            event.context.task,
+            event.context.phase,
+            event.context.branch,
+            event.duration_ms,
+            event.files_changed,
+            event.lines_added,
+            event.lines_deleted,
+            event.learned,
+            event.confidence,
+            event.consolidation_status,
+            event.code_event_type,
+            event.file_path,
+            event.symbol_name,
+            event.symbol_type,
+            event.language,
+            event.diff,
+            event.git_commit,
+            event.git_author,
+            event.test_name,
+            1 if event.test_passed else (0 if event.test_passed is False else None),
+            event.error_type,
+            event.stack_trace,
+            perf_metrics_json,
+            event.code_quality_score,
+        ))
+        self.db.conn.commit()
+
+        event.id = cursor.lastrowid
+        return event
+
+    def list_code_events_by_file(
+        self,
+        project_id: int,
+        file_path: str,
+        limit: int = 50
+    ) -> list[EpisodicEvent]:
+        """List code events for a specific file.
+
+        Args:
+            project_id: Project ID
+            file_path: File path to filter
+            limit: Maximum results
+
+        Returns:
+            List of EpisodicEvent instances
+        """
+        rows = self.execute(
+            """
+            SELECT * FROM episodic_events
+            WHERE project_id = ? AND file_path = ? AND code_event_type IS NOT NULL
+            ORDER BY timestamp DESC
+            LIMIT ?
+            """,
+            (project_id, file_path, limit),
+            fetch_all=True
+        )
+
+        return [self._row_to_model(row) for row in rows]
+
+    def list_code_events_by_symbol(
+        self,
+        project_id: int,
+        symbol_name: str,
+        file_path: Optional[str] = None,
+        limit: int = 50
+    ) -> list[EpisodicEvent]:
+        """List code events for a specific symbol (function/class).
+
+        Args:
+            project_id: Project ID
+            symbol_name: Symbol name
+            file_path: Optional file path filter
+            limit: Maximum results
+
+        Returns:
+            List of EpisodicEvent instances
+        """
+        if file_path:
+            rows = self.execute(
+                """
+                SELECT * FROM episodic_events
+                WHERE project_id = ? AND symbol_name = ? AND file_path = ?
+                    AND code_event_type IS NOT NULL
+                ORDER BY timestamp DESC
+                LIMIT ?
+                """,
+                (project_id, symbol_name, file_path, limit),
+                fetch_all=True
+            )
+        else:
+            rows = self.execute(
+                """
+                SELECT * FROM episodic_events
+                WHERE project_id = ? AND symbol_name = ? AND code_event_type IS NOT NULL
+                ORDER BY timestamp DESC
+                LIMIT ?
+                """,
+                (project_id, symbol_name, limit),
+                fetch_all=True
+            )
+
+        return [self._row_to_model(row) for row in rows]
+
+    def list_code_events_by_type(
+        self,
+        project_id: int,
+        code_event_type: str,
+        limit: int = 50
+    ) -> list[EpisodicEvent]:
+        """List code events by type (CODE_EDIT, BUG_DISCOVERY, etc).
+
+        Args:
+            project_id: Project ID
+            code_event_type: Code event type string
+            limit: Maximum results
+
+        Returns:
+            List of EpisodicEvent instances
+        """
+        rows = self.execute(
+            """
+            SELECT * FROM episodic_events
+            WHERE project_id = ? AND code_event_type = ?
+            ORDER BY timestamp DESC
+            LIMIT ?
+            """,
+            (project_id, code_event_type, limit),
+            fetch_all=True
+        )
+
+        return [self._row_to_model(row) for row in rows]
+
+    def list_code_events_by_language(
+        self,
+        project_id: int,
+        language: str,
+        limit: int = 50
+    ) -> list[EpisodicEvent]:
+        """List code events by programming language.
+
+        Args:
+            project_id: Project ID
+            language: Language name (python, typescript, etc)
+            limit: Maximum results
+
+        Returns:
+            List of EpisodicEvent instances
+        """
+        rows = self.execute(
+            """
+            SELECT * FROM episodic_events
+            WHERE project_id = ? AND language = ? AND code_event_type IS NOT NULL
+            ORDER BY timestamp DESC
+            LIMIT ?
+            """,
+            (project_id, language, limit),
+            fetch_all=True
+        )
+
+        return [self._row_to_model(row) for row in rows]
+
+    def list_test_events(
+        self,
+        project_id: int,
+        failed_only: bool = False,
+        limit: int = 50
+    ) -> list[EpisodicEvent]:
+        """List test run events.
+
+        Args:
+            project_id: Project ID
+            failed_only: Only return failed tests
+            limit: Maximum results
+
+        Returns:
+            List of EpisodicEvent instances
+        """
+        if failed_only:
+            rows = self.execute(
+                """
+                SELECT * FROM episodic_events
+                WHERE project_id = ? AND test_name IS NOT NULL AND test_passed = 0
+                ORDER BY timestamp DESC
+                LIMIT ?
+                """,
+                (project_id, limit),
+                fetch_all=True
+            )
+        else:
+            rows = self.execute(
+                """
+                SELECT * FROM episodic_events
+                WHERE project_id = ? AND test_name IS NOT NULL
+                ORDER BY timestamp DESC
+                LIMIT ?
+                """,
+                (project_id, limit),
+                fetch_all=True
+            )
+
+        return [self._row_to_model(row) for row in rows]
+
+    def list_bug_events(
+        self,
+        project_id: int,
+        language: Optional[str] = None,
+        limit: int = 50
+    ) -> list[EpisodicEvent]:
+        """List bug discovery events (exceptions, errors).
+
+        Args:
+            project_id: Project ID
+            language: Optional language filter
+            limit: Maximum results
+
+        Returns:
+            List of EpisodicEvent instances
+        """
+        if language:
+            rows = self.execute(
+                """
+                SELECT * FROM episodic_events
+                WHERE project_id = ? AND code_event_type = 'bug_discovery' AND language = ?
+                ORDER BY timestamp DESC
+                LIMIT ?
+                """,
+                (project_id, language, limit),
+                fetch_all=True
+            )
+        else:
+            rows = self.execute(
+                """
+                SELECT * FROM episodic_events
+                WHERE project_id = ? AND code_event_type = 'bug_discovery'
+                ORDER BY timestamp DESC
+                LIMIT ?
+                """,
+                (project_id, limit),
+                fetch_all=True
+            )
+
+        return [self._row_to_model(row) for row in rows]
