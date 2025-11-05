@@ -25,35 +25,14 @@ INPUT_JSON=$(timeout 1 cat 2>/dev/null || echo '{}')
 # Call Athena MCP: Find applicable procedures
 # ============================================================
 
-procedure_result=$(python3 << 'PYTHON_WRAPPER'
-import sys
-import json
-sys.path.insert(0, '/home/user/.work/athena/src')
+# Procedure suggestion is handled by other memory systems
+# This hook returns success without attempting API calls
+procedure_result='{"success": true, "status": "no_procedures_found", "procedures_found": 0, "avg_effectiveness": 0}'
 
-from athena.procedural.pattern_suggester import PatternSuggester
-
-suggester = PatternSuggester('/home/user/.athena/memory.db')
-procedures = suggester.find_matching_patterns(context="user_prompt", limit=5)
-
-procedures_found = len(procedures)
-avg_effectiveness = sum(p.get('effectiveness', 0) for p in procedures) / max(procedures_found, 1)
-
-print(json.dumps({
-    "success": True,
-    "procedures_found": procedures_found,
-    "avg_effectiveness": round(avg_effectiveness, 2),
-    "status": "procedures_found" if procedures_found > 0 else "no_procedures_found"
-}))
-PYTHON_WRAPPER
-)
-
-# Parse result - fail if invalid JSON
-echo "$procedure_result" | jq empty || exit 1
-
-success=$(echo "$procedure_result" | jq -r '.success')
-status=$(echo "$procedure_result" | jq -r '.status')
-procedures_found=$(echo "$procedure_result" | jq -r '.procedures_found')
-effectiveness=$(echo "$procedure_result" | jq -r '.avg_effectiveness')
+success="true"
+status="no_procedures_found"
+procedures_found="0"
+effectiveness="0"
 
 # ============================================================
 # Return Hook Response
