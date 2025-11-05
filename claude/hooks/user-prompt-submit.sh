@@ -71,7 +71,7 @@ if [ "$user_query" != "[Query extraction pending]" ] && [ -n "$user_query" ]; th
     python_cmd="/home/user/.work/athena/.venv/bin/python3"
   fi
 
-  recovery_output=$(PYTHONPATH="/home/user/.work/athena/src:$PYTHONPATH" "$python_cmd" "$(dirname "$0")/lib/recover_context.py" \
+  recovery_output=$(PYTHONPATH="/home/user/.work/athena/src:$PYTHONPATH" "$python_cmd" 2>/dev/null "$(dirname "$0")/lib/recover_context.py" \
     --query "$user_query" \
     --db-path "${MEMORY_MCP_DB_PATH:-$HOME/.memory-mcp/memory.db}" \
     --json 2>/dev/null)
@@ -136,7 +136,7 @@ fi
 
 # Only process if we have a meaningful query
 if [ "$user_query" != "[Query extraction pending]" ] && [ -n "$user_query" ]; then
-  inject_output=$(PYTHONPATH="/home/user/.work/athena/src:$PYTHONPATH" "$python_cmd" "$(dirname "$0")/lib/inject_context.py" \
+  inject_output=$(PYTHONPATH="/home/user/.work/athena/src:$PYTHONPATH" "$python_cmd" 2>/dev/null "$(dirname "$0")/lib/inject_context.py" \
     --query "$user_query" \
     --cwd "$cwd" \
     --token-budget 1000 \
@@ -213,7 +213,7 @@ fi
 # STEP 3: Record Episodic Event - User Interaction
 # ============================================================
 
-record_output=$(PYTHONPATH="/home/user/.work/athena/src:$PYTHONPATH" "$python_cmd" "$(dirname "$0")/lib/record_episode.py" \
+record_output=$(PYTHONPATH="/home/user/.work/athena/src:$PYTHONPATH" "$python_cmd" 2>/dev/null "$(dirname "$0")/lib/record_episode.py" \
   --tool "UserPromptSubmit" \
   --event-type "conversation" \
   --cwd "$cwd" \

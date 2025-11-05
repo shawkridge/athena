@@ -166,7 +166,7 @@ if [ "$context_available" = "true" ] && [ -n "$system_msg" ]; then
   hook_output_message="$system_msg"
 fi
 
-jq -n \
+jq -n 2>/dev/null \
   --arg project "$project_name" \
   --arg session "$session_id" \
   --arg event_id "$event_id" \
