@@ -30,51 +30,34 @@ import sys
 import json
 sys.path.insert(0, '/home/user/.work/athena/src')
 
-try:
-    from athena.metacognition.gaps import KnowledgeGapDetector
+from athena.metacognition.gaps import KnowledgeGapDetector
 
-    detector = KnowledgeGapDetector('/home/user/.athena/memory.db')
+detector = KnowledgeGapDetector('/home/user/.athena/memory.db')
 
-    # Detect gaps
-    contradictions = detector.detect_direct_contradictions(project_id=1)
-    uncertainties = detector.identify_uncertainty_zones(project_id=1)
+# Detect gaps
+contradictions = detector.detect_direct_contradictions(project_id=1)
+uncertainties = detector.identify_uncertainty_zones(project_id=1)
 
-    total_gaps = len(contradictions) + len(uncertainties)
+total_gaps = len(contradictions) + len(uncertainties)
 
-    print(json.dumps({
-        "success": True,
-        "contradictions": len(contradictions),
-        "uncertainties": len(uncertainties),
-        "missing_context": 0,
-        "total_gaps": total_gaps,
-        "status": "gaps_detected" if total_gaps > 0 else "no_gaps"
-    }))
-
-except Exception as e:
-    # Fallback if imports fail
-    print(json.dumps({
-        "success": True,
-        "contradictions": 0,
-        "uncertainties": 0,
-        "missing_context": 0,
-        "total_gaps": 0,
-        "status": "no_gaps",
-        "error": str(e),
-        "note": "Running in fallback mode"
-    }))
+print(json.dumps({
+    "success": True,
+    "contradictions": len(contradictions),
+    "uncertainties": len(uncertainties),
+    "missing_context": 0,
+    "total_gaps": total_gaps,
+    "status": "gaps_detected" if total_gaps > 0 else "no_gaps"
+}))
 PYTHON_GAPS
 )
 
-# Parse result with safer defaults
-if ! echo "$gap_result" | jq empty 2>/dev/null; then
-  # Invalid JSON from Python, use fallback
-  gap_result='{"success": true, "status": "no_gaps", "total_gaps": 0, "contradictions": 0}'
-fi
+# Parse result - fail if invalid JSON
+echo "$gap_result" | jq empty || exit 1
 
-success=$(echo "$gap_result" | jq -r '.success // true')
-status=$(echo "$gap_result" | jq -r '.status // "no_gaps"')
-total_gaps=$(echo "$gap_result" | jq -r '.total_gaps // 0')
-contradictions=$(echo "$gap_result" | jq -r '.contradictions // 0')
+success=$(echo "$gap_result" | jq -r '.success')
+status=$(echo "$gap_result" | jq -r '.status')
+total_gaps=$(echo "$gap_result" | jq -r '.total_gaps')
+contradictions=$(echo "$gap_result" | jq -r '.contradictions')
 
 # ============================================================
 # Return Hook Response
@@ -106,11 +89,7 @@ jq -n \
       "timestamp": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'",
       "gaps_detected": $gaps
     }
-  }' 2>/dev/null || \
-jq -n '{
-  "continue": true,
-  "suppressOutput": true
-}'
+  }'
 
 
 # ============================================================

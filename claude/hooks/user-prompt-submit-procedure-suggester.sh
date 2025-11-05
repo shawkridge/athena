@@ -30,44 +30,30 @@ import sys
 import json
 sys.path.insert(0, '/home/user/.work/athena/src')
 
-try:
-    from athena.procedural.pattern_suggester import PatternSuggester
+from athena.procedural.pattern_suggester import PatternSuggester
 
-    suggester = PatternSuggester('/home/user/.athena/memory.db')
-    procedures = suggester.find_matching_patterns(context="user_prompt", limit=5)
+suggester = PatternSuggester('/home/user/.athena/memory.db')
+procedures = suggester.find_matching_patterns(context="user_prompt", limit=5)
 
-    procedures_found = len(procedures)
-    avg_effectiveness = sum(p.get('effectiveness', 0) for p in procedures) / max(procedures_found, 1)
+procedures_found = len(procedures)
+avg_effectiveness = sum(p.get('effectiveness', 0) for p in procedures) / max(procedures_found, 1)
 
-    print(json.dumps({
-        "success": True,
-        "procedures_found": procedures_found,
-        "avg_effectiveness": round(avg_effectiveness, 2),
-        "status": "procedures_found" if procedures_found > 0 else "no_procedures_found"
-    }))
-
-except Exception as e:
-    print(json.dumps({
-        "success": True,
-        "procedures_found": 0,
-        "avg_effectiveness": 0,
-        "status": "no_procedures_found",
-        "error": str(e),
-        "note": "Running in fallback mode"
-    }))
+print(json.dumps({
+    "success": True,
+    "procedures_found": procedures_found,
+    "avg_effectiveness": round(avg_effectiveness, 2),
+    "status": "procedures_found" if procedures_found > 0 else "no_procedures_found"
+}))
 PYTHON_WRAPPER
 )
 
-# Parse result with safer defaults
-if ! echo "$procedure_result" | jq empty 2>/dev/null; then
-  # Invalid JSON from Python, use fallback
-  procedure_result='{"success": true, "status": "no_procedures_found", "procedures_found": 0, "avg_effectiveness": 0}'
-fi
+# Parse result - fail if invalid JSON
+echo "$procedure_result" | jq empty || exit 1
 
-success=$(echo "$procedure_result" | jq -r '.success // true')
-status=$(echo "$procedure_result" | jq -r '.status // "no_procedures_found"')
-procedures_found=$(echo "$procedure_result" | jq -r '.procedures_found // 0')
-effectiveness=$(echo "$procedure_result" | jq -r '.avg_effectiveness // 0')
+success=$(echo "$procedure_result" | jq -r '.success')
+status=$(echo "$procedure_result" | jq -r '.status')
+procedures_found=$(echo "$procedure_result" | jq -r '.procedures_found')
+effectiveness=$(echo "$procedure_result" | jq -r '.avg_effectiveness')
 
 # ============================================================
 # Return Hook Response

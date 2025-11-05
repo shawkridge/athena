@@ -30,43 +30,30 @@ import sys
 import json
 sys.path.insert(0, '/home/user/.work/athena/src')
 
-try:
-    from athena.core.database import Database
-    from athena.working_memory import CentralExecutive
-    from athena.working_memory.models import WorkingMemoryItem, ContentType
+from athena.core.database import Database
+from athena.working_memory import CentralExecutive
+from athena.working_memory.models import WorkingMemoryItem, ContentType
 
-    db = Database('/home/user/.athena/memory.db')
-    ce = CentralExecutive(db, project_id=1)
+db = Database('/home/user/.athena/memory.db')
+ce = CentralExecutive(db, project_id=1)
 
-    item = WorkingMemoryItem(
-        content="User submitted prompt - updating context focus",
-        content_type=ContentType.VERBAL,
-        importance=0.8
-    )
+item = WorkingMemoryItem(
+    content="User submitted prompt - updating context focus",
+    content_type=ContentType.VERBAL,
+    importance=0.8
+)
 
-    result = ce.add_to_working_memory(item)
+result = ce.add_to_working_memory(item)
 
-    print(json.dumps({"success": True, "status": "memory_updated", "result": str(result)}))
-
-except Exception as e:
-    # Fallback if imports fail
-    print(json.dumps({
-        "success": True,
-        "status": "memory_updated",
-        "error": str(e),
-        "note": "Running in fallback mode"
-    }))
+print(json.dumps({"success": True, "status": "memory_updated", "result": str(result)}))
 PYTHON_WRAPPER
 )
 
-# Parse result with safer defaults
-if ! echo "$attention_result" | jq empty 2>/dev/null; then
-  # Invalid JSON from Python, use fallback
-  attention_result='{"success": true, "status": "memory_updated", "current_items": 0, "capacity": 7}'
-fi
+# Parse result - fail if invalid JSON
+echo "$attention_result" | jq empty || exit 1
 
-success=$(echo "$attention_result" | jq -r '.success // true')
-status=$(echo "$attention_result" | jq -r '.status // "memory_updated"')
+success=$(echo "$attention_result" | jq -r '.success')
+status=$(echo "$attention_result" | jq -r '.status')
 current_items=$(echo "$attention_result" | jq -r '.current_items // 0')
 capacity=$(echo "$attention_result" | jq -r '.capacity // 7')
 

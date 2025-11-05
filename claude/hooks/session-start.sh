@@ -80,7 +80,7 @@ if [ "$project_name" != "unknown" ]; then
   context_json=$("$python_cmd" "$(dirname "$0")/lib/context_loader.py" \
     --project "$project_name" \
     --cwd "$cwd" \
-    --json 2>/dev/null)
+    --json)
 
   # Check if we got valid JSON
   if echo "$context_json" | jq empty 2>/dev/null; then
@@ -124,7 +124,7 @@ record_output=$("$python_cmd" "$(dirname "$0")/lib/record_episode.py" \
   --tool "SessionStart" \
   --event-type "action" \
   --cwd "$cwd" \
-  --json 2>/dev/null)
+  --json)
 
 if echo "$record_output" | jq empty 2>/dev/null; then
   event_recorded=$(echo "$record_output" | jq -r '.success // false')
@@ -166,7 +166,7 @@ if [ "$context_available" = "true" ] && [ -n "$system_msg" ]; then
   hook_output_message="$system_msg"
 fi
 
-jq -n 2>/dev/null \
+jq -n \
   --arg project "$project_name" \
   --arg session "$session_id" \
   --arg event_id "$event_id" \
@@ -188,12 +188,7 @@ jq -n 2>/dev/null \
         "event_id": $event_id
       }
     }
-  }' 2>/dev/null || \
-# Fallback if jq fails
-jq -n '{
-  "continue": true,
-  "suppressOutput": true
-}'
+  }'
 
 # ============================================================
 # INSTRUMENTATION: Log Hook Result
