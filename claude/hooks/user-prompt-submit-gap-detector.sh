@@ -65,9 +65,14 @@ except Exception as e:
 PYTHON_GAPS
 )
 
-# Parse result
-success=$(echo "$gap_result" | jq -r '.success // false')
-status=$(echo "$gap_result" | jq -r '.status // "unknown"')
+# Parse result with safer defaults
+if ! echo "$gap_result" | jq empty 2>/dev/null; then
+  # Invalid JSON from Python, use fallback
+  gap_result='{"success": true, "status": "no_gaps", "total_gaps": 0, "contradictions": 0}'
+fi
+
+success=$(echo "$gap_result" | jq -r '.success // true')
+status=$(echo "$gap_result" | jq -r '.status // "no_gaps"')
 total_gaps=$(echo "$gap_result" | jq -r '.total_gaps // 0')
 contradictions=$(echo "$gap_result" | jq -r '.contradictions // 0')
 

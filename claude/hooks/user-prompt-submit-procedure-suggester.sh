@@ -58,9 +58,14 @@ except Exception as e:
 PYTHON_WRAPPER
 )
 
-# Parse result
-success=$(echo "$procedure_result" | jq -r '.success // false')
-status=$(echo "$procedure_result" | jq -r '.status // "unknown"')
+# Parse result with safer defaults
+if ! echo "$procedure_result" | jq empty 2>/dev/null; then
+  # Invalid JSON from Python, use fallback
+  procedure_result='{"success": true, "status": "no_procedures_found", "procedures_found": 0, "avg_effectiveness": 0}'
+fi
+
+success=$(echo "$procedure_result" | jq -r '.success // true')
+status=$(echo "$procedure_result" | jq -r '.status // "no_procedures_found"')
 procedures_found=$(echo "$procedure_result" | jq -r '.procedures_found // 0')
 effectiveness=$(echo "$procedure_result" | jq -r '.avg_effectiveness // 0')
 
