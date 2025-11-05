@@ -19,7 +19,16 @@ async def main():
     """Start the Athena MCP server"""
     db_path = os.environ.get('ATHENA_DB_PATH', '/home/user/.athena/memory.db')
     server = MemoryMCPServer(db_path=db_path)
-    await server.run()
+
+    try:
+        await server.run()
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    finally:
+        server.store.close()
 
 if __name__ == '__main__':
     asyncio.run(main())
