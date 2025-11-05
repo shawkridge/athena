@@ -71,7 +71,7 @@ if [ "$user_query" != "[Query extraction pending]" ] && [ -n "$user_query" ]; th
     python_cmd="/home/user/.work/athena/.venv/bin/python3"
   fi
 
-  recovery_output=$(PYTHONPATH="/home/user/.work/athena/src:$PYTHONPATH" "$python_cmd" 2>/dev/null "$(dirname "$0")/lib/recover_context.py" \
+  recovery_output=$(PYTHONPATH="/home/user/.work/athena/src:$PYTHONPATH" "$python_cmd" "$(dirname "$0")/lib/recover_context.py" \
     --query "$user_query" \
     --db-path "${MEMORY_MCP_DB_PATH:-$HOME/.memory-mcp/memory.db}" \
     --json 2>/dev/null)
@@ -136,7 +136,7 @@ fi
 
 # Only process if we have a meaningful query
 if [ "$user_query" != "[Query extraction pending]" ] && [ -n "$user_query" ]; then
-  inject_output=$(PYTHONPATH="/home/user/.work/athena/src:$PYTHONPATH" "$python_cmd" 2>/dev/null "$(dirname "$0")/lib/inject_context.py" \
+  inject_output=$(PYTHONPATH="/home/user/.work/athena/src:$PYTHONPATH" "$python_cmd" "$(dirname "$0")/lib/inject_context.py" \
     --query "$user_query" \
     --cwd "$cwd" \
     --token-budget 1000 \
@@ -213,7 +213,7 @@ fi
 # STEP 3: Record Episodic Event - User Interaction
 # ============================================================
 
-record_output=$(PYTHONPATH="/home/user/.work/athena/src:$PYTHONPATH" "$python_cmd" 2>/dev/null "$(dirname "$0")/lib/record_episode.py" \
+record_output=$(PYTHONPATH="/home/user/.work/athena/src:$PYTHONPATH" "$python_cmd" "$(dirname "$0")/lib/record_episode.py" \
   --tool "UserPromptSubmit" \
   --event-type "conversation" \
   --cwd "$cwd" \
@@ -242,12 +242,8 @@ if [ "$recovery_detected" = "true" ] && [ -n "$recovery_banner" ]; then
   context_status="success"
   injected_memories=1
 
-  # IMPORTANT: Write recovery banner to stdout so Claude Code displays it
-  # This makes the recovery visible to the user
-  echo "" >&2  # Empty line to stderr for spacing
-  echo "🔄 CONTEXT RECOVERY - Recovered the following context:" >&2
-  echo "$recovery_banner" >&2
-  echo "" >&2
+  # Recovery detected - will be included in JSON output
+  # No stderr output to avoid breaking hook validation
 fi
 
 # Build the hook response JSON carefully to handle complex nested objects
@@ -267,7 +263,7 @@ jq -n \
   --arg context_status "$context_status" \
   --argjson recovery_detected "$recovery_detected" \
   --arg suppress_output "$suppress_output" \
-  --slurpfile recovered_context <(echo "$recovered_context" | jq -c '.' 2>/dev/null) \
+  --arg recovered_context "$recovered_context" \
   '{
     "continue": true,
     "suppressOutput": ($suppress_output == "true"),
@@ -288,28 +284,12 @@ jq -n \
       },
       "context_recovery": {
         "detected": $recovery_detected,
-        "recovered_context": (if $recovered_context | length > 0 then $recovered_context[0] else null end)
+        "recovered_context": (if ($recovered_context | length) > 0 then ($recovered_context | fromjson) else null end)
       }
     }
   }' 2>/dev/null || jq -n '{
     "continue": true,
     "suppressOutput": true
   }'
-
-exit 0
-
-
-# ============================================================
-# INSTRUMENTATION: Log Hook Result
-# ============================================================
-
-hook_end_time=$(date +%s%N)
-hook_duration_ms=$(( (hook_end_time - hook_start_time) / 1000000 ))
-
-if [ $? -eq 0 ]; then
-  log_hook_success "user-prompt-submit" "$hook_duration_ms" "Hook completed successfully"
-else
-  log_hook_failure "user-prompt-submit" "$hook_duration_ms" "Hook exited with error"
-fi
 
 exit 0
