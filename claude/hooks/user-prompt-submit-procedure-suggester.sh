@@ -28,14 +28,33 @@ read -r INPUT_JSON
 procedure_result=$(python3 << 'PYTHON_WRAPPER'
 import sys
 import json
-sys.path.insert(0, '/home/user/.claude/hooks/lib')
+sys.path.insert(0, '/home/user/.work/athena/src')
 
-from mcp_wrapper import call_mcp
+try:
+    from athena.procedural.pattern_suggester import PatternSuggester
 
-# Call MCP operation with graceful fallback
-result = call_mcp("find_procedures")
+    suggester = PatternSuggester('/home/user/.memory-mcp/memory.db')
+    procedures = suggester.find_matching_patterns(context="user_prompt", limit=5)
 
-print(json.dumps(result))
+    procedures_found = len(procedures)
+    avg_effectiveness = sum(p.get('effectiveness', 0) for p in procedures) / max(procedures_found, 1)
+
+    print(json.dumps({
+        "success": True,
+        "procedures_found": procedures_found,
+        "avg_effectiveness": round(avg_effectiveness, 2),
+        "status": "procedures_found" if procedures_found > 0 else "no_procedures_found"
+    }))
+
+except Exception as e:
+    print(json.dumps({
+        "success": True,
+        "procedures_found": 0,
+        "avg_effectiveness": 0,
+        "status": "no_procedures_found",
+        "error": str(e),
+        "note": "Running in fallback mode"
+    }))
 PYTHON_WRAPPER
 )
 

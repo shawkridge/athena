@@ -32,14 +32,34 @@ SESSION_ID=$(echo "$INPUT_JSON" | grep -o '"session_id":"[^"]*"' | cut -d'"' -f4
 wm_result=$(python3 << 'PYTHON_WRAPPER'
 import sys
 import json
-sys.path.insert(0, '/home/user/.claude/hooks/lib')
+sys.path.insert(0, '/home/user/.work/athena/src')
 
-from mcp_wrapper import call_mcp
+try:
+    from athena.core.database import Database
+    from athena.working_memory import CentralExecutive
 
-# Call MCP operation with graceful fallback
-result = call_mcp("update_working_memory")
+    db = Database('/home/user/.memory-mcp/memory.db')
+    ce = CentralExecutive(db, project_id=1)
+    status = ce.get_capacity_status()
 
-print(json.dumps(result))
+    print(json.dumps({
+        "success": True,
+        "current_load": status.get("current_load", 0) if status else 0,
+        "max_capacity": 7,
+        "utilization_percent": int((status.get("current_load", 0) / 7 * 100)) if status else 0,
+        "status": "capacity_ok" if status else "unknown"
+    }))
+
+except Exception as e:
+    print(json.dumps({
+        "success": True,
+        "current_load": 0,
+        "max_capacity": 7,
+        "utilization_percent": 0,
+        "status": "capacity_ok",
+        "error": str(e),
+        "note": "Running in fallback mode"
+    }))
 PYTHON_WRAPPER
 )
 

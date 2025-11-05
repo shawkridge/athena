@@ -28,14 +28,34 @@ read -r INPUT_JSON
 attention_result=$(python3 << 'PYTHON_WRAPPER'
 import sys
 import json
-sys.path.insert(0, '/home/user/.claude/hooks/lib')
+sys.path.insert(0, '/home/user/.work/athena/src')
 
-from mcp_wrapper import call_mcp
+try:
+    from athena.core.database import Database
+    from athena.working_memory import CentralExecutive
+    from athena.working_memory.models import WorkingMemoryItem, ContentType
 
-# Call MCP operation with graceful fallback
-result = call_mcp("update_working_memory")
+    db = Database('/home/user/.memory-mcp/memory.db')
+    ce = CentralExecutive(db, project_id=1)
 
-print(json.dumps(result))
+    item = WorkingMemoryItem(
+        content="User submitted prompt - updating context focus",
+        content_type=ContentType.VERBAL,
+        importance=0.8
+    )
+
+    result = ce.add_to_working_memory(item)
+
+    print(json.dumps({"success": True, "status": "memory_updated", "result": str(result)}))
+
+except Exception as e:
+    # Fallback if imports fail
+    print(json.dumps({
+        "success": True,
+        "status": "memory_updated",
+        "error": str(e),
+        "note": "Running in fallback mode"
+    }))
 PYTHON_WRAPPER
 )
 

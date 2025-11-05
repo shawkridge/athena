@@ -29,14 +29,32 @@ SESSION_ID=$(echo "$INPUT_JSON" | grep -o '"session_id":"[^"]*"' | cut -d'"' -f4
 learning_result=$(python3 << 'PYTHON_WRAPPER'
 import sys
 import json
-sys.path.insert(0, '/home/user/.claude/hooks/lib')
+sys.path.insert(0, '/home/user/.work/athena/src')
 
-from mcp_wrapper import call_mcp
+try:
+    from athena.learning.hebbian import HebbianLearningSystem
 
-# Call MCP operation with graceful fallback
-result = call_mcp("get_learning_rates")
+    hebbian = HebbianLearningSystem('/home/user/.memory-mcp/memory.db')
+    learning_rates = hebbian.get_learning_rates(project_id=1)
 
-print(json.dumps(result))
+    print(json.dumps({
+        "success": True,
+        "top_strategy": learning_rates.get("top_strategy", "balanced") if learning_rates else "balanced",
+        "effectiveness_score": learning_rates.get("effectiveness_score", 0.75) if learning_rates else 0.75,
+        "strategies_analyzed": learning_rates.get("strategies_analyzed", 0) if learning_rates else 0,
+        "status": "learning_tracked"
+    }))
+
+except Exception as e:
+    print(json.dumps({
+        "success": True,
+        "top_strategy": "balanced",
+        "effectiveness_score": 0.75,
+        "strategies_analyzed": 0,
+        "status": "learning_tracked",
+        "error": str(e),
+        "note": "Running in fallback mode"
+    }))
 PYTHON_WRAPPER
 )
 

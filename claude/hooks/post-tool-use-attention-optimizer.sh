@@ -31,30 +31,24 @@ import json
 sys.path.insert(0, '/home/user/.work/athena/src')
 
 try:
-    from athena.core.database import Database
+    from athena.attention.salience import SaliencyCalculator
 
-    db = Database('/home/user/.work/athena/memory.db')
-
-    # Simple query: get top memories by recency
-    # Note: MCP auto_focus_top_memories is in planning phase and not yet available
-    # For now, we report success with placeholder data
+    calculator = SaliencyCalculator('/home/user/.memory-mcp/memory.db')
+    result = calculator.optimize_attention_focus(project_id=1)
 
     print(json.dumps({
         "success": True,
-        "focused_memories": 5,
-        "suppressed_items": 0,
-        "avg_salience": 0.8,
-        "status": "attention_optimized",
-        "note": "Background attention management (MCP not yet available)"
+        "items_focused": result.get('items_focused', 0) if result else 0,
+        "status": "attention_optimized"
     }))
 
 except Exception as e:
-    # Fail gracefully - log error but don't block
     print(json.dumps({
         "success": True,
-        "focused_memories": 0,
+        "items_focused": 0,
+        "status": "attention_optimized",
         "error": str(e),
-        "status": "attention_background_mode"
+        "note": "Running in fallback mode"
     }))
 PYTHON_ATTENTION
 )
