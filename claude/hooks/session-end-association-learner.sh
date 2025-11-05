@@ -27,9 +27,11 @@ SESSION_ID=$(echo "$INPUT_JSON" | grep -o '"session_id":"[^"]*"' | cut -d'"' -f4
 # Call Athena MCP: Strengthen associations via Hebbian learning
 # ============================================================
 
-association_result=$(python3 << 'PYTHON_WRAPPER'
+association_result=$(python3 -W ignore << 'PYTHON_WRAPPER'
 import sys
 import json
+import warnings
+warnings.filterwarnings('ignore')
 sys.path.insert(0, '/home/user/.work/athena/src')
 
 try:
