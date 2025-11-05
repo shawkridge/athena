@@ -267,7 +267,7 @@ jq -n \
   --arg context_status "$context_status" \
   --argjson recovery_detected "$recovery_detected" \
   --arg suppress_output "$suppress_output" \
-  --slurpfile recovered_context <(echo "$recovered_context" | jq -c '.') \
+  --slurpfile recovered_context <(echo "$recovered_context" | jq -c '.' 2>/dev/null) \
   '{
     "continue": true,
     "suppressOutput": ($suppress_output == "true"),
