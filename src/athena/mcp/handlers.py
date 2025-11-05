@@ -1030,6 +1030,49 @@ class MemoryMCPServer:
                         "required": ["operation"],
                     },
                 ),
+                Tool(
+                    name="zettelkasten_tools",
+                    description="Memory versioning and evolution (create_memory_version, get_memory_evolution_history, compute_memory_attributes, get_memory_attributes, create_hierarchical_index, assign_memory_to_index). Supports Luhmann numbering hierarchies and SHA256 change detection. Use 'operation' parameter.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "operation": {
+                                "type": "string",
+                                "enum": ["create_memory_version", "get_memory_evolution_history", "compute_memory_attributes", "get_memory_attributes", "create_hierarchical_index", "assign_memory_to_index"],
+                                "description": "Zettelkasten operation",
+                            },
+                            "memory_id": {"type": "integer", "description": "ID of memory to version/compute attributes for"},
+                            "content": {"type": "string", "description": "New content for this version"},
+                            "project_id": {"type": "integer", "description": "Project ID"},
+                            "parent_id": {"type": ["string", "null"], "description": "Parent index ID (null for root)"},
+                            "label": {"type": "string", "description": "Human-readable label for index", "default": "Untitled"},
+                            "index_id": {"type": "string", "description": "Index ID (e.g., '1.2.3')"},
+                        },
+                        "required": ["operation"],
+                    },
+                ),
+                Tool(
+                    name="graphrag_tools",
+                    description="Community detection and multi-level retrieval (detect_graph_communities, get_community_details, query_communities_by_level, analyze_community_connectivity, find_bridge_entities). Uses Leiden clustering for knowledge graph analysis. Use 'operation' parameter.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "operation": {
+                                "type": "string",
+                                "enum": ["detect_graph_communities", "get_community_details", "query_communities_by_level", "analyze_community_connectivity", "find_bridge_entities"],
+                                "description": "GraphRAG operation",
+                            },
+                            "project_id": {"type": "integer", "description": "Project ID to analyze"},
+                            "min_community_size": {"type": "integer", "description": "Minimum nodes in a community (default: 2)", "default": 2},
+                            "max_iterations": {"type": "integer", "description": "Maximum clustering iterations (default: 100)", "default": 100},
+                            "community_id": {"type": "integer", "description": "Community ID to get details for"},
+                            "query": {"type": "string", "description": "Search query"},
+                            "level": {"type": "integer", "description": "Query level: 0=granular, 1=intermediate, 2=global (default: 0)", "default": 0, "enum": [0, 1, 2]},
+                            "threshold": {"type": "integer", "description": "Minimum edges to other communities (default: 3)", "default": 3},
+                        },
+                        "required": ["operation", "project_id"],
+                    },
+                ),
             ]
 
         @self.server.call_tool()
@@ -10739,6 +10782,114 @@ Anomalies:
         """Forward to Skill Optimization handler: optimize_quality_monitor."""
         from . import handlers_skill_optimization
         return await handlers_skill_optimization.handle_optimize_quality_monitor(self, args)
+
+    # ============================================================================
+    # ZETTELKASTEN TOOLS HANDLERS (6 operations)
+    # ============================================================================
+    # Memory versioning, evolution tracking, and hierarchical indexing
+
+    async def _handle_create_memory_version(self, args: dict) -> list[TextContent]:
+        """Create a new version of a memory with SHA256 hashing."""
+        from .zettelkasten_tools import ZettelkastenMCPHandlers
+        handlers = ZettelkastenMCPHandlers(self.memory_manager.db)
+        return [await handlers.create_memory_version(
+            memory_id=args.get("memory_id"),
+            content=args.get("content")
+        )]
+
+    async def _handle_get_memory_evolution_history(self, args: dict) -> list[TextContent]:
+        """Get complete evolution history of a memory."""
+        from .zettelkasten_tools import ZettelkastenMCPHandlers
+        handlers = ZettelkastenMCPHandlers(self.memory_manager.db)
+        return [await handlers.get_memory_evolution_history(
+            memory_id=args.get("memory_id")
+        )]
+
+    async def _handle_compute_memory_attributes(self, args: dict) -> list[TextContent]:
+        """Compute auto-generated attributes for a memory."""
+        from .zettelkasten_tools import ZettelkastenMCPHandlers
+        handlers = ZettelkastenMCPHandlers(self.memory_manager.db)
+        return [await handlers.compute_memory_attributes(
+            memory_id=args.get("memory_id")
+        )]
+
+    async def _handle_get_memory_attributes(self, args: dict) -> list[TextContent]:
+        """Get cached auto-computed attributes for a memory."""
+        from .zettelkasten_tools import ZettelkastenMCPHandlers
+        handlers = ZettelkastenMCPHandlers(self.memory_manager.db)
+        return [await handlers.get_memory_attributes(
+            memory_id=args.get("memory_id")
+        )]
+
+    async def _handle_create_hierarchical_index(self, args: dict) -> list[TextContent]:
+        """Create a hierarchical index node using Luhmann numbering."""
+        from .zettelkasten_tools import ZettelkastenMCPHandlers
+        handlers = ZettelkastenMCPHandlers(self.memory_manager.db)
+        return [await handlers.create_hierarchical_index(
+            project_id=args.get("project_id"),
+            parent_id=args.get("parent_id"),
+            label=args.get("label", "Untitled")
+        )]
+
+    async def _handle_assign_memory_to_index(self, args: dict) -> list[TextContent]:
+        """Assign a memory to a hierarchical index position."""
+        from .zettelkasten_tools import ZettelkastenMCPHandlers
+        handlers = ZettelkastenMCPHandlers(self.memory_manager.db)
+        return [await handlers.assign_memory_to_index(
+            memory_id=args.get("memory_id"),
+            index_id=args.get("index_id")
+        )]
+
+    # ============================================================================
+    # GRAPHRAG TOOLS HANDLERS (5 operations)
+    # ============================================================================
+    # Community detection and multi-level knowledge graph retrieval
+
+    async def _handle_detect_graph_communities(self, args: dict) -> list[TextContent]:
+        """Detect communities using Leiden clustering algorithm."""
+        from .graphrag_tools import GraphRAGMCPHandlers
+        handlers = GraphRAGMCPHandlers(self.memory_manager.db)
+        return [await handlers.detect_graph_communities(
+            project_id=args.get("project_id"),
+            min_community_size=args.get("min_community_size", 2),
+            max_iterations=args.get("max_iterations", 100)
+        )]
+
+    async def _handle_get_community_details(self, args: dict) -> list[TextContent]:
+        """Get detailed information about a specific community."""
+        from .graphrag_tools import GraphRAGMCPHandlers
+        handlers = GraphRAGMCPHandlers(self.memory_manager.db)
+        return [await handlers.get_community_details(
+            project_id=args.get("project_id"),
+            community_id=args.get("community_id")
+        )]
+
+    async def _handle_query_communities_by_level(self, args: dict) -> list[TextContent]:
+        """Query communities at specific hierarchical level."""
+        from .graphrag_tools import GraphRAGMCPHandlers
+        handlers = GraphRAGMCPHandlers(self.memory_manager.db)
+        return [await handlers.query_communities_by_level(
+            project_id=args.get("project_id"),
+            query=args.get("query"),
+            level=args.get("level", 0)
+        )]
+
+    async def _handle_analyze_community_connectivity(self, args: dict) -> list[TextContent]:
+        """Analyze internal vs external connectivity of communities."""
+        from .graphrag_tools import GraphRAGMCPHandlers
+        handlers = GraphRAGMCPHandlers(self.memory_manager.db)
+        return [await handlers.analyze_community_connectivity(
+            project_id=args.get("project_id")
+        )]
+
+    async def _handle_find_bridge_entities(self, args: dict) -> list[TextContent]:
+        """Find entities that bridge multiple communities."""
+        from .graphrag_tools import GraphRAGMCPHandlers
+        handlers = GraphRAGMCPHandlers(self.memory_manager.db)
+        return [await handlers.find_bridge_entities(
+            project_id=args.get("project_id"),
+            threshold=args.get("threshold", 3)
+        )]
 
     async def run(self):
         """Run the MCP server."""
