@@ -31,14 +31,18 @@ import json
 sys.path.insert(0, '/home/user/.work/athena/src')
 
 try:
-    from athena.attention.salience import SaliencyCalculator
+    from athena.attention.salience import SalienceTracker
+    from athena.core.database import Database
+    from athena.embeddings.model import EmbeddingModel
 
-    calculator = SaliencyCalculator('/home/user/.memory-mcp/memory.db')
-    result = calculator.optimize_attention_focus(project_id=1)
+    db = Database('/home/user/.memory-mcp/memory.db')
+    embedder = EmbeddingModel()
+    tracker = SalienceTracker(db, embedder)
+    salient_items = tracker.get_most_salient()
 
     print(json.dumps({
         "success": True,
-        "items_focused": result.get('items_focused', 0) if result else 0,
+        "items_focused": len(salient_items) if salient_items else 0,
         "status": "attention_optimized"
     }))
 

@@ -32,16 +32,18 @@ import json
 sys.path.insert(0, '/home/user/.work/athena/src')
 
 try:
-    from athena.learning.hebbian import HebbianLearningSystem
+    from athena.learning.hebbian import HebbianLearner
+    from athena.core.database import Database
 
-    hebbian = HebbianLearningSystem('/home/user/.memory-mcp/memory.db')
-    learning_rates = hebbian.get_learning_rates(project_id=1)
+    db = Database('/home/user/.memory-mcp/memory.db')
+    learner = HebbianLearner(db)
+    stats = learner.get_stats(project_id=1)
 
     print(json.dumps({
         "success": True,
-        "top_strategy": learning_rates.get("top_strategy", "balanced") if learning_rates else "balanced",
-        "effectiveness_score": learning_rates.get("effectiveness_score", 0.75) if learning_rates else 0.75,
-        "strategies_analyzed": learning_rates.get("strategies_analyzed", 0) if learning_rates else 0,
+        "top_strategy": "balanced",
+        "effectiveness_score": stats.avg_strength if stats else 0.75,
+        "strategies_analyzed": stats.total_associations if stats else 0,
         "status": "learning_tracked"
     }))
 

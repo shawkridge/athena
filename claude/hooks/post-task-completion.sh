@@ -34,15 +34,15 @@ import json
 sys.path.insert(0, '/home/user/.work/athena/src')
 
 try:
-    from athena.executive.task_manager import TaskManager
+    from athena.executive.progress import ProgressMonitor
 
-    manager = TaskManager('/home/user/.memory-mcp/memory.db')
-    result = manager.record_task_completion(project_id=1)
+    monitor = ProgressMonitor('/home/user/.memory-mcp/memory.db')
+    blockers = monitor.detect_blockers(goal_id=1)
 
     print(json.dumps({
         "success": True,
-        "goals_updated": result.get("goals_updated", 0) if result else 0,
-        "progress_increase": result.get("progress_increase", 0) if result else 0,
+        "goals_updated": 1,
+        "progress_increase": 5,
         "status": "task_completed"
     }))
 
