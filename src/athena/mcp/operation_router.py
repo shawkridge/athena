@@ -376,6 +376,25 @@ class OperationRouter:
         "optimize_quality_monitor": "_handle_optimize_quality_monitor",
     }
 
+    # ZETTELKASTEN_TOOLS: 6 operations
+    ZETTELKASTEN_OPERATIONS = {
+        "create_memory_version": "_handle_create_memory_version",
+        "get_memory_evolution_history": "_handle_get_memory_evolution_history",
+        "compute_memory_attributes": "_handle_compute_memory_attributes",
+        "get_memory_attributes": "_handle_get_memory_attributes",
+        "create_hierarchical_index": "_handle_create_hierarchical_index",
+        "assign_memory_to_index": "_handle_assign_memory_to_index",
+    }
+
+    # GRAPHRAG_TOOLS: 5 operations
+    GRAPHRAG_OPERATIONS = {
+        "detect_graph_communities": "_handle_detect_graph_communities",
+        "get_community_details": "_handle_get_community_details",
+        "query_communities_by_level": "_handle_query_communities_by_level",
+        "analyze_community_connectivity": "_handle_analyze_community_connectivity",
+        "find_bridge_entities": "_handle_find_bridge_entities",
+    }
+
     # All operation maps
     OPERATION_MAPS = {
         "memory_tools": MEMORY_OPERATIONS,
@@ -407,6 +426,8 @@ class OperationRouter:
         "hook_coordination_tools": HOOK_COORDINATION_OPERATIONS,
         "agent_optimization_tools": AGENT_OPTIMIZATION_OPERATIONS,
         "skill_optimization_tools": SKILL_OPTIMIZATION_OPERATIONS,
+        "zettelkasten_tools": ZETTELKASTEN_OPERATIONS,
+        "graphrag_tools": GRAPHRAG_OPERATIONS,
     }
 
     def __init__(self, handler_instance: Any):
