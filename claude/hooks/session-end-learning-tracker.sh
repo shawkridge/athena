@@ -82,18 +82,7 @@ fi
 jq -n \
   --arg status "$status" \
   --arg timestamp "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-  '{
-    "continue": true,
-    "suppressOutput": true,
-    "hookSpecificOutput": {
-      "hookEventName": "SessionEndLearningTracker",
-      "status": $status,
-      "timestamp": $timestamp
-    }
-  }' || jq -n '{
-  "continue": true,
-  "suppressOutput": true
-}'
+  '{"continue": true, "suppressOutput": true, "hookSpecificOutput": {"hookEventName": "SessionEndLearningTracker", "status": $status, "timestamp": $timestamp}}' || jq -n '{"continue": true, "suppressOutput": true}'
 
 # ============================================================
 # INSTRUMENTATION: Log Hook Result
