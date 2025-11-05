@@ -357,7 +357,7 @@ class MemoryMCPServer:
                             "operation": {
                                 "type": "string",
                                 "description": "Memory operation to perform (see full list in tool description)",
-                                "enum": ["recall", "remember", "forget", "list_memories", "optimize", "search_projects", "smart_retrieve", "analyze_coverage", "get_expertise", "detect_knowledge_gaps", "get_working_memory", "update_working_memory", "clear_working_memory", "consolidate_working_memory", "evaluate_memory_quality", "get_learning_rates", "get_metacognition_insights", "check_cognitive_load", "get_memory_quality_summary", "score_semantic_memories", "get_self_reflection", "run_consolidation", "schedule_consolidation"],
+                                "enum": ["recall", "remember", "forget", "list_memories", "optimize", "search_projects", "smart_retrieve", "analyze_coverage", "get_expertise", "detect_knowledge_gaps", "get_working_memory", "update_working_memory", "clear_working_memory", "consolidate_working_memory", "evaluate_memory_quality", "get_learning_rates", "get_metacognition_insights", "check_cognitive_load", "get_memory_quality_summary", "score_semantic_memories", "get_self_reflection", "run_consolidation", "schedule_consolidation", "record_event", "recall_events", "get_timeline", "batch_record_events", "recall_events_by_session"],
                             },
                             "query": {"type": "string", "description": "Search query (for recall, search_projects operations)"},
                             "content": {"type": "string", "description": "Content to remember or update"},
@@ -374,13 +374,13 @@ class MemoryMCPServer:
                 ),
                 Tool(
                     name="episodic_tools",
-                    description="Event tracking and temporal operations (record_event, recall_events, get_timeline, batch_record_events, recall_events_by_session, record_execution, record_execution_feedback, record_git_commit). Use 'operation' parameter.",
+                    description="Event tracking and temporal operations (record_event, recall_events, get_timeline, batch_record_events, recall_events_by_session, record_execution, record_execution_feedback, record_git_commit, schedule_consolidation). Use 'operation' parameter.",
                     inputSchema={
                         "type": "object",
                         "properties": {
                             "operation": {
                                 "type": "string",
-                                "enum": ["record_event", "recall_events", "get_timeline", "batch_record_events", "recall_events_by_session", "record_execution", "record_execution_feedback", "record_git_commit"],
+                                "enum": ["record_event", "recall_events", "get_timeline", "batch_record_events", "recall_events_by_session", "record_execution", "record_execution_feedback", "record_git_commit", "schedule_consolidation"],
                                 "description": "Episodic operation to perform",
                             },
                             # Common parameters
@@ -460,13 +460,13 @@ class MemoryMCPServer:
                 ),
                 Tool(
                     name="planning_tools",
-                    description="Task planning and decomposition (decompose_hierarchically, decompose_with_strategy, validate_plan, verify_plan, generate_task_plan, optimize_plan, estimate_resources, generate_alternative_plans, suggest_planning_strategy, recommend_strategy, predict_task_duration, analyze_uncertainty, validate_plan_with_reasoning, trigger_replanning). Use 'operation' parameter.",
+                    description="Task planning and decomposition (decompose_hierarchically, decompose_with_strategy, validate_plan, verify_plan, generate_task_plan, optimize_plan, estimate_resources, generate_alternative_plans, suggest_planning_strategy, recommend_strategy, predict_task_duration, analyze_uncertainty, validate_plan_with_reasoning, trigger_replanning, resolve_goal_conflicts, check_goal_conflicts). Use 'operation' parameter.",
                     inputSchema={
                         "type": "object",
                         "properties": {
                             "operation": {
                                 "type": "string",
-                                "enum": ["decompose_hierarchically", "decompose_with_strategy", "validate_plan", "verify_plan", "generate_task_plan", "optimize_plan", "estimate_resources", "generate_alternative_plans", "suggest_planning_strategy", "recommend_strategy", "predict_task_duration", "analyze_uncertainty", "validate_plan_with_reasoning", "trigger_replanning"],
+                                "enum": ["decompose_hierarchically", "decompose_with_strategy", "validate_plan", "verify_plan", "generate_task_plan", "optimize_plan", "estimate_resources", "generate_alternative_plans", "suggest_planning_strategy", "recommend_strategy", "predict_task_duration", "analyze_uncertainty", "validate_plan_with_reasoning", "trigger_replanning", "resolve_goal_conflicts", "check_goal_conflicts"],
                                 "description": "Planning operation to perform",
                             },
                             # Decomposition parameters
@@ -572,13 +572,13 @@ class MemoryMCPServer:
                 ),
                 Tool(
                     name="financial_tools",
-                    description="Cost and ROI analysis (calculate_task_cost, estimate_roi, suggest_cost_optimizations, track_budget, detect_budget_anomalies). Use 'operation' parameter.",
+                    description="Cost and ROI analysis (calculate_task_cost, estimate_roi, suggest_cost_optimizations, track_budget, detect_budget_anomalies, calculate_roi). Use 'operation' parameter.",
                     inputSchema={
                         "type": "object",
                         "properties": {
                             "operation": {
                                 "type": "string",
-                                "enum": ["calculate_task_cost", "estimate_roi", "suggest_cost_optimizations", "track_budget", "detect_budget_anomalies"],
+                                "enum": ["calculate_task_cost", "estimate_roi", "suggest_cost_optimizations", "track_budget", "detect_budget_anomalies", "calculate_roi"],
                                 "description": "Financial operation",
                             },
                             "task_id": {"type": "integer", "description": "Task ID"},
@@ -611,13 +611,13 @@ class MemoryMCPServer:
                 ),
                 Tool(
                     name="procedural_tools",
-                    description="Workflow management (create_procedure, find_procedures, record_execution, get_procedure_effectiveness, suggest_procedure_improvements, generate_workflow_from_task). Use 'operation' parameter.",
+                    description="Workflow management (create_procedure, find_procedures, record_execution, get_procedure_effectiveness, suggest_procedure_improvements, generate_workflow_from_task, apply_suggestion, get_pattern_suggestions). Use 'operation' parameter.",
                     inputSchema={
                         "type": "object",
                         "properties": {
                             "operation": {
                                 "type": "string",
-                                "enum": ["create_procedure", "find_procedures", "record_execution", "get_procedure_effectiveness", "suggest_procedure_improvements", "generate_workflow_from_task"],
+                                "enum": ["create_procedure", "find_procedures", "record_execution", "get_procedure_effectiveness", "suggest_procedure_improvements", "generate_workflow_from_task", "apply_suggestion", "get_pattern_suggestions"],
                                 "description": "Procedural operation",
                             },
                             "query": {"type": "string", "description": "Search query"},
@@ -629,13 +629,13 @@ class MemoryMCPServer:
                 ),
                 Tool(
                     name="integration_tools",
-                    description="Advanced integration module tools (planning_assistance, optimize_plan_suggestions, analyze_project_coordination, discover_patterns_advanced, monitor_system_health_detailed, estimate_task_resources_detailed, generate_alternative_plans_impl, analyze_estimation_accuracy_adv, analyze_task_analytics_detailed, aggregate_analytics_summary). Use 'operation' parameter.",
+                    description="Advanced integration module tools (planning_assistance, optimize_plan_suggestions, analyze_project_coordination, discover_patterns_advanced, monitor_system_health_detailed, estimate_task_resources_detailed, generate_alternative_plans_impl, analyze_estimation_accuracy_adv, analyze_task_analytics_detailed, aggregate_analytics_summary, get_critical_path_analysis, get_resource_allocation). Use 'operation' parameter.",
                     inputSchema={
                         "type": "object",
                         "properties": {
                             "operation": {
                                 "type": "string",
-                                "enum": ["planning_assistance", "optimize_plan_suggestions", "analyze_project_coordination", "discover_patterns_advanced", "monitor_system_health_detailed", "estimate_task_resources_detailed", "generate_alternative_plans_impl", "analyze_estimation_accuracy_adv", "analyze_task_analytics_detailed", "aggregate_analytics_summary"],
+                                "enum": ["planning_assistance", "optimize_plan_suggestions", "analyze_project_coordination", "discover_patterns_advanced", "monitor_system_health_detailed", "estimate_task_resources_detailed", "generate_alternative_plans_impl", "analyze_estimation_accuracy_adv", "analyze_task_analytics_detailed", "aggregate_analytics_summary", "get_critical_path_analysis", "get_resource_allocation"],
                                 "description": "Integration operation",
                             },
                             "task_id": {"type": "integer", "description": "Task ID"},
@@ -676,13 +676,13 @@ class MemoryMCPServer:
                 ),
                 Tool(
                     name="conversation_tools",
-                    description="Session and conversation management (start_new_conversation, add_message_to_conversation, get_conversation_history, resume_conversation_session, create_context_snapshot, recover_conversation_context, list_active_conversations). Use 'operation' parameter.",
+                    description="Session and conversation management (start_new_conversation, add_message_to_conversation, get_conversation_history, resume_conversation_session, create_context_snapshot, recover_conversation_context, list_active_conversations, export_conversation_data). Use 'operation' parameter.",
                     inputSchema={
                         "type": "object",
                         "properties": {
                             "operation": {
                                 "type": "string",
-                                "enum": ["start_new_conversation", "add_message_to_conversation", "get_conversation_history", "resume_conversation_session", "create_context_snapshot", "recover_conversation_context", "list_active_conversations"],
+                                "enum": ["start_new_conversation", "add_message_to_conversation", "get_conversation_history", "resume_conversation_session", "create_context_snapshot", "recover_conversation_context", "list_active_conversations", "export_conversation_data"],
                                 "description": "Conversation operation",
                             },
                             "conversation_id": {"type": "integer", "description": "Conversation ID"},
