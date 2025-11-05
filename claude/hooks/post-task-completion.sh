@@ -16,7 +16,7 @@ log_hook_start "post-task-completion"
 hook_start_time=$(date +%s%N)
 
 # Read input from stdin
-input=$(cat)
+input=$(timeout 1 cat 2>/dev/null || echo '{}')
 
 # Extract fields
 task_id=$(echo "$input" | jq -r '.task_id // "unknown"' 2>/dev/null)

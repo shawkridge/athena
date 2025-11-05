@@ -19,7 +19,7 @@ hook_start_time=$(date +%s%N)
 # HOOK BODY
 # ============================================================
 
-read -r INPUT_JSON
+INPUT_JSON=$(timeout 1 cat 2>/dev/null || echo '{}')
 
 # ============================================================
 # Call Athena MCP: Detect knowledge gaps and contradictions

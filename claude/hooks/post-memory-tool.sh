@@ -23,7 +23,7 @@ hook_start_time=$(date +%s%N)
 # ============================================================
 
 # Read hook input from stdin
-input=$(cat)
+input=$(timeout 1 cat 2>/dev/null || echo '{}')
 
 # Extract fields
 tool_name=$(echo "$input" | jq -r '.tool_name // "unknown"')

@@ -23,7 +23,7 @@ hook_start_time=$(date +%s%N)
 # ============================================================
 
 # Read hook input
-input=$(cat)
+input=$(timeout 1 cat 2>/dev/null || echo '{}')
 
 # Extract fields (best effort, no error if missing)
 cwd=$(echo "$input" | jq -r '.cwd // "."' 2>/dev/null || echo ".")

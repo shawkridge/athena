@@ -20,7 +20,7 @@ hook_start_time=$(date +%s%N)
 # HOOK BODY
 # ============================================================
 
-read -r INPUT_JSON
+INPUT_JSON=$(timeout 1 cat 2>/dev/null || echo '{}')
 
 # Extract task/goal context if available
 task_id=$(echo "$INPUT_JSON" | jq -r '.task_id // "0"' 2>/dev/null)

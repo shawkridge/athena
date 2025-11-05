@@ -12,7 +12,7 @@ source ~/.claude/hooks/lib/hook_logger.sh || {
 log_hook_start "post-compact"
 
 # Read input from stdin
-input=$(cat)
+input=$(timeout 1 cat 2>/dev/null || echo '{}')
 
 # Extract fields
 session_id=$(echo "$input" | jq -r '.session_id // "unknown"' 2>/dev/null)

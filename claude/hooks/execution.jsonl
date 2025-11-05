@@ -1183,3 +1183,24 @@
 {"hook":"session-end-association-learner","status":"success","timestamp":"2025-11-05T11:15:55Z","duration_ms":520,"details":"Hook completed successfully (status: associations_learned, strengthened: 0)"}
 {"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:15:56Z","duration_ms":812,"details":"Hook completed successfully (status: attention_optimized)"}
 {"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:15:58Z","duration_ms":738,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:16:02Z","duration_ms":758,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:16:07Z","duration_ms":778,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:16:08Z","duration_ms":844,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:16:14Z","duration_ms":853,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:16:17Z","duration_ms":819,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:16:18Z","duration_ms":746,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"user-prompt-submit-procedure-suggester","status":"success","timestamp":"2025-11-05T11:16:21Z","duration_ms":910,"details":"Hook completed successfully (status: no_procedures_found, procedures: 0)"}
+{"hook":"user-prompt-submit-attention-manager","status":"success","timestamp":"2025-11-05T11:16:21Z","duration_ms":1154,"details":"Hook completed successfully (status: memory_updated, items: 0/7)"}
+{"hook":"user-prompt-submit-gap-detector","status":"success","timestamp":"2025-11-05T11:16:22Z","duration_ms":1515,"details":"Hook completed successfully (status: no_gaps, gaps: 0)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:16:23Z","duration_ms":908,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:16:28Z","duration_ms":1022,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:16:30Z","duration_ms":998,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:16:31Z","duration_ms":1141,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:16:35Z","duration_ms":1140,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:16:42Z","duration_ms":934,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:16:49Z","duration_ms":791,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:16:56Z","duration_ms":1490,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"user-prompt-submit-procedure-suggester","status":"success","timestamp":"2025-11-05T11:16:56Z","duration_ms":1459,"details":"Hook completed successfully (status: no_procedures_found, procedures: 0)"}
+{"hook":"user-prompt-submit-gap-detector","status":"success","timestamp":"2025-11-05T11:16:57Z","duration_ms":2073,"details":"Hook completed successfully (status: no_gaps, gaps: 0)"}
+{"hook":"user-prompt-submit-attention-manager","status":"success","timestamp":"2025-11-05T11:16:57Z","duration_ms":2279,"details":"Hook completed successfully (status: memory_updated, items: 0/7)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:17:07Z","duration_ms":1067,"details":"Hook completed successfully (status: attention_optimized)"}

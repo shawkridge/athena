@@ -20,7 +20,7 @@ hook_start_time=$(date +%s%N)
 # ============================================================
 
 # Input: Standard hook JSON
-read -r INPUT_JSON
+INPUT_JSON=$(timeout 1 cat 2>/dev/null || echo '{}')
 
 # Extract session_id
 SESSION_ID=$(echo "$INPUT_JSON" | grep -o '"session_id":"[^"]*"' | cut -d'"' -f4)

@@ -22,8 +22,8 @@ hook_start_time=$(date +%s%N)
 # HOOK BODY
 # ============================================================
 
-# Read hook input from stdin
-input=$(cat)
+# Read hook input from stdin with timeout fallback
+input=$(timeout 1 cat 2>/dev/null || echo '{}')
 
 # Extract fields
 cwd=$(echo "$input" | jq -r '.cwd // "."')
