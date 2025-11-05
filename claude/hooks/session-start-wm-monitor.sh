@@ -38,7 +38,7 @@ try:
     from athena.core.database import Database
     from athena.working_memory import CentralExecutive
 
-    db = Database('/home/user/.memory-mcp/memory.db')
+    db = Database('/home/user/.athena/memory.db')
     ce = CentralExecutive(db, project_id=1)
     status = ce.get_capacity_status()
 

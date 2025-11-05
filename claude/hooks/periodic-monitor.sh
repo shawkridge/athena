@@ -85,7 +85,7 @@ async def start_monitoring(project_id: int):
         from memory_mcp.automation.orchestrator import AutomationOrchestrator
 
         # Initialize database and orchestrator
-        db_path = Path.home() / ".memory-mcp" / "memory.db"
+        db_path = Path.home() / ".athena" / "memory.db"
         db = Database(str(db_path))
 
         orchestrator = AutomationOrchestrator(db)

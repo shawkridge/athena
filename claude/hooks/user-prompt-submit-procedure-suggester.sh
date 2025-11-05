@@ -33,7 +33,7 @@ sys.path.insert(0, '/home/user/.work/athena/src')
 try:
     from athena.procedural.pattern_suggester import PatternSuggester
 
-    suggester = PatternSuggester('/home/user/.memory-mcp/memory.db')
+    suggester = PatternSuggester('/home/user/.athena/memory.db')
     procedures = suggester.find_matching_patterns(context="user_prompt", limit=5)
 
     procedures_found = len(procedures)

@@ -35,7 +35,7 @@ try:
     from athena.core.database import Database
     from athena.embeddings.model import EmbeddingModel
 
-    db = Database('/home/user/.memory-mcp/memory.db')
+    db = Database('/home/user/.athena/memory.db')
     embedder = EmbeddingModel()
     tracker = SalienceTracker(db, embedder)
     salient_items = tracker.get_most_salient()

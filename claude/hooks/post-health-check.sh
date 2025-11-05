@@ -93,7 +93,7 @@ try:
 
     if task_id:
         # Store in a simple health history file (alternative to memory system)
-        history_file = Path.home() / ".memory-mcp" / "health_history.jsonl"
+        history_file = Path.home() / ".athena" / "health_history.jsonl"
         history_file.parent.mkdir(parents=True, exist_ok=True)
 
         record = {

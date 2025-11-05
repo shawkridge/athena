@@ -58,12 +58,12 @@ Test files use hardcoded database paths that should be updated for consistency.
 
 **Current Pattern**:
 ```python
-db_path = Path.home() / ".memory-mcp" / "memory.db"
+db_path = Path.home() / ".athena" / "memory.db"
 ```
 
-**Issue**: The database is still at `~/.memory-mcp/` (global location), which is correct. These references are actually fine as-is since the database location hasn't changed.
+**Issue**: The database is still at `~/.athena/` (global location), which is correct. These references are actually fine as-is since the database location hasn't changed.
 
-**Recommendation**: Keep as-is - the `~/.memory-mcp/` location is a global cross-project database. No change needed.
+**Recommendation**: Keep as-is - the `~/.athena/` location is a global cross-project database. No change needed.
 
 ### 2.2 Test Documentation Files
 
@@ -122,10 +122,10 @@ Claude hook shell scripts in `claude/hooks/` directory.
 
 **Pattern**:
 ```bash
-db = Database('/home/user/.memory-mcp/memory.db')
+db = Database('/home/user/.athena/memory.db')
 ```
 
-**Status**: These are OK - the database is at `~/.memory-mcp/`, not at the project location. No change needed.
+**Status**: These are OK - the database is at `~/.athena/`, not at the project location. No change needed.
 
 ### 4.2 Python Code in Shell Scripts
 
@@ -176,7 +176,7 @@ sys.path.insert(0, str(__import__('pathlib').Path.home() / '.work/claude/memory-
 ### Phase 4: Shell Scripts ⏳ PENDING
 - [ ] Fix Python path in `user-prompt-submit.sh` line 182-183
 - [ ] Review other hook scripts (most are OK)
-- [ ] Verify all database paths (should stay at `~/.memory-mcp/`)
+- [ ] Verify all database paths (should stay at `~/.athena/`)
 
 ### Phase 5: Archive & Cleanup
 - [ ] Review migration scripts for archival
@@ -276,7 +276,7 @@ if not __import__('os').path.exists(repo_path):
 
 ## Key Decisions Made
 
-### 1. Database Location (`~/.memory-mcp/memory.db`)
+### 1. Database Location (`~/.athena/memory.db`)
 **Decision**: Keep unchanged
 **Reason**: This is a global cross-project database shared by all projects. No change needed.
 
@@ -287,7 +287,7 @@ if not __import__('os').path.exists(repo_path):
 
 ### 3. Test Files
 **Decision**: No changes needed for test database paths
-**Reason**: Tests use the global `~/.memory-mcp/` database, which is correct
+**Reason**: Tests use the global `~/.athena/` database, which is correct
 
 ### 4. Documentation References
 **Decision**: Gradual update as files are modified
@@ -344,7 +344,7 @@ LEGACY: ~/.work/z_old_claude/memory-mcp/ (archived)
 
 ### Database Location (Unchanged)
 ```
-GLOBAL: ~/.memory-mcp/memory.db
+GLOBAL: ~/.athena/memory.db
 ```
 
 ### Source Code Structure

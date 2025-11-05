@@ -36,7 +36,7 @@ sys.path.insert(0, '/home/user/.work/athena/src')
 try:
     from athena.executive.progress import ProgressMonitor
 
-    monitor = ProgressMonitor('/home/user/.memory-mcp/memory.db')
+    monitor = ProgressMonitor('/home/user/.athena/memory.db')
     blockers = monitor.detect_blockers(goal_id=1)
 
     print(json.dumps({

@@ -35,7 +35,7 @@ try:
     from athena.working_memory import CentralExecutive
     from athena.working_memory.models import WorkingMemoryItem, ContentType
 
-    db = Database('/home/user/.memory-mcp/memory.db')
+    db = Database('/home/user/.athena/memory.db')
     ce = CentralExecutive(db, project_id=1)
 
     item = WorkingMemoryItem(

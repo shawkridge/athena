@@ -735,12 +735,12 @@ SESSION END
 
 ## Database & Performance
 
-**Database Location**: `~/.memory-mcp/memory.db` (SQLite + sqlite-vec)
+**Database Location**: `~/.athena/memory.db` (SQLite + sqlite-vec)
 
 **Monitoring**:
 ```bash
 # Check database size
-du -h ~/.memory-mcp/memory.db
+du -h ~/.athena/memory.db
 
 # Get current stats
 /memory-health
@@ -873,7 +873,7 @@ Additional heuristics:
 4. Run `/memory-health --gaps` to see if it's flagged as contradictory
 
 ### "My memory database is getting large"
-1. Run `du -h ~/.memory-mcp/memory.db` to check size
+1. Run `du -h ~/.athena/memory.db` to check size
 2. `/consolidate` to extract patterns from episodic events
 3. `/memory-forget ID` to remove low-value memories
 4. `mcp__memory__optimize(dry_run=False)` to prune

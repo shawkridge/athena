@@ -107,7 +107,7 @@ python -m memory_profiler slow_operation.py
 ### Command 4: Query Analysis
 ```bash
 # Check database size and query plans
-sqlite3 ~/.memory-mcp/memory.db
+sqlite3 ~/.athena/memory.db
 
 # Check size
 SELECT COUNT(*) FROM semantic_memories;
@@ -126,10 +126,10 @@ EXPLAIN QUERY PLAN SELECT * FROM semantic_memories WHERE id = ?;
 
 ```bash
 # Check what indexes exist
-sqlite3 ~/.memory-mcp/memory.db ".indices"
+sqlite3 ~/.athena/memory.db ".indices"
 
 # Add missing index
-sqlite3 ~/.memory-mcp/memory.db "CREATE INDEX idx_semantic_layer ON semantic_memories(layer)"
+sqlite3 ~/.athena/memory.db "CREATE INDEX idx_semantic_layer ON semantic_memories(layer)"
 
 # Verify improvement
 EXPLAIN QUERY PLAN SELECT * FROM semantic_memories WHERE layer = 'episodic';
@@ -270,7 +270,7 @@ python -m pstats consolidate.stats
 ### Step 4: Check Database
 ```bash
 # Query plan analysis
-sqlite3 ~/.memory-mcp/memory.db
+sqlite3 ~/.athena/memory.db
 
 # For slow queries
 EXPLAIN QUERY PLAN SELECT * FROM semantic_memories
@@ -285,7 +285,7 @@ ON semantic_memories(project_id, layer);
 ```python
 # Example: Add index
 import sqlite3
-conn = sqlite3.connect('~/.memory-mcp/memory.db')
+conn = sqlite3.connect('~/.athena/memory.db')
 conn.execute("""
     CREATE INDEX IF NOT EXISTS idx_episodic_session_time
     ON episodic_events(session_id, timestamp)

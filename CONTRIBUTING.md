@@ -331,7 +331,7 @@ pytest tests/unit/test_episodic.py -v -s --pdb
 
 ### View Database Schema
 ```bash
-sqlite3 ~/.memory-mcp/memory.db ".schema"
+sqlite3 ~/.athena/memory.db ".schema"
 ```
 
 ## Common Development Tasks

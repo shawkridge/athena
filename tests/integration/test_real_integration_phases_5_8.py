@@ -1,7 +1,7 @@
 """
 REAL Integration Tests for Phases 5-8 - Tests with actual memory database
 
-These tests use the REAL memory database (~/.memory-mcp/memory.db) and test
+These tests use the REAL memory database (~/.athena/memory.db) and test
 actual code paths, not mocks. This ensures our Phase 5-8 code works in production.
 """
 
@@ -23,7 +23,7 @@ class TestRealPhase5Monitoring:
     @pytest.fixture
     def real_phase5(self):
         """Create monitoring system with real database."""
-        db_path = Path.home() / ".memory-mcp" / "memory.db"
+        db_path = Path.home() / ".athena" / "memory.db"
         if not db_path.exists():
             pytest.skip("Real memory database not found")
 
@@ -76,7 +76,7 @@ class TestRealPhase6Analytics:
     @pytest.fixture
     def real_phase6(self):
         """Create analytics system with real database."""
-        db_path = Path.home() / ".memory-mcp" / "memory.db"
+        db_path = Path.home() / ".athena" / "memory.db"
         if not db_path.exists():
             pytest.skip("Real memory database not found")
 
@@ -129,7 +129,7 @@ class TestRealPhase7Planning:
     @pytest.fixture
     def real_phase7(self):
         """Create planning system with real database."""
-        db_path = Path.home() / ".memory-mcp" / "memory.db"
+        db_path = Path.home() / ".athena" / "memory.db"
         if not db_path.exists():
             pytest.skip("Real memory database not found")
 
@@ -146,7 +146,7 @@ class TestRealPhase7Planning:
         try:
             assistant = PlanningAssistant(
                 db=real_phase7['db'],
-                memory_store=MemoryStore(str(Path.home() / ".memory-mcp" / "memory.db")),
+                memory_store=MemoryStore(str(Path.home() / ".athena" / "memory.db")),
             )
             
             # Try to generate a plan
@@ -172,7 +172,7 @@ class TestRealPhase7Planning:
         try:
             assistant = PlanningAssistant(
                 db=real_phase7['db'],
-                memory_store=MemoryStore(str(Path.home() / ".memory-mcp" / "memory.db")),
+                memory_store=MemoryStore(str(Path.home() / ".athena" / "memory.db")),
             )
             assert assistant is not None
         except Exception:
@@ -186,7 +186,7 @@ class TestRealPhase8Coordination:
     @pytest.fixture
     def real_phase8(self):
         """Create coordination system with real database."""
-        db_path = Path.home() / ".memory-mcp" / "memory.db"
+        db_path = Path.home() / ".athena" / "memory.db"
         if not db_path.exists():
             pytest.skip("Real memory database not found")
 
@@ -255,7 +255,7 @@ class TestRealEndToEndPhases5_8:
     @pytest.mark.asyncio
     async def test_complete_task_lifecycle_with_monitoring(self):
         """Test complete task lifecycle from creation through completion."""
-        db_path = Path.home() / ".memory-mcp" / "memory.db"
+        db_path = Path.home() / ".athena" / "memory.db"
         if not db_path.exists():
             pytest.skip("Real memory database not found")
 

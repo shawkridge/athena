@@ -429,7 +429,7 @@ CREATE INDEX idx_episodic_important
 
 ```bash
 # Analyze current schema
-sqlite3 ~/.memory-mcp/memory.db
+sqlite3 ~/.athena/memory.db
 
 # View all tables
 .schema
@@ -482,7 +482,7 @@ EXPLAIN QUERY PLAN SELECT * FROM episodic_events WHERE session_id = ? AND timest
 
 ```bash
 # Identify slow queries with query plan
-sqlite3 ~/.memory-mcp/memory.db
+sqlite3 ~/.athena/memory.db
 EXPLAIN QUERY PLAN SELECT * FROM episodic_events WHERE session_id = ? AND timestamp > ?;
 
 # Output:
@@ -525,7 +525,7 @@ CREATE INDEX idx_semantic_query
 
 ```bash
 # 1. Backup first
-cp ~/.memory-mcp/memory.db ~/.memory-mcp/memory.db.backup
+cp ~/.athena/memory.db ~/.athena/memory.db.backup
 
 # 2. Test changes in test database
 sqlite3 /tmp/test.db < schema_changes.sql
@@ -534,7 +534,7 @@ sqlite3 /tmp/test.db < schema_changes.sql
 pytest tests/performance/ -v
 
 # 4. Apply to production
-sqlite3 ~/.memory-mcp/memory.db < schema_changes.sql
+sqlite3 ~/.athena/memory.db < schema_changes.sql
 
 # 5. Verify again
 pytest tests/performance/ -v

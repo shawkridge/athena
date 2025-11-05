@@ -73,7 +73,7 @@ if [ "$user_query" != "[Query extraction pending]" ] && [ -n "$user_query" ]; th
 
   recovery_output=$(PYTHONPATH="/home/user/.work/athena/src:$PYTHONPATH" "$python_cmd" "$(dirname "$0")/lib/recover_context.py" \
     --query "$user_query" \
-    --db-path "${MEMORY_MCP_DB_PATH:-$HOME/.memory-mcp/memory.db}" \
+    --db-path "${ATHENA_DB_PATH:-$HOME/.athena/memory.db}" \
     --json 2>/dev/null)
 
   if echo "$recovery_output" | jq empty 2>/dev/null; then
@@ -192,7 +192,7 @@ try:
 
     from memory_mcp.core.database import Database
 
-    db_path = Path.home() / '.memory-mcp/memory.db'
+    db_path = Path.home() / '.athena/memory.db'
     if db_path.exists():
         db = Database(str(db_path))
         cursor = db.conn.cursor()

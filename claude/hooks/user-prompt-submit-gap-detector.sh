@@ -33,7 +33,7 @@ sys.path.insert(0, '/home/user/.work/athena/src')
 try:
     from athena.metacognition.gaps import KnowledgeGapDetector
 
-    detector = KnowledgeGapDetector('/home/user/.memory-mcp/memory.db')
+    detector = KnowledgeGapDetector('/home/user/.athena/memory.db')
 
     # Detect gaps
     contradictions = detector.detect_direct_contradictions(project_id=1)

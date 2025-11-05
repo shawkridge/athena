@@ -36,7 +36,7 @@ try:
     from athena.learning.hebbian import HebbianLearner
     from athena.core.database import Database
 
-    db = Database('/home/user/.memory-mcp/memory.db')
+    db = Database('/home/user/.athena/memory.db')
     learner = HebbianLearner(db)
     stats = learner.get_stats(project_id=1)
 

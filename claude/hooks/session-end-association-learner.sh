@@ -35,7 +35,7 @@ sys.path.insert(0, '/home/user/.work/athena/src')
 try:
     from athena.associations.network import AssociationNetwork
 
-    network = AssociationNetwork('/home/user/.memory-mcp/memory.db')
+    network = AssociationNetwork('/home/user/.athena/memory.db')
     stats = network.strengthen_associations(project_id=1)
 
     print(json.dumps({

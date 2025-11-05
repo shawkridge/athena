@@ -38,7 +38,7 @@ sys.path.insert(0, '/home/user/.work/athena/src')
 try:
     from athena.planning.validation import PlanValidator
 
-    validator = PlanValidator('/home/user/.memory-mcp/memory.db')
+    validator = PlanValidator('/home/user/.athena/memory.db')
     result = validator.validate_current_plan(project_id=1)
 
     print(json.dumps({

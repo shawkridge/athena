@@ -1,7 +1,7 @@
 """
 REAL Integration Tests for Phase 1 & 2 - Tests with actual memory database
 
-These tests use the REAL memory database (~/.memory-mcp/memory.db) and test
+These tests use the REAL memory database (~/.athena/memory.db) and test
 actual code paths, not mocks. This ensures our code works in production.
 """
 
@@ -26,7 +26,7 @@ class TestRealMemoryDatabase:
     @pytest.fixture
     def real_db(self):
         """Use actual memory database."""
-        db_path = Path.home() / ".memory-mcp" / "memory.db"
+        db_path = Path.home() / ".athena" / "memory.db"
         if not db_path.exists():
             pytest.skip("Real memory database not found")
         return Database(str(db_path))
@@ -43,13 +43,13 @@ class TestRealMemoryDatabase:
     def test_memory_store_initialization(self, real_db):
         """Test MemoryStore initializes with real database."""
         # This tests that MemoryStore works with real database path
-        db_path = Path.home() / ".memory-mcp" / "memory.db"
+        db_path = Path.home() / ".athena" / "memory.db"
         store = MemoryStore(str(db_path))
         assert store is not None
 
     def test_rag_manager_initialization(self, real_db):
         """Test RAGManager initializes properly."""
-        db_path = Path.home() / ".memory-mcp" / "memory.db"
+        db_path = Path.home() / ".athena" / "memory.db"
         memory_store = MemoryStore(str(db_path))
         rag_manager = RAGManager(memory_store=memory_store)
         assert rag_manager is not None
@@ -62,7 +62,7 @@ class TestRealContextInjection:
     @pytest.fixture
     def real_injector(self):
         """Create injector with real database."""
-        db_path = Path.home() / ".memory-mcp" / "memory.db"
+        db_path = Path.home() / ".athena" / "memory.db"
         if not db_path.exists():
             pytest.skip("Real memory database not found")
 
@@ -140,7 +140,7 @@ class TestRealGraphTraversal:
     @pytest.fixture
     def real_graph(self):
         """Create GraphTraversal with real database."""
-        db_path = Path.home() / ".memory-mcp" / "memory.db"
+        db_path = Path.home() / ".athena" / "memory.db"
         if not db_path.exists():
             pytest.skip("Real memory database not found")
 
@@ -169,7 +169,7 @@ class TestRealTemporalQueries:
     @pytest.fixture
     def real_temporal(self):
         """Create TemporalQueries with real database."""
-        db_path = Path.home() / ".memory-mcp" / "memory.db"
+        db_path = Path.home() / ".athena" / "memory.db"
         if not db_path.exists():
             pytest.skip("Real memory database not found")
 
@@ -197,7 +197,7 @@ class TestRealSpatialContext:
     @pytest.fixture
     def real_spatial(self):
         """Create SpatialContext."""
-        db_path = Path.home() / ".memory-mcp" / "memory.db"
+        db_path = Path.home() / ".athena" / "memory.db"
         if not db_path.exists():
             pytest.skip("Real memory database not found")
 
@@ -242,7 +242,7 @@ class TestRealEndToEnd:
     @pytest.mark.asyncio
     async def test_full_context_injection_pipeline(self):
         """Test complete pipeline with real database."""
-        db_path = Path.home() / ".memory-mcp" / "memory.db"
+        db_path = Path.home() / ".athena" / "memory.db"
         if not db_path.exists():
             pytest.skip("Real memory database not found")
 
