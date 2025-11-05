@@ -1092,3 +1092,94 @@
 {"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:10:47Z","duration_ms":1142,"details":"Hook completed successfully (status: attention_optimized)"}
 {"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:10:52Z","duration_ms":946,"details":"Hook completed successfully (status: attention_optimized)"}
 {"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:10:55Z","duration_ms":775,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:11:05Z","duration_ms":831,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:11:20Z","duration_ms":751,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:11:21Z","duration_ms":762,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:11:22Z","duration_ms":777,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"session-end-learning-tracker","status":"success","timestamp":"2025-11-05T11:11:23Z","duration_ms":605,"details":"Hook completed successfully (status: learning_tracked, top_strategy: balanced)"}
+{"hook":"session-end-learning-tracker","status":"success","timestamp":"2025-11-05T11:11:23Z","duration_ms":658,"details":"Hook completed successfully (status: learning_tracked, top_strategy: balanced)"}
+{"hook":"session-end-learning-tracker","status":"success","timestamp":"2025-11-05T11:11:24Z","duration_ms":526,"details":"Hook completed successfully (status: learning_tracked, top_strategy: balanced)"}
+{"hook":"session-end-association-learner","status":"success","timestamp":"2025-11-05T11:11:24Z","duration_ms":520,"details":"Hook completed successfully (status: associations_learned, strengthened: 0)"}
+{"hook":"session-end-association-learner","status":"success","timestamp":"2025-11-05T11:11:25Z","duration_ms":478,"details":"Hook completed successfully (status: associations_learned, strengthened: 0)"}
+{"hook":"session-end-association-learner","status":"success","timestamp":"2025-11-05T11:11:26Z","duration_ms":631,"details":"Hook completed successfully (status: associations_learned, strengthened: 0)"}
+{"hook":"user-prompt-submit-gap-detector","status":"success","timestamp":"2025-11-05T11:11:27Z","duration_ms":1054,"details":"Hook completed successfully (status: no_gaps, gaps: 0)"}
+{"hook":"user-prompt-submit-gap-detector","status":"success","timestamp":"2025-11-05T11:11:28Z","duration_ms":979,"details":"Hook completed successfully (status: no_gaps, gaps: 0)"}
+{"hook":"session-end-learning-tracker","status":"success","timestamp":"2025-11-05T11:11:29Z","duration_ms":1038,"details":"Hook completed successfully (status: learning_tracked, top_strategy: balanced)"}
+{"hook":"session-end-association-learner","status":"success","timestamp":"2025-11-05T11:11:29Z","duration_ms":1049,"details":"Hook completed successfully (status: associations_learned, strengthened: 0)"}
+{"hook":"user-prompt-submit-gap-detector","status":"success","timestamp":"2025-11-05T11:11:29Z","duration_ms":1572,"details":"Hook completed successfully (status: no_gaps, gaps: 0)"}
+{"hook":"user-prompt-submit-attention-manager","status":"success","timestamp":"2025-11-05T11:11:30Z","duration_ms":933,"details":"Hook completed successfully (status: memory_updated, items: 0/7)"}
+{"hook":"user-prompt-submit-attention-manager","status":"success","timestamp":"2025-11-05T11:11:31Z","duration_ms":854,"details":"Hook completed successfully (status: memory_updated, items: 0/7)"}
+{"hook":"user-prompt-submit-attention-manager","status":"success","timestamp":"2025-11-05T11:11:32Z","duration_ms":957,"details":"Hook completed successfully (status: memory_updated, items: 0/7)"}
+{"hook":"user-prompt-submit-procedure-suggester","status":"success","timestamp":"2025-11-05T11:11:33Z","duration_ms":734,"details":"Hook completed successfully (status: no_procedures_found, procedures: 0)"}
+{"hook":"user-prompt-submit-procedure-suggester","status":"success","timestamp":"2025-11-05T11:11:34Z","duration_ms":939,"details":"Hook completed successfully (status: no_procedures_found, procedures: 0)"}
+{"hook":"user-prompt-submit-procedure-suggester","status":"success","timestamp":"2025-11-05T11:11:35Z","duration_ms":1004,"details":"Hook completed successfully (status: no_procedures_found, procedures: 0)"}
+{"hook":"session-start-wm-monitor","status":"success","timestamp":"2025-11-05T11:11:37Z","duration_ms":1476,"details":"Hook completed successfully (status: capacity_ok, load: 0/7)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:11:37Z","duration_ms":1446,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"user-prompt-submit-procedure-suggester","status":"success","timestamp":"2025-11-05T11:11:50Z","duration_ms":959,"details":"Hook completed successfully (status: no_procedures_found, procedures: 0)"}
+{"hook":"user-prompt-submit-attention-manager","status":"success","timestamp":"2025-11-05T11:11:51Z","duration_ms":1583,"details":"Hook completed successfully (status: memory_updated, items: 0/7)"}
+{"hook":"user-prompt-submit-gap-detector","status":"success","timestamp":"2025-11-05T11:11:51Z","duration_ms":1737,"details":"Hook completed successfully (status: no_gaps, gaps: 0)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:11:56Z","duration_ms":1016,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:12:03Z","duration_ms":860,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:12:12Z","duration_ms":943,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:12:18Z","duration_ms":1023,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:12:25Z","duration_ms":1208,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:12:33Z","duration_ms":892,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:12:43Z","duration_ms":676,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:12:52Z","duration_ms":637,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:12:58Z","duration_ms":1424,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:12:58Z","duration_ms":1309,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:13:03Z","duration_ms":892,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:13:05Z","duration_ms":824,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:13:07Z","duration_ms":866,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:13:13Z","duration_ms":795,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:13:21Z","duration_ms":874,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:13:23Z","duration_ms":1147,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:13:36Z","duration_ms":1714,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:13:44Z","duration_ms":1642,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:13:52Z","duration_ms":1455,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:14:06Z","duration_ms":1134,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:14:13Z","duration_ms":1368,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"session-end-learning-tracker","status":"success","timestamp":"2025-11-05T11:14:14Z","duration_ms":1200,"details":"Hook completed successfully (status: learning_tracked, top_strategy: balanced)"}
+{"hook":"session-end-association-learner","status":"success","timestamp":"2025-11-05T11:14:14Z","duration_ms":1542,"details":"Hook completed successfully (status: associations_learned, strengthened: 0)"}
+{"hook":"user-prompt-submit-procedure-suggester","status":"success","timestamp":"2025-11-05T11:14:14Z","duration_ms":1511,"details":"Hook completed successfully (status: no_procedures_found, procedures: 0)"}
+{"hook":"user-prompt-submit-attention-manager","status":"success","timestamp":"2025-11-05T11:14:15Z","duration_ms":2213,"details":"Hook completed successfully (status: memory_updated, items: 0/7)"}
+{"hook":"user-prompt-submit-gap-detector","status":"success","timestamp":"2025-11-05T11:14:15Z","duration_ms":2196,"details":"Hook completed successfully (status: no_gaps, gaps: 0)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:14:19Z","duration_ms":1202,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:14:19Z","duration_ms":1124,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:14:26Z","duration_ms":1392,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"session-start-wm-monitor","status":"success","timestamp":"2025-11-05T11:14:26Z","duration_ms":1450,"details":"Hook completed successfully (status: capacity_ok, load: 0/7)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:14:30Z","duration_ms":912,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"user-prompt-submit-procedure-suggester","status":"success","timestamp":"2025-11-05T11:14:31Z","duration_ms":911,"details":"Hook completed successfully (status: no_procedures_found, procedures: 0)"}
+{"hook":"user-prompt-submit-attention-manager","status":"success","timestamp":"2025-11-05T11:14:32Z","duration_ms":1226,"details":"Hook completed successfully (status: memory_updated, items: 0/7)"}
+{"hook":"user-prompt-submit-gap-detector","status":"success","timestamp":"2025-11-05T11:14:32Z","duration_ms":1266,"details":"Hook completed successfully (status: no_gaps, gaps: 0)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:14:38Z","duration_ms":844,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"user-prompt-submit-procedure-suggester","status":"success","timestamp":"2025-11-05T11:14:43Z","duration_ms":807,"details":"Hook completed successfully (status: no_procedures_found, procedures: 0)"}
+{"hook":"user-prompt-submit-attention-manager","status":"success","timestamp":"2025-11-05T11:14:43Z","duration_ms":1191,"details":"Hook completed successfully (status: memory_updated, items: 0/7)"}
+{"hook":"user-prompt-submit-gap-detector","status":"success","timestamp":"2025-11-05T11:14:43Z","duration_ms":1341,"details":"Hook completed successfully (status: no_gaps, gaps: 0)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:14:45Z","duration_ms":749,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:14:49Z","duration_ms":800,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:14:53Z","duration_ms":898,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"session-end-learning-tracker","status":"success","timestamp":"2025-11-05T11:14:56Z","duration_ms":418,"details":"Hook completed successfully (status: learning_tracked, top_strategy: balanced)"}
+{"hook":"session-end-association-learner","status":"success","timestamp":"2025-11-05T11:14:56Z","duration_ms":395,"details":"Hook completed successfully (status: associations_learned, strengthened: 0)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:14:57Z","duration_ms":824,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"session-end-learning-tracker","status":"success","timestamp":"2025-11-05T11:15:03Z","duration_ms":429,"details":"Hook completed successfully (status: learning_tracked, top_strategy: balanced)"}
+{"hook":"session-end-learning-tracker","status":"success","timestamp":"2025-11-05T11:15:04Z","duration_ms":458,"details":"Hook completed successfully (status: learning_tracked, top_strategy: balanced)"}
+{"hook":"session-end-learning-tracker","status":"success","timestamp":"2025-11-05T11:15:04Z","duration_ms":426,"details":"Hook completed successfully (status: learning_tracked, top_strategy: balanced)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:15:05Z","duration_ms":868,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:15:11Z","duration_ms":991,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:15:20Z","duration_ms":963,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:15:24Z","duration_ms":1032,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:15:25Z","duration_ms":887,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:15:32Z","duration_ms":915,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:15:38Z","duration_ms":749,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:15:41Z","duration_ms":982,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:15:46Z","duration_ms":970,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:15:49Z","duration_ms":757,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"session-end-learning-tracker","status":"success","timestamp":"2025-11-05T11:15:52Z","duration_ms":421,"details":"Hook completed successfully (status: learning_tracked, top_strategy: balanced)"}
+{"hook":"session-end-learning-tracker","status":"success","timestamp":"2025-11-05T11:15:53Z","duration_ms":392,"details":"Hook completed successfully (status: learning_tracked, top_strategy: balanced)"}
+{"hook":"session-end-learning-tracker","status":"success","timestamp":"2025-11-05T11:15:53Z","duration_ms":396,"details":"Hook completed successfully (status: learning_tracked, top_strategy: balanced)"}
+{"hook":"session-end-association-learner","status":"success","timestamp":"2025-11-05T11:15:54Z","duration_ms":438,"details":"Hook completed successfully (status: associations_learned, strengthened: 0)"}
+{"hook":"session-end-association-learner","status":"success","timestamp":"2025-11-05T11:15:54Z","duration_ms":566,"details":"Hook completed successfully (status: associations_learned, strengthened: 0)"}
+{"hook":"session-end-association-learner","status":"success","timestamp":"2025-11-05T11:15:55Z","duration_ms":520,"details":"Hook completed successfully (status: associations_learned, strengthened: 0)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:15:56Z","duration_ms":812,"details":"Hook completed successfully (status: attention_optimized)"}
+{"hook":"post-tool-use-attention-optimizer","status":"success","timestamp":"2025-11-05T11:15:58Z","duration_ms":738,"details":"Hook completed successfully (status: attention_optimized)"}

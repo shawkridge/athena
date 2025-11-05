@@ -19,8 +19,9 @@ hook_start_time=$(date +%s%N)
 # HOOK BODY
 # ============================================================
 
-read -r INPUT_JSON
-SESSION_ID=$(echo "$INPUT_JSON" | grep -o '"session_id":"[^"]*"' | cut -d'"' -f4)
+# Read hook input from stdin with timeout fallback
+INPUT_JSON=$(timeout 1 cat 2>/dev/null || echo '{}')
+SESSION_ID=$(echo "$INPUT_JSON" | grep -o '"session_id":"[^"]*"' | cut -d'"' -f4 || echo "unknown")
 
 # ============================================================
 # Call Athena MCP: Strengthen associations via Hebbian learning
