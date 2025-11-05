@@ -695,8 +695,8 @@ Error: file_path is required
 Usage: {"file_path": "/path/to/file.py"}
 
 Example:
-  - {"file_path": "/home/user/.work/claude/memory-mcp/src/athena"}
-  - {"file_path": "/home/user/.work/claude/memory-mcp/src/athena/core"}
+  - {"file_path": "/home/user/.work/athena/src/athena"}
+  - {"file_path": "/home/user/.work/athena/src/athena/core"}
 
 Note: Build spatial hierarchy first with build_spatial_hierarchy operation"""
             return [TextContent(type="text", text=help_msg)]

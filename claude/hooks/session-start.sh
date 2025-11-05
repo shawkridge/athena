@@ -195,9 +195,6 @@ jq -n '{
   "suppressOutput": true
 }'
 
-exit 0
-
-
 # ============================================================
 # INSTRUMENTATION: Log Hook Result
 # ============================================================
@@ -206,7 +203,7 @@ hook_end_time=$(date +%s%N)
 hook_duration_ms=$(( (hook_end_time - hook_start_time) / 1000000 ))
 
 if [ $? -eq 0 ]; then
-  log_hook_success "session-start" "$hook_duration_ms" "Hook completed successfully"
+  log_hook_success "session-start" "$hook_duration_ms" "Hook completed successfully (status: $context_status, project: $project_name)"
 else
   log_hook_failure "session-start" "$hook_duration_ms" "Hook exited with error"
 fi

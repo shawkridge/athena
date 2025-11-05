@@ -20,8 +20,13 @@ class ProjectDetector:
         1: {
             "name": "athena",
             "paths": [
+                "/home/user/.work/athena",
+                "/home/user/.work/athena/**",
+                # Legacy paths for backwards compatibility
                 "/home/user/.work/claude/memory-mcp",
                 "/home/user/.work/claude/memory-mcp/**",
+                "/home/user/.work/z_old_claude/memory-mcp",
+                "/home/user/.work/z_old_claude/memory-mcp/**",
             ],
         },
         2: {

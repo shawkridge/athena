@@ -180,9 +180,17 @@ if [ -f "$python_cmd" ] || command -v "$python_cmd" &> /dev/null; then
 import sys
 import json
 try:
-    sys.path.insert(0, str(__import__('pathlib').Path.home() / '.work/claude/memory-mcp/src'))
-    from memory_mcp.core.database import Database
     from pathlib import Path
+
+    # Multi-location fallback for Athena migration
+    athena_src = Path.home() / '.work' / 'athena' / 'src'
+    if not athena_src.exists():
+        athena_src = Path.home() / '.work' / 'claude' / 'memory-mcp' / 'src'
+    if not athena_src.exists():
+        athena_src = Path.home() / '.work' / 'z_old_claude' / 'memory-mcp' / 'src'
+    sys.path.insert(0, str(athena_src))
+
+    from memory_mcp.core.database import Database
 
     db_path = Path.home() / '.memory-mcp/memory.db'
     if db_path.exists():

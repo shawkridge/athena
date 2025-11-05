@@ -414,7 +414,10 @@ async def handle_get_ide_context(server: Any, args: dict) -> list[TextContent]:
         # Lazy initialize IDEContextManager
         if not hasattr(server, '_ide_context_manager'):
             from ..ide_context.manager import IDEContextManager
-            repo_path = args.get("repo_path", "/home/user/.work/claude/memory-mcp")
+            # Use Athena location, fallback to old location
+            repo_path = args.get("repo_path", "/home/user/.work/athena")
+            if not __import__('os').path.exists(repo_path):
+                repo_path = "/home/user/.work/claude/memory-mcp"
             server._ide_context_manager = IDEContextManager(server.store.db, repo_path)
 
         # Get context
