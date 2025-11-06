@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ConfidenceLevel(str, Enum):
@@ -36,10 +36,7 @@ class ConfidenceScores(BaseModel):
         ..., ge=0, le=1, description="How complete the information is"
     )
 
-    class Config:
-        """Pydantic config."""
-
-        use_enum_values = False
+    model_config = ConfigDict(use_enum_values=False)
 
     def average(self) -> float:
         """Calculate average confidence score."""
@@ -70,6 +67,8 @@ class ConfidenceScores(BaseModel):
 class MemoryWithConfidence(BaseModel):
     """Memory result with confidence scoring."""
 
+    model_config = ConfigDict(use_enum_values=False)
+
     memory_id: str = Field(..., description="Unique identifier for the memory")
     content: Any = Field(..., description="Memory content")
     confidence: float = Field(
@@ -84,14 +83,11 @@ class MemoryWithConfidence(BaseModel):
     )
     retrieved_at: datetime = Field(default_factory=datetime.now)
 
-    class Config:
-        """Pydantic config."""
-
-        use_enum_values = False
-
 
 class SearchResultWithExplain(BaseModel):
     """Search result with explanation."""
+
+    model_config = ConfigDict(use_enum_values=False)
 
     result: MemoryWithConfidence = Field(..., description="Search result")
     explanation: Optional[str] = Field(None, description="Explanation of ranking")
@@ -99,14 +95,11 @@ class SearchResultWithExplain(BaseModel):
         None, description="Detailed reasoning breakdown"
     )
 
-    class Config:
-        """Pydantic config."""
-
-        use_enum_values = False
-
 
 class QueryExplanation(BaseModel):
     """Explanation of query routing and execution."""
+
+    model_config = ConfigDict(use_enum_values=False)
 
     query: str = Field(..., description="Original query")
     query_type: str = Field(..., description="Classified query type")
@@ -121,8 +114,3 @@ class QueryExplanation(BaseModel):
         default_factory=list, description="Filters applied to results"
     )
     ranking_method: Optional[str] = Field(None, description="Ranking method used")
-
-    class Config:
-        """Pydantic config."""
-
-        use_enum_values = False
