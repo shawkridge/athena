@@ -324,15 +324,16 @@ class TemporalKGSynthesis:
             entities = self.graph_store.search_entities(entity_name)
             if entities:
                 entity = entities[0]
+                metadata_dict = {
+                    'last_access': metadata.last_access.isoformat(),
+                    'recency_weight': float(metadata.recency_weight),
+                    'is_critical': metadata.is_critical,
+                    'causality_score': float(metadata.causality_score),
+                    'related_entities': metadata.related_entities,
+                }
                 obs = Observation(
                     entity_id=entity.id,
-                    content=f"temporal_metadata: {json.dumps({
-                        'last_access': metadata.last_access.isoformat(),
-                        'recency_weight': float(metadata.recency_weight),
-                        'is_critical': metadata.is_critical,
-                        'causality_score': float(metadata.causality_score),
-                        'related_entities': metadata.related_entities,
-                    })}",
+                    content=f"temporal_metadata: {json.dumps(metadata_dict)}",
                     created_at=datetime.now()
                 )
                 self.graph_store.add_observation(obs)

@@ -3,13 +3,24 @@
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+import logging
 
 from ..core.database import Database
 from ..core.base_store import BaseStore
 from ..core.embeddings import EmbeddingModel
 from ..core.models import Memory, MemorySearchResult, MemoryType, Project
+from ..core import config
 from .optimize import MemoryOptimizer
 from .search import SemanticSearch
+
+# Import QdrantAdapter with graceful fallback
+try:
+    from ..rag.qdrant_adapter import QdrantAdapter
+    QDRANT_AVAILABLE = True
+except ImportError:
+    QDRANT_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
 
 
 class MemoryStore(BaseStore):
@@ -18,17 +29,41 @@ class MemoryStore(BaseStore):
     table_name = "memories"
     model_class = Memory
 
-    def __init__(self, db_path: str | Path, embedding_model: str = "nomic-embed-text"):
+    def __init__(
+        self,
+        db_path: str | Path,
+        embedding_model: Optional[str] = None,
+        use_qdrant: bool = True
+    ):
         """Initialize memory store.
 
         Args:
             db_path: Path to SQLite database
-            embedding_model: Ollama model name for embeddings
+            embedding_model: Model name/path for embeddings (default: from config/provider)
+            use_qdrant: If True, use Qdrant for vector storage (default: True)
         """
         self.db = Database(db_path)
         super().__init__(self.db)
+        # EmbeddingModel will use config provider and defaults
         self.embedder = EmbeddingModel(embedding_model)
-        self.search = SemanticSearch(self.db, self.embedder)
+
+        # Initialize Qdrant adapter if available and enabled
+        self.qdrant = None
+        if use_qdrant and QDRANT_AVAILABLE:
+            try:
+                self.qdrant = QdrantAdapter(
+                    url=config.QDRANT_URL,
+                    collection_name=config.QDRANT_COLLECTION,
+                    embedding_dim=config.QDRANT_EMBEDDING_DIM,
+                )
+                logger.info(f"Qdrant enabled: {config.QDRANT_URL}")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Qdrant, falling back to SQLite: {e}")
+                self.qdrant = None
+        elif use_qdrant and not QDRANT_AVAILABLE:
+            logger.warning("Qdrant requested but not available (qdrant-client not installed)")
+
+        self.search = SemanticSearch(self.db, self.embedder, qdrant=self.qdrant)
         self.optimizer = MemoryOptimizer(self.db)
 
     def _row_to_model(self, row: dict) -> Memory:
@@ -61,6 +96,10 @@ class MemoryStore(BaseStore):
     ) -> int:
         """Store a new memory with embedding.
 
+        Implements dual-write pattern:
+        - SQLite: Metadata (content, tags, timestamps)
+        - Qdrant: Embeddings for semantic search
+
         Args:
             content: Memory content
             memory_type: Type of memory
@@ -77,28 +116,56 @@ class MemoryStore(BaseStore):
         # Generate embedding
         embedding = self.embedder.embed(content)
 
-        # Create memory object
+        # Create memory object WITHOUT embedding (metadata only for SQLite)
         memory = Memory(
             project_id=project_id,
             content=content,
             memory_type=memory_type,
             tags=tags or [],
-            embedding=embedding,
+            embedding=None if self.qdrant else embedding,  # Skip if using Qdrant
         )
 
-        # Store in database
+        # Store metadata in SQLite
         memory_id = self.db.store_memory(memory)
+
+        # Store embedding in Qdrant if available
+        if self.qdrant:
+            try:
+                self.qdrant.add_memory(
+                    memory_id=memory_id,
+                    content=content,
+                    embedding=embedding,
+                    metadata={
+                        "project_id": project_id,
+                        "memory_type": memory_type.value,
+                        "tags": tags or [],
+                    }
+                )
+                logger.debug(f"Stored embedding in Qdrant: memory_id={memory_id}")
+            except Exception as e:
+                logger.error(f"Failed to store embedding in Qdrant for memory {memory_id}: {e}")
+                # Continue - metadata is already in SQLite
+
         return memory_id
 
     def forget(self, memory_id: int) -> bool:
-        """Delete a memory.
+        """Delete a memory from both SQLite and Qdrant.
 
         Args:
             memory_id: Memory ID to delete
 
         Returns:
-            True if deleted, False if not found
+            True if deleted from SQLite, False if not found
         """
+        # Delete from Qdrant first (non-blocking failure)
+        if self.qdrant:
+            try:
+                self.qdrant.delete_memory(memory_id)
+                logger.debug(f"Deleted memory {memory_id} from Qdrant")
+            except Exception as e:
+                logger.warning(f"Failed to delete memory {memory_id} from Qdrant: {e}")
+
+        # Delete from SQLite (authoritative)
         return self.db.delete_memory(memory_id)
 
     def list_memories(

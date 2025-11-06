@@ -1,26 +1,44 @@
-"""Semantic search implementation using sqlite-vec native functions."""
+"""Semantic search implementation using Qdrant or sqlite-vec fallback."""
 
 import json
 import time
-from typing import Optional
+import logging
+from typing import Optional, TYPE_CHECKING
 
 from ..core.database import Database
 from ..core.embeddings import EmbeddingModel
 from ..core.models import Memory, MemorySearchResult, MemoryType
 
+if TYPE_CHECKING:
+    from ..rag.qdrant_adapter import QdrantAdapter
+
+logger = logging.getLogger(__name__)
+
 
 class SemanticSearch:
-    """Semantic search over memory vectors using sqlite-vec."""
+    """Semantic search over memory vectors using Qdrant (primary) or sqlite-vec (fallback)."""
 
-    def __init__(self, db: Database, embedder: EmbeddingModel):
+    def __init__(
+        self,
+        db: Database,
+        embedder: EmbeddingModel,
+        qdrant: Optional["QdrantAdapter"] = None
+    ):
         """Initialize semantic search.
 
         Args:
             db: Database instance
             embedder: Embedding model
+            qdrant: Optional Qdrant adapter for vector search
         """
         self.db = db
         self.embedder = embedder
+        self.qdrant = qdrant
+
+        if qdrant:
+            logger.info("SemanticSearch initialized with Qdrant backend")
+        else:
+            logger.info("SemanticSearch initialized with sqlite-vec backend")
 
     def recall(
         self,
@@ -30,7 +48,7 @@ class SemanticSearch:
         memory_types: Optional[list[MemoryType]] = None,
         min_similarity: float = 0.3,
     ) -> list[MemorySearchResult]:
-        """Search for relevant memories using sqlite-vec's vector search.
+        """Search for relevant memories using Qdrant or sqlite-vec fallback.
 
         Args:
             query: Search query
@@ -44,9 +62,91 @@ class SemanticSearch:
         """
         # Generate query embedding
         query_embedding = self.embedder.embed(query)
-        query_embedding_json = json.dumps(query_embedding)
 
-        # Use sqlite-vec's native vector search with filtering
+        # Use Qdrant if available
+        if self.qdrant:
+            return self._recall_qdrant(
+                query_embedding, project_id, k, memory_types, min_similarity
+            )
+        else:
+            return self._recall_sqlite(
+                query_embedding, project_id, k, memory_types, min_similarity
+            )
+
+    def _recall_qdrant(
+        self,
+        query_embedding: list[float],
+        project_id: int,
+        k: int,
+        memory_types: Optional[list[MemoryType]],
+        min_similarity: float,
+    ) -> list[MemorySearchResult]:
+        """Search using Qdrant vector database.
+
+        Args:
+            query_embedding: Query embedding vector
+            project_id: Project ID to filter by
+            k: Number of results
+            memory_types: Optional memory type filter
+            min_similarity: Minimum similarity threshold
+
+        Returns:
+            List of search results
+        """
+        # Build filters for Qdrant
+        filters = {"project_id": project_id}
+        if memory_types:
+            filters["memory_type"] = [mt.value for mt in memory_types]
+
+        # Search Qdrant
+        qdrant_results = self.qdrant.search(
+            query_embedding=query_embedding,
+            limit=k,
+            score_threshold=min_similarity,
+            filters=filters,
+        )
+
+        # Convert Qdrant results to MemorySearchResult
+        results = []
+        for rank, qdrant_mem in enumerate(qdrant_results, 1):
+            # Fetch full memory metadata from SQLite
+            memory = self.db.get_memory(qdrant_mem.id)
+            if memory:
+                # Update access stats
+                self.db.update_access_stats(memory.id)
+
+                results.append(
+                    MemorySearchResult(
+                        memory=memory,
+                        similarity=qdrant_mem.score if qdrant_mem.score else 0.0,
+                        rank=rank
+                    )
+                )
+
+        logger.debug(f"Qdrant search returned {len(results)} results")
+        return results
+
+    def _recall_sqlite(
+        self,
+        query_embedding: list[float],
+        project_id: int,
+        k: int,
+        memory_types: Optional[list[MemoryType]],
+        min_similarity: float,
+    ) -> list[MemorySearchResult]:
+        """Fallback search using sqlite-vec.
+
+        Args:
+            query_embedding: Query embedding vector
+            project_id: Project ID
+            k: Number of results
+            memory_types: Optional memory type filter
+            min_similarity: Minimum similarity threshold
+
+        Returns:
+            List of search results
+        """
+        query_embedding_json = json.dumps(query_embedding)
         cursor = self.db.conn.cursor()
 
         if memory_types:
@@ -99,6 +199,7 @@ class SemanticSearch:
                     MemorySearchResult(memory=memory, similarity=similarity, rank=rank)
                 )
 
+        logger.debug(f"SQLite search returned {len(results)} results")
         return results
 
     def recall_with_reranking(

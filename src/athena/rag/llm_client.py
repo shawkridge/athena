@@ -130,13 +130,16 @@ Respond with ONLY a number between 0.0 and 1.0, nothing else."""
 class OllamaLLMClient(LLMClient):
     """Ollama local LLM client (free, local alternative)."""
 
-    def __init__(self, model: str = "llama3.1:8b", base_url: Optional[str] = None):
+    def __init__(self, model: Optional[str] = None, base_url: Optional[str] = None):
         """Initialize Ollama client.
 
         Args:
-            model: Ollama model name
-            base_url: Ollama server URL (default: http://localhost:11434)
+            model: Ollama model name (defaults to config.OLLAMA_LLM_MODEL)
+            base_url: Ollama server URL (defaults to config.OLLAMA_BASE_URL)
         """
+        from athena.core.config import OLLAMA_LLM_MODEL, OLLAMA_BASE_URL
+        model = model or OLLAMA_LLM_MODEL
+        base_url = base_url or OLLAMA_BASE_URL
         try:
             import ollama
         except ImportError:
@@ -261,7 +264,7 @@ def create_llm_client(
         return ClaudeLLMClient(api_key=api_key, model=model, **kwargs)
 
     elif provider == "ollama":
-        model = model or "llama3.1:8b"
+        # Model defaults to config.OLLAMA_LLM_MODEL if not specified
         return OllamaLLMClient(model=model, **kwargs)
 
     else:

@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: athena-dashboard-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=False
+      - REDIS_URL=redis://redis:6379/0
+      - ATHENA_DB_PATH=/athena/.athena/memory.db
+      - LOG_LEVEL=INFO
+    volumes:
+      # Mount home directory for access to Athena database
+      - ${HOME}/.athena:/athena/.athena:ro
+      - ./backend:/app
+    depends_on:
+      - redis
+    command: uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - athena-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: athena-dashboard-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - athena-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # PostgreSQL Database (Optional - for extended features)
+  postgres:
+    image: postgres:15-alpine
+    container_name: athena-dashboard-postgres
+    environment:
+      POSTGRES_USER: athena
+      POSTGRES_PASSWORD: athena_dev
+      POSTGRES_DB: athena_dashboard
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - athena-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U athena"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # PgAdmin (Optional - Database UI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: athena-dashboard-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@athena.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - athena-network
+
+networks:
+  athena-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local

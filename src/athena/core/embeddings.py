@@ -1,32 +1,82 @@
-"""Embedding generation via Ollama."""
+"""Embedding generation via Ollama or llama.cpp."""
 
-import ollama
+import logging
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingModel:
-    """Wrapper for Ollama embedding model."""
+    """Wrapper for embedding models (Ollama or llama.cpp)."""
 
-    def __init__(self, model: str = "nomic-embed-text"):
+    def __init__(
+        self,
+        model: Optional[str] = None,
+        provider: Optional[str] = None
+    ):
         """Initialize embedding model.
 
         Args:
-            model: Ollama model name
+            model: Model name (for Ollama) or path (for llama.cpp)
+            provider: "ollama" or "llamacpp" (default: from config)
         """
-        self.model = model
-        self._verify_model()
+        from . import config
 
-    def _verify_model(self):
-        """Verify model is available in Ollama."""
+        # Determine provider
+        if provider is None:
+            provider = config.EMBEDDING_PROVIDER
+
+        self.provider = provider
+        self.model = model
+        self.backend = None
+
+        if provider == "llamacpp":
+            self._init_llamacpp(model)
+        elif provider == "ollama":
+            self._init_ollama(model)
+        else:
+            raise ValueError(f"Unknown embedding provider: {provider}")
+
+    def _init_llamacpp(self, model_path: Optional[str]):
+        """Initialize llama.cpp backend."""
+        from . import config
+        from .llamacpp_client import get_embedding_model
+
+        try:
+            self.backend = get_embedding_model(model_path)
+            self.embedding_dim = self.backend.embedding_dim
+            logger.info(f"Using llama.cpp embeddings: {self.embedding_dim}D")
+        except Exception as e:
+            logger.error(f"Failed to initialize llama.cpp: {e}")
+            logger.warning("Falling back to Ollama")
+            self._init_ollama(config.OLLAMA_EMBEDDING_MODEL)
+
+    def _init_ollama(self, model: Optional[str]):
+        """Initialize Ollama backend."""
+        from . import config
+        import ollama
+
+        if model is None:
+            model = config.OLLAMA_EMBEDDING_MODEL
+
+        self.model = model
+        self.provider = "ollama"
+
         try:
             # Test embedding generation
-            ollama.embeddings(model=self.model, prompt="test")
+            response = ollama.embeddings(model=self.model, prompt="test")
+            self.embedding_dim = len(response["embedding"])
+            self.backend = ollama
+            logger.info(f"Using Ollama embeddings: {self.embedding_dim}D")
         except Exception as e:
-            raise RuntimeError(
-                f"Model '{self.model}' not available. "
+            import sys
+            print(
+                f"WARNING: Embedding model '{self.model}' not available. "
                 f"Install with: ollama pull {self.model}\n"
-                f"Error: {e}"
+                f"Error: {e}",
+                file=sys.stderr
             )
+            self.available = False
 
     def embed(self, text: str) -> list[float]:
         """Generate embedding for text.
@@ -35,10 +85,15 @@ class EmbeddingModel:
             text: Text to embed
 
         Returns:
-            768-dimensional embedding vector
+            Embedding vector
         """
-        response = ollama.embeddings(model=self.model, prompt=text)
-        return response["embedding"]
+        if self.provider == "llamacpp" and self.backend:
+            return self.backend.embed(text)
+        elif self.provider == "ollama" and self.backend:
+            response = self.backend.embeddings(model=self.model, prompt=text)
+            return response["embedding"]
+        else:
+            raise RuntimeError("No embedding backend available")
 
     def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """Generate embeddings for multiple texts.
@@ -49,7 +104,10 @@ class EmbeddingModel:
         Returns:
             List of embedding vectors
         """
-        return [self.embed(text) for text in texts]
+        if self.provider == "llamacpp" and self.backend:
+            return self.backend.embed_batch(texts)
+        else:
+            return [self.embed(text) for text in texts]
 
 
 def cosine_similarity(vec1, vec2) -> float:

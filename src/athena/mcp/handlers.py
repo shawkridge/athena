@@ -201,9 +201,10 @@ class MemoryMCPServer:
         self.llm_client = None
         if LLM_CLIENT_AVAILABLE:
             try:
-                # Try Qwen2.5 1.5B (RAG-optimized, lightweight)
-                self.llm_client = OllamaLLMClient(model="qwen2.5:1.5b-instruct-q4_K_M")
-                logger.info("LLM client (Qwen2.5 1.5B) initialized for semantic analysis")
+                from athena.core.config import OLLAMA_LLM_MODEL
+                # Use centrally configured LLM model
+                self.llm_client = OllamaLLMClient(model=OLLAMA_LLM_MODEL)
+                logger.info(f"LLM client ({OLLAMA_LLM_MODEL}) initialized for semantic analysis")
             except Exception as e:
                 try:
                     # Fallback to Mistral 7B

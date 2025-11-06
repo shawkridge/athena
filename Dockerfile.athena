@@ -1,0 +1,35 @@
+# Dockerfile for Athena HTTP Service
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy entire source tree (MCP HTTP server v2)
+COPY . .
+
+# Install dependencies for MCP HTTP server
+RUN pip install --no-cache-dir \
+    uvicorn>=0.24 \
+    starlette>=0.27 \
+    sse-starlette>=1.6 \
+    && echo "MCP server dependencies installed" \
+    && pip install --no-cache-dir -e . 2>/dev/null || true
+
+# Expose port
+EXPOSE 3000
+
+# Health check (MCP initialize request)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f -X POST http://localhost:3000 -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":"health","method":"ping"}' || exit 1
+
+# Make entrypoint executable
+RUN chmod +x /app/scripts/docker-entrypoint.sh
+
+# Use entrypoint for initialization
+ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]

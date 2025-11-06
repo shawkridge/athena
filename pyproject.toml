@@ -18,10 +18,18 @@ dependencies = [
     "pydantic>=2.0",
     "sqlalchemy>=2.0",
     "sqlite-vec>=0.1.0",
+    "qdrant-client>=1.7.0",
     "numpy>=1.20",
     "scipy>=1.7",
     "scikit-learn>=1.0",
     "mcp>=1.0",
+    "fastapi>=0.104",
+    "uvicorn>=0.24",
+    "httpx>=0.24",
+    "ollama>=0.1.0",
+    "llama-cpp-python>=0.2.0",
+    "huggingface-hub>=0.20.0",
+    "pyyaml>=6.0",
     "pytest>=7.0",
     "black>=23.0",
     "ruff>=0.1",
@@ -42,6 +50,7 @@ dev = [
 [project.scripts]
 memory-mcp = "athena.cli:main"
 athena-server = "athena.server:main"
+athena-http = "athena.http.server:main"
 
 [tool.setuptools]
 packages = ["athena"]
