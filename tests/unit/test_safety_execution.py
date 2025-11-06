@@ -4,7 +4,7 @@ import pytest
 import asyncio
 from datetime import datetime
 
-from src.memory_mcp.safety.execution import (
+from athena.safety.execution import (
     ExecutionMonitor,
     ExecutionEvent,
     ExecutionEventType,

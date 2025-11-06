@@ -10,7 +10,7 @@ Target: >20% improvement vs vector-only baseline
 import pytest
 import time
 from typing import List, Dict, Any
-from test_client import MemoryTestClient
+from tests.benchmarks.test_client import MemoryTestClient
 
 
 class DialogueScenario:

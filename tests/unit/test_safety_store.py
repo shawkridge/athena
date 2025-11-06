@@ -4,9 +4,9 @@ import pytest
 from pathlib import Path
 from datetime import datetime, timedelta
 
-from src.memory_mcp.core.database import Database
-from src.memory_mcp.safety.store import SafetyStore
-from src.memory_mcp.safety.models import (
+from athena.core.database import Database
+from athena.safety.store import SafetyStore
+from athena.safety.models import (
     SafetyPolicy,
     ApprovalRequest,
     ApprovalStatus,

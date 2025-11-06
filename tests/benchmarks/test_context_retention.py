@@ -10,7 +10,7 @@ Target: >30% improvement vs vector-only baseline
 import pytest
 import time
 from typing import Dict, Any, List
-from test_client import MemoryTestClient
+from tests.benchmarks.test_client import MemoryTestClient
 
 
 @pytest.fixture

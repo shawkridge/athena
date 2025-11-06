@@ -3,9 +3,9 @@
 import pytest
 from pathlib import Path
 
-from src.memory_mcp.core.database import Database
-from src.memory_mcp.safety.evaluator import SafetyEvaluator
-from src.memory_mcp.safety.models import (
+from athena.core.database import Database
+from athena.safety.evaluator import SafetyEvaluator
+from athena.safety.models import (
     ChangeType,
     ChangeRiskLevel,
     ApprovalStatus,

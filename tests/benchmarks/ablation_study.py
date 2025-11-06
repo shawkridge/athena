@@ -20,7 +20,7 @@ import pytest
 import time
 from typing import Dict, Any, List
 from dataclasses import dataclass
-from test_client import MemoryTestClient
+from tests.benchmarks.test_client import MemoryTestClient
 
 
 @dataclass

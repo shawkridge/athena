@@ -3,7 +3,7 @@
 import pytest
 from datetime import datetime
 
-from src.memory_mcp.safety.models import (
+from athena.safety.models import (
     SafetyPolicy,
     ApprovalRequest,
     ApprovalStatus,

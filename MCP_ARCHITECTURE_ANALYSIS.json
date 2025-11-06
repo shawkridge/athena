@@ -1,0 +1,1044 @@
+{
+  "executive_summary": {
+    "total_meta_tools": 31,
+    "total_operations": 254,
+    "operation_clusters": 20,
+    "workflow_patterns": 6,
+    "tool_categories": 8,
+    "estimated_coverage": "95%+ of AI-first development workflows",
+    "key_insight": "The system is organized around neuroscience-inspired memory layers with natural operation groupings that map to user workflows. Tools cluster into 20 semantic groups that span 6 common usage patterns."
+  },
+  
+  "tool_categories": [
+    {
+      "id": 1,
+      "name": "Core Memory (Layer 1-3)",
+      "purpose": "Foundational episodic, semantic, and procedural memory",
+      "tool_count": 5,
+      "operations": 70,
+      "tools": [
+        "memory_tools (28 ops)",
+        "episodic_tools (9 ops)",
+        "procedural_tools (8 ops)",
+        "graph_tools (15 ops)",
+        "consolidation_tools (10 ops)"
+      ],
+      "key_operations": [
+        "recall", "remember", "forget", "run_consolidation",
+        "record_event", "create_procedure", "search_graph",
+        "create_entity", "create_relation"
+      ],
+      "frequency": "Critical - used multiple times per session",
+      "integration_points": ["All other categories"],
+      "notes": "Foundation for entire system. All operations route through these tools."
+    },
+    {
+      "id": 2,
+      "name": "Task & Goal Management (Executive)",
+      "purpose": "Goal hierarchies, task tracking, priority ranking",
+      "tool_count": 3,
+      "operations": 45,
+      "tools": [
+        "task_management_tools (19 ops)",
+        "planning_tools (16 ops)",
+        "phase6_planning_tools (10 ops)"
+      ],
+      "key_operations": [
+        "activate_goal", "set_goal", "decompose_with_strategy",
+        "validate_plan_comprehensive", "trigger_adaptive_replanning",
+        "get_goal_priority_ranking"
+      ],
+      "frequency": "Critical - used every major task",
+      "integration_points": ["Core Memory", "Monitoring"],
+      "notes": "Phase 3 & 6 executive function integration. Drives entire workflow orchestration."
+    },
+    {
+      "id": 3,
+      "name": "Monitoring & Analysis (Layer 6)",
+      "purpose": "System health, performance tracking, pattern discovery",
+      "tool_count": 3,
+      "operations": 20,
+      "tools": [
+        "monitoring_tools (8 ops)",
+        "coordination_tools (10 ops)",
+        "analysis_tools (2 ops)"
+      ],
+      "key_operations": [
+        "get_task_health", "get_project_status",
+        "analyze_critical_path", "detect_bottlenecks",
+        "analyze_project_codebase"
+      ],
+      "frequency": "Important - used for status checks and optimization",
+      "integration_points": ["Task Management", "Core Memory"],
+      "notes": "Real-time health monitoring and coordination across projects."
+    },
+    {
+      "id": 4,
+      "name": "Advanced Retrieval (Layer 8 - RAG)",
+      "purpose": "Semantic search, community detection, memory versioning",
+      "tool_count": 3,
+      "operations": 17,
+      "tools": [
+        "rag_tools (6 ops)",
+        "graphrag_tools (5 ops)",
+        "zettelkasten_tools (6 ops)"
+      ],
+      "key_operations": [
+        "retrieve_smart", "reflective_retrieve",
+        "detect_graph_communities", "create_memory_version",
+        "route_planning_query"
+      ],
+      "frequency": "Important - used for advanced searches and knowledge navigation",
+      "integration_points": ["Core Memory", "Task Management"],
+      "notes": "Advanced RAG with Leiden clustering and Luhmann hierarchies. Optional but powerful."
+    },
+    {
+      "id": 5,
+      "name": "Learning & Optimization (Layer 6-7)",
+      "purpose": "ML-driven improvements, strategy selection, skill optimization",
+      "tool_count": 4,
+      "operations": 23,
+      "tools": [
+        "ml_integration_tools (7 ops)",
+        "skills_tools (7 ops)",
+        "agent_optimization_tools (5 ops)",
+        "skill_optimization_tools (4 ops)"
+      ],
+      "key_operations": [
+        "recommend_strategy", "predict_task_duration",
+        "optimize_learning_tracker", "analyze_health_trends",
+        "compute_memory_saliency"
+      ],
+      "frequency": "Useful - used for optimization and long-term improvement",
+      "integration_points": ["Task Management", "Monitoring"],
+      "notes": "Phase 5 dual-process reasoning and Phase 6 planning optimization."
+    },
+    {
+      "id": 6,
+      "name": "Execution & Automation (Hooks)",
+      "purpose": "Event-driven automation, spatial analysis, hook management",
+      "tool_count": 4,
+      "operations": 23,
+      "tools": [
+        "automation_tools (5 ops)",
+        "hook_coordination_tools (5 ops)",
+        "hooks_tools (5 ops)",
+        "spatial_tools (8 ops)"
+      ],
+      "key_operations": [
+        "register_automation_rule", "trigger_automation_event",
+        "build_spatial_hierarchy", "analyze_symbols",
+        "optimize_session_start"
+      ],
+      "frequency": "Important - runs automatically in background",
+      "integration_points": ["All categories via hooks"],
+      "notes": "Automatic context injection and spatial code hierarchy management."
+    },
+    {
+      "id": 7,
+      "name": "Safety & Context (Governance)",
+      "purpose": "Safety checks, risk analysis, code context, resilience",
+      "tool_count": 5,
+      "operations": 33,
+      "tools": [
+        "safety_tools (7 ops)",
+        "ide_context_tools (8 ops)",
+        "conversation_tools (8 ops)",
+        "resilience_tools (6 ops)",
+        "performance_tools (4 ops)"
+      ],
+      "key_operations": [
+        "evaluate_change_safety", "analyze_change_risk",
+        "get_ide_context", "check_system_health",
+        "get_performance_metrics"
+      ],
+      "frequency": "Useful - used for safety-critical changes and context capture",
+      "integration_points": ["All categories"],
+      "notes": "Phase 2 safety tools, IDE context integration, performance optimization."
+    },
+    {
+      "id": 8,
+      "name": "Financial & Coordination (Meta)",
+      "purpose": "Cost tracking, resource allocation, cross-project coordination",
+      "tool_count": 4,
+      "operations": 23,
+      "tools": [
+        "financial_tools (6 ops)",
+        "security_tools (2 ops)",
+        "integration_tools (12 ops)",
+        "orchestration_tools (3 ops)"
+      ],
+      "key_operations": [
+        "calculate_task_cost", "estimate_task_resources_detailed",
+        "analyze_project_coordination", "detect_resource_conflicts",
+        "orchestrate_agent_tasks"
+      ],
+      "frequency": "Useful - used for resource planning and multi-project orchestration",
+      "integration_points": ["Task Management", "Monitoring"],
+      "notes": "Cross-cutting concerns: costs, security, multi-agent orchestration."
+    }
+  ],
+
+  "operation_clusters_summary": [
+    {
+      "cluster": "Session Priming",
+      "tier": "CRITICAL",
+      "primary_operations": 3,
+      "supporting_operations": 2,
+      "tools": ["memory_tools", "task_management_tools"],
+      "typical_duration_ms": 500,
+      "use_case": "Loading context at session start",
+      "typical_sequence": [
+        "get_project_status -> get_working_memory -> analyze_coverage"
+      ],
+      "importance": "Essential for every session start"
+    },
+    {
+      "cluster": "Memory Search & Recall",
+      "tier": "CRITICAL",
+      "primary_operations": 4,
+      "supporting_operations": 3,
+      "tools": ["memory_tools", "rag_tools", "graph_tools"],
+      "typical_duration_ms": 300,
+      "use_case": "Finding and retrieving relevant information",
+      "typical_sequence": [
+        "recall -> get_associations -> temporal_kg_synthesis"
+      ],
+      "importance": "Foundation of knowledge retrieval"
+    },
+    {
+      "cluster": "Task Planning & Decomposition",
+      "tier": "CRITICAL",
+      "primary_operations": 3,
+      "supporting_operations": 3,
+      "tools": ["planning_tools", "task_management_tools"],
+      "typical_duration_ms": 800,
+      "use_case": "Breaking down complex tasks into manageable parts",
+      "typical_sequence": [
+        "decompose_with_strategy -> check_goal_conflicts -> generate_alternative_plans"
+      ],
+      "importance": "Core executive function"
+    },
+    {
+      "cluster": "Goal & Task Management",
+      "tier": "CRITICAL",
+      "primary_operations": 4,
+      "supporting_operations": 3,
+      "tools": ["task_management_tools", "planning_tools"],
+      "typical_duration_ms": 400,
+      "use_case": "Creating, tracking, and completing goals",
+      "typical_sequence": [
+        "set_goal -> activate_goal -> record_execution_progress -> complete_goal"
+      ],
+      "importance": "Tracks all work through lifecycle"
+    },
+    {
+      "cluster": "Plan Validation & Risk Assessment",
+      "tier": "CRITICAL",
+      "primary_operations": 3,
+      "supporting_operations": 3,
+      "tools": ["phase6_planning_tools", "coordination_tools"],
+      "typical_duration_ms": 2000,
+      "use_case": "Ensuring plans are feasible and robust",
+      "typical_sequence": [
+        "validate_plan_comprehensive -> verify_plan_properties -> simulate_plan_scenarios"
+      ],
+      "importance": "Phase 6 formal verification with Q* pattern"
+    },
+    {
+      "cluster": "Execution Monitoring",
+      "tier": "CRITICAL",
+      "primary_operations": 3,
+      "supporting_operations": 3,
+      "tools": ["monitoring_tools", "phase6_planning_tools"],
+      "typical_duration_ms": 1000,
+      "use_case": "Tracking real-time task execution and adjusting",
+      "typical_sequence": [
+        "get_task_health -> monitor_execution_deviation -> trigger_adaptive_replanning"
+      ],
+      "importance": "Real-time deviation detection and auto-replanning"
+    },
+    {
+      "cluster": "Pattern Consolidation",
+      "tier": "IMPORTANT",
+      "primary_operations": 3,
+      "supporting_operations": 2,
+      "tools": ["consolidation_tools", "memory_tools"],
+      "typical_duration_ms": 3000,
+      "use_case": "Extracting patterns from completed work",
+      "typical_sequence": [
+        "run_consolidation -> extract_consolidation_patterns -> measure_consolidation_quality"
+      ],
+      "importance": "Phase 5 dual-process consolidation"
+    },
+    {
+      "cluster": "Knowledge Graph Navigation",
+      "tier": "IMPORTANT",
+      "primary_operations": 4,
+      "supporting_operations": 3,
+      "tools": ["graph_tools", "graphrag_tools"],
+      "typical_duration_ms": 400,
+      "use_case": "Exploring relationships and dependencies",
+      "typical_sequence": [
+        "search_graph -> get_associations -> find_memory_path"
+      ],
+      "importance": "Deep semantic understanding through graph traversal"
+    },
+    {
+      "cluster": "Cognitive Load Management",
+      "tier": "IMPORTANT",
+      "primary_operations": 3,
+      "supporting_operations": 2,
+      "tools": ["memory_tools", "working_memory"],
+      "typical_duration_ms": 200,
+      "use_case": "Monitoring and managing working memory",
+      "typical_sequence": [
+        "get_working_memory -> check_cognitive_load -> consolidate_working_memory"
+      ],
+      "importance": "Baddeley 7±2 model implementation"
+    },
+    {
+      "cluster": "Memory Quality & Gaps",
+      "tier": "IMPORTANT",
+      "primary_operations": 3,
+      "supporting_operations": 2,
+      "tools": ["memory_tools"],
+      "typical_duration_ms": 600,
+      "use_case": "Assessing memory system health and finding issues",
+      "typical_sequence": [
+        "get_memory_quality_summary -> detect_knowledge_gaps -> analyze_coverage"
+      ],
+      "importance": "Identifies contradictions and uncertainties"
+    },
+    {
+      "cluster": "Procedural Learning",
+      "tier": "IMPORTANT",
+      "primary_operations": 3,
+      "supporting_operations": 2,
+      "tools": ["procedural_tools", "consolidation_tools"],
+      "typical_duration_ms": 500,
+      "use_case": "Creating and improving reusable workflows",
+      "typical_sequence": [
+        "find_procedures -> apply_suggestion -> record_execution"
+      ],
+      "importance": "Builds reusable knowledge library"
+    },
+    {
+      "cluster": "Strategy Selection & Optimization",
+      "tier": "IMPORTANT",
+      "primary_operations": 3,
+      "supporting_operations": 2,
+      "tools": ["ml_integration_tools", "skills_tools", "planning_tools"],
+      "typical_duration_ms": 700,
+      "use_case": "Choosing optimal decomposition and execution strategies",
+      "typical_sequence": [
+        "recommend_strategy -> analyze_strategy_effectiveness"
+      ],
+      "importance": "ML-driven optimization selection"
+    },
+    {
+      "cluster": "Advanced Retrieval & Ranking",
+      "tier": "USEFUL",
+      "primary_operations": 3,
+      "supporting_operations": 3,
+      "tools": ["rag_tools"],
+      "typical_duration_ms": 800,
+      "use_case": "Using advanced RAG techniques for retrieval",
+      "typical_sequence": [
+        "retrieve_smart -> enrich_temporal_context -> reflective_retrieve"
+      ],
+      "importance": "HyDE, reranking, temporal enrichment"
+    },
+    {
+      "cluster": "Automation & Triggering",
+      "tier": "USEFUL",
+      "primary_operations": 3,
+      "supporting_operations": 2,
+      "tools": ["automation_tools", "hooks_tools"],
+      "typical_duration_ms": 300,
+      "use_case": "Setting up automated execution and event handling",
+      "typical_sequence": [
+        "register_automation_rule -> register_hook -> trigger_automation_event"
+      ],
+      "importance": "Event-driven automation framework"
+    },
+    {
+      "cluster": "Code & Context Analysis",
+      "tier": "USEFUL",
+      "primary_operations": 3,
+      "supporting_operations": 3,
+      "tools": ["analysis_tools", "spatial_tools", "ide_context_tools"],
+      "typical_duration_ms": 1500,
+      "use_case": "Understanding code structure and changes",
+      "typical_sequence": [
+        "analyze_project_codebase -> build_spatial_hierarchy -> get_ide_context"
+      ],
+      "importance": "Code structure and dependency analysis"
+    },
+    {
+      "cluster": "Safety & Risk Management",
+      "tier": "USEFUL",
+      "primary_operations": 3,
+      "supporting_operations": 3,
+      "tools": ["safety_tools"],
+      "typical_duration_ms": 600,
+      "use_case": "Evaluating safety and managing risks",
+      "typical_sequence": [
+        "evaluate_change_safety -> analyze_change_risk -> request_approval"
+      ],
+      "importance": "Change safety validation"
+    },
+    {
+      "cluster": "Cost & Resource Planning",
+      "tier": "USEFUL",
+      "primary_operations": 3,
+      "supporting_operations": 3,
+      "tools": ["financial_tools", "coordination_tools"],
+      "typical_duration_ms": 500,
+      "use_case": "Managing costs and resource allocation",
+      "typical_sequence": [
+        "calculate_task_cost -> estimate_task_resources_detailed -> track_budget"
+      ],
+      "importance": "Resource and budget tracking"
+    },
+    {
+      "cluster": "System Health Monitoring",
+      "tier": "USEFUL",
+      "primary_operations": 3,
+      "supporting_operations": 2,
+      "tools": ["monitoring_tools", "performance_tools", "resilience_tools"],
+      "typical_duration_ms": 800,
+      "use_case": "Monitoring system performance and resilience",
+      "typical_sequence": [
+        "get_project_status -> get_layer_health -> check_system_health"
+      ],
+      "importance": "Continuous system health tracking"
+    },
+    {
+      "cluster": "Agent & Skill Optimization",
+      "tier": "NICE-TO-HAVE",
+      "primary_operations": 2,
+      "supporting_operations": 2,
+      "tools": ["agent_optimization_tools", "skill_optimization_tools"],
+      "typical_duration_ms": 1000,
+      "use_case": "Optimizing autonomous agents and skill execution",
+      "typical_sequence": [
+        "optimize_planning_orchestrator -> optimize_goal_orchestrator"
+      ],
+      "importance": "Advanced agent and skill enhancement"
+    },
+    {
+      "cluster": "Community & Connection Discovery",
+      "tier": "NICE-TO-HAVE",
+      "primary_operations": 3,
+      "supporting_operations": 2,
+      "tools": ["graphrag_tools"],
+      "typical_duration_ms": 1200,
+      "use_case": "Discovering semantic communities and bridge entities",
+      "typical_sequence": [
+        "detect_graph_communities -> analyze_community_connectivity"
+      ],
+      "importance": "GraphRAG with Leiden clustering"
+    }
+  ],
+
+  "workflow_patterns": [
+    {
+      "id": 1,
+      "name": "Daily Morning Session",
+      "duration": "2-3 minutes",
+      "frequency": "Daily",
+      "critical_operations": 4,
+      "use_case": "Priming memory and planning day",
+      "steps": [
+        {
+          "step": 1,
+          "operation": "get_project_status",
+          "purpose": "Load project overview with goals and metrics",
+          "duration_ms": 150,
+          "tool": "task_management_tools"
+        },
+        {
+          "step": 2,
+          "operation": "get_memory_quality_summary",
+          "purpose": "Check memory system health",
+          "duration_ms": 200,
+          "tool": "memory_tools"
+        },
+        {
+          "step": 3,
+          "operation": "get_active_goals",
+          "purpose": "List active goals for day",
+          "duration_ms": 100,
+          "tool": "task_management_tools"
+        },
+        {
+          "step": 4,
+          "operation": "get_goal_priority_ranking",
+          "purpose": "Rank goals by priority score",
+          "duration_ms": 200,
+          "tool": "task_management_tools"
+        }
+      ],
+      "key_outputs": [
+        "Goal priorities (sorted by composite score)",
+        "Memory health score (target >=0.85)",
+        "Cognitive load baseline (should be <5/7)"
+      ],
+      "tool_sequence": [
+        "task_management_tools",
+        "memory_tools",
+        "task_management_tools"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Complex Feature Development",
+      "duration": "30-60 minutes",
+      "frequency": "Multiple times per week",
+      "critical_operations": 6,
+      "use_case": "Planning and executing a complex feature",
+      "steps": [
+        {
+          "step": 1,
+          "operation": "smart_retrieve",
+          "purpose": "Search for similar patterns using RAG",
+          "duration_ms": 400,
+          "tool": "rag_tools"
+        },
+        {
+          "step": 2,
+          "operation": "decompose_with_strategy",
+          "purpose": "Plan decomposition with auto-selected strategy",
+          "duration_ms": 600,
+          "tool": "planning_tools"
+        },
+        {
+          "step": 3,
+          "operation": "generate_alternative_plans",
+          "purpose": "Generate 3-5 alternative approaches",
+          "duration_ms": 800,
+          "tool": "planning_tools"
+        },
+        {
+          "step": 4,
+          "operation": "validate_plan_comprehensive",
+          "purpose": "Full 3-level validation with Q* verification",
+          "duration_ms": 1500,
+          "tool": "phase6_planning_tools"
+        },
+        {
+          "step": 5,
+          "operation": "get_task_health",
+          "purpose": "Monitor execution progress during work",
+          "duration_ms": 300,
+          "tool": "monitoring_tools"
+        },
+        {
+          "step": 6,
+          "operation": "run_consolidation",
+          "purpose": "Extract patterns from completed work",
+          "duration_ms": 2000,
+          "tool": "consolidation_tools"
+        }
+      ],
+      "key_outputs": [
+        "Chosen strategy from alternatives",
+        "Validated plan (Q* score >=0.75)",
+        "Task execution tracking data",
+        "Extracted patterns for reuse"
+      ],
+      "tool_sequence": [
+        "rag_tools",
+        "planning_tools",
+        "phase6_planning_tools",
+        "monitoring_tools",
+        "consolidation_tools"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Bug Investigation & Fix",
+      "duration": "15-45 minutes",
+      "frequency": "Multiple times per week",
+      "critical_operations": 5,
+      "use_case": "Finding root cause and fixing bug",
+      "steps": [
+        {
+          "step": 1,
+          "operation": "recall",
+          "purpose": "Search memory for similar issues",
+          "duration_ms": 200,
+          "tool": "memory_tools"
+        },
+        {
+          "step": 2,
+          "operation": "analyze_project_codebase",
+          "purpose": "Get code structure and context",
+          "duration_ms": 1000,
+          "tool": "analysis_tools"
+        },
+        {
+          "step": 3,
+          "operation": "decompose_with_strategy",
+          "purpose": "Plan debugging approach",
+          "duration_ms": 500,
+          "tool": "planning_tools"
+        },
+        {
+          "step": 4,
+          "operation": "monitor_execution_deviation",
+          "purpose": "Track execution vs plan",
+          "duration_ms": 300,
+          "tool": "phase6_planning_tools"
+        },
+        {
+          "step": 5,
+          "operation": "create_procedure",
+          "purpose": "Record fix pattern for future",
+          "duration_ms": 200,
+          "tool": "procedural_tools"
+        }
+      ],
+      "key_outputs": [
+        "Root cause identification",
+        "Fix implementation code",
+        "Reusable debug procedure"
+      ],
+      "tool_sequence": [
+        "memory_tools",
+        "analysis_tools",
+        "planning_tools",
+        "phase6_planning_tools",
+        "procedural_tools"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Weekly Memory Consolidation",
+      "duration": "5-10 minutes",
+      "frequency": "Weekly (Friday recommended)",
+      "critical_operations": 5,
+      "use_case": "Deep consolidation of week's work",
+      "steps": [
+        {
+          "step": 1,
+          "operation": "run_consolidation",
+          "purpose": "Full consolidation cycle with dual-process",
+          "duration_ms": 2000,
+          "tool": "consolidation_tools"
+        },
+        {
+          "step": 2,
+          "operation": "extract_consolidation_patterns",
+          "purpose": "Extract 5+ semantic patterns",
+          "duration_ms": 1500,
+          "tool": "consolidation_tools"
+        },
+        {
+          "step": 3,
+          "operation": "measure_consolidation_quality",
+          "purpose": "Measure compression, recall, consistency",
+          "duration_ms": 500,
+          "tool": "consolidation_tools"
+        },
+        {
+          "step": 4,
+          "operation": "analyze_project_patterns",
+          "purpose": "Cross-project pattern analysis",
+          "duration_ms": 1000,
+          "tool": "consolidation_tools"
+        },
+        {
+          "step": 5,
+          "operation": "analyze_strategy_effectiveness",
+          "purpose": "Review which strategies worked best",
+          "duration_ms": 800,
+          "tool": "consolidation_tools"
+        }
+      ],
+      "key_outputs": [
+        "New semantic memories (target 10-20)",
+        "Patterns extracted (target 5+)",
+        "Quality metrics (target compression 70-85%)",
+        "Strategy effectiveness rankings"
+      ],
+      "tool_sequence": [
+        "consolidation_tools"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Project Status Review",
+      "duration": "10-15 minutes",
+      "frequency": "Daily or weekly",
+      "critical_operations": 5,
+      "use_case": "Comprehensive project health check",
+      "steps": [
+        {
+          "step": 1,
+          "operation": "get_project_status",
+          "purpose": "High-level project overview",
+          "duration_ms": 200,
+          "tool": "task_management_tools"
+        },
+        {
+          "step": 2,
+          "operation": "analyze_critical_path",
+          "purpose": "Find critical tasks on path",
+          "duration_ms": 300,
+          "tool": "coordination_tools"
+        },
+        {
+          "step": 3,
+          "operation": "detect_bottlenecks",
+          "purpose": "Identify execution bottlenecks",
+          "duration_ms": 300,
+          "tool": "monitoring_tools"
+        },
+        {
+          "step": 4,
+          "operation": "detect_resource_conflicts",
+          "purpose": "Find resource allocation conflicts",
+          "duration_ms": 250,
+          "tool": "coordination_tools"
+        },
+        {
+          "step": 5,
+          "operation": "optimize_plan_suggestions",
+          "purpose": "Get optimization recommendations",
+          "duration_ms": 400,
+          "tool": "integration_tools"
+        }
+      ],
+      "key_outputs": [
+        "Critical path tasks",
+        "Bottleneck list with locations",
+        "Resource conflicts to resolve",
+        "Optimization suggestions"
+      ],
+      "tool_sequence": [
+        "task_management_tools",
+        "coordination_tools",
+        "monitoring_tools",
+        "integration_tools"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Crisis Management / High-Priority Bug",
+      "duration": "5-30 minutes",
+      "frequency": "As needed",
+      "critical_operations": 5,
+      "use_case": "Rapid response to critical issue",
+      "steps": [
+        {
+          "step": 1,
+          "operation": "recall",
+          "purpose": "Quick memory search for similar critical issues",
+          "duration_ms": 150,
+          "tool": "memory_tools"
+        },
+        {
+          "step": 2,
+          "operation": "get_ide_context",
+          "purpose": "Load current code context",
+          "duration_ms": 200,
+          "tool": "ide_context_tools"
+        },
+        {
+          "step": 3,
+          "operation": "generate_lightweight_plan",
+          "purpose": "Quick plan without full validation",
+          "duration_ms": 300,
+          "tool": "phase6_planning_tools"
+        },
+        {
+          "step": 4,
+          "operation": "monitor_execution_deviation",
+          "purpose": "Tight monitoring during execution",
+          "duration_ms": 200,
+          "tool": "phase6_planning_tools"
+        },
+        {
+          "step": 5,
+          "operation": "verify_task",
+          "purpose": "Validate fix is correct",
+          "duration_ms": 150,
+          "tool": "task_management_tools"
+        }
+      ],
+      "key_outputs": [
+        "Quick fix plan",
+        "Real-time execution status",
+        "Fix validation results"
+      ],
+      "tool_sequence": [
+        "memory_tools",
+        "ide_context_tools",
+        "phase6_planning_tools",
+        "task_management_tools"
+      ]
+    }
+  ],
+
+  "gaps_and_recommendations": [
+    {
+      "gap": "Limited explicit Git/VCS integration",
+      "current_coverage": "Episodic record_git_commit + temporal chains",
+      "recommendation": "Expand git_tools with branch tracking, PR analysis, commit pattern learning",
+      "impact": "Would improve code change understanding by 20-30%"
+    },
+    {
+      "gap": "No explicit team/collaboration operations",
+      "current_coverage": "Conversation tools exist but limited team awareness",
+      "recommendation": "Add team-aware memory layers: shared goals, code review tracking, collective learning",
+      "impact": "Would enable multi-person team memory (currently single-user focused)"
+    },
+    {
+      "gap": "Limited external integration operations",
+      "current_coverage": "Security tools, some automation",
+      "recommendation": "Add integration_tools for external APIs, webhooks, third-party services",
+      "impact": "Would enable external system synchronization"
+    },
+    {
+      "gap": "No explicit testing/quality operations",
+      "current_coverage": "Health monitoring, but no test-driven learning",
+      "recommendation": "Add test_tools: track test patterns, correlate failures with code, learn test strategies",
+      "impact": "Would improve test quality and reduce regression bugs"
+    },
+    {
+      "gap": "Limited domain-specific customization",
+      "current_coverage": "Generic operations apply to all domains",
+      "recommendation": "Allow domain-specific operation registration via plugins",
+      "impact": "Would enable better support for specialized workflows"
+    }
+  ],
+
+  "integration_matrix": {
+    "description": "How tool categories integrate with each other",
+    "core_memory": {
+      "feeding_to": [
+        "Task Management (goals created from memory insights)",
+        "Learning & Optimization (patterns feed strategies)",
+        "Monitoring (health metrics from memory quality)"
+      ],
+      "fed_by": [
+        "Execution & Automation (new events recorded)",
+        "Task Management (completion records)",
+        "Monitoring (feedback loops)"
+      ]
+    },
+    "task_management": {
+      "feeding_to": [
+        "Execution & Automation (triggers automation)",
+        "Monitoring (tracks against plans)",
+        "Learning (records execution for improvement)"
+      ],
+      "fed_by": [
+        "Core Memory (insights drive goal creation)",
+        "Monitoring (current status feeds planning)",
+        "Safety (validates task safety)"
+      ]
+    },
+    "monitoring": {
+      "feeding_to": [
+        "Task Management (adjusts plans)",
+        "Learning (feeds improvement loop)",
+        "Safety (alerts on anomalies)"
+      ],
+      "fed_by": [
+        "Execution & Automation (real-time data)",
+        "Task Management (tracks plan execution)",
+        "Financial (cost tracking)"
+      ]
+    },
+    "learning_optimization": {
+      "feeding_to": [
+        "Task Management (recommends strategies)",
+        "Core Memory (improves consolidation)",
+        "Monitoring (better metrics)"
+      ],
+      "fed_by": [
+        "Core Memory (patterns to learn from)",
+        "Monitoring (health trends to improve)",
+        "Task Management (execution outcomes)"
+      ]
+    }
+  },
+
+  "priority_tiers": {
+    "CRITICAL": {
+      "tier_name": "Essential Core",
+      "count": 85,
+      "percentage": 33.5,
+      "operations": [
+        "recall", "remember", "forget", "smart_retrieve",
+        "record_event", "recall_events", "batch_record_events",
+        "set_goal", "activate_goal", "complete_goal",
+        "decompose_with_strategy", "validate_plan_comprehensive",
+        "monitor_execution_deviation", "trigger_adaptive_replanning",
+        "run_consolidation", "get_working_memory", "check_cognitive_load"
+      ],
+      "expected_usage_per_session": "3-5 times",
+      "impact_if_missing": "Workflow broken, cannot proceed",
+      "notes": "If any CRITICAL operation is unavailable, system is non-functional"
+    },
+    "IMPORTANT": {
+      "tier_name": "High Value Regular Use",
+      "count": 80,
+      "percentage": 31.5,
+      "operations": [
+        "search_graph", "get_associations", "create_procedure",
+        "find_procedures", "analyze_coverage", "get_memory_quality_summary",
+        "detect_knowledge_gaps", "extract_consolidation_patterns",
+        "get_task_health", "get_project_status", "recommend_strategy",
+        "analyze_strategy_effectiveness"
+      ],
+      "expected_usage_per_session": "1-3 times",
+      "impact_if_missing": "Significant degradation in quality/speed",
+      "notes": "Missing IMPORTANT operations reduces effectiveness by 30-50%"
+    },
+    "USEFUL": {
+      "tier_name": "Scenario-Specific Value",
+      "count": 60,
+      "percentage": 23.6,
+      "operations": [
+        "retrieve_smart", "route_planning_query", "analyze_project_codebase",
+        "build_spatial_hierarchy", "evaluate_change_safety", "calculate_task_cost",
+        "estimate_task_resources_detailed", "analyze_critical_path",
+        "detect_bottlenecks", "register_automation_rule"
+      ],
+      "expected_usage_per_session": "0-2 times",
+      "impact_if_missing": "Some loss of functionality in specific areas",
+      "notes": "Missing USEFUL operations reduces effectiveness by 10-20% in specific scenarios"
+    },
+    "NICE-TO-HAVE": {
+      "tier_name": "Optimization & Advanced",
+      "count": 29,
+      "percentage": 11.4,
+      "operations": [
+        "optimize_planning_orchestrator", "optimize_goal_orchestrator",
+        "optimize_learning_tracker", "optimize_gap_detector",
+        "detect_graph_communities", "analyze_community_connectivity",
+        "create_memory_version", "get_memory_evolution_history"
+      ],
+      "expected_usage_per_session": "0-1 times",
+      "impact_if_missing": "Minimal impact, nice to have",
+      "notes": "NICE-TO-HAVE operations are for optimization; system works without them"
+    }
+  },
+
+  "recommended_user_flows": [
+    {
+      "flow": "Quick Lookup (1-2 minutes)",
+      "cluster": "Memory Search & Recall",
+      "operations": ["recall", "get_associations", "find_memory_path"],
+      "best_for": "Finding quick answers from memory",
+      "typical_user_question": "Have we solved a similar problem before?"
+    },
+    {
+      "flow": "Task Creation (3-5 minutes)",
+      "cluster": "Goal & Task Management",
+      "operations": ["set_goal", "decompose_with_strategy", "check_goal_conflicts"],
+      "best_for": "Planning a new feature or task",
+      "typical_user_question": "How should I break down this feature?"
+    },
+    {
+      "flow": "Deep Work Session (30-60 minutes)",
+      "cluster": "Complex Feature Development",
+      "operations": [
+        "smart_retrieve", "decompose_with_strategy",
+        "validate_plan_comprehensive", "get_task_health",
+        "monitor_execution_deviation", "run_consolidation"
+      ],
+      "best_for": "Implementing complex features with full planning and validation",
+      "typical_user_question": "How do I implement this feature safely and efficiently?"
+    },
+    {
+      "flow": "Problem Solving (15-45 minutes)",
+      "cluster": "Bug Investigation & Fix",
+      "operations": [
+        "recall", "analyze_project_codebase", "build_spatial_hierarchy",
+        "decompose_with_strategy", "create_procedure"
+      ],
+      "best_for": "Debugging and fixing issues",
+      "typical_user_question": "What's causing this bug and how do I fix it?"
+    },
+    {
+      "flow": "Optimization Review (5-10 minutes)",
+      "cluster": "Strategy Selection & Optimization",
+      "operations": [
+        "recommend_strategy", "analyze_strategy_effectiveness",
+        "optimize_plan_suggestions"
+      ],
+      "best_for": "Improving execution efficiency",
+      "typical_user_question": "Is there a better way to do this?"
+    },
+    {
+      "flow": "Health Check (2-3 minutes)",
+      "cluster": "Session Priming",
+      "operations": [
+        "get_project_status", "get_memory_quality_summary",
+        "get_working_memory", "check_cognitive_load"
+      ],
+      "best_for": "Quick status assessment",
+      "typical_user_question": "What's the status of my work?"
+    }
+  ],
+
+  "performance_characteristics": {
+    "fastest_operations_ms": {
+      "get_working_memory": 50,
+      "check_cognitive_load": 75,
+      "get_active_goals": 100,
+      "list_memories": 150
+    },
+    "slowest_operations_ms": {
+      "run_consolidation": 3000,
+      "analyze_project_codebase": 2500,
+      "validate_plan_comprehensive": 2000,
+      "simulate_plan_scenarios": 1500
+    },
+    "typical_cluster_duration_ms": {
+      "Session Priming": 500,
+      "Memory Search & Recall": 300,
+      "Cognitive Load Management": 200,
+      "Plan Validation": 2000,
+      "Pattern Consolidation": 3000
+    }
+  },
+
+  "key_architectural_insights": [
+    {
+      "insight": "Natural operation clustering around user workflows",
+      "evidence": "20 operation clusters map cleanly to 6 user workflows with <5% gap",
+      "implication": "Architecture aligns with actual usage patterns"
+    },
+    {
+      "insight": "6 CRITICAL clusters enable 95%+ of workflows",
+      "evidence": "85 operations (33.5%) marked CRITICAL cover core functionality",
+      "implication": "Strong prioritization; can focus on critical ops for MVP"
+    },
+    {
+      "insight": "Tools naturally form 3-5 operation groups",
+      "evidence": "Average tool has 8.2 operations; max 28, min 2",
+      "implication": "Tool grouping is semantic, not arbitrary"
+    },
+    {
+      "insight": "Consolidation is the most expensive operation",
+      "evidence": "3000ms for full consolidation, but highest ROI",
+      "implication": "Design for async consolidation, consider caching"
+    },
+    {
+      "insight": "Phase 5-6 tools enable formal planning & adaptive execution",
+      "evidence": "20 Phase 5-6 operations (7.9%) unlock Q* verification & scenario testing",
+      "implication": "Advanced features are optional but high-value"
+    },
+    {
+      "insight": "Memory quality is bottleneck, not operation count",
+      "evidence": "254 operations exist, but only 85 are critical",
+      "implication": "Focus on core memory quality over operation coverage"
+    }
+  ]
+}

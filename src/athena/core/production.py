@@ -292,7 +292,7 @@ class ResourceManager:
             UPDATE resource_quotas
             SET current_usage = MAX(0, current_usage - ?), last_updated = ?
             WHERE resource_type = ? AND (project_id = ? OR project_id IS NULL)
-        "", (amount, int(time.time()), resource_type, project_id))
+        """, (amount, int(time.time()), resource_type, project_id))
 
         self.db.conn.commit()
 

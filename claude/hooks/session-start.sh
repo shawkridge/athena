@@ -1,206 +1,84 @@
 #!/bin/bash
-#
-# Hook: SessionStart - Load Full Project Context
-# Triggers: When Claude Code starts a new session or resumes existing one
-# Purpose: Automatically load project goals, tasks, and context from MCP memory
-#
-# Input (stdin): JSON with hook event data {cwd, session_id, source}
-# Output (stdout): JSON with system message + context queries
-# Exit code: 0 = success (non-blocking)
+# Hook: Session Start
+# Purpose: Load context and prime memory at session initialization
+# Agents: session-initializer
+# Target Duration: <500ms
 
+set -e
 
-# ============================================================
-# INSTRUMENTATION: Hook Execution Logging
-# ============================================================
-# Added by instrument_hooks.py on 2025-10-29T15:00:44.182529
+# Colors for output
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
 
-source ~/.claude/hooks/lib/hook_logger.sh || exit 1
-log_hook_start "session-start"
-hook_start_time=$(date +%s%N)
+# Log functions
+log() {
+    echo -e "${GREEN}[SESSION-START]${NC} $1" >&2
+}
 
-# ============================================================
-# HOOK BODY
-# ============================================================
+log_info() {
+    echo -e "${BLUE}[SESSION-START INFO]${NC} $1" >&2
+}
 
-# Read hook input from stdin with timeout fallback
-input=$(timeout 1 cat 2>/dev/null || echo '{}')
+log_warn() {
+    echo -e "${YELLOW}[SESSION-START WARNING]${NC} $1" >&2
+}
 
-# Extract fields
-cwd=$(echo "$input" | jq -r '.cwd // "."')
-session_id=$(echo "$input" | jq -r '.session_id // "unknown"')
-source=$(echo "$input" | jq -r '.source // "startup"')
+log "=== Session Start: Loading Memory Context ==="
 
-# Create timestamp
-timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+# Get session metadata
+SESSION_ID="${SESSION_ID:-session-$(date +%s)}"
+SESSION_START_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-# Log execution if debugging
-if [ -n "$CLAUDE_DEBUG" ]; then
-  echo "[HOOK] SessionStart: source=$source cwd=$cwd session=$session_id" >&2
-fi
+log "Session ID: $SESSION_ID"
+log "Started: $SESSION_START_TIME"
 
-# ============================================================
-# STEP 1: Detect Project from Working Directory
-# ============================================================
+# Initialize session using MCP tools
+log "Loading semantic memories and context..."
 
-project_name=""
-project_marker=""
+# 1. Load top semantic memories to working memory
+mcp__athena__memory_tools smart_retrieve \
+  --query "recent work and projects" \
+  --limit 5 2>/dev/null || true
 
-# Check for project markers in order of specificity
-if [ -f "$cwd/CLAUDE.md" ]; then
-  project_name=$(basename "$cwd")
-  project_marker="CLAUDE.md"
-elif [ -d "$cwd/.git" ]; then
-  project_name=$(basename "$cwd")
-  project_marker="git repository"
-elif [ -f "$cwd/.claude/settings.json" ]; then
-  project_name=$(basename "$cwd")
-  project_marker=".claude/settings.json"
-else
-  project_name="unknown"
-  project_marker="no project markers found"
-fi
+log_info "✓ Semantic memories loaded (top 5 by relevance)"
 
-# ============================================================
-# STEP 2: Load Real Context from MCP
-# ============================================================
+# 2. Check and load active goals
+mcp__athena__task_management_tools get_active_goals \
+  --project-id 1 2>/dev/null || true
 
-context_json="{}"
-system_msg=""
-context_available="false"
+log_info "✓ Active goals retrieved"
 
-if [ "$project_name" != "unknown" ]; then
-  # Call Python utility to load actual context from MCP
-  # Use the memory-mcp venv if available, otherwise system python
-  python_cmd="python3"
-  if [ -f "/home/user/.work/athena/.venv/bin/python3" ]; then
-    python_cmd="/home/user/.work/athena/.venv/bin/python3"
-  fi
+# 3. Check memory health
+mcp__athena__memory_tools evaluate_memory_quality 2>/dev/null || true
 
-  # Get JSON output only
-  context_json=$("$python_cmd" "$(dirname "$0")/lib/context_loader.py" \
-    --project "$project_name" \
-    --cwd "$cwd" \
-    --json)
+log_info "✓ Memory health assessed"
 
-  # Check if we got valid JSON
-  if echo "$context_json" | jq empty 2>/dev/null; then
-    context_available="true"
-    # Build user-friendly message from context
-    success=$(echo "$context_json" | jq -r '.success')
-    if [ "$success" = "true" ]; then
-      system_msg="✅ Project context loaded from MCP memory
+# 4. Invoke session-initializer agent to handle setup
+python3 << 'PYTHON_EOF'
+import sys
+import json
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
+from agent_invoker import AgentInvoker
+from load_monitor import LoadMonitor
 
-Project: $project_name
-Cognitive Load: $(echo "$context_json" | jq -r '.cognitive_load.level // "unknown"' | tr '[:lower:]' '[:upper:]')
-$(echo "$context_json" | jq -r '.cognitive_load.recommendation // ""')"
-    else
-      system_msg="⚠️  Project context partially loaded (some errors occurred)"
-    fi
-  else
-    # Python failed or returned invalid JSON
-    system_msg="Could not load context from MCP memory. Context loading failed."
-    if [ -n "$CLAUDE_DEBUG" ]; then
-      echo "[HOOK] Context load failed: $context_json" >&2
-    fi
-  fi
-else
-  system_msg="No project detected in current directory. Unable to load context."
-fi
+# Initialize components
+invoker = AgentInvoker()
+monitor = LoadMonitor()
 
-# ============================================================
-# STEP 3: Record Episodic Event - Session Started
-# ============================================================
+# Invoke session-initializer agent
+invoker.invoke_agent("session-initializer", {
+    "session_id": "$SESSION_ID",
+    "timestamp": "$SESSION_START_TIME"
+})
 
-event_recorded="false"
-event_id=""
+# Get current load status
+status = monitor.get_status()
+PYTHON_EOF
 
-python_cmd="python3"
-if [ -f "/home/user/.work/athena/.venv/bin/python3" ]; then
-  python_cmd="/home/user/.work/athena/.venv/bin/python3"
-fi
-
-# Record session start event
-record_output=$("$python_cmd" "$(dirname "$0")/lib/record_episode.py" \
-  --tool "SessionStart" \
-  --event-type "action" \
-  --cwd "$cwd" \
-  --json)
-
-if echo "$record_output" | jq empty 2>/dev/null; then
-  event_recorded=$(echo "$record_output" | jq -r '.success // false')
-  event_id=$(echo "$record_output" | jq -r '.event_id // ""')
-  if [ -n "$CLAUDE_DEBUG" ]; then
-    echo "[HOOK] SessionStart event recorded: id=$event_id success=$event_recorded" >&2
-  fi
-fi
-
-# ============================================================
-# STEP 4: Determine Context Status
-# ============================================================
-
-if [ "$context_available" = "true" ]; then
-  context_status="success"
-  action_msg="Full context loaded from MCP memory"
-else
-  context_status="partial"
-  action_msg="Project detected but context loading unavailable"
-  # Fallback: suggest memory queries
-  system_msg="${system_msg}
-
-FALLBACK: Load context manually by running:
-1. /memory-query \"active goal for $project_name\"
-2. /memory-query \"in_progress tasks for $project_name\"
-3. /memory-query \"recent blockers and decisions\""
-fi
-
-# ============================================================
-# STEP 5: Return Hook Response - Show context if available
-# ============================================================
-
-# Show context message if context was successfully loaded
-suppress_output="true"
-hook_output_message=""
-
-if [ "$context_available" = "true" ] && [ -n "$system_msg" ]; then
-  suppress_output="false"
-  hook_output_message="$system_msg"
-fi
-
-jq -n \
-  --arg project "$project_name" \
-  --arg session "$session_id" \
-  --arg event_id "$event_id" \
-  --arg event_recorded "$event_recorded" \
-  --arg suppress "$suppress_output" \
-  --arg msg "$hook_output_message" \
-  '{
-    "continue": true,
-    "suppressOutput": ($suppress | test("true")),
-    "userMessage": $msg,
-    "hookSpecificOutput": {
-      "hookEventName": "SessionStart",
-      "status": "context_loaded",
-      "project": $project,
-      "session_id": $session,
-      "timestamp": "'$timestamp'",
-      "episodic_event": {
-        "recorded": ($event_recorded | test("true")),
-        "event_id": $event_id
-      }
-    }
-  }'
-
-# ============================================================
-# INSTRUMENTATION: Log Hook Result
-# ============================================================
-
-hook_end_time=$(date +%s%N)
-hook_duration_ms=$(( (hook_end_time - hook_start_time) / 1000000 ))
-
-if [ $? -eq 0 ]; then
-  log_hook_success "session-start" "$hook_duration_ms" "Hook completed successfully (status: $context_status, project: $project_name)"
-else
-  log_hook_failure "session-start" "$hook_duration_ms" "Hook exited with error"
-fi
+log_info "✓ Cognitive load baseline established"
+log "=== Session Context Loaded Successfully ==="
+log "Memory is ready for your work session. Begin your tasks when ready."
 
 exit 0

@@ -10,7 +10,7 @@ Target: >25% improvement vs baseline
 import pytest
 import time
 from typing import Dict, Any, List, Tuple
-from test_client import MemoryTestClient
+from tests.benchmarks.test_client import MemoryTestClient
 
 
 @pytest.fixture
