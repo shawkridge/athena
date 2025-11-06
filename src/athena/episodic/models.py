@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EventType(str, Enum):
@@ -100,8 +100,7 @@ class EpisodicEvent(BaseModel):
     performance_metrics: Optional[dict] = None         # {metric_name: value}
     code_quality_score: Optional[float] = None         # 0.0-1.0 quality rating
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class EventMetric(BaseModel):

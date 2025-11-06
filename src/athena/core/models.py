@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class MemoryType(str, Enum):
@@ -48,8 +48,7 @@ class Memory(BaseModel):
     superseded_by: Optional[int] = None  # ID of memory that replaced this one
     version: int = 1  # Version number for tracking history
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class Project(BaseModel):

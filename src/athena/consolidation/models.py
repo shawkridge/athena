@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ConsolidationType(str, Enum):
@@ -38,8 +38,7 @@ class ConsolidationRun(BaseModel):
     consolidation_type: ConsolidationType = ConsolidationType.SCHEDULED
     notes: Optional[str] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class PatternType(str, Enum):
@@ -69,8 +68,7 @@ class ExtractedPattern(BaseModel):
     created_semantic_memory: bool = False
     updated_entity: bool = False
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ConflictType(str, Enum):
@@ -115,5 +113,4 @@ class MemoryConflict(BaseModel):
     # Metadata
     severity: ConflictSeverity = ConflictSeverity.MEDIUM
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)

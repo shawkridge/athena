@@ -14,7 +14,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class PatternType(str, Enum):
@@ -70,8 +70,7 @@ class LessonToProcedure(BaseModel):
         """Determine if confidence is high enough to create procedure."""
         return self.confidence >= 0.7
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ProcedureCandidate(BaseModel):
@@ -111,8 +110,7 @@ class ProcedureCandidate(BaseModel):
         """How many times this pattern appeared."""
         return len(self.source_lessons)
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class FeedbackUpdate(BaseModel):
@@ -145,8 +143,7 @@ class FeedbackUpdate(BaseModel):
     applied_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.now)
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class LearningCycle(BaseModel):

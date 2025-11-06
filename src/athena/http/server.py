@@ -14,6 +14,7 @@ from fastapi.openapi.utils import get_openapi
 import uvicorn
 
 from .models import OperationRequest, OperationResponse, HealthResponse, InfoResponse, ErrorDetail
+from .tools_registry import ToolsRegistry, ToolDefinition
 from ..mcp.handlers import MemoryMCPServer
 from ..manager import UnifiedMemoryManager
 from .mcp_mount import get_mcp_mount
@@ -292,6 +293,87 @@ class AthenaHTTPServer:
                 "search_graph",
                 {"query": query, "max_results": max_results}
             )
+
+        # Tools Registry endpoints for code execution pattern
+        # Based on: https://www.anthropic.com/engineering/code-execution-with-mcp
+
+        @self.app.get("/tools/discover", tags=["Tools Registry"])
+        async def discover_tools():
+            """Discover all available tools organized by category.
+
+            This endpoint supports the code execution pattern where agents
+            can discover tools lazily without loading all definitions upfront.
+            """
+            tools_by_category = ToolsRegistry.discover_tools()
+            return {
+                "categories": {
+                    category: {
+                        "description": ToolsRegistry.get_category_description(category),
+                        "count": len(tools),
+                        "tools": [
+                            {
+                                "name": tool.name,
+                                "description": tool.description,
+                            }
+                            for tool in tools
+                        ],
+                    }
+                    for category, tools in tools_by_category.items()
+                },
+                "total_tools": len(ToolsRegistry.list_all_tools()),
+            }
+
+        @self.app.get("/tools/list", tags=["Tools Registry"])
+        async def list_tools(category: Optional[str] = None):
+            """List all available tools, optionally filtered by category."""
+            if category:
+                tools_by_category = ToolsRegistry.discover_tools()
+                if category not in tools_by_category:
+                    raise HTTPException(status_code=404, detail=f"Category '{category}' not found")
+                tools = tools_by_category[category]
+            else:
+                all_tools = ToolsRegistry.list_all_tools()
+                return {"tools": all_tools, "count": len(all_tools)}
+
+            return {
+                "category": category,
+                "tools": [
+                    {
+                        "name": tool.name,
+                        "description": tool.description,
+                    }
+                    for tool in tools
+                ],
+                "count": len(tools),
+            }
+
+        @self.app.get("/tools/{tool_name}", tags=["Tools Registry"])
+        async def get_tool_definition(tool_name: str):
+            """Get detailed definition of a specific tool.
+
+            Returns parameter schemas, return types, and examples
+            for use in code execution environments.
+            """
+            tool = ToolsRegistry.get_tool(tool_name)
+            if not tool:
+                raise HTTPException(status_code=404, detail=f"Tool '{tool_name}' not found")
+
+            return tool.dict()
+
+        @self.app.post("/tools/{tool_name}/execute", tags=["Tools Execution"])
+        async def execute_tool(tool_name: str, params: Dict[str, Any]):
+            """Execute a tool with given parameters.
+
+            This endpoint allows agents to call tools discovered from the registry
+            without needing to know the full operation name or routing.
+            """
+            # Validate tool exists
+            tool = ToolsRegistry.get_tool(tool_name)
+            if not tool:
+                raise HTTPException(status_code=404, detail=f"Tool '{tool_name}' not found")
+
+            # Execute the operation
+            return await self._wrap_operation(tool_name, params)
 
         logger.info("Routes setup complete")
 

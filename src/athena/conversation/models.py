@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class MessageRole(str, Enum):
@@ -26,8 +26,7 @@ class Message(BaseModel):
     model: Optional[str] = None
     metadata: Optional[dict] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ConversationTurn(BaseModel):

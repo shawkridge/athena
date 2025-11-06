@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class ChangeType(str, Enum):
@@ -104,8 +104,7 @@ class SafetyPolicy(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ApprovalRequest(BaseModel):
@@ -140,8 +139,7 @@ class ApprovalRequest(BaseModel):
     # Safety policy applied
     policy_id: Optional[int] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class AuditEntry(BaseModel):
@@ -178,8 +176,7 @@ class AuditEntry(BaseModel):
     reverted_at: Optional[datetime] = None
     revert_reason: Optional[str] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class CodeSnapshot(BaseModel):
@@ -204,8 +201,7 @@ class CodeSnapshot(BaseModel):
     expires_at: Optional[datetime] = None
     keep_indefinitely: bool = False
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ChangeRecommendation(BaseModel):
@@ -226,5 +222,4 @@ class ChangeRecommendation(BaseModel):
 
     created_at: datetime = Field(default_factory=datetime.now)
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)

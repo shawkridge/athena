@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class ProcedureCategory(str, Enum):
@@ -44,8 +44,7 @@ class ProcedureParameter(BaseModel):
     default_value: Optional[str] = None
     description: Optional[str] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class Procedure(BaseModel):
@@ -75,8 +74,7 @@ class Procedure(BaseModel):
     last_used: Optional[datetime] = None
     created_by: str = "user"  # user|learned|imported
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ProcedureExecution(BaseModel):

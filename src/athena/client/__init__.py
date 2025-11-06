@@ -10,6 +10,7 @@ from .http_client import (
     get_client,
     get_async_client,
 )
+from .code_execution_client import AthenaClient
 
 __all__ = [
     "AthenaHTTPClient",
@@ -20,4 +21,5 @@ __all__ = [
     "AthenaHTTPClientOperationError",
     "get_client",
     "get_async_client",
+    "AthenaClient",
 ]

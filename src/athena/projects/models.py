@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class TaskStatus(str, Enum):
@@ -83,8 +83,7 @@ class ProjectPlan(BaseModel):
     target_completion_date: Optional[datetime] = None
     actual_completion_date: Optional[datetime] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class PhasePlan(BaseModel):
@@ -143,8 +142,7 @@ class PhasePlan(BaseModel):
     target_completion_date: Optional[datetime] = None
     actual_completion_date: Optional[datetime] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
     @field_validator("duration_variance_pct")
     @classmethod
@@ -204,8 +202,7 @@ class TaskStatusModel(BaseModel):
     target_completion_date: Optional[datetime] = None
     actual_completion_date: Optional[datetime] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class Milestone(BaseModel):
@@ -261,8 +258,7 @@ class Milestone(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ProjectDependency(BaseModel):
@@ -300,8 +296,7 @@ class ProjectDependency(BaseModel):
     # Metadata
     created_at: datetime = Field(default_factory=datetime.now)
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
     @field_validator("dependency_type")
     @classmethod

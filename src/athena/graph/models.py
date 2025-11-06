@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EntityType(str, Enum):
@@ -47,8 +47,7 @@ class Entity(BaseModel):
     updated_at: Optional[datetime] = Field(default_factory=datetime.now)
     metadata: dict = Field(default_factory=dict)
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class Relation(BaseModel):
@@ -65,8 +64,7 @@ class Relation(BaseModel):
     valid_until: Optional[datetime] = None
     metadata: dict = Field(default_factory=dict)
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class Observation(BaseModel):

@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class ExecutionEventType(str, Enum):
@@ -100,8 +100,7 @@ class ExecutionEvent(BaseModel):
     # General
     raw_output: Optional[str] = None  # Raw output line from tool
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ExecutionSummary(BaseModel):
@@ -142,8 +141,7 @@ class ExecutionSummary(BaseModel):
     failures_blocking: list[str] = Field(default_factory=list)  # Blocking issues
     warnings_detected: list[str] = Field(default_factory=list)
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ExecutionCallback:

@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class ExpertiseLevel(str, Enum):
@@ -42,8 +42,7 @@ class DomainCoverage(BaseModel):
     first_encounter: Optional[datetime] = None
     expertise_level: ExpertiseLevel = ExpertiseLevel.BEGINNER
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class MemoryQuality(BaseModel):

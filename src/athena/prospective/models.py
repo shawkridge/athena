@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class TaskStatus(str, Enum):
@@ -49,8 +49,7 @@ class Plan(BaseModel):
     validated: bool = False                     # Plan has been validated
     validation_notes: Optional[str] = None      # Feedback from validation
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class PhaseMetrics(BaseModel):
@@ -61,8 +60,7 @@ class PhaseMetrics(BaseModel):
     completed_at: Optional[datetime] = None
     duration_minutes: Optional[float] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class TriggerType(str, Enum):
@@ -109,8 +107,7 @@ class ProspectiveTask(BaseModel):
     failure_reason: Optional[str] = None              # Why task failed (if failed)
     lessons_learned: Optional[str] = None             # What we learned from this task
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class TaskTrigger(BaseModel):
@@ -123,8 +120,7 @@ class TaskTrigger(BaseModel):
     fired: bool = False
     fired_at: Optional[datetime] = None
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class TaskDependency(BaseModel):
