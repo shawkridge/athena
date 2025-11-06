@@ -680,8 +680,8 @@ class UnifiedMemoryManager:
                     "recency": confidence.recency,
                     "consistency": confidence.consistency,
                     "completeness": confidence.completeness,
-                    "overall": confidence.overall_score,
-                    "level": confidence.confidence_level.value,
+                    "overall": confidence.average(),
+                    "level": confidence.level().value,
                 }
 
                 scored_layer.append(scored_result)
