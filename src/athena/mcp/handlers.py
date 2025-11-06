@@ -1074,10 +1074,62 @@ class MemoryMCPServer:
                         "required": ["operation", "project_id"],
                     },
                 ),
+                Tool(
+                    name="code_search_tools",
+                    description="Semantic code search and navigation (search_code_semantically, search_code_by_pattern, get_code_context, index_code_repository). Hybrid ranking: 40% semantic + 30% AST + 30% spatial. Use 'operation' parameter.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "operation": {
+                                "type": "string",
+                                "enum": ["search_code_semantically", "search_code_by_pattern", "get_code_context", "index_code_repository"],
+                                "description": "Code search operation",
+                            },
+                            "query": {"type": "string", "description": "Search query for semantic search"},
+                            "pattern": {"type": "string", "description": "Pattern or regex for pattern-based search"},
+                            "pattern_type": {"type": "string", "enum": ["ast", "regex"], "description": "Type of pattern (AST or regex)", "default": "ast"},
+                            "limit": {"type": "integer", "description": "Maximum results to return", "default": 5},
+                            "language": {"type": "string", "description": "Filter by programming language (python, javascript, typescript, go, rust, java)"},
+                            "element_type": {"type": "string", "description": "Filter by element type (function, class, module, import, etc.)"},
+                            "element_id": {"type": "string", "description": "Element ID for context retrieval"},
+                            "context_type": {"type": "string", "enum": ["definitions", "usages", "dependencies", "full"], "description": "Type of context to retrieve", "default": "full"},
+                            "radius": {"type": "integer", "description": "Hops in dependency graph for context", "default": 3},
+                            "repo_path": {"type": "string", "description": "Repository path for indexing"},
+                            "update_existing": {"type": "boolean", "description": "Update existing index", "default": False},
+                        },
+                        "required": ["operation"],
+                    },
+                ),
+                Tool(
+                    name="external_knowledge_tools",
+                    description="External knowledge lookup and expansion (lookup_external_knowledge, expand_knowledge_relations, synthesize_knowledge, explore_concept_network). Uses ConceptNet API with 21M+ relations. Use 'operation' parameter.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "operation": {
+                                "type": "string",
+                                "enum": ["lookup_external_knowledge", "expand_knowledge_relations", "synthesize_knowledge", "explore_concept_network"],
+                                "description": "External knowledge operation",
+                            },
+                            "concept": {"type": "string", "description": "Concept to look up or expand"},
+                            "start_concept": {"type": "string", "description": "Starting concept for network exploration"},
+                            "relation_types": {"type": "array", "items": {"type": "string"}, "description": "Filter by relation types (IsA, PartOf, UsedFor, AtLocation, etc.)"},
+                            "limit": {"type": "integer", "description": "Maximum results", "default": 10},
+                            "language": {"type": "string", "description": "Language code", "default": "en"},
+                            "max_hops": {"type": "integer", "description": "Max hops for knowledge expansion", "default": 2},
+                            "relation_filter": {"type": "string", "description": "Filter by specific relation type"},
+                            "synthesis_type": {"type": "string", "enum": ["comprehensive", "summary", "relationships"], "description": "Type of synthesis", "default": "comprehensive"},
+                            "depth": {"type": "integer", "description": "Depth for synthesis", "default": 2},
+                            "relations_of_interest": {"type": "array", "items": {"type": "string"}, "description": "Specific relations to explore"},
+                            "max_concepts": {"type": "integer", "description": "Maximum concepts in network", "default": 30},
+                        },
+                        "required": ["operation"],
+                    },
+                ),
             ]
 
         @self.server.call_tool()
-        async def call_tool(name: str, arguments: Any) -> list[TextContent]:
+        async def call_tool(name: str, args: Any) -> list[TextContent]:
             """Handle tool calls with operation routing (Strategy 1: Tool Grouping).
 
             Routes meta-tool calls to specific operations via OperationRouter.
@@ -1097,7 +1149,7 @@ class MemoryMCPServer:
                 meta_tools = list(OperationRouter.OPERATION_MAPS.keys())
                 if name in meta_tools:
                     # Route operation through meta-tool dispatcher
-                    result = await router.route(name, arguments)
+                    result = await router.route(name, args)
                     return [TextContent(type="text", text=json.dumps(result, indent=2))]
                 else:
                     # Unknown tool
@@ -1125,7 +1177,7 @@ class MemoryMCPServer:
     # Handler methods (now called via OperationRouter from meta-tools)
     # ============================================================================
     # These methods remain unchanged and are invoked by OperationRouter
-    # based on the "operation" parameter in the meta-tool arguments.
+    # based on the "operation" parameter in the meta-tool args.
     # Example: memory_tools with operation="recall" routes to _handle_recall()
 
     async def _handle_remember(self, args: dict) -> list[TextContent]:
@@ -2229,7 +2281,7 @@ class MemoryMCPServer:
         Creates a task in PLANNING phase and optionally generates an execution plan.
 
         Args:
-            args: Tool arguments including:
+            args: Tool args including:
                 - content: Task description
                 - active_form: Active form for the task (auto-generated if not provided)
                 - priority: Task priority (default: medium)
@@ -6106,7 +6158,7 @@ class MemoryMCPServer:
             tags = args.get("tags", [])
 
             if not all([project_id, name, description, category, rule_type, condition]):
-                return [TextContent(type="text", text="Missing required arguments")]
+                return [TextContent(type="text", text="Missing required args")]
 
             rule = Rule(
                 project_id=project_id,
@@ -6251,7 +6303,7 @@ class MemoryMCPServer:
 
             required = [rule_id, task_id, project_id, overridden_by, justification]
             if not all(required):
-                return [TextContent(type="text", text="Missing required arguments")]
+                return [TextContent(type="text", text="Missing required args")]
 
             expires_at = None
             if expires_in_hours:
@@ -6518,7 +6570,7 @@ class MemoryMCPServer:
             context_events = args.get("context_events")
 
             if not all([memory_id, layer, project_id]):
-                return [TextContent(type="text", text="Missing required arguments: memory_id, layer, project_id")]
+                return [TextContent(type="text", text="Missing required args: memory_id, layer, project_id")]
 
             result = self.central_executive.compute_memory_saliency(
                 memory_id=memory_id,
@@ -6601,7 +6653,7 @@ Explanation:
             context_events = args.get("context_events")
 
             if not all([memory_ids, layer, project_id]):
-                return [TextContent(type="text", text="Missing required arguments: memory_ids, layer, project_id")]
+                return [TextContent(type="text", text="Missing required args: memory_ids, layer, project_id")]
 
             if not isinstance(memory_ids, list):
                 memory_ids = [memory_ids]
@@ -9116,268 +9168,268 @@ Anomalies:
             return [TextContent(type="text", text=f"Error: {str(e)}")]
 
     # Git-aware temporal chain handlers
-    async def _handle_record_git_commit(self, arguments: dict) -> list[TextContent]:
+    async def _handle_record_git_commit(self, args: dict) -> list[TextContent]:
         """Handle record_git_commit tool."""
         try:
             git_handlers = GitMCPHandlers(self.store.db)
-            result = await git_handlers.record_git_commit(arguments)
+            result = await git_handlers.record_git_commit(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in record_git_commit [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in record_git_commit [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "record_git_commit"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_record_regression(self, arguments: dict) -> list[TextContent]:
+    async def _handle_record_regression(self, args: dict) -> list[TextContent]:
         """Handle record_regression tool."""
         try:
             git_handlers = GitMCPHandlers(self.store.db)
-            result = await git_handlers.record_regression(arguments)
+            result = await git_handlers.record_regression(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in record_regression [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in record_regression [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "record_regression"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_when_was_introduced(self, arguments: dict) -> list[TextContent]:
+    async def _handle_when_was_introduced(self, args: dict) -> list[TextContent]:
         """Handle when_was_introduced tool."""
         try:
             git_handlers = GitMCPHandlers(self.store.db)
-            result = await git_handlers.when_was_introduced(arguments)
+            result = await git_handlers.when_was_introduced(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in when_was_introduced [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in when_was_introduced [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "when_was_introduced"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_who_introduced_regression(self, arguments: dict) -> list[TextContent]:
+    async def _handle_who_introduced_regression(self, args: dict) -> list[TextContent]:
         """Handle who_introduced_regression tool."""
         try:
             git_handlers = GitMCPHandlers(self.store.db)
-            result = await git_handlers.who_introduced_regression(arguments)
+            result = await git_handlers.who_introduced_regression(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in who_introduced_regression [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in who_introduced_regression [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "who_introduced_regression"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_what_changed_since(self, arguments: dict) -> list[TextContent]:
+    async def _handle_what_changed_since(self, args: dict) -> list[TextContent]:
         """Handle what_changed_since tool."""
         try:
             git_handlers = GitMCPHandlers(self.store.db)
-            result = await git_handlers.what_changed_since(arguments)
+            result = await git_handlers.what_changed_since(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in what_changed_since [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in what_changed_since [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "what_changed_since"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_trace_regression_timeline(self, arguments: dict) -> list[TextContent]:
+    async def _handle_trace_regression_timeline(self, args: dict) -> list[TextContent]:
         """Handle trace_regression_timeline tool."""
         try:
             git_handlers = GitMCPHandlers(self.store.db)
-            result = await git_handlers.trace_regression_timeline(arguments)
+            result = await git_handlers.trace_regression_timeline(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in trace_regression_timeline [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in trace_regression_timeline [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "trace_regression_timeline"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_find_high_risk_commits(self, arguments: dict) -> list[TextContent]:
+    async def _handle_find_high_risk_commits(self, args: dict) -> list[TextContent]:
         """Handle find_high_risk_commits tool."""
         try:
             git_handlers = GitMCPHandlers(self.store.db)
-            result = await git_handlers.find_high_risk_commits(arguments)
+            result = await git_handlers.find_high_risk_commits(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in find_high_risk_commits [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in find_high_risk_commits [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "find_high_risk_commits"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_analyze_author_risk(self, arguments: dict) -> list[TextContent]:
+    async def _handle_analyze_author_risk(self, args: dict) -> list[TextContent]:
         """Handle analyze_author_risk tool."""
         try:
             git_handlers = GitMCPHandlers(self.store.db)
-            result = await git_handlers.analyze_author_risk(arguments)
+            result = await git_handlers.analyze_author_risk(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in analyze_author_risk [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in analyze_author_risk [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "analyze_author_risk"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_get_regression_statistics(self, arguments: dict) -> list[TextContent]:
+    async def _handle_get_regression_statistics(self, args: dict) -> list[TextContent]:
         """Handle get_regression_statistics tool."""
         try:
             git_handlers = GitMCPHandlers(self.store.db)
-            result = await git_handlers.get_regression_statistics(arguments)
+            result = await git_handlers.get_regression_statistics(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in get_regression_statistics [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in get_regression_statistics [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "get_regression_statistics"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_get_file_history(self, arguments: dict) -> list[TextContent]:
+    async def _handle_get_file_history(self, args: dict) -> list[TextContent]:
         """Handle get_file_history tool."""
         try:
             git_handlers = GitMCPHandlers(self.store.db)
-            result = await git_handlers.get_file_history(arguments)
+            result = await git_handlers.get_file_history(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in get_file_history [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in get_file_history [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "get_file_history"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_get_commits_by_author(self, arguments: dict) -> list[TextContent]:
+    async def _handle_get_commits_by_author(self, args: dict) -> list[TextContent]:
         """Handle get_commits_by_author tool."""
         try:
             git_handlers = GitMCPHandlers(self.store.db)
-            result = await git_handlers.get_commits_by_author(arguments)
+            result = await git_handlers.get_commits_by_author(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in get_commits_by_author [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in get_commits_by_author [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "get_commits_by_author"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_get_commits_by_file(self, arguments: dict) -> list[TextContent]:
+    async def _handle_get_commits_by_file(self, args: dict) -> list[TextContent]:
         """Handle get_commits_by_file tool."""
         try:
             git_handlers = GitMCPHandlers(self.store.db)
-            result = await git_handlers.get_commits_by_file(arguments)
+            result = await git_handlers.get_commits_by_file(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in get_commits_by_file [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in get_commits_by_file [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "get_commits_by_file"})
             return [TextContent(type="text", text=error_response)]
 
     # Phase 4: Procedural Learning from Code Patterns handlers
-    async def _handle_extract_refactoring_patterns(self, arguments: dict) -> list[TextContent]:
+    async def _handle_extract_refactoring_patterns(self, args: dict) -> list[TextContent]:
         """Handle extract_refactoring_patterns tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.extract_refactoring_patterns(arguments)
+            result = await pattern_handlers.extract_refactoring_patterns(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in extract_refactoring_patterns [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in extract_refactoring_patterns [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "extract_refactoring_patterns"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_extract_bug_fix_patterns(self, arguments: dict) -> list[TextContent]:
+    async def _handle_extract_bug_fix_patterns(self, args: dict) -> list[TextContent]:
         """Handle extract_bug_fix_patterns tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.extract_bug_fix_patterns(arguments)
+            result = await pattern_handlers.extract_bug_fix_patterns(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in extract_bug_fix_patterns [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in extract_bug_fix_patterns [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "extract_bug_fix_patterns"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_suggest_refactorings(self, arguments: dict) -> list[TextContent]:
+    async def _handle_suggest_refactorings(self, args: dict) -> list[TextContent]:
         """Handle suggest_refactorings tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.suggest_refactorings(arguments)
+            result = await pattern_handlers.suggest_refactorings(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in suggest_refactorings [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in suggest_refactorings [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "suggest_refactorings"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_suggest_bug_fixes(self, arguments: dict) -> list[TextContent]:
+    async def _handle_suggest_bug_fixes(self, args: dict) -> list[TextContent]:
         """Handle suggest_bug_fixes tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.suggest_bug_fixes(arguments)
+            result = await pattern_handlers.suggest_bug_fixes(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in suggest_bug_fixes [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in suggest_bug_fixes [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "suggest_bug_fixes"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_detect_code_smells(self, arguments: dict) -> list[TextContent]:
+    async def _handle_detect_code_smells(self, args: dict) -> list[TextContent]:
         """Handle detect_code_smells tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.detect_code_smells(arguments)
+            result = await pattern_handlers.detect_code_smells(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in detect_code_smells [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in detect_code_smells [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "detect_code_smells"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_get_pattern_suggestions(self, arguments: dict) -> list[TextContent]:
+    async def _handle_get_pattern_suggestions(self, args: dict) -> list[TextContent]:
         """Handle get_pattern_suggestions tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.get_pattern_suggestions(arguments)
+            result = await pattern_handlers.get_pattern_suggestions(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in get_pattern_suggestions [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in get_pattern_suggestions [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "get_pattern_suggestions"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_apply_suggestion(self, arguments: dict) -> list[TextContent]:
+    async def _handle_apply_suggestion(self, args: dict) -> list[TextContent]:
         """Handle apply_suggestion tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.apply_suggestion(arguments)
+            result = await pattern_handlers.apply_suggestion(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in apply_suggestion [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in apply_suggestion [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "apply_suggestion"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_dismiss_suggestion(self, arguments: dict) -> list[TextContent]:
+    async def _handle_dismiss_suggestion(self, args: dict) -> list[TextContent]:
         """Handle dismiss_suggestion tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.dismiss_suggestion(arguments)
+            result = await pattern_handlers.dismiss_suggestion(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in dismiss_suggestion [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in dismiss_suggestion [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "dismiss_suggestion"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_get_pattern_statistics(self, arguments: dict) -> list[TextContent]:
+    async def _handle_get_pattern_statistics(self, args: dict) -> list[TextContent]:
         """Handle get_pattern_statistics tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.get_pattern_statistics(arguments)
+            result = await pattern_handlers.get_pattern_statistics(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in get_pattern_statistics [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in get_pattern_statistics [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "get_pattern_statistics"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_get_pattern_effectiveness(self, arguments: dict) -> list[TextContent]:
+    async def _handle_get_pattern_effectiveness(self, args: dict) -> list[TextContent]:
         """Handle get_pattern_effectiveness tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.get_pattern_effectiveness(arguments)
+            result = await pattern_handlers.get_pattern_effectiveness(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in get_pattern_effectiveness [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in get_pattern_effectiveness [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "get_pattern_effectiveness"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_get_file_recommendations(self, arguments: dict) -> list[TextContent]:
+    async def _handle_get_file_recommendations(self, args: dict) -> list[TextContent]:
         """Handle get_file_recommendations tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.get_file_recommendations(arguments)
+            result = await pattern_handlers.get_file_recommendations(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in get_file_recommendations [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in get_file_recommendations [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "get_file_recommendations"})
             return [TextContent(type="text", text=error_response)]
 
-    async def _handle_get_pattern_library(self, arguments: dict) -> list[TextContent]:
+    async def _handle_get_pattern_library(self, args: dict) -> list[TextContent]:
         """Handle get_pattern_library tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.get_pattern_library(arguments)
+            result = await pattern_handlers.get_pattern_library(args)
             return [TextContent(type="text", text=result)]
         except Exception as e:
-            logger.error(f"Error in get_pattern_library [args={arguments}]: {e}", exc_info=True)
+            logger.error(f"Error in get_pattern_library [args={args}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "get_pattern_library"})
             return [TextContent(type="text", text=error_response)]
 
@@ -10891,6 +10943,54 @@ Anomalies:
             project_id=args.get("project_id"),
             threshold=args.get("threshold", 3)
         )]
+
+    # ========================================================================
+    # CODE SEARCH HANDLERS
+    # ========================================================================
+
+    async def _handle_search_code_semantically(self, args: dict) -> list[TextContent]:
+        """Perform semantic code search across repository."""
+        from .handlers_code_search import handle_search_code_semantically
+        return await handle_search_code_semantically(self, args)
+
+    async def _handle_search_code_by_pattern(self, args: dict) -> list[TextContent]:
+        """Search code by AST pattern or regex."""
+        from .handlers_code_search import handle_search_code_by_pattern
+        return await handle_search_code_by_pattern(self, args)
+
+    async def _handle_get_code_context(self, args: dict) -> list[TextContent]:
+        """Get context for a code element."""
+        from .handlers_code_search import handle_get_code_context
+        return await handle_get_code_context(self, args)
+
+    async def _handle_index_code_repository(self, args: dict) -> list[TextContent]:
+        """Index a code repository for search."""
+        from .handlers_code_search import handle_index_code_repository
+        return await handle_index_code_repository(self, args)
+
+    # ========================================================================
+    # EXTERNAL KNOWLEDGE HANDLERS
+    # ========================================================================
+
+    async def _handle_lookup_external_knowledge(self, args: dict) -> list[TextContent]:
+        """Look up external knowledge about a concept."""
+        from .handlers_external_knowledge import handle_lookup_external_knowledge
+        return await handle_lookup_external_knowledge(self, args)
+
+    async def _handle_expand_knowledge_relations(self, args: dict) -> list[TextContent]:
+        """Expand knowledge graph by discovering related concepts."""
+        from .handlers_external_knowledge import handle_expand_knowledge_relations
+        return await handle_expand_knowledge_relations(self, args)
+
+    async def _handle_synthesize_knowledge(self, args: dict) -> list[TextContent]:
+        """Synthesize knowledge from multiple sources."""
+        from .handlers_external_knowledge import handle_synthesize_knowledge
+        return await handle_synthesize_knowledge(self, args)
+
+    async def _handle_explore_concept_network(self, args: dict) -> list[TextContent]:
+        """Explore concept relationships interactively."""
+        from .handlers_external_knowledge import handle_explore_concept_network
+        return await handle_explore_concept_network(self, args)
 
     async def run(self):
         """Run the MCP server."""

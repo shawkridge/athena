@@ -53,7 +53,6 @@ class OperationRouter:
         "batch_record_events": "_handle_batch_record_events",
         "recall_events_by_session": "_handle_recall_events_by_session",
         "schedule_consolidation": "_handle_schedule_consolidation",
-        "batch_record_events": "_handle_batch_record_events",
         "record_execution": "_handle_record_execution",
         "record_execution_feedback": "_handle_record_execution_feedback",
         "record_git_commit": "_handle_record_git_commit",
@@ -147,13 +146,10 @@ class OperationRouter:
         "detect_budget_anomalies": "_handle_detect_budget_anomalies",
     }
 
-    # SECURITY_TOOLS: 5 operations
+    # SECURITY_TOOLS: 2 operations
     SECURITY_OPERATIONS = {
         "analyze_code_security": "_handle_analyze_code_security",
         "track_sensitive_data": "_handle_track_sensitive_data",
-        "analyze_code_security": "_handle_analyze_code_security",
-        "track_sensitive_data": "_handle_track_sensitive_data",
-        "analyze_code_security": "_handle_analyze_code_security",
     }
 
     # FINANCIAL_TOOLS: 6 operations
@@ -395,6 +391,22 @@ class OperationRouter:
         "find_bridge_entities": "_handle_find_bridge_entities",
     }
 
+    # CODE_SEARCH_TOOLS: 4 operations
+    CODE_SEARCH_OPERATIONS = {
+        "search_code_semantically": "_handle_search_code_semantically",
+        "search_code_by_pattern": "_handle_search_code_by_pattern",
+        "get_code_context": "_handle_get_code_context",
+        "index_code_repository": "_handle_index_code_repository",
+    }
+
+    # EXTERNAL_KNOWLEDGE_TOOLS: 4 operations
+    EXTERNAL_KNOWLEDGE_OPERATIONS = {
+        "lookup_external_knowledge": "_handle_lookup_external_knowledge",
+        "expand_knowledge_relations": "_handle_expand_knowledge_relations",
+        "synthesize_knowledge": "_handle_synthesize_knowledge",
+        "explore_concept_network": "_handle_explore_concept_network",
+    }
+
     # All operation maps
     OPERATION_MAPS = {
         "memory_tools": MEMORY_OPERATIONS,
@@ -428,6 +440,8 @@ class OperationRouter:
         "skill_optimization_tools": SKILL_OPTIMIZATION_OPERATIONS,
         "zettelkasten_tools": ZETTELKASTEN_OPERATIONS,
         "graphrag_tools": GRAPHRAG_OPERATIONS,
+        "code_search_tools": CODE_SEARCH_OPERATIONS,
+        "external_knowledge_tools": EXTERNAL_KNOWLEDGE_OPERATIONS,
     }
 
     def __init__(self, handler_instance: Any):

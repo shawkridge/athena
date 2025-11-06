@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from .consolidation.system import ConsolidationSystem
+from .core.confidence_scoring import ConfidenceScorer
 from .core.database import Database
 from .episodic.models import EpisodicEvent, EventContext, EventType
 from .episodic.store import EpisodicStore
@@ -83,6 +84,9 @@ class UnifiedMemoryManager:
         self.project_manager = project_manager
         self.db = semantic.db  # Reference to database from semantic store
 
+        # Initialize confidence scorer for result quality assessment
+        self.confidence_scorer = ConfidenceScorer(meta_store=meta)
+
         # Advanced RAG setup
         self.rag_manager = rag_manager
         if enable_advanced_rag and not rag_manager and RAG_AVAILABLE:
@@ -122,18 +126,22 @@ class UnifiedMemoryManager:
         query: str,
         context: Optional[dict] = None,
         k: int = 5,
-        conversation_history: Optional[list[dict]] = None
+        conversation_history: Optional[list[dict]] = None,
+        include_confidence_scores: bool = True,
+        explain_reasoning: bool = False
     ) -> dict:
-        """Intelligent multi-layer retrieval.
+        """Intelligent multi-layer retrieval with optional confidence scoring and explanation.
 
         Args:
             query: Search query
             context: Optional context (cwd, files, recent actions, etc.)
             k: Number of results to return
             conversation_history: Recent conversation messages for context-aware queries
+            include_confidence_scores: If True, add confidence scores to results
+            explain_reasoning: If True, include query routing explanation
 
         Returns:
-            Dictionary with results from relevant layers
+            Dictionary with results from relevant layers, optionally with confidence scores and explanation
         """
         context = context or {}
 
@@ -173,6 +181,14 @@ class UnifiedMemoryManager:
 
         # Track query for meta-memory
         self._track_query(query, query_type, results)
+
+        # Apply confidence scores if requested
+        if include_confidence_scores:
+            results = self.apply_confidence_scores(results)
+
+        # Add reasoning explanation if requested
+        if explain_reasoning:
+            results["_explanation"] = self._explain_query_routing(query, query_type, results)
 
         return results
 
@@ -627,3 +643,82 @@ class UnifiedMemoryManager:
             for result in results["semantic"]:
                 if "id" in result:
                     self.semantic.db.update_access_stats(result["id"])
+
+    def apply_confidence_scores(self, results: dict) -> dict:
+        """Apply confidence scores to retrieval results from all layers.
+
+        Args:
+            results: Dictionary of results from retrieve() method
+
+        Returns:
+            Dictionary with confidence scores added to each result layer
+        """
+        scored_results = {}
+
+        # Apply scores to each layer
+        for layer, layer_results in results.items():
+            if not isinstance(layer_results, list):
+                scored_results[layer] = layer_results
+                continue
+
+            scored_layer = []
+            for result in layer_results:
+                # Create a copy to avoid modifying original
+                scored_result = dict(result) if isinstance(result, dict) else {"content": str(result)}
+
+                # Compute confidence scores
+                confidence = self.confidence_scorer.score(
+                    memory=scored_result,
+                    source_layer=layer,
+                    semantic_score=result.get("similarity") if isinstance(result, dict) else None
+                )
+
+                # Add confidence scores to result
+                scored_result["confidence"] = {
+                    "semantic_relevance": confidence.semantic_relevance,
+                    "source_quality": confidence.source_quality,
+                    "recency": confidence.recency,
+                    "consistency": confidence.consistency,
+                    "completeness": confidence.completeness,
+                    "overall": confidence.overall_score,
+                    "level": confidence.confidence_level.value,
+                }
+
+                scored_layer.append(scored_result)
+
+            scored_results[layer] = scored_layer
+
+        return scored_results
+
+    def _explain_query_routing(self, query: str, query_type: str, results: dict) -> dict:
+        """Explain how a query was classified and routed.
+
+        Args:
+            query: Original query string
+            query_type: Classified query type
+            results: Results returned from the query
+
+        Returns:
+            Dictionary with explanation details
+        """
+        # Determine which layers were searched
+        searched_layers = [layer for layer in results.keys() if layer != "_explanation"]
+
+        # Map query type to human-readable explanation
+        type_explanations = {
+            QueryType.TEMPORAL: "Searched episodic memory - you asked about when something happened",
+            QueryType.FACTUAL: "Searched semantic memory - you asked for factual information",
+            QueryType.RELATIONAL: "Searched knowledge graph - you asked about relationships",
+            QueryType.PROCEDURAL: "Searched procedural memory - you asked how to do something",
+            QueryType.PROSPECTIVE: "Searched prospective memory - you asked about tasks/goals",
+            QueryType.META: "Searched meta-memory - you asked about what we know",
+            QueryType.PLANNING: "Searched planning layer - you asked for strategy/decomposition",
+        }
+
+        return {
+            "query": query,
+            "query_type": query_type,
+            "reasoning": type_explanations.get(query_type, "Performed hybrid search across all layers"),
+            "layers_searched": searched_layers,
+            "result_count": sum(len(r) if isinstance(r, list) else 1 for r in results.values() if r != "_explanation"),
+        }
