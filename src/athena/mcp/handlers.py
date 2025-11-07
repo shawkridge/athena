@@ -1076,26 +1076,26 @@ class MemoryMCPServer:
                 ),
                 Tool(
                     name="code_search_tools",
-                    description="Semantic code search and navigation (search_code_semantically, search_code_by_pattern, get_code_context, index_code_repository). Hybrid ranking: 40% semantic + 30% AST + 30% spatial. Use 'operation' parameter.",
+                    description="Semantic code search with Tree-Sitter integration (search_code_semantically, search_code_by_type, search_code_by_name, analyze_code_file, find_code_dependencies, index_code_repository, get_code_statistics). Embedding-based similarity with multi-factor scoring: 50% semantic + 25% name + 25% type. Use 'operation' parameter.",
                     inputSchema={
                         "type": "object",
                         "properties": {
                             "operation": {
                                 "type": "string",
-                                "enum": ["search_code_semantically", "search_code_by_pattern", "get_code_context", "index_code_repository"],
+                                "enum": ["search_code_semantically", "search_code_by_type", "search_code_by_name", "analyze_code_file", "find_code_dependencies", "index_code_repository", "get_code_statistics"],
                                 "description": "Code search operation",
                             },
                             "query": {"type": "string", "description": "Search query for semantic search"},
-                            "pattern": {"type": "string", "description": "Pattern or regex for pattern-based search"},
-                            "pattern_type": {"type": "string", "enum": ["ast", "regex"], "description": "Type of pattern (AST or regex)", "default": "ast"},
-                            "limit": {"type": "integer", "description": "Maximum results to return", "default": 5},
-                            "language": {"type": "string", "description": "Filter by programming language (python, javascript, typescript, go, rust, java)"},
-                            "element_type": {"type": "string", "description": "Filter by element type (function, class, module, import, etc.)"},
-                            "element_id": {"type": "string", "description": "Element ID for context retrieval"},
-                            "context_type": {"type": "string", "enum": ["definitions", "usages", "dependencies", "full"], "description": "Type of context to retrieve", "default": "full"},
-                            "radius": {"type": "integer", "description": "Hops in dependency graph for context", "default": 3},
-                            "repo_path": {"type": "string", "description": "Repository path for indexing"},
-                            "update_existing": {"type": "boolean", "description": "Update existing index", "default": False},
+                            "unit_type": {"type": "string", "description": "Code unit type to search for (function, class, import)"},
+                            "name": {"type": "string", "description": "Code element name to search for"},
+                            "file_path": {"type": "string", "description": "Path to code file for analysis or dependency finding"},
+                            "entity_name": {"type": "string", "description": "Name of function/class to analyze dependencies for"},
+                            "repo_path": {"type": "string", "description": "Path to repository"},
+                            "exact": {"type": "boolean", "description": "Exact name match only (default: false)", "default": False},
+                            "rebuild": {"type": "boolean", "description": "Force rebuild index (default: false)", "default": False},
+                            "limit": {"type": "integer", "description": "Maximum results to return", "default": 10},
+                            "top_k": {"type": "integer", "description": "Number of top results (alias for limit)", "default": 10},
+                            "min_score": {"type": "number", "description": "Minimum relevance score threshold", "default": 0.3},
                         },
                         "required": ["operation"],
                     },
@@ -10953,20 +10953,35 @@ Anomalies:
         from .handlers_code_search import handle_search_code_semantically
         return await handle_search_code_semantically(self, args)
 
-    async def _handle_search_code_by_pattern(self, args: dict) -> list[TextContent]:
-        """Search code by AST pattern or regex."""
-        from .handlers_code_search import handle_search_code_by_pattern
-        return await handle_search_code_by_pattern(self, args)
+    async def _handle_search_code_by_type(self, args: dict) -> list[TextContent]:
+        """Search code by element type (function, class, import)."""
+        from .handlers_code_search import handle_search_code_by_type
+        return await handle_search_code_by_type(self, args)
 
-    async def _handle_get_code_context(self, args: dict) -> list[TextContent]:
-        """Get context for a code element."""
-        from .handlers_code_search import handle_get_code_context
-        return await handle_get_code_context(self, args)
+    async def _handle_search_code_by_name(self, args: dict) -> list[TextContent]:
+        """Search code by name (exact or partial match)."""
+        from .handlers_code_search import handle_search_code_by_name
+        return await handle_search_code_by_name(self, args)
+
+    async def _handle_analyze_code_file(self, args: dict) -> list[TextContent]:
+        """Analyze structure of a code file."""
+        from .handlers_code_search import handle_analyze_code_file
+        return await handle_analyze_code_file(self, args)
+
+    async def _handle_find_code_dependencies(self, args: dict) -> list[TextContent]:
+        """Find dependencies of a code entity."""
+        from .handlers_code_search import handle_find_code_dependencies
+        return await handle_find_code_dependencies(self, args)
 
     async def _handle_index_code_repository(self, args: dict) -> list[TextContent]:
         """Index a code repository for search."""
         from .handlers_code_search import handle_index_code_repository
         return await handle_index_code_repository(self, args)
+
+    async def _handle_get_code_statistics(self, args: dict) -> list[TextContent]:
+        """Get comprehensive statistics about indexed code."""
+        from .handlers_code_search import handle_get_code_statistics
+        return await handle_get_code_statistics(self, args)
 
     # ========================================================================
     # EXTERNAL KNOWLEDGE HANDLERS

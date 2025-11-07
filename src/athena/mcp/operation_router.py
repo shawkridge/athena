@@ -394,9 +394,12 @@ class OperationRouter:
     # CODE_SEARCH_TOOLS: 4 operations
     CODE_SEARCH_OPERATIONS = {
         "search_code_semantically": "_handle_search_code_semantically",
-        "search_code_by_pattern": "_handle_search_code_by_pattern",
-        "get_code_context": "_handle_get_code_context",
+        "search_code_by_type": "_handle_search_code_by_type",
+        "search_code_by_name": "_handle_search_code_by_name",
+        "analyze_code_file": "_handle_analyze_code_file",
+        "find_code_dependencies": "_handle_find_code_dependencies",
         "index_code_repository": "_handle_index_code_repository",
+        "get_code_statistics": "_handle_get_code_statistics",
     }
 
     # EXTERNAL_KNOWLEDGE_TOOLS: 4 operations
