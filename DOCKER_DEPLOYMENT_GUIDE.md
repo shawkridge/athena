@@ -7,19 +7,38 @@
 
 ## Quick Start
 
-```bash
-# 1. Start Docker with mounted codebase
-docker run \
-  -v /home/user/.work/athena:/app/athena \
-  -v /home/user/.claude:/app/claude \
-  -e PYTHONPATH=/app/athena/src:/app/claude \
-  athena-system
+### Using Docker Compose (Recommended)
 
-# 2. System automatically initializes with hooks
-# 3. Agents invoke via tool autodiscovery
-# 4. All operations recorded as episodic events
-# 5. Consolidation runs at session end
+```bash
+# 1. Start the full Athena stack
+docker-compose up -d
+
+# 2. Verify services are running
+docker-compose ps
+
+# 3. Access services
+# - Athena HTTP API:       http://localhost:3000
+# - Dashboard Backend:     http://localhost:8000
+# - Ollama (local LLM):    http://localhost:11434
+# - Qdrant (vector DB):    http://localhost:6333
+# - Redis (cache):         http://localhost:6379
+
+# 4. System automatically:
+#    - Initializes with hooks
+#    - Agents invoke via tool autodiscovery
+#    - Records episodic events
+#    - Consolidates patterns at session end
 ```
+
+### Services in Docker Compose
+
+| Service | Port | Purpose | Volume |
+|---------|------|---------|--------|
+| **athena** | 3000 | Athena HTTP API | athena-data:/root/.athena |
+| **backend** | 8000 | Dashboard Backend | (read-only access) |
+| **ollama** | 11434 | Local LLM for embeddings | $HOME/.ollama |
+| **qdrant** | 6333 | Vector database | qdrant-data:/qdrant/storage |
+| **redis** | 6379 | Cache layer | redis-data:/data |
 
 ---
 
@@ -391,15 +410,31 @@ status = load.get_status()
 
 ## Summary
 
-The Athena system is **production-ready** with:
+The Athena system is **production-ready** with Docker Compose:
+
+### Quick Start
+```bash
+cd /home/user/.work/athena
+docker-compose up -d
+```
+
+### Services Running
+- Athena HTTP API (port 3000)
+- Dashboard Backend (port 8000)
+- Ollama local LLM (port 11434)
+- Qdrant vector DB (port 6333)
+- Redis cache (port 6379)
+
+### System Features
 - ✅ 100% of critical gaps implemented
 - ✅ 14 autonomous agents with tool autodiscovery
-- ✅ 6 strategic hook points
+- ✅ 6 strategic hook points (automated)
 - ✅ Self-RAG and ReAct pipelines verified
 - ✅ Dual-process consolidation
 - ✅ Local-first, offline-capable architecture
+- ✅ Full Docker Compose orchestration
 
-Just mount the codebase, start the container, and let the hooks do the work!
+The system automatically activates hooks, invokes agents via tool autodiscovery, records episodic events, and consolidates patterns - all without manual intervention!
 
 ---
 
