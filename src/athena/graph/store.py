@@ -99,6 +99,23 @@ class GraphStore(BaseStore[Entity]):
             )
         """)
 
+        # Communities table (for Leiden clustering results)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS communities (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER NOT NULL,
+                entity_ids TEXT NOT NULL,
+                level INTEGER DEFAULT 0,
+                density REAL DEFAULT 0.0,
+                internal_edges INTEGER DEFAULT 0,
+                external_edges INTEGER DEFAULT 0,
+                summary TEXT,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL,
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+            )
+        """)
+
         # Indices
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_entities_type ON entities(entity_type)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_entities_project ON entities(project_id)")
@@ -113,6 +130,12 @@ class GraphStore(BaseStore[Entity]):
         )
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_observations_entity ON entity_observations(entity_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_communities_project ON communities(project_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_communities_level ON communities(level)"
         )
 
         self.db.conn.commit()
