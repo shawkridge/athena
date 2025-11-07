@@ -2,10 +2,11 @@
 
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 import logging
 
 from ..core.database import Database
+from ..core.database_factory import get_database, DatabaseFactory
 from ..core.base_store import BaseStore
 from ..core.embeddings import EmbeddingModel
 from ..core.models import Memory, MemorySearchResult, MemoryType, Project
@@ -31,18 +32,35 @@ class MemoryStore(BaseStore):
 
     def __init__(
         self,
-        db_path: str | Path,
+        db_path: Optional[str | Path] = None,
         embedding_model: Optional[str] = None,
-        use_qdrant: bool = True
+        use_qdrant: bool = True,
+        backend: Optional[str] = None,
     ):
         """Initialize memory store.
 
+        Supports both SQLite (default, local) and PostgreSQL (unified multi-domain).
+        Auto-detects backend from environment variables or uses provided backend.
+
         Args:
-            db_path: Path to SQLite database
+            db_path: Path to SQLite database (optional, used for SQLite backend)
             embedding_model: Model name/path for embeddings (default: from config/provider)
             use_qdrant: If True, use Qdrant for vector storage (default: True)
+            backend: Database backend ('sqlite', 'postgres', None for auto-detect)
         """
-        self.db = Database(db_path)
+        # Initialize database - auto-detects backend from environment or uses provided backend
+        # If PostgreSQL env vars are set, uses PostgreSQL; otherwise uses SQLite with db_path
+        if backend == 'postgres' or (backend is None and self._should_use_postgres()):
+            logger.info("Initializing MemoryStore with PostgreSQL backend")
+            self.db = get_database(backend='postgres')
+            # For PostgreSQL, we don't use db_path
+        else:
+            # Use SQLite (default/fallback)
+            if db_path is None:
+                db_path = config.DATABASE_PATH
+            logger.info(f"Initializing MemoryStore with SQLite backend: {db_path}")
+            self.db = Database(db_path)
+
         super().__init__(self.db)
         # EmbeddingModel will use config provider and defaults
         self.embedder = EmbeddingModel(embedding_model)
@@ -65,6 +83,18 @@ class MemoryStore(BaseStore):
 
         self.search = SemanticSearch(self.db, self.embedder, qdrant=self.qdrant)
         self.optimizer = MemoryOptimizer(self.db)
+
+    @staticmethod
+    def _should_use_postgres() -> bool:
+        """Check if PostgreSQL should be used based on environment variables.
+
+        Returns:
+            True if PostgreSQL environment variables are configured
+        """
+        import os
+        # Check for key PostgreSQL environment variables
+        pg_vars = ['ATHENA_POSTGRES_HOST', 'DATABASE_URL', 'POSTGRES_HOST']
+        return any(os.environ.get(var) for var in pg_vars)
 
     def _row_to_model(self, row: dict) -> Memory:
         """Convert database row to Memory model.

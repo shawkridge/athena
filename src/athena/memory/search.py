@@ -1,9 +1,10 @@
-"""Semantic search implementation using Qdrant or sqlite-vec fallback."""
+"""Semantic search implementation using PostgreSQL hybrid, Qdrant, or sqlite-vec fallback."""
 
+import asyncio
 import json
 import time
 import logging
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, Union
 
 from ..core.database import Database
 from ..core.embeddings import EmbeddingModel
@@ -11,23 +12,24 @@ from ..core.models import Memory, MemorySearchResult, MemoryType
 
 if TYPE_CHECKING:
     from ..rag.qdrant_adapter import QdrantAdapter
+    from ..core.database_postgres import PostgresDatabase
 
 logger = logging.getLogger(__name__)
 
 
 class SemanticSearch:
-    """Semantic search over memory vectors using Qdrant (primary) or sqlite-vec (fallback)."""
+    """Semantic search over memory vectors with PostgreSQL hybrid, Qdrant, or sqlite-vec."""
 
     def __init__(
         self,
-        db: Database,
+        db: Union[Database, "PostgresDatabase"],
         embedder: EmbeddingModel,
         qdrant: Optional["QdrantAdapter"] = None
     ):
         """Initialize semantic search.
 
         Args:
-            db: Database instance
+            db: Database instance (SQLite Database or PostgresDatabase)
             embedder: Embedding model
             qdrant: Optional Qdrant adapter for vector search
         """
@@ -35,10 +37,27 @@ class SemanticSearch:
         self.embedder = embedder
         self.qdrant = qdrant
 
-        if qdrant:
+        # Detect database backend
+        self._is_postgres = self._check_postgres()
+
+        if self._is_postgres:
+            logger.info("SemanticSearch initialized with PostgreSQL hybrid backend")
+        elif qdrant:
             logger.info("SemanticSearch initialized with Qdrant backend")
         else:
             logger.info("SemanticSearch initialized with sqlite-vec backend")
+
+    def _check_postgres(self) -> bool:
+        """Check if database is PostgresDatabase.
+
+        Returns:
+            True if database is PostgreSQL, False otherwise
+        """
+        try:
+            from ..core.database_postgres import PostgresDatabase
+            return isinstance(self.db, PostgresDatabase)
+        except (ImportError, AttributeError):
+            return False
 
     def recall(
         self,
@@ -48,7 +67,9 @@ class SemanticSearch:
         memory_types: Optional[list[MemoryType]] = None,
         min_similarity: float = 0.3,
     ) -> list[MemorySearchResult]:
-        """Search for relevant memories using Qdrant or sqlite-vec fallback.
+        """Search for relevant memories.
+
+        Uses PostgreSQL hybrid search (best), Qdrant (if available), or sqlite-vec (fallback).
 
         Args:
             query: Search query
@@ -63,15 +84,135 @@ class SemanticSearch:
         # Generate query embedding
         query_embedding = self.embedder.embed(query)
 
+        # Use PostgreSQL hybrid search if available (best performance + quality)
+        if self._is_postgres:
+            return self._recall_postgres(
+                query_embedding, project_id, query, k, memory_types, min_similarity
+            )
         # Use Qdrant if available
-        if self.qdrant:
+        elif self.qdrant:
             return self._recall_qdrant(
                 query_embedding, project_id, k, memory_types, min_similarity
             )
+        # Fall back to sqlite-vec
         else:
             return self._recall_sqlite(
                 query_embedding, project_id, k, memory_types, min_similarity
             )
+
+    def _recall_postgres(
+        self,
+        query_embedding: list[float],
+        project_id: int,
+        query_text: str,
+        k: int,
+        memory_types: Optional[list[MemoryType]],
+        min_similarity: float,
+    ) -> list[MemorySearchResult]:
+        """Search using PostgreSQL native hybrid search.
+
+        Uses native SQL combining semantic similarity + full-text search + recency.
+
+        Args:
+            query_embedding: Query embedding vector
+            project_id: Project ID to filter by
+            query_text: Original query text for full-text search
+            k: Number of results
+            memory_types: Optional memory type filter
+            min_similarity: Minimum similarity threshold
+
+        Returns:
+            List of search results
+        """
+        try:
+            # Use asyncio.run() to bridge sync/async gap
+            # This is safe because SemanticSearch is meant to be called from sync code
+            results = asyncio.run(
+                self._recall_postgres_async(
+                    query_embedding, project_id, query_text, k, memory_types, min_similarity
+                )
+            )
+            logger.debug(f"PostgreSQL hybrid search returned {len(results)} results")
+            return results
+        except Exception as e:
+            logger.error(f"PostgreSQL search failed: {e}. Falling back to Qdrant/SQLite.")
+            # Fall back to other backends
+            if self.qdrant:
+                return self._recall_qdrant(
+                    query_embedding, project_id, k, memory_types, min_similarity
+                )
+            else:
+                return self._recall_sqlite(
+                    query_embedding, project_id, k, memory_types, min_similarity
+                )
+
+    async def _recall_postgres_async(
+        self,
+        query_embedding: list[float],
+        project_id: int,
+        query_text: str,
+        k: int,
+        memory_types: Optional[list[MemoryType]],
+        min_similarity: float,
+    ) -> list[MemorySearchResult]:
+        """Async PostgreSQL hybrid search implementation.
+
+        Args:
+            query_embedding: Query embedding vector
+            project_id: Project ID
+            query_text: Original query text
+            k: Number of results
+            memory_types: Optional memory type filter
+            min_similarity: Minimum similarity threshold
+
+        Returns:
+            List of search results
+        """
+        # Build type filter if provided
+        type_filter = None
+        if memory_types:
+            type_filter = [mt.value for mt in memory_types]
+
+        # Use hybrid search from PostgresDatabase
+        # The hybrid_search method combines:
+        # - Semantic similarity (vector cosine similarity)
+        # - Full-text search (BM25-like scoring via PostgreSQL tsvector)
+        # - Recency boost (exponential decay over time)
+        pg_db = self.db  # Type: PostgresDatabase
+        search_results = await pg_db.hybrid_search(
+            project_id=project_id,
+            embedding=query_embedding,
+            query_text=query_text,
+            memory_types=type_filter,
+            limit=k,
+            min_similarity=min_similarity,
+        )
+
+        # Convert database results to MemorySearchResult objects
+        results = []
+        for rank, db_result in enumerate(search_results, 1):
+            # db_result is a dict with: id, content, similarity_score, fts_score, recency_score, etc.
+            memory_id = db_result.get("id")
+            similarity = db_result.get("similarity_score", 0.0)
+
+            # Get full memory object for context
+            memory = await pg_db.get_memory(memory_id)
+            if memory:
+                # Update access stats asynchronously
+                try:
+                    await pg_db.update_access_stats(memory_id)
+                except Exception as e:
+                    logger.debug(f"Failed to update access stats: {e}")
+
+                results.append(
+                    MemorySearchResult(
+                        memory=memory,
+                        similarity=similarity,
+                        rank=rank,
+                    )
+                )
+
+        return results
 
     def _recall_qdrant(
         self,
@@ -279,7 +420,9 @@ class SemanticSearch:
     def search_across_projects(
         self, query: str, exclude_project_id: Optional[int] = None, k: int = 5
     ) -> list[MemorySearchResult]:
-        """Search across all projects using sqlite-vec.
+        """Search across all projects.
+
+        Uses PostgreSQL (if available) or sqlite-vec fallback.
 
         Args:
             query: Search query
@@ -290,6 +433,132 @@ class SemanticSearch:
             Search results from all projects
         """
         query_embedding = self.embedder.embed(query)
+
+        # Use PostgreSQL if available
+        if self._is_postgres:
+            return self._search_across_projects_postgres(
+                query_embedding, query, exclude_project_id, k
+            )
+        # Fall back to sqlite-vec
+        else:
+            return self._search_across_projects_sqlite(
+                query_embedding, exclude_project_id, k
+            )
+
+    def _search_across_projects_postgres(
+        self,
+        query_embedding: list[float],
+        query_text: str,
+        exclude_project_id: Optional[int],
+        k: int,
+    ) -> list[MemorySearchResult]:
+        """Search across projects using PostgreSQL hybrid search.
+
+        Args:
+            query_embedding: Query embedding vector
+            query_text: Original query text
+            exclude_project_id: Project ID to exclude
+            k: Number of results
+
+        Returns:
+            Search results from all projects
+        """
+        try:
+            results = asyncio.run(
+                self._search_across_projects_postgres_async(
+                    query_embedding, query_text, exclude_project_id, k
+                )
+            )
+            return results
+        except Exception as e:
+            logger.error(f"PostgreSQL cross-project search failed: {e}")
+            return self._search_across_projects_sqlite(
+                query_embedding, exclude_project_id, k
+            )
+
+    async def _search_across_projects_postgres_async(
+        self,
+        query_embedding: list[float],
+        query_text: str,
+        exclude_project_id: Optional[int],
+        k: int,
+    ) -> list[MemorySearchResult]:
+        """Async PostgreSQL cross-project search.
+
+        Args:
+            query_embedding: Query embedding vector
+            query_text: Original query text
+            exclude_project_id: Project ID to exclude
+            k: Number of results
+
+        Returns:
+            Search results
+        """
+        pg_db = self.db  # Type: PostgresDatabase
+
+        # Get all project IDs (or all except excluded)
+        # For now, use a large project_id range, or query projects table
+        # We'll search with project_id filtering if needed
+        try:
+            # Search across all with hybrid scoring
+            search_results = await pg_db.hybrid_search(
+                project_id=None,  # Cross-project search
+                embedding=query_embedding,
+                query_text=query_text,
+                memory_types=None,
+                limit=k * 2,  # Get more for filtering
+                min_similarity=0.2,  # Lower threshold for cross-project
+            )
+        except TypeError:
+            # If hybrid_search doesn't support None project_id, use semantic search
+            search_results = await pg_db.semantic_search(
+                project_id=None,
+                embedding=query_embedding,
+                limit=k * 2,
+                min_similarity=0.2,
+            )
+
+        # Filter out excluded project if specified
+        results = []
+        for rank, db_result in enumerate(search_results, 1):
+            memory_id = db_result.get("id")
+            similarity = db_result.get("similarity_score", 0.0)
+
+            memory = await pg_db.get_memory(memory_id)
+            if memory:
+                # Skip if matches exclude_project_id
+                if exclude_project_id and memory.project_id == exclude_project_id:
+                    continue
+
+                results.append(
+                    MemorySearchResult(
+                        memory=memory,
+                        similarity=similarity,
+                        rank=len(results) + 1,
+                    )
+                )
+
+                if len(results) >= k:
+                    break
+
+        return results
+
+    def _search_across_projects_sqlite(
+        self,
+        query_embedding: list[float],
+        exclude_project_id: Optional[int],
+        k: int,
+    ) -> list[MemorySearchResult]:
+        """Search across projects using sqlite-vec.
+
+        Args:
+            query_embedding: Query embedding vector
+            exclude_project_id: Project ID to exclude
+            k: Number of results
+
+        Returns:
+            Search results from all projects
+        """
         query_embedding_json = json.dumps(query_embedding)
 
         cursor = self.db.conn.cursor()
