@@ -11,6 +11,7 @@ from typing import Optional
 import sqlite_vec
 
 from .models import Memory, MemoryType, Project
+from . import config
 
 
 class Database:
@@ -37,6 +38,9 @@ class Database:
     def _init_schema(self):
         """Create database schema if not exists."""
         cursor = self.conn.cursor()
+
+        # Get embedding dimension from config (standardized to 768D)
+        embedding_dim = getattr(config, 'LLAMACPP_EMBEDDING_DIM', 768)
 
         # Projects table
         cursor.execute("""
@@ -67,10 +71,10 @@ class Database:
             )
         """)
 
-        # Vector embeddings virtual table
-        cursor.execute("""
+        # Vector embeddings virtual table - use configured embedding dimension
+        cursor.execute(f"""
             CREATE VIRTUAL TABLE IF NOT EXISTS memory_vectors USING vec0(
-                embedding FLOAT[768]
+                embedding FLOAT[{embedding_dim}]
             )
         """)
 
@@ -164,9 +168,9 @@ class Database:
             )
         """)
 
-        cursor.execute("""
+        cursor.execute(f"""
             CREATE VIRTUAL TABLE IF NOT EXISTS event_vectors USING vec0(
-                embedding FLOAT[768]
+                embedding FLOAT[{embedding_dim}]
             )
         """)
 
@@ -859,6 +863,114 @@ class Database:
         except Exception:
             self.conn.rollback()
             raise
+
+    def bulk_insert(self, table: str, rows: list[dict]) -> int:
+        """Insert multiple rows efficiently in a single transaction.
+
+        Args:
+            table: Table name to insert into
+            rows: List of dictionaries with column names as keys
+
+        Returns:
+            Number of rows inserted
+
+        Example:
+            db.bulk_insert("memories", [
+                {"content": "fact1", "memory_type": "fact", ...},
+                {"content": "fact2", "memory_type": "fact", ...},
+            ])
+        """
+        if not rows:
+            return 0
+
+        try:
+            # Extract column names from first row
+            columns = list(rows[0].keys())
+            placeholders = ", ".join(["?"] * len(columns))
+            query = f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})"
+
+            # Convert dicts to tuples in order of columns
+            values = [tuple(row[col] for col in columns) for row in rows]
+
+            cursor = self.conn.cursor()
+            cursor.executemany(query, values)
+            self.conn.commit()
+
+            return cursor.rowcount
+        except Exception as e:
+            self.conn.rollback()
+            raise e
+
+    def filtered_search(
+        self,
+        table: str,
+        filters: Optional[dict] = None,
+        order_by: Optional[str] = None,
+        limit: Optional[int] = None
+    ) -> list:
+        """Execute flexible filtered query on a table.
+
+        Args:
+            table: Table name to query
+            filters: Filter dict with multiple formats:
+                - Simple: {"column": value}  -> WHERE column = value
+                - Comparison: {"column": {">": 50}}  -> WHERE column > 50
+                - In: {"column": {"IN": [1, 2, 3]}}  -> WHERE column IN (1, 2, 3)
+            order_by: Column(s) to order by (e.g., "created_at DESC")
+            limit: Maximum number of results
+
+        Returns:
+            List of results (sqlite3.Row objects)
+
+        Example:
+            results = db.filtered_search(
+                "memories",
+                filters={
+                    "project_id": 1,
+                    "usefulness_score": {">": 0.5},
+                    "memory_type": {"IN": ["fact", "concept"]}
+                },
+                order_by="created_at DESC",
+                limit=10
+            )
+        """
+        try:
+            where_parts = []
+            params = []
+
+            if filters:
+                for col, value in filters.items():
+                    if isinstance(value, dict):
+                        # Complex filter: {"op": val}
+                        for op, op_value in value.items():
+                            if op.upper() == "IN":
+                                if isinstance(op_value, (list, tuple)):
+                                    placeholders = ",".join(["?"] * len(op_value))
+                                    where_parts.append(f"{col} IN ({placeholders})")
+                                    params.extend(op_value)
+                                else:
+                                    raise ValueError(f"IN operator requires list, got {type(op_value)}")
+                            else:
+                                where_parts.append(f"{col} {op} ?")
+                                params.append(op_value)
+                    else:
+                        # Simple equality filter
+                        where_parts.append(f"{col} = ?")
+                        params.append(value)
+
+            query = f"SELECT * FROM {table}"
+            if where_parts:
+                query += " WHERE " + " AND ".join(where_parts)
+            if order_by:
+                query += f" ORDER BY {order_by}"
+            if limit:
+                query += f" LIMIT {limit}"
+
+            cursor = self.conn.cursor()
+            cursor.execute(query, params)
+            return cursor.fetchall()
+        except Exception as e:
+            raise e
 
     def close(self):
         """Close database connection."""

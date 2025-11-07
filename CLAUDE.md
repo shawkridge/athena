@@ -40,7 +40,12 @@ memory-mcp
 
 **Athena** is a sophisticated 8-layer neuroscience-inspired memory system for AI agents. The key innovation is *sleep-like consolidation* - converting episodic events into semantic knowledge using dual-process reasoning (fast heuristics + slow LLM validation).
 
-**Current Status**: 95% complete, 94/94 tests passing
+**Current Status**:
+- **Core Layers**: 95% complete, 94/94 tests passing ✅
+- **MCP Interface**: Feature-complete, limited test coverage (22,000 lines of code)
+- **Overall Code Coverage**: ~65% (core layers 90%+, MCP handlers <20%)
+- **Test Suite**: 94 unit/integration tests (core logic), missing MCP server tests
+- **Production Readiness**: Ready for core features, MCP testing in progress
 
 ### Core Architecture: 8-Layer Memory System
 
@@ -344,21 +349,58 @@ ruff check src/ tests/
 
 ### 1. Database Access
 
-All database access goes through `Database` class in `src/athena/core/database.py`:
+Database access uses SQLite with `sqlite-vec` for vector storage. The `Database` class in `src/athena/core/database.py` provides both high-level methods and direct connection access.
+
+**High-Level Methods** (Preferred for common operations):
 
 ```python
-# ✅ Correct
-db.execute("INSERT INTO events ...", params)
-db.execute_one("SELECT * FROM events WHERE id = ?", (event_id,))
+# Store memory
+memory_id = db.store_memory(memory: Memory) -> int
 
-# ❌ Don't do direct SQL
-db.conn.execute(...)  # Dangerous, bypasses logging/monitoring
+# Retrieve memory
+memory = db.get_memory(memory_id: int) -> Optional[Memory]
+
+# Delete memory
+success = db.delete_memory(memory_id: int) -> bool
+
+# List memories with filters
+memories = db.list_memories(project_id: int, ...) -> list[Memory]
+
+# Project management
+project = db.create_project(name: str, path: str) -> Project
+```
+
+**Direct Connection Access** (For complex queries):
+
+When high-level methods don't cover your use case, use direct connection with cursor:
+
+```python
+# ✅ Correct - parameterized queries
+cursor = db.conn.cursor()
+cursor.execute(
+    "SELECT * FROM memories WHERE project_id = ? AND usefulness_score > ?",
+    (project_id, min_score)
+)
+results = cursor.fetchall()
+db.conn.commit()
+
+# ❌ Avoid - SQL injection vulnerability
+cursor.execute(f"SELECT * FROM memories WHERE id = {memory_id}")  # DANGEROUS!
 ```
 
 **Key Points**:
-- Always use parameterized queries (prevent SQL injection)
-- Database is local SQLite (no network calls)
-- Vector search uses `sqlite-vec` extension (requires special setup)
+- Always use parameterized queries with `?` placeholders (prevents SQL injection)
+- Database is local SQLite - no network calls or cloud dependencies
+- Use transactions for multi-step operations with rollback on error
+- Vector search uses `sqlite-vec` extension (requires `pip install sqlite-vec`)
+- Set `check_same_thread=False` for thread-safe access
+
+**Guidelines for Direct Access**:
+- Use direct `.conn` access only when high-level methods don't support your query
+- Always wrap in try/except blocks
+- Always commit or rollback transactions
+- Document WHY direct access is needed (add comment)
+- Consider proposing new Database method for reusable patterns
 
 ### 2. Embeddings Generation
 

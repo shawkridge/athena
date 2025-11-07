@@ -141,8 +141,10 @@ class ClaudeEmbedding(CodeEmbeddingModel):
 
     def __init__(self, model_name: str = "claude-3-5-sonnet-20241022"):
         """Initialize Claude embedding model."""
+        from athena.core import config
         self._model_name = model_name
-        self._embedding_dim = 1024
+        # Use configured embedding dimension (standardized to 768D for compatibility)
+        self._embedding_dim = config.CLAUDE_EMBEDDING_DIM
         self._client = None
 
     def embed(self, text: str) -> List[float]:
