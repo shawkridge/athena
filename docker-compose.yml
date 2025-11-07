@@ -1,7 +1,7 @@
 services:
   # PostgreSQL with pgvector - Unified database for Memory + Planning + Code Analysis
   postgres:
-    image: pgvector/pgvector:pg16-latest
+    image: pgvector/pgvector:0.8.1-pg18-trixie
     container_name: athena-postgres
     environment:
       POSTGRES_DB: athena

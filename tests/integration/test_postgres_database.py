@@ -24,7 +24,7 @@ from athena.core.database_postgres import PostgresDatabase
 
 
 @pytest.fixture
-async def postgres_db() -> AsyncGenerator[PostgresDatabase, None]:
+def postgres_db() -> PostgresDatabase:
     """Create PostgreSQL database instance.
 
     Configuration from environment:
@@ -43,13 +43,7 @@ async def postgres_db() -> AsyncGenerator[PostgresDatabase, None]:
         password=os.environ.get("ATHENA_POSTGRES_PASSWORD", "athena_dev"),
     )
 
-    # Initialize database
-    await db.initialize()
-
-    yield db
-
-    # Cleanup
-    await db.close()
+    return db
 
 
 class TestPostgresDatabaseSetup:

@@ -12,11 +12,14 @@ Features:
 """
 
 import json
+import logging
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any, AsyncGenerator, TYPE_CHECKING
+
+logger = logging.getLogger(__name__)
 
 try:
     import psycopg
@@ -100,12 +103,13 @@ class PostgresDatabase:
             f"password={self.password}"
         )
 
-        # Create connection pool
-        self._pool = await AsyncConnectionPool.create(
+        # Create and open connection pool
+        self._pool = AsyncConnectionPool(
             conninfo,
             min_size=self.min_size,
             max_size=self.max_size,
         )
+        await self._pool.open()
 
         # Initialize schema
         await self._init_schema()
@@ -131,8 +135,13 @@ class PostgresDatabase:
         This is idempotent - safe to call multiple times.
         """
         async with self.get_connection() as conn:
-            # Create extensions
-            await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+            # Try to create pgvector extension (optional)
+            try:
+                await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
+                logger.info("pgvector extension available")
+            except Exception as e:
+                logger.warning(f"pgvector extension not available: {e}")
+                logger.info("Continuing without pgvector - vector operations will use JSON storage")
 
             # Create all tables (from PHASE5_POSTGRESQL_SCHEMA.md)
             await self._create_tables(conn)
