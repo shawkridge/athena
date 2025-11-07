@@ -350,12 +350,17 @@ class PostgresDatabase:
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS planning_scenarios (
                 id BIGSERIAL PRIMARY KEY,
-                decision_id BIGINT NOT NULL REFERENCES planning_decisions(id) ON DELETE CASCADE,
+                project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                decision_id BIGINT REFERENCES planning_decisions(id) ON DELETE CASCADE,
+                scenario_type VARCHAR(50),
                 scenario_name VARCHAR(255),
                 description TEXT,
+                assumptions TEXT[],
+                expected_outcomes TEXT[],
                 impact_assessment TEXT,
                 risk_level VARCHAR(50),
                 probability FLOAT,
+                testing_status VARCHAR(50) DEFAULT 'not_tested',
                 created_at TIMESTAMP DEFAULT NOW()
             )
         """)
