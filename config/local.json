@@ -1,0 +1,117 @@
+{
+  "environment": "local",
+  "description": "Athena local development configuration - optimized for AI-first solo development",
+
+  "database": {
+    "type": "sqlite",
+    "path": "~/.athena/memory.db",
+    "backupPath": "~/.athena/backups",
+    "autoBackup": true,
+    "backupInterval": 3600000,
+    "maxBackups": 10
+  },
+
+  "cache": {
+    "enabled": true,
+    "maxSize": 50000,
+    "defaultTtlMs": 300000,
+    "warmingEnabled": true,
+    "monitoringEnabled": true
+  },
+
+  "optimization": {
+    "caching": {
+      "enabled": true,
+      "strategy": "lru"
+    },
+    "queryOptimization": {
+      "enabled": true,
+      "costEstimation": true,
+      "strategySelection": true
+    },
+    "circuitBreaker": {
+      "enabled": true,
+      "failureThreshold": 0.5,
+      "successThreshold": 0.8,
+      "timeoutMs": 60000
+    }
+  },
+
+  "layers": {
+    "episodic": {
+      "enabled": true,
+      "defaultQueryLimit": 10
+    },
+    "semantic": {
+      "enabled": true,
+      "searchStrategy": "hybrid",
+      "defaultQueryLimit": 10
+    },
+    "procedural": {
+      "enabled": true,
+      "minOccurrences": 3,
+      "minSuccessRate": 0.7
+    },
+    "prospective": {
+      "enabled": true,
+      "defaultPriority": 5
+    },
+    "graph": {
+      "enabled": true,
+      "maxRelationships": 1000
+    },
+    "meta": {
+      "enabled": true,
+      "healthCheckInterval": 30000
+    },
+    "consolidation": {
+      "enabled": true,
+      "autoConsolidate": true,
+      "consolidateInterval": 3600000,
+      "strategy": "balanced"
+    },
+    "rag": {
+      "enabled": true,
+      "retrievalStrategy": "hybrid"
+    }
+  },
+
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "targets": [
+      {
+        "type": "console",
+        "level": "info"
+      },
+      {
+        "type": "file",
+        "level": "debug",
+        "path": "~/.athena/logs/athena.log",
+        "maxSize": 10485760,
+        "maxFiles": 5
+      }
+    ]
+  },
+
+  "performance": {
+    "targetReadLatencyMs": 100,
+    "targetWriteLatencyMs": 300,
+    "targetP95LatencyMs": 150,
+    "monitoringEnabled": true,
+    "metricsInterval": 30000
+  },
+
+  "development": {
+    "debugMode": false,
+    "verbose": false,
+    "traceOperations": false,
+    "mockData": false
+  },
+
+  "security": {
+    "enableInputValidation": true,
+    "enableOutputFiltering": true,
+    "sandboxLevel": "strict"
+  }
+}
