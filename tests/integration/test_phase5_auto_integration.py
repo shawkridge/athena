@@ -27,7 +27,7 @@ from athena.procedural import ProceduralStore, Procedure, ProcedureCategory
 from athena.graph import GraphStore, Entity, Observation
 from athena.graph.models import EntityType, RelationType
 from athena.meta import MetaMemoryStore
-from athena.consolidation.pipeline import ConsolidationSystem
+from athena.consolidation import ConsolidationSystem
 from athena.core.embeddings import EmbeddingModel
 
 

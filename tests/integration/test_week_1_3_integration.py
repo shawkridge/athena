@@ -12,12 +12,12 @@ import pytest
 from pathlib import Path
 from datetime import datetime
 
-from src.memory_mcp.core.database import Database
-from src.memory_mcp.rules import RuleTemplates, create_project_rules, RulesEngine, SuggestionsEngine
-from src.memory_mcp.rules.store import RulesStore
-from src.memory_mcp.rules.models import Rule, RuleCategory, RuleType, SeverityLevel
-from src.memory_mcp.prospective.store import ProspectiveStore
-from src.memory_mcp.prospective.models import ProspectiveTask, TaskStatus, TaskPriority, TaskPhase, Plan
+from athena.core.database import Database
+from athena.rules import RuleTemplates, create_project_rules, RulesEngine, SuggestionsEngine
+from athena.rules.store import RulesStore
+from athena.rules.models import Rule, RuleCategory, RuleType, SeverityLevel
+from athena.prospective import ProspectiveStore
+from athena.prospective.models import ProspectiveTask, TaskStatus, TaskPriority, TaskPhase, Plan
 
 
 class TestWeek13RulesTemplates:
