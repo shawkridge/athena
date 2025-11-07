@@ -199,7 +199,7 @@ class CodeAnalysisMemory:
                     # Create entity for code unit
                     entity = Entity(
                         name=unit.get("name", ""),
-                        type=unit.get("type", "code_unit"),
+                        entity_type=unit.get("type", "code_unit"),
                         description=unit.get("docstring", ""),
                         metadata={
                             "repo": str(repo_path),
@@ -248,7 +248,7 @@ class CodeAnalysisMemory:
                 project_id=self.project_id,
                 session_id=self.session_id,
                 timestamp=datetime.now(),
-                event_type=EventType.SUCCESS,
+                event_type=EventType.ACTION,
                 code_event_type=CodeEventType.PERFORMANCE_PROFILE,
                 content=json.dumps({
                     "repo_path": str(repo_path),
@@ -339,8 +339,17 @@ class CodeAnalysisMemory:
         if analysis_results.get("complexity_avg", 0) > 5:
             learnings.append("High average complexity - break down complex functions")
 
-        if analysis_results.get("test_coverage", 0) < 0.7:
+        # Handle test_coverage as string or float
+        test_coverage = analysis_results.get("test_coverage", "N/A")
+        if isinstance(test_coverage, (int, float)) and test_coverage < 0.7:
             learnings.append("Test coverage below 70% - add more tests")
+        elif isinstance(test_coverage, str) and test_coverage != "N/A":
+            try:
+                coverage_value = float(test_coverage.rstrip("%")) / 100
+                if coverage_value < 0.7:
+                    learnings.append("Test coverage below 70% - add more tests")
+            except (ValueError, AttributeError):
+                pass
 
         return "; ".join(learnings) if learnings else "Analysis complete"
 

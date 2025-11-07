@@ -402,6 +402,16 @@ class OperationRouter:
         "get_code_statistics": "_handle_get_code_statistics",
     }
 
+    # CODE_ANALYSIS_TOOLS: 6 operations
+    CODE_ANALYSIS_OPERATIONS = {
+        "record_code_analysis": "_handle_record_code_analysis",
+        "store_code_insights": "_handle_store_code_insights",
+        "add_code_entities": "_handle_add_code_entities",
+        "extract_code_patterns": "_handle_extract_code_patterns",
+        "analyze_repository": "_handle_analyze_repository",
+        "get_analysis_metrics": "_handle_get_analysis_metrics",
+    }
+
     # EXTERNAL_KNOWLEDGE_TOOLS: 4 operations
     EXTERNAL_KNOWLEDGE_OPERATIONS = {
         "lookup_external_knowledge": "_handle_lookup_external_knowledge",
@@ -444,6 +454,7 @@ class OperationRouter:
         "zettelkasten_tools": ZETTELKASTEN_OPERATIONS,
         "graphrag_tools": GRAPHRAG_OPERATIONS,
         "code_search_tools": CODE_SEARCH_OPERATIONS,
+        "code_analysis_tools": CODE_ANALYSIS_OPERATIONS,
         "external_knowledge_tools": EXTERNAL_KNOWLEDGE_OPERATIONS,
     }
 

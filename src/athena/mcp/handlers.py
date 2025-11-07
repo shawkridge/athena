@@ -1101,6 +1101,31 @@ class MemoryMCPServer:
                     },
                 ),
                 Tool(
+                    name="code_analysis_tools",
+                    description="Code analysis memory integration (record_code_analysis, store_code_insights, add_code_entities, extract_code_patterns, analyze_repository, get_analysis_metrics). Integrates code analysis with episodic, semantic, knowledge graph, and consolidation memory layers. Use 'operation' parameter.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "operation": {
+                                "type": "string",
+                                "enum": ["record_code_analysis", "store_code_insights", "add_code_entities", "extract_code_patterns", "analyze_repository", "get_analysis_metrics"],
+                                "description": "Code analysis operation",
+                            },
+                            "repo_path": {"type": "string", "description": "Path to analyzed repository"},
+                            "analysis_results": {"type": "object", "description": "Dictionary with analysis findings (quality_score, complexity_avg, issues, etc.)"},
+                            "duration_ms": {"type": "integer", "description": "Time taken for analysis in milliseconds"},
+                            "file_count": {"type": "integer", "description": "Number of files analyzed", "default": 0},
+                            "unit_count": {"type": "integer", "description": "Number of code units analyzed", "default": 0},
+                            "tags": {"type": "array", "items": {"type": "string"}, "description": "Tags for insights"},
+                            "code_units": {"type": "array", "description": "List of code unit dictionaries"},
+                            "language": {"type": "string", "description": "Programming language (default: python)"},
+                            "include_memory": {"type": "boolean", "description": "Whether to record to memory (default: true)"},
+                            "days_back": {"type": "integer", "description": "Number of days to analyze", "default": 7},
+                        },
+                        "required": ["operation"],
+                    },
+                ),
+                Tool(
                     name="external_knowledge_tools",
                     description="External knowledge lookup and expansion (lookup_external_knowledge, expand_knowledge_relations, synthesize_knowledge, explore_concept_network). Uses ConceptNet API with 21M+ relations. Use 'operation' parameter.",
                     inputSchema={
@@ -10982,6 +11007,80 @@ Anomalies:
         """Get comprehensive statistics about indexed code."""
         from .handlers_code_search import handle_get_code_statistics
         return await handle_get_code_statistics(self, args)
+
+    # ========================================================================
+    # CODE ANALYSIS HANDLERS
+    # ========================================================================
+
+    async def _handle_record_code_analysis(self, args: dict) -> list[TextContent]:
+        """Record code analysis to memory."""
+        from .handlers_code_analysis import CodeAnalysisMemoryHandlers
+
+        handlers = CodeAnalysisMemoryHandlers(self.memory_manager)
+        result = handlers.record_analysis(
+            repo_path=args.get("repo_path"),
+            analysis_results=args.get("analysis_results", {}),
+            duration_ms=args.get("duration_ms", 0),
+            file_count=args.get("file_count", 0),
+            unit_count=args.get("unit_count", 0),
+        )
+        return [TextContent(type="text", text=str(result))]
+
+    async def _handle_store_code_insights(self, args: dict) -> list[TextContent]:
+        """Store code analysis insights to semantic memory."""
+        from .handlers_code_analysis import CodeAnalysisMemoryHandlers
+
+        handlers = CodeAnalysisMemoryHandlers(self.memory_manager)
+        result = handlers.store_code_insights(
+            analysis_results=args.get("analysis_results", {}),
+            repo_path=args.get("repo_path"),
+            tags=args.get("tags"),
+        )
+        return [TextContent(type="text", text=str(result))]
+
+    async def _handle_add_code_entities(self, args: dict) -> list[TextContent]:
+        """Add code entities to knowledge graph."""
+        from .handlers_code_analysis import CodeAnalysisMemoryHandlers
+
+        handlers = CodeAnalysisMemoryHandlers(self.memory_manager)
+        result = handlers.add_code_entities(
+            code_units=args.get("code_units", []),
+            repo_path=args.get("repo_path"),
+        )
+        return [TextContent(type="text", text=str(result))]
+
+    async def _handle_extract_code_patterns(self, args: dict) -> list[TextContent]:
+        """Extract patterns from code analyses."""
+        from .handlers_code_analysis import CodeAnalysisMemoryHandlers
+
+        handlers = CodeAnalysisMemoryHandlers(self.memory_manager)
+        result = handlers.extract_code_patterns(
+            days_back=args.get("days_back", 7),
+        )
+        return [TextContent(type="text", text=str(result))]
+
+    async def _handle_analyze_repository(self, args: dict) -> list[TextContent]:
+        """Analyze repository with memory integration."""
+        from .handlers_code_analysis import CodeAnalysisMemoryHandlers
+
+        handlers = CodeAnalysisMemoryHandlers(self.memory_manager)
+        result = handlers.analyze_repository(
+            repo_path=args.get("repo_path"),
+            language=args.get("language", "python"),
+            include_memory=args.get("include_memory", True),
+        )
+        return [TextContent(type="text", text=str(result))]
+
+    async def _handle_get_analysis_metrics(self, args: dict) -> list[TextContent]:
+        """Get code analysis metrics and trends."""
+        from .handlers_code_analysis import CodeAnalysisMemoryHandlers
+
+        handlers = CodeAnalysisMemoryHandlers(self.memory_manager)
+        result = handlers.get_analysis_metrics(
+            repo_path=args.get("repo_path"),
+            days_back=args.get("days_back", 7),
+        )
+        return [TextContent(type="text", text=str(result))]
 
     # ========================================================================
     # EXTERNAL KNOWLEDGE HANDLERS
