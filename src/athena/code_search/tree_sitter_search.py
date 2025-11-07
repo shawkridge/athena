@@ -1,5 +1,6 @@
 """Tree-Sitter based semantic code search implementation."""
 
+import time
 from pathlib import Path
 from typing import List, Optional, Dict
 import logging
@@ -9,6 +10,7 @@ from .indexer import CodebaseIndexer
 from .semantic_searcher import SemanticCodeSearcher
 from .parser import CodeParser
 from .cache import CombinedSearchCache
+from .code_analysis_memory import CodeAnalysisMemory
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,10 @@ class TreeSitterCodeSearch:
         embed_manager=None,
         graph_store=None,
         enable_cache: bool = True,
+        episodic_store=None,
+        semantic_store=None,
+        consolidator=None,
+        project_id: int = 0,
     ):
         """
         Initialize code search system.
@@ -40,6 +46,10 @@ class TreeSitterCodeSearch:
             embed_manager: EmbeddingManager instance for semantic search
             graph_store: GraphStore instance for knowledge graph integration
             enable_cache: Enable caching for search results (default: True)
+            episodic_store: EpisodicStore for recording analysis events
+            semantic_store: SemanticStore for storing insights
+            consolidator: Consolidator for pattern extraction
+            project_id: Project identifier for memory tracking
         """
         self.repo_path = Path(repo_path)
         self.language = language
@@ -55,7 +65,17 @@ class TreeSitterCodeSearch:
         # Initialize cache
         self.cache = CombinedSearchCache() if enable_cache else None
 
+        # Initialize memory integration
+        self.analysis_memory = CodeAnalysisMemory(
+            episodic_store=episodic_store,
+            semantic_store=semantic_store,
+            graph_store=graph_store,
+            consolidator=consolidator,
+            project_id=project_id,
+        )
+
         self._is_indexed = False
+        self._index_start_time = None
 
     def build_index(self, languages: Optional[List[str]] = None) -> Dict:
         """
@@ -74,6 +94,7 @@ class TreeSitterCodeSearch:
             raise ValueError(f"Repository path does not exist: {self.repo_path}")
 
         logger.info(f"Building index for {self.repo_path}")
+        self._index_start_time = time.time()
 
         # Index the directory
         self.indexer.index_directory()
@@ -87,6 +108,13 @@ class TreeSitterCodeSearch:
         if self.graph_store:
             self._add_units_to_graph()
 
+        # Add units to knowledge graph via memory system
+        units_list = [u.to_dict() for u in self.indexer.get_units()]
+        self.analysis_memory.add_code_entities_to_graph(
+            code_units=units_list,
+            repo_path=str(self.repo_path),
+        )
+
         self._is_indexed = True
 
         # Return statistics
@@ -95,6 +123,45 @@ class TreeSitterCodeSearch:
             f"Index built: {stats['units_extracted']} units "
             f"from {stats['files_indexed']} files "
             f"in {stats['indexing_time']:.2f}s"
+        )
+
+        # Record indexing event to memory
+        duration_ms = int((time.time() - self._index_start_time) * 1000)
+        self.analysis_memory.record_code_analysis(
+            repo_path=str(self.repo_path),
+            analysis_results={
+                "type": "indexing",
+                "quality_score": 1.0,  # Indexing is always successful
+                "complexity_avg": stats.get("avg_complexity", 0),
+                "test_coverage": "N/A",
+                "issues": [],
+            },
+            duration_ms=duration_ms,
+            file_count=stats.get("files_indexed", 0),
+            unit_count=stats.get("units_extracted", 0),
+        )
+
+        # Store insights to semantic memory
+        self.analysis_memory.store_code_insights(
+            analysis_results={
+                "quality_score": 1.0,
+                "complexity_avg": stats.get("avg_complexity", 0),
+                "test_coverage": "N/A",
+                "issues": [],
+            },
+            repo_path=str(self.repo_path),
+            tags=["code_indexing", "static_analysis"],
+        )
+
+        # Record metrics for trend analysis
+        self.analysis_memory.record_code_metrics_trend(
+            metrics={
+                "files_indexed": stats.get("files_indexed", 0),
+                "units_extracted": stats.get("units_extracted", 0),
+                "avg_complexity": stats.get("avg_complexity", 0),
+                "indexing_time_ms": duration_ms,
+            },
+            repo_path=str(self.repo_path),
         )
 
         return stats
@@ -327,6 +394,79 @@ class TreeSitterCodeSearch:
             return {"indexed": False}
 
         return self.semantic_searcher.get_search_stats()
+
+    def analyze_codebase(self) -> Dict:
+        """
+        Comprehensive codebase analysis with memory recording.
+
+        Analyzes code structure, quality metrics, and trends.
+        Records analysis to episodic memory for learning.
+
+        Returns:
+            Dictionary with analysis results
+        """
+        if not self._is_indexed:
+            raise RuntimeError("Index not built. Call build_index() first.")
+
+        logger.info(f"Running comprehensive analysis on {self.repo_path}")
+        start_time = time.time()
+
+        # Get basic statistics
+        stats = self.indexer.get_statistics()
+
+        # Calculate quality metrics
+        units = self.indexer.get_units()
+        complexities = [u.complexity for u in units if hasattr(u, "complexity")]
+        avg_complexity = sum(complexities) / len(complexities) if complexities else 0
+
+        # Analyze issues (simplified - would integrate with linters in production)
+        issues = []
+        for unit in units:
+            if hasattr(unit, "complexity") and unit.complexity > 10:
+                issues.append({
+                    "type": "high_complexity",
+                    "unit": unit.name,
+                    "value": unit.complexity,
+                })
+
+        # Create analysis results
+        analysis_results = {
+            "type": "comprehensive_analysis",
+            "quality_score": max(0, 1.0 - (len(issues) / max(1, len(units)) * 0.5)),
+            "complexity_avg": avg_complexity,
+            "test_coverage": "N/A",  # Would integrate with coverage tools
+            "issues": issues,
+        }
+
+        # Record to memory
+        duration_ms = int((time.time() - start_time) * 1000)
+        self.analysis_memory.record_code_analysis(
+            repo_path=str(self.repo_path),
+            analysis_results=analysis_results,
+            duration_ms=duration_ms,
+            file_count=stats.get("files_indexed", 0),
+            unit_count=stats.get("units_extracted", 0),
+        )
+
+        # Store insights
+        self.analysis_memory.store_code_insights(
+            analysis_results=analysis_results,
+            repo_path=str(self.repo_path),
+            tags=["comprehensive_analysis", "quality_metrics"],
+        )
+
+        # Extract patterns from past analyses
+        patterns = self.analysis_memory.extract_analysis_patterns(days_back=7)
+        if patterns:
+            analysis_results["trends"] = patterns
+
+        logger.info(f"Analysis complete in {duration_ms}ms")
+
+        return {
+            **stats,
+            **analysis_results,
+            "duration_ms": duration_ms,
+        }
 
     def get_cache_stats(self) -> Dict:
         """Get cache statistics.
