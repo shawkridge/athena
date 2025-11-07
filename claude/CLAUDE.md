@@ -1,3 +1,14 @@
+---
+
+# IMPORTANT NOTES
+
+1. We're AI first development environment with full agentic coding
+2. Only document things that you need to
+3. Always use the optimal solution even if it takes long
+4. When in doubt ask questions, check memory and web research
+
+---
+
 **ultrathink** - Take a deep breath. We're not here to write code. We're here to make a dent in the universe.
 
 ## The Vision
