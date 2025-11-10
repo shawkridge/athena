@@ -53,8 +53,23 @@ async def main():
         logger.info(f"Starting HTTP server on {host}:{port}")
         http_server = AthenaHTTPServer(host=host, port=port, debug=debug)
 
-        # Run HTTP server (blocks indefinitely)
-        http_server.run()
+        # Setup FastAPI startup/shutdown handlers
+        http_server.app.add_event_handler("startup", http_server.startup)
+        http_server.app.add_event_handler("shutdown", http_server.shutdown)
+
+        # Create uvicorn config and server (use async API to avoid nested event loops)
+        config = uvicorn.Config(
+            http_server.app,
+            host=host,
+            port=port,
+            log_level="info",
+            reload=debug,
+        )
+        server = uvicorn.Server(config)
+
+        # Run server in current event loop (don't create a new one)
+        logger.info("HTTP server started")
+        await server.serve()
 
     except KeyboardInterrupt:
         logger.info("Server interrupted by user")
