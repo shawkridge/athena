@@ -1,4 +1,4 @@
-"""Project analysis module for building memory about codebases."""
+"""Project and library analysis module for building memory about codebases and dependencies."""
 
 from .project_analyzer import (
     ProjectAnalyzer,
@@ -8,6 +8,14 @@ from .project_analyzer import (
     FileMetrics,
 )
 from .memory_storage import ProjectAnalysisMemoryStorage
+from .library_analyzer import (
+    LibraryDependencyAnalyzer,
+    LibraryAnalysis,
+    DependencyVersion,
+    LibraryCapabilities,
+    VulnerabilitySeverity,
+    get_analyzer,
+)
 
 __all__ = [
     "ProjectAnalyzer",
@@ -16,4 +24,10 @@ __all__ = [
     "ComponentInfo",
     "PatternFound",
     "FileMetrics",
+    "LibraryDependencyAnalyzer",
+    "LibraryAnalysis",
+    "DependencyVersion",
+    "LibraryCapabilities",
+    "VulnerabilitySeverity",
+    "get_analyzer",
 ]
