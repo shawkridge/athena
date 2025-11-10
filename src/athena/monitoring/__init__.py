@@ -13,6 +13,23 @@ from .layer_health_dashboard import (
     LayerType,
 )
 
+# Phase 3: Production monitoring (Prometheus + JSON logging)
+from .exporters import (
+    PrometheusMetrics,
+    get_metrics,
+    initialize_metrics,
+)
+
+from .structured_logging import (
+    JSONFormatter,
+    StructuredLogger,
+    setup_structured_logging,
+    set_operation_context,
+    clear_operation_context,
+    set_user_context,
+    get_structured_logger,
+)
+
 __all__ = [
     "setup_logging",
     "get_logger",
@@ -28,4 +45,15 @@ __all__ = [
     "LayerHealth",
     "SystemHealth",
     "LayerType",
+    # Phase 3 additions
+    "PrometheusMetrics",
+    "get_metrics",
+    "initialize_metrics",
+    "JSONFormatter",
+    "StructuredLogger",
+    "setup_structured_logging",
+    "set_operation_context",
+    "clear_operation_context",
+    "set_user_context",
+    "get_structured_logger",
 ]
