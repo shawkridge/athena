@@ -40,7 +40,7 @@ class CentralExecutive:
 
     def _init_schema(self):
         """Ensure schema exists (for testing/standalone use)."""
-        # Schema should already exist from migration, but check anyway
+        # Schema should already exist from migration, but create if needed for tests
         with self.db.conn:
             # Check if active_goals table exists
             result = self.db.conn.execute("""
@@ -49,8 +49,26 @@ class CentralExecutive:
             """).fetchone()
 
             if not result:
-                # Run migration if needed
-                print("Warning: active_goals table not found. Run migrations first.")
+                # Create table for testing/standalone use
+                self.db.conn.execute("""
+                    CREATE TABLE IF NOT EXISTS active_goals (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        project_id INTEGER NOT NULL,
+                        goal_text TEXT NOT NULL,
+                        goal_type TEXT NOT NULL DEFAULT 'primary',
+                        parent_goal_id INTEGER,
+                        status TEXT NOT NULL DEFAULT 'active',
+                        priority INTEGER DEFAULT 5,
+                        deadline TIMESTAMP,
+                        completion_criteria TEXT,
+                        metadata JSON,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (project_id) REFERENCES projects (id),
+                        FOREIGN KEY (parent_goal_id) REFERENCES active_goals (id)
+                    )
+                """)
+                self.db.conn.commit()
 
     # ========================================================================
     # Goal Management

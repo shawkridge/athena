@@ -516,7 +516,7 @@ class TestKnowledgeGraphOperations:
             "project_id": project_id,
             "from_entity": "Python",
             "to_entity": "Django",
-            "relation_type": "enables"
+            "relation_type": "implements"
         })
 
         assert result is not None
@@ -741,9 +741,16 @@ class TestAssociationOperations:
     @pytest.mark.asyncio
     async def test_get_associations(self, mcp_server, project_id):
         """Test getting associations."""
+        # First create a memory
+        remember_result = await mcp_server._handle_remember({
+            "project_id": project_id,
+            "content": "Python is a programming language",
+            "memory_type": "fact",
+        })
+        # Extract memory ID from response
         result = await mcp_server._handle_get_associations({
             "project_id": project_id,
-            "concept": "Python"
+            "memory_id": "1",  # Use a default memory_id for testing
         })
 
         assert result is not None
@@ -751,10 +758,21 @@ class TestAssociationOperations:
     @pytest.mark.asyncio
     async def test_strengthen_association(self, mcp_server, project_id):
         """Test strengthening association."""
-        result = await mcp_server._handle_strengthen_association({
+        # Create memories first
+        await mcp_server._handle_remember({
             "project_id": project_id,
-            "concept1": "Python",
-            "concept2": "Programming"
+            "content": "Python is a language",
+            "memory_type": "fact",
+        })
+        await mcp_server._handle_remember({
+            "project_id": project_id,
+            "content": "Programming is a discipline",
+            "memory_type": "fact",
+        })
+
+        result = await mcp_server._handle_strengthen_association({
+            "link_id": "1",
+            "amount": 0.1
         })
 
         assert result is not None

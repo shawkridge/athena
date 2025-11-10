@@ -351,7 +351,18 @@ class BaseStore(ABC, Generic[T]):
         """
         if ts is None:
             return None
-        return datetime.fromtimestamp(ts)
+        # Handle string timestamps from database
+        if isinstance(ts, str):
+            if not ts or ts == '{}':
+                return None
+            try:
+                ts = float(ts)
+            except (ValueError, TypeError):
+                return None
+        try:
+            return datetime.fromtimestamp(ts)
+        except (ValueError, TypeError, OSError):
+            return None
 
     # ========================================================================
     # Query Helpers for Common Patterns
