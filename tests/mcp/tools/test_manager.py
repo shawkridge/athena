@@ -63,8 +63,8 @@ class TestToolManagerInitialization:
         tool_manager.initialize_tools()
 
         stats = tool_manager.get_stats()
-        # Should have 18 tools: 4 memory + 3 system + 3 episodic + 4 planning + 2 retrieval + 2 integration
-        assert stats['total_tools'] == 18
+        # Should have 25 tools: 4 memory + 3 system + 3 episodic + 4 planning + 2 retrieval + 2 integration + 2 agent_optimization + 2 skill_optimization + 3 hook_coordination
+        assert stats['total_tools'] == 25
 
 
 class TestToolManagerExecution:
@@ -177,6 +177,9 @@ class TestToolManagerQuerying:
         assert "planning" in categories
         assert "retrieval" in categories
         assert "integration" in categories
+        assert "agent_optimization" in categories
+        assert "skill_optimization" in categories
+        assert "hook_coordination" in categories
 
     def test_get_stats(self, tool_manager):
         """Test getting registry statistics."""
@@ -186,7 +189,7 @@ class TestToolManagerQuerying:
         assert "total_tools" in stats
         assert "categories" in stats
         assert "tools_by_category" in stats
-        assert stats["total_tools"] == 18
+        assert stats["total_tools"] == 25
 
 
 class TestToolManagerCategories:

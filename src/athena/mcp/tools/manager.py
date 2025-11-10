@@ -59,6 +59,19 @@ class ToolManager:
                 ConsolidateTool,
                 RunConsolidationTool,
             )
+            from .agent_optimization_tools import (
+                TuneAgentTool,
+                AnalyzeAgentPerformanceTool,
+            )
+            from .skill_optimization_tools import (
+                EnhanceSkillTool,
+                MeasureSkillEffectivenessTool,
+            )
+            from .hook_coordination_tools import (
+                RegisterHookTool,
+                ManageHooksTool,
+                CoordinateHooksTool,
+            )
 
             # Initialize memory tools
             recall_tool = RecallTool(
@@ -154,6 +167,30 @@ class ToolManager:
                 self.mcp_server.project_manager
             )
             self.registry.register(run_consolidation_tool)
+
+            # Initialize agent optimization tools
+            tune_agent_tool = TuneAgentTool()
+            self.registry.register(tune_agent_tool)
+
+            analyze_agent_perf_tool = AnalyzeAgentPerformanceTool()
+            self.registry.register(analyze_agent_perf_tool)
+
+            # Initialize skill optimization tools
+            enhance_skill_tool = EnhanceSkillTool()
+            self.registry.register(enhance_skill_tool)
+
+            measure_skill_tool = MeasureSkillEffectivenessTool()
+            self.registry.register(measure_skill_tool)
+
+            # Initialize hook coordination tools
+            register_hook_tool = RegisterHookTool()
+            self.registry.register(register_hook_tool)
+
+            manage_hooks_tool = ManageHooksTool()
+            self.registry.register(manage_hooks_tool)
+
+            coordinate_hooks_tool = CoordinateHooksTool()
+            self.registry.register(coordinate_hooks_tool)
 
             self.tools_initialized = True
             stats = self.registry.get_stats()
