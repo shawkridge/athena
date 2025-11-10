@@ -41,10 +41,11 @@ class ConsolidationRouter:
 
     def __init__(self, db: Database | str):
         # Accept either Database instance or path string
-        if isinstance(db, Database):
-            self.db = db
-        else:
+        if isinstance(db, str):
             self.db = Database(db)
+        else:
+            # Already a database object (SQLite or Postgres)
+            self.db = db
         self.model = None
         self.is_trained = False
         self.feature_names = [

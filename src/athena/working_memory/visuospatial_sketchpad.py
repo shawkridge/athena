@@ -30,10 +30,11 @@ class VisuospatialSketchpad:
 
     def __init__(self, db: Database | str):
         # Accept either Database instance or path string
-        if isinstance(db, Database):
-            self.db = db
-        else:
+        if isinstance(db, str):
             self.db = Database(db)
+        else:
+            # Already a database object (SQLite or Postgres)
+            self.db = db
         self.max_capacity = 7  # 7±2 capacity
         self.component = Component.VISUOSPATIAL
 
