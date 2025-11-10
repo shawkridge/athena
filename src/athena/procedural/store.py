@@ -31,8 +31,7 @@ class ProceduralStore(BaseStore[Procedure]):
         """
         super().__init__(db)
         # Schema is initialized centrally in database.py
-        # self._ensure_schema()
-
+        #
     def _row_to_model(self, row: Dict[str, Any]) -> Procedure:
         """Convert database row to Procedure model.
 

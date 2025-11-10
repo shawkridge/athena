@@ -38,8 +38,6 @@ class CodeContextStore:
             db: Database instance
         """
         self.db = db
-        self._ensure_schema()
-
     def _ensure_schema(self) -> None:
         """Create tables if they don't exist."""
         cursor = self.db.get_cursor()

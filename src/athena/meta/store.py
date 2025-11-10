@@ -22,8 +22,6 @@ class MetaMemoryStore(BaseStore):
             db: Database instance
         """
         super().__init__(db)
-        self._ensure_schema()
-
     def _row_to_model(self, row) -> DomainCoverage:
         """Convert database row to DomainCoverage model.
 

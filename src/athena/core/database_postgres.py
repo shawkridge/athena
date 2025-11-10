@@ -108,6 +108,14 @@ class PostgresDatabase:
         self._pool: Optional[AsyncConnectionPool] = None
         self._initialized = False
 
+        # Try to initialize schema synchronously on __init__
+        # This allows stores to call _ensure_schema() without errors
+        # If called from async context, this will be skipped and retried later
+        try:
+            self._init_schema_sync()
+        except Exception as e:
+            logger.warning(f"Sync schema init failed (will retry): {e}")
+
     async def initialize(self):
         """Initialize connection pool and create schema."""
         if self._initialized:
@@ -158,28 +166,6 @@ class PostgresDatabase:
 
         async with self._pool.connection() as conn:
             yield conn
-
-    def get_cursor(self):
-        """Get a cursor-like object for direct SQL execution.
-
-        This method provides compatibility for code written against SQLite.
-        Since PostgreSQL is async, this returns a compatibility wrapper
-        that collects SQL statements and warns that they should be executed in an async context.
-
-        This is primarily for backward compatibility. New code should use
-        get_connection() with async/await instead.
-
-        Returns:
-            A cursor-like object that raises an error if actually used
-
-        Raises:
-            RuntimeError: If actually invoked (use async get_connection instead)
-        """
-        raise RuntimeError(
-            "PostgreSQL database requires async context. "
-            "Use 'async with db.get_connection() as conn: await conn.execute(...)' instead. "
-            "For schema setup, use the _init_schema() async method."
-        )
 
     async def _init_schema(self):
         """Create database schema if not exists.

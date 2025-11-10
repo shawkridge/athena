@@ -27,8 +27,6 @@ class ResearchStore(BaseStore):
             db: Database instance
         """
         super().__init__(db)
-        self._ensure_schema()
-
     def _row_to_model(self, row) -> ResearchTask:
         """Convert database row to ResearchTask model.
 

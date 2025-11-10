@@ -74,8 +74,6 @@ class ZettelkastenEvolution:
             db: Database connection
         """
         self.db = db
-        self._ensure_schema()
-
     def _ensure_schema(self):
         """Create schema for versioning, attributes, and indexing."""
         with self.db.get_connection() as conn:

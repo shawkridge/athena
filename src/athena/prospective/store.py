@@ -34,8 +34,6 @@ class ProspectiveStore(BaseStore):
         """
         super().__init__(db)
         # Ensure phase tracking schema is present
-        self._ensure_schema()
-
     def _row_to_model(self, row: Dict[str, Any]) -> ProspectiveTask:
         """Convert database row to ProspectiveTask model.
 

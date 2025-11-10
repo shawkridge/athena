@@ -20,8 +20,6 @@ class ContextAdapterStore:
     def __init__(self, db: Database):
         """Initialize store with database connection."""
         self.db = db
-        self._ensure_schema()
-
     def _ensure_schema(self):
         """Create tables on first use."""
         cursor = self.db.get_cursor()

@@ -19,8 +19,6 @@ class ConversationStore:
             db: Database instance
         """
         self.db = db
-        self._ensure_schema()
-
     # ==================== HELPER METHODS ====================
 
     def execute(self, query: str, params: tuple = (), fetch_one: bool = False, fetch_all: bool = False) -> Any:

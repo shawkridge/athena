@@ -44,8 +44,6 @@ class EventForwarderStore(BaseStore[ForwardingLogEntry]):
             db: Database connection
         """
         super().__init__(db)
-        self._ensure_schema()
-
     def _row_to_model(self, row: Dict[str, Any]) -> ForwardingLogEntry:
         """Convert database row to ForwardingLogEntry model.
 

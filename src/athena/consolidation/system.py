@@ -48,8 +48,7 @@ class ConsolidationSystem:
         self.procedural_store = procedural_store
         self.meta_store = meta_store
         # Schema is initialized centrally in database.py
-        # self._ensure_schema()
-
+        #
     def _ensure_schema(self):
         """Ensure consolidation tables exist."""
         cursor = self.db.get_cursor()

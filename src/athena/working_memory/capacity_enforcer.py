@@ -63,8 +63,6 @@ class WorkingMemoryCapacityEnforcer:
         """
         self.db = db
         self.logger = logging.getLogger(__name__)
-        self._ensure_schema()
-
     def _ensure_schema(self) -> None:
         """Create working_memory table if it doesn't exist."""
         try:

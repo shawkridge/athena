@@ -84,7 +84,7 @@ class ConfidencePlanner:
             db: Database instance
         """
         self.db = db
-        self.uncertainty_analyzer = UncertaintyAnalyzer(str(db.db_path))
+        self.uncertainty_analyzer = UncertaintyAnalyzer(db)
 
     def add_confidence_to_plan(self, plan: Plan) -> ConfidentPlan:
         """Add confidence information to an existing plan.

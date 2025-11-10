@@ -35,8 +35,6 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
             db: Database instance
         """
         super().__init__(db)
-        self._ensure_schema()
-
     def _row_to_model(self, row: Dict[str, Any]) -> ThinkingTrace:
         """Convert database row to ThinkingTrace model.
 

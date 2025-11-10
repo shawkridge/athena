@@ -31,6 +31,10 @@ async def main():
     server = MemoryMCPServer(db_path)
 
     try:
+        # Initialize database schema asynchronously
+        await server.store.db.initialize()
+
+        # Run MCP server
         await server.run()
     except KeyboardInterrupt:
         pass

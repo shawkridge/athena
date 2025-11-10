@@ -45,9 +45,6 @@ class SymbolStore:
 
         # Enable foreign key constraints
         self.conn.execute("PRAGMA foreign_keys = ON")
-
-        self._ensure_schema()
-
     def _ensure_schema(self) -> None:
         """Create database schema on first use.
 

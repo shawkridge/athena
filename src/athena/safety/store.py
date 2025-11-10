@@ -32,8 +32,6 @@ class SafetyStore(BaseStore):
             db: Database instance
         """
         super().__init__(db)
-        self._ensure_schema()
-
     def _row_to_model(self, row: Dict[str, Any]) -> Optional[SafetyPolicy]:
         """Convert database row to SafetyPolicy model.
 

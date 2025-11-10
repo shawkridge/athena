@@ -27,8 +27,6 @@ class IDEContextStore(BaseStore):
     def __init__(self, db: Database):
         """Initialize store with database connection."""
         super().__init__(db)
-        self._ensure_schema()
-
     def _row_to_model(self, row) -> IDEFile:
         """Convert database row to IDEFile model.
 

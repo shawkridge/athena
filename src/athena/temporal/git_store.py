@@ -27,8 +27,6 @@ class GitStore:
     def __init__(self, db: Database):
         """Initialize git store with database connection."""
         self.db = db
-        self._ensure_schema()
-
     def _ensure_schema(self):
         """Create git-aware tables if they don't exist."""
         cursor = self.db.get_cursor()

@@ -215,14 +215,15 @@ class MemoryMCPServer:
                     self.llm_client = None
 
         # Initialize metacognition components (Phase 4)
-        self.quality_monitor = MemoryQualityMonitor(str(self.store.db.db_path))
-        self.learning_adjuster = LearningRateAdjuster(str(self.store.db.db_path))
+        # Pass Database object directly (works with PostgreSQL)
+        self.quality_monitor = MemoryQualityMonitor(self.store.db)
+        self.learning_adjuster = LearningRateAdjuster(self.store.db)
         self.gap_detector = KnowledgeGapDetector(
-            str(self.store.db.db_path),
+            self.store.db,
             llm_client=self.llm_client
         )
-        self.reflection_system = SelfReflectionSystem(str(self.store.db.db_path))
-        self.load_monitor = CognitiveLoadMonitor(str(self.store.db.db_path))
+        self.reflection_system = SelfReflectionSystem(self.store.db)
+        self.load_monitor = CognitiveLoadMonitor(self.store.db)
 
         # Initialize semantic memory quality analyzer (Task 4)
         self.semantic_quality_analyzer = SemanticMemoryQualityAnalyzer(
@@ -284,9 +285,9 @@ class MemoryMCPServer:
 
         # Phase 3: Executive Function bridges
         self.goal_hierarchy = GoalHierarchy(self.store.db)
-        self.strategy_selector = StrategySelector(str(self.store.db.db_path))
-        self.conflict_resolver = ConflictResolver(str(self.store.db.db_path))
-        self.progress_monitor = ProgressMonitor(str(self.store.db.db_path))
+        self.strategy_selector = StrategySelector(db_identifier)
+        self.conflict_resolver = ConflictResolver(db_identifier)
+        self.progress_monitor = ProgressMonitor(db_identifier)
         self.agent_bridge = ExecutiveAgentBridge()
 
         self.orchestration_bridge = OrchestrationBridge(
@@ -312,7 +313,7 @@ class MemoryMCPServer:
 
         # Phase 1C: Symbol analysis handlers
         self.symbol_analysis_handlers = SymbolAnalysisMCPHandlers(
-            db_path=str(self.store.db.db_path)
+            db_path=db_identifier
         )
 
         # Phase 47: ATHENA analyzer handlers

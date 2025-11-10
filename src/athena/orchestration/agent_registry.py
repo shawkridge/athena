@@ -34,8 +34,6 @@ class AgentRegistry:
         self.graph = graph_store
         self.meta = meta_store
         self.db = graph_store.db
-        self._ensure_schema()
-
     def _ensure_schema(self) -> None:
         """Create agent registry table if not exists."""
         cursor = self.db.get_cursor()

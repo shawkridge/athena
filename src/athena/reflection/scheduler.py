@@ -48,8 +48,6 @@ class ReflectionMetricsStore:
 
     def __init__(self, db):
         self.db = db
-        self._ensure_schema()
-
     def _ensure_schema(self):
         """Create metrics table if not exists."""
         cursor = self.db.get_cursor()

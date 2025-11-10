@@ -27,8 +27,7 @@ class EpisodicStore(BaseStore):
         super().__init__(db)
         self._embedding_model = None  # Lazy-load and cache embedding model
         # Schema is initialized centrally in database.py
-        # self._ensure_schema()
-
+        #
     def _row_to_model(self, row: Dict[str, Any]) -> EpisodicEvent:
         """Convert database row to EpisodicEvent model.
 

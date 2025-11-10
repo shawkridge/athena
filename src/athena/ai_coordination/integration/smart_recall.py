@@ -63,8 +63,6 @@ class SmartRecall:
             db: Database connection
         """
         self.db = db
-        self._ensure_schema()
-
     def _ensure_schema(self):
         """Create smart recall tracking tables."""
         cursor = self.db.get_cursor()

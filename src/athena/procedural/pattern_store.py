@@ -33,8 +33,6 @@ class PatternStore:
     def __init__(self, db: Database):
         """Initialize pattern store."""
         self.db = db
-        self._ensure_schema()
-
     def _ensure_schema(self):
         """Create pattern tables if they don't exist."""
 

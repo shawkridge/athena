@@ -25,8 +25,6 @@ class GraphStore(BaseStore[Entity]):
         """
         super().__init__(db)
         # Schema is initialized centrally in database.py
-        # self._ensure_schema()
-
     def _row_to_model(self, row: Dict[str, Any]) -> Entity:
         """Convert database row to Entity model.
 

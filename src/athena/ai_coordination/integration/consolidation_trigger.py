@@ -61,8 +61,6 @@ class ConsolidationTrigger:
             db: Database connection
         """
         self.db = db
-        self._ensure_schema()
-
     def _ensure_schema(self):
         """Create consolidation trigger tables."""
         cursor = self.db.get_cursor()
