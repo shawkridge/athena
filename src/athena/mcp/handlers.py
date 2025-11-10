@@ -285,9 +285,9 @@ class MemoryMCPServer:
 
         # Phase 3: Executive Function bridges
         self.goal_hierarchy = GoalHierarchy(self.store.db)
-        self.strategy_selector = StrategySelector(db_identifier)
-        self.conflict_resolver = ConflictResolver(db_identifier)
-        self.progress_monitor = ProgressMonitor(db_identifier)
+        self.strategy_selector = StrategySelector(self.store.db)
+        self.conflict_resolver = ConflictResolver(self.store.db)
+        self.progress_monitor = ProgressMonitor(self.store.db)
         self.agent_bridge = ExecutiveAgentBridge()
 
         self.orchestration_bridge = OrchestrationBridge(
@@ -312,9 +312,7 @@ class MemoryMCPServer:
         )
 
         # Phase 1C: Symbol analysis handlers
-        self.symbol_analysis_handlers = SymbolAnalysisMCPHandlers(
-            db_path=db_identifier
-        )
+        self.symbol_analysis_handlers = SymbolAnalysisMCPHandlers()
 
         # Phase 47: ATHENA analyzer handlers
         self.athena_analyzer_handlers = ATHENAAnalyzerMCPHandlers()

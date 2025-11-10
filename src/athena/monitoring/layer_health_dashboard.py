@@ -70,7 +70,12 @@ class LayerHealthMonitor:
             db: Database instance for querying layer statistics
         """
         self.db = db
-        self.cursor = db.conn.cursor()
+
+    def _get_cursor(self):
+        """Get a cursor for database queries (lazy initialization)."""
+        if not hasattr(self, '_cursor'):
+            self._cursor = self.db.get_cursor()
+        return self._cursor
 
     def get_episodic_health(self, project_id: Optional[int] = None) -> LayerHealth:
         """Get health metrics for episodic memory layer.
@@ -88,8 +93,8 @@ class LayerHealthMonitor:
             query += " WHERE project_id = ?"
             params.append(project_id)
 
-        self.cursor.execute(query, params)
-        event_count = self.cursor.fetchone()[0]
+        self._get_cursor().execute(query, params)
+        event_count = self._get_cursor().fetchone()[0]
 
         # Health calculation
         utilization = min(1.0, event_count / 10000)  # 10K events = 100% utilization
@@ -126,8 +131,8 @@ class LayerHealthMonitor:
             query += " WHERE project_id = ?"
             params.append(project_id)
 
-        self.cursor.execute(query, params)
-        memory_count = self.cursor.fetchone()[0]
+        self._get_cursor().execute(query, params)
+        memory_count = self._get_cursor().fetchone()[0]
 
         utilization = min(1.0, memory_count / 5000)
         status = self._calculate_status(utilization)
@@ -158,8 +163,8 @@ class LayerHealthMonitor:
         query = "SELECT COUNT(*) FROM procedures"
         params = []
 
-        self.cursor.execute(query, params)
-        procedure_count = self.cursor.fetchone()[0]
+        self._get_cursor().execute(query, params)
+        procedure_count = self._get_cursor().fetchone()[0]
 
         utilization = min(1.0, procedure_count / 500)
         status = self._calculate_status(utilization)
@@ -189,16 +194,16 @@ class LayerHealthMonitor:
             query += " WHERE project_id = ?"
             params.append(project_id)
 
-        self.cursor.execute(query, params)
-        task_count = self.cursor.fetchone()[0]
+        self._get_cursor().execute(query, params)
+        task_count = self._get_cursor().fetchone()[0]
 
         # Count active tasks
         active_query = query + " AND status = ?"
-        self.cursor.execute(
+        self._get_cursor().execute(
             active_query,
             params + ["active"] if params else ["active"]
         )
-        active_count = self.cursor.fetchone()[0] if not params else 0
+        active_count = self._get_cursor().fetchone()[0] if not params else 0
 
         utilization = min(1.0, task_count / 1000)
         status = self._calculate_status(utilization)
@@ -228,17 +233,17 @@ class LayerHealthMonitor:
             query += " WHERE project_id = ?"
             params.append(project_id)
 
-        self.cursor.execute(query, params)
-        entity_count = self.cursor.fetchone()[0]
+        self._get_cursor().execute(query, params)
+        entity_count = self._get_cursor().fetchone()[0]
 
         # Count relations
         relation_query = "SELECT COUNT(*) FROM entity_relations"
         if project_id:
             relation_query += " WHERE (SELECT project_id FROM entities WHERE id = from_entity_id) = ?"
-            self.cursor.execute(relation_query, [project_id])
+            self._get_cursor().execute(relation_query, [project_id])
         else:
-            self.cursor.execute(relation_query)
-        relation_count = self.cursor.fetchone()[0]
+            self._get_cursor().execute(relation_query)
+        relation_count = self._get_cursor().fetchone()[0]
 
         utilization = min(1.0, (entity_count + relation_count) / 5000)
         status = self._calculate_status(utilization)
@@ -275,8 +280,8 @@ class LayerHealthMonitor:
                 query += " WHERE project_id = ?"
                 params.append(project_id)
 
-            self.cursor.execute(query, params)
-            domain_count = self.cursor.fetchone()[0]
+            self._get_cursor().execute(query, params)
+            domain_count = self._get_cursor().fetchone()[0]
         except:
             domain_count = 0
 
@@ -309,18 +314,18 @@ class LayerHealthMonitor:
                 query += " WHERE project_id = ?"
                 params.append(project_id)
 
-            self.cursor.execute(query, params)
-            consolidation_count = self.cursor.fetchone()[0]
+            self._get_cursor().execute(query, params)
+            consolidation_count = self._get_cursor().fetchone()[0]
 
             # Get last consolidation time
             last_run_query = "SELECT MAX(created_at) FROM consolidation_runs"
             if project_id:
                 last_run_query += " WHERE project_id = ?"
-                self.cursor.execute(last_run_query, [project_id])
+                self._get_cursor().execute(last_run_query, [project_id])
             else:
-                self.cursor.execute(last_run_query)
+                self._get_cursor().execute(last_run_query)
 
-            last_run_timestamp = self.cursor.fetchone()[0]
+            last_run_timestamp = self._get_cursor().fetchone()[0]
             last_run_age = (
                 (time.time() - last_run_timestamp) / 3600
                 if last_run_timestamp
@@ -370,8 +375,8 @@ class LayerHealthMonitor:
                 query += " WHERE project_id = ?"
                 params.append(project_id)
 
-            self.cursor.execute(query, params)
-            active_items = self.cursor.fetchone()[0]
+            self._get_cursor().execute(query, params)
+            active_items = self._get_cursor().fetchone()[0]
         except:
             active_items = 0
 
@@ -540,10 +545,10 @@ class LayerHealthMonitor:
         query = "SELECT COUNT(DISTINCT session_id) FROM episodic_events WHERE session_id IS NOT NULL"
         if project_id:
             query += " AND project_id = ?"
-            self.cursor.execute(query, [project_id])
+            self._get_cursor().execute(query, [project_id])
         else:
-            self.cursor.execute(query)
-        return self.cursor.fetchone()[0]
+            self._get_cursor().execute(query)
+        return self._get_cursor().fetchone()[0]
 
     def _get_consolidation_lag(self, project_id: Optional[int]) -> str:
         """Get time since last consolidation."""
