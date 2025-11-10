@@ -24,6 +24,9 @@ mypy src/athena
 
 # Start MCP server
 memory-mcp
+
+# Install ast-grep for syntax-aware code matching & refactoring
+cargo install ast-grep  # or: brew install ast-grep
 ```
 
 **Memory Operations** (via MCP or CLI):
@@ -323,6 +326,42 @@ pytest tests/unit/test_episodic_store.py::TestEpisodicStore::test_store_event -v
 pytest tests/ --cov=src/athena --cov-report=html
 ```
 
+### Decomposing Complex Tasks
+
+For multi-phase work, break tasks into sequential single-goal prompts. This ensures clarity, reproducibility, and prevents scope creep:
+
+**Pattern**:
+1. Each prompt targets one goal (one feature, one layer, one phase)
+2. Prompt structure: **Task** | **Input** | **Constraints** | **Output format** | **Verify method**
+3. Chain results: output of task N feeds into task N+1
+4. Decision point between tasks: explicitly state what happens next or pause for human input
+
+**Example: Adding a new memory layer**
+
+*Prompt 1*: "Create episodic store with schema and CRUD operations"
+- Input: Database interface, existing layer patterns
+- Constraints: Use existing Store base class, <300 lines
+- Output: models.py + store.py
+- Verify: Run `pytest tests/unit/test_episodic_*.py`
+
+*Prompt 2*: "Implement query routing in UnifiedMemoryManager"
+- Input: Completed episodic layer from Prompt 1
+- Constraints: Extend existing routing patterns, add tests
+- Output: Updated manager.py + new routing tests
+- Verify: Run integration tests
+
+*Prompt 3*: "Add MCP tools for layer exposure"
+- Input: Completed layer + routing from Prompts 1-2
+- Constraints: Follow existing MCP naming convention
+- Output: Tool definitions in handlers.py
+- Verify: Test tool invocations with sample data
+
+**Benefits**:
+- Clear success criteria at each step
+- Reproducible (same prompts work next week)
+- Easier debugging (failure points are isolated)
+- No context sprawl (each prompt is focused)
+
 ### Code Style & Linting
 
 The project enforces:
@@ -603,6 +642,76 @@ docs: Update documentation
 | `CONTRIBUTING.md` | Contributing guidelines |
 | `PROJECT_STATUS.md` | Current completion status |
 | `PHASE_*_COMPLETION_REPORT.md` | Phase-specific documentation |
+
+---
+
+## Syntax-Aware Code Matching with ast-grep
+
+For systematic code refactoring and pattern finding, use `ast-grep` instead of regex. It understands code structure, ignores comments/strings, and enables safe rewrites.
+
+### Key Principles
+
+- **Use ast-grep when**:
+  - Refactoring API calls, variable names, or import forms
+  - Enforcing patterns across a repo
+  - Need to understand syntax (ignore strings/comments)
+  - **Safe rewrites**: Apply changes to matched nodes
+
+- **Use ripgrep when**:
+  - Hunting for literals, TODOs, config values, non-code assets
+  - Quick text-based search across files
+  - Speed matters more than precision
+
+### Common Patterns in Athena
+
+**Find all class method definitions** (ignore docstrings):
+```bash
+ast-grep --lang python -p 'class $CLASS { function $METHOD($$$) { $$$ } }'
+```
+
+**Rename an API** (Python imports):
+```bash
+ast-grep run --lang python -p 'from $MOD import $OLD' -r 'from $MOD import new_name'
+```
+
+**Find all database queries** (understand context):
+```bash
+ast-grep --lang python -p 'db.execute($$$)'
+```
+
+**Identify async/await patterns** (TypeScript):
+```bash
+ast-grep run -l typescript -p 'async function $NAME() { $$$ await $CALL() }'
+```
+
+**Find unhandled error cases**:
+```bash
+ast-grep --lang python -p 'try { $$$ } catch { pass }'  # Catches silent failures
+```
+
+### Workflow: Combine rg + ast-grep
+
+1. **Quick hunt** with ripgrep to narrow candidates:
+   ```bash
+   rg -l 'useQuery' src/  # Find files with useQuery
+   ```
+
+2. **Precise matching** with ast-grep:
+   ```bash
+   ast-grep run -l typescript -p 'useQuery($$$)' -r 'useSuspenseQuery($$$)'
+   ```
+
+3. **Verify changes** before committing:
+   ```bash
+   git diff --stat
+   pytest tests/ -v
+   ```
+
+### ast-grep vs ripgrep Decision Tree
+
+- **Need correctness over speed?** → ast-grep (understands syntax)
+- **Just hunting text?** → ripgrep (fastest way)
+- **Both together?** → ripgrep to pre-filter, ast-grep to match precisely
 
 ---
 

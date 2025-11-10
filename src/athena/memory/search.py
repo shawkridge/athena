@@ -9,6 +9,12 @@ from typing import Optional, TYPE_CHECKING, Union
 from ..core.database import Database
 from ..core.embeddings import EmbeddingModel
 from ..core.models import Memory, MemorySearchResult, MemoryType
+from ..core.config import (
+    RAG_QUERY_EXPANSION_ENABLED,
+    RAG_QUERY_EXPANSION_VARIANTS,
+    RAG_QUERY_EXPANSION_CACHE,
+    RAG_QUERY_EXPANSION_CACHE_SIZE,
+)
 
 if TYPE_CHECKING:
     from ..rag.qdrant_adapter import QdrantAdapter
@@ -40,6 +46,40 @@ class SemanticSearch:
         # Detect database backend
         self._is_postgres = self._check_postgres()
 
+        # Initialize query expander (optional, graceful degradation)
+        self._query_expander = None
+        if RAG_QUERY_EXPANSION_ENABLED:
+            try:
+                from ..rag.llm_client import create_llm_client
+                from ..rag.query_expansion import QueryExpander, QueryExpansionConfig
+
+                # Create LLM client from config
+                # Try Claude first, fall back to Ollama
+                try:
+                    llm_client = create_llm_client("claude")
+                    logger.info("Initialized QueryExpander with Claude")
+                except Exception:
+                    try:
+                        llm_client = create_llm_client("ollama")
+                        logger.info("Initialized QueryExpander with Ollama")
+                    except Exception as e:
+                        logger.warning(f"Failed to initialize LLM for query expansion: {e}")
+                        llm_client = None
+
+                if llm_client:
+                    # Configure expander from config
+                    config = QueryExpansionConfig(
+                        enabled=RAG_QUERY_EXPANSION_ENABLED,
+                        num_variants=RAG_QUERY_EXPANSION_VARIANTS,
+                        enable_cache=RAG_QUERY_EXPANSION_CACHE,
+                        cache_size=RAG_QUERY_EXPANSION_CACHE_SIZE,
+                    )
+                    self._query_expander = QueryExpander(llm_client, config)
+                    logger.info(f"Query expansion enabled ({RAG_QUERY_EXPANSION_VARIANTS} variants)")
+
+            except ImportError as e:
+                logger.warning(f"Query expansion unavailable (missing dependencies): {e}")
+
         if self._is_postgres:
             logger.info("SemanticSearch initialized with PostgreSQL hybrid backend")
         elif qdrant:
@@ -67,7 +107,14 @@ class SemanticSearch:
         memory_types: Optional[list[MemoryType]] = None,
         min_similarity: float = 0.3,
     ) -> list[MemorySearchResult]:
-        """Search for relevant memories.
+        """Search for relevant memories with optional query expansion.
+
+        Flow:
+        1. If query expansion enabled: Generate alternative query phrasings
+        2. Execute parallel searches for all query variants
+        3. Merge and deduplicate results from all variants
+        4. Rerank merged results by similarity
+        5. Return top-k results
 
         Uses PostgreSQL hybrid search (best), Qdrant (if available), or sqlite-vec (fallback).
 
@@ -81,7 +128,80 @@ class SemanticSearch:
         Returns:
             List of search results with similarity scores
         """
-        # Generate query embedding
+        # Query expansion: Generate alternative phrasings if enabled
+        if self._query_expander:
+            try:
+                start_time = time.time()
+                expanded = self._query_expander.expand(query)
+                expansion_time = time.time() - start_time
+
+                logger.info(
+                    f"Query expansion: {len(expanded)} variants in {expansion_time:.2f}s"
+                )
+
+                # Execute parallel searches for all variants
+                # Request more results per variant (k*2) to increase recall
+                results_per_variant = k * 2
+
+                all_results = []
+                search_start = time.time()
+
+                for variant_query in expanded.all_queries():
+                    logger.debug(f"Searching variant: '{variant_query}'")
+
+                    # Generate embedding for variant
+                    query_embedding = self.embedder.embed(variant_query)
+
+                    # Execute search based on backend
+                    if self._is_postgres:
+                        variant_results = self._recall_postgres(
+                            query_embedding,
+                            project_id,
+                            variant_query,
+                            results_per_variant,
+                            memory_types,
+                            min_similarity,
+                        )
+                    elif self.qdrant:
+                        variant_results = self._recall_qdrant(
+                            query_embedding,
+                            project_id,
+                            results_per_variant,
+                            memory_types,
+                            min_similarity,
+                        )
+                    else:
+                        variant_results = self._recall_sqlite(
+                            query_embedding,
+                            project_id,
+                            results_per_variant,
+                            memory_types,
+                            min_similarity,
+                        )
+
+                    all_results.extend(variant_results)
+
+                search_time = time.time() - search_start
+                logger.info(
+                    f"Searched {len(expanded)} variants in {search_time:.2f}s "
+                    f"({len(all_results)} raw results)"
+                )
+
+                # Merge and deduplicate results
+                merged_results = self._merge_results(all_results, k)
+
+                logger.info(
+                    f"Query expansion complete: {len(merged_results)} final results "
+                    f"(total time: {expansion_time + search_time:.2f}s)"
+                )
+
+                return merged_results
+
+            except Exception as e:
+                logger.warning(f"Query expansion failed, falling back to single query: {e}")
+                # Fall through to single query below
+
+        # Single query (no expansion or expansion failed)
         query_embedding = self.embedder.embed(query)
 
         # Use PostgreSQL hybrid search if available (best performance + quality)
@@ -342,6 +462,63 @@ class SemanticSearch:
 
         logger.debug(f"SQLite search returned {len(results)} results")
         return results
+
+    def _merge_results(
+        self, all_results: list[MemorySearchResult], k: int
+    ) -> list[MemorySearchResult]:
+        """Merge and deduplicate results from multiple query variants.
+
+        Strategy:
+        1. Group results by memory_id
+        2. For each memory, keep the highest similarity score across variants
+        3. Sort by similarity (highest first)
+        4. Take top-k results
+        5. Update ranks
+
+        Args:
+            all_results: Combined results from all query variants
+            k: Number of results to return
+
+        Returns:
+            Merged and deduplicated results (top-k by similarity)
+
+        Examples:
+            >>> # Variant 1 returns: [(mem_1, 0.8), (mem_2, 0.7)]
+            >>> # Variant 2 returns: [(mem_1, 0.75), (mem_3, 0.6)]
+            >>> # Merged: [(mem_1, 0.8), (mem_2, 0.7), (mem_3, 0.6)]
+        """
+        if not all_results:
+            return []
+
+        # Group by memory_id, keeping highest similarity
+        best_results = {}  # memory_id -> MemorySearchResult
+
+        for result in all_results:
+            memory_id = result.memory.id
+
+            if memory_id not in best_results:
+                best_results[memory_id] = result
+            else:
+                # Keep result with higher similarity
+                if result.similarity > best_results[memory_id].similarity:
+                    best_results[memory_id] = result
+
+        # Convert to list and sort by similarity (descending)
+        merged = list(best_results.values())
+        merged.sort(key=lambda r: r.similarity, reverse=True)
+
+        # Take top-k and update ranks
+        final_results = []
+        for rank, result in enumerate(merged[:k], 1):
+            result.rank = rank
+            final_results.append(result)
+
+        logger.debug(
+            f"Merged {len(all_results)} results into {len(final_results)} unique memories "
+            f"(deduplication: {len(all_results) - len(merged)} duplicates)"
+        )
+
+        return final_results
 
     def recall_with_reranking(
         self,

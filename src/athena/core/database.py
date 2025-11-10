@@ -174,10 +174,21 @@ class Database:
             )
         """)
 
+        # Event content hashes for deduplication (pipeline support)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS event_hashes (
+                event_id INTEGER PRIMARY KEY,
+                content_hash TEXT NOT NULL UNIQUE,
+                created_at INTEGER NOT NULL,
+                FOREIGN KEY (event_id) REFERENCES episodic_events(id) ON DELETE CASCADE
+            )
+        """)
+
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_timestamp ON episodic_events(timestamp DESC)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_project ON episodic_events(project_id, timestamp DESC)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_session ON episodic_events(session_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_type ON episodic_events(event_type)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_event_hashes_content ON event_hashes(content_hash)")
 
         # Migrate existing episodic_events table if consolidation_status column is missing
         cursor.execute("PRAGMA table_info(episodic_events)")

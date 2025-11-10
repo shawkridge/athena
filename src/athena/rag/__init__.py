@@ -10,6 +10,12 @@ from .prompt_caching import (
     CacheStatus,
     PromptCacheManager,
 )
+from .query_expansion import (
+    QueryExpander,
+    QueryExpansionConfig,
+    QueryExpansions,
+    batch_expand,
+)
 from .query_transform import QueryTransformConfig, QueryTransformer, batch_transform
 from .reflective import ReflectiveRAG, ReflectiveRAGConfig, get_iteration_metrics
 from .reranker import LLMReranker, RerankerConfig, analyze_reranking_impact
@@ -31,6 +37,10 @@ __all__ = [
     "LLMReranker",
     "RerankerConfig",
     "analyze_reranking_impact",
+    "QueryExpander",
+    "QueryExpansionConfig",
+    "QueryExpansions",
+    "batch_expand",
     "QueryTransformer",
     "QueryTransformConfig",
     "batch_transform",

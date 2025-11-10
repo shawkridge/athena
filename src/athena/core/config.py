@@ -80,6 +80,12 @@ RAG_TOP_K = int(os.environ.get("RAG_TOP_K", "5"))
 RAG_ENABLE_HYDE = os.environ.get("RAG_ENABLE_HYDE", "true").lower() == "true"
 RAG_ENABLE_RERANKING = os.environ.get("RAG_ENABLE_RERANKING", "true").lower() == "true"
 
+# Query expansion parameters
+RAG_QUERY_EXPANSION_ENABLED = os.environ.get("RAG_QUERY_EXPANSION_ENABLED", "true").lower() == "true"
+RAG_QUERY_EXPANSION_VARIANTS = int(os.environ.get("RAG_QUERY_EXPANSION_VARIANTS", "4"))
+RAG_QUERY_EXPANSION_CACHE = os.environ.get("RAG_QUERY_EXPANSION_CACHE", "true").lower() == "true"
+RAG_QUERY_EXPANSION_CACHE_SIZE = int(os.environ.get("RAG_QUERY_EXPANSION_CACHE_SIZE", "1000"))
+
 
 # ============================================================================
 # Graph and Community Detection Configuration

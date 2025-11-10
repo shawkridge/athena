@@ -59,6 +59,10 @@ class PostgresDatabase:
         password: str = "athena_dev",
         min_size: int = 2,
         max_size: int = 10,
+        pool_timeout: int = 30,
+        max_idle: int = 300,
+        max_lifetime: int = 3600,
+        worker_count: Optional[int] = None,
     ):
         """Initialize PostgreSQL database connection pool.
 
@@ -70,6 +74,10 @@ class PostgresDatabase:
             password: Database password
             min_size: Minimum connections in pool
             max_size: Maximum connections in pool
+            pool_timeout: Timeout for getting connection from pool (seconds)
+            max_idle: Maximum idle time before recycling connection (seconds, default 5 min)
+            max_lifetime: Maximum connection lifetime before recycling (seconds, default 1 hour)
+            worker_count: Number of workers for dynamic pool sizing (optional)
         """
         if not PSYCOPG_AVAILABLE:
             raise ImportError(
@@ -82,8 +90,19 @@ class PostgresDatabase:
         self.dbname = dbname
         self.user = user
         self.password = password
-        self.min_size = min_size
-        self.max_size = max_size
+
+        # Dynamic pool sizing based on worker count (Airweave pattern)
+        if worker_count:
+            # Scale with workers: min = 10% of workers (2-5), max = 50% of workers (10-20)
+            self.min_size = min(5, max(2, int(worker_count * 0.1)))
+            self.max_size = min(20, max(10, int(worker_count * 0.5)))
+        else:
+            self.min_size = min_size
+            self.max_size = max_size
+
+        self.pool_timeout = pool_timeout
+        self.max_idle = max_idle
+        self.max_lifetime = max_lifetime
 
         # Connection pool (lazy initialization)
         self._pool: Optional[AsyncConnectionPool] = None
@@ -100,16 +119,27 @@ class PostgresDatabase:
             f"port={self.port} "
             f"dbname={self.dbname} "
             f"user={self.user} "
-            f"password={self.password}"
+            f"password={self.password} "
+            f"connect_timeout={self.pool_timeout}"
         )
 
-        # Create and open connection pool
+        # Create and open connection pool with enhanced parameters
+        # Airweave pattern: timeout, max_idle, max_lifetime for production hardening
         self._pool = AsyncConnectionPool(
             conninfo,
             min_size=self.min_size,
             max_size=self.max_size,
+            timeout=self.pool_timeout,  # Timeout for acquiring connection
+            max_idle=self.max_idle,     # Recycle idle connections after 5 min
+            max_lifetime=self.max_lifetime,  # Recycle all connections after 1 hour
+            check=AsyncConnectionPool.check_connection,  # Health check before use
         )
         await self._pool.open()
+
+        logger.info(
+            f"PostgreSQL pool initialized: min={self.min_size}, max={self.max_size}, "
+            f"timeout={self.pool_timeout}s, max_idle={self.max_idle}s, max_lifetime={self.max_lifetime}s"
+        )
 
         # Initialize schema
         await self._init_schema()
@@ -143,11 +173,43 @@ class PostgresDatabase:
                 logger.warning(f"pgvector extension not available: {e}")
                 logger.info("Continuing without pgvector - vector operations will use JSON storage")
 
+            # Apply PostgreSQL optimizations (Airweave pattern)
+            await self._optimize_postgres(conn)
+
             # Create all tables (from PHASE5_POSTGRESQL_SCHEMA.md)
             await self._create_tables(conn)
             await self._create_indices(conn)
 
             await conn.commit()
+
+    async def _optimize_postgres(self, conn: AsyncConnection):
+        """Apply PostgreSQL session tuning parameters.
+
+        Based on Airweave's production optimization patterns.
+        These settings improve performance for vector search, full-text search,
+        and analytical workloads.
+
+        Note: Only session-level settings are applied here. For server-level
+        settings (shared_buffers, max_connections, etc.), modify postgresql.conf
+        or docker-compose environment variables.
+        """
+        try:
+            # Session-level memory settings for improved query performance
+            # Note: shared_buffers cannot be set at session level (server-level only)
+            await conn.execute("SET effective_cache_size = '1GB'")
+            await conn.execute("SET maintenance_work_mem = '128MB'")
+            await conn.execute("SET work_mem = '16MB'")
+
+            # Parallel query settings for faster aggregations
+            await conn.execute("SET max_parallel_workers_per_gather = 4")
+
+            # SSD optimization (lower random page cost)
+            await conn.execute("SET random_page_cost = 1.1")
+
+            logger.info("PostgreSQL session optimization parameters applied")
+        except Exception as e:
+            # Non-fatal: continue even if some settings fail
+            logger.warning(f"Failed to apply some PostgreSQL optimizations: {e}")
 
     async def _create_tables(self, conn: AsyncConnection):
         """Create all 10 core tables."""
@@ -1160,6 +1222,198 @@ class PostgresDatabase:
             except Exception:
                 await conn.rollback()
                 raise
+
+    # ===========================================================================
+    # POOL MONITORING & HEALTH CHECKS
+    # ===========================================================================
+
+    async def get_pool_stats(self) -> Dict[str, Any]:
+        """Get connection pool utilization statistics.
+
+        Returns current pool state for monitoring and capacity planning.
+        Based on Airweave's pool monitoring pattern.
+
+        Returns:
+            Dict with pool statistics:
+            - total_connections: Current total connections in pool
+            - available_connections: Idle connections ready for use
+            - waiting_clients: Clients waiting for connection
+            - min_size: Configured minimum pool size
+            - max_size: Configured maximum pool size
+            - pool_utilization: Percentage of pool in use (0.0-1.0)
+        """
+        if not self._pool:
+            return {
+                "status": "not_initialized",
+                "total_connections": 0,
+                "available_connections": 0,
+                "waiting_clients": 0,
+            }
+
+        try:
+            # Get pool statistics
+            total = self._pool.get_size()
+            available = self._pool.get_available()
+            waiting = self._pool.get_waiting()
+
+            utilization = (total - available) / self.max_size if self.max_size > 0 else 0.0
+
+            return {
+                "status": "active",
+                "total_connections": total,
+                "available_connections": available,
+                "waiting_clients": waiting,
+                "min_size": self.min_size,
+                "max_size": self.max_size,
+                "pool_utilization": round(utilization, 2),
+                "timeout": self.pool_timeout,
+                "max_idle": self.max_idle,
+                "max_lifetime": self.max_lifetime,
+            }
+        except Exception as e:
+            logger.error(f"Failed to get pool stats: {e}")
+            return {"status": "error", "error": str(e)}
+
+    async def get_index_stats(self) -> List[Dict[str, Any]]:
+        """Get PostgreSQL index usage statistics.
+
+        Returns index efficiency metrics for query optimization.
+        Based on Airweave's index monitoring pattern.
+
+        Returns:
+            List of index statistics dicts with:
+            - schema: Schema name
+            - table: Table name
+            - index: Index name
+            - scans: Number of index scans
+            - tuples_read: Tuples read by index scans
+            - tuples_fetched: Tuples fetched by index scans
+            - efficiency: Fetch ratio (tuples_fetched / tuples_read)
+        """
+        async with self.get_connection() as conn:
+            row = await conn.execute("""
+                SELECT
+                    schemaname,
+                    tablename,
+                    indexname,
+                    idx_scan,
+                    idx_tup_read,
+                    idx_tup_fetch,
+                    CASE
+                        WHEN idx_tup_read > 0 THEN
+                            ROUND((idx_tup_fetch::numeric / idx_tup_read::numeric), 2)
+                        ELSE 0
+                    END as efficiency
+                FROM pg_stat_user_indexes
+                WHERE schemaname = 'public'
+                ORDER BY idx_scan DESC
+            """)
+
+            results = []
+            async for row_data in row:
+                results.append({
+                    "schema": row_data[0],
+                    "table": row_data[1],
+                    "index": row_data[2],
+                    "scans": int(row_data[3] or 0),
+                    "tuples_read": int(row_data[4] or 0),
+                    "tuples_fetched": int(row_data[5] or 0),
+                    "efficiency": float(row_data[6] or 0),
+                })
+
+            return results
+
+    async def get_connection_stats(self) -> Dict[str, Any]:
+        """Get active database connection statistics.
+
+        Returns detailed information about active connections for monitoring.
+
+        Returns:
+            Dict with connection statistics:
+            - total_connections: Total active connections to this database
+            - active_queries: Connections currently executing queries
+            - idle_connections: Idle connections
+            - waiting_connections: Connections waiting for locks
+            - oldest_query_seconds: Age of oldest running query
+        """
+        async with self.get_connection() as conn:
+            row = await conn.execute("""
+                SELECT
+                    COUNT(*) as total,
+                    COUNT(*) FILTER (WHERE state = 'active') as active,
+                    COUNT(*) FILTER (WHERE state = 'idle') as idle,
+                    COUNT(*) FILTER (WHERE wait_event_type IS NOT NULL) as waiting,
+                    EXTRACT(EPOCH FROM (NOW() - MIN(query_start)))::int as oldest_query_sec
+                FROM pg_stat_activity
+                WHERE datname = current_database()
+                    AND pid != pg_backend_pid()
+            """)
+
+            result = await row.fetchone()
+
+            return {
+                "total_connections": int(result[0] or 0),
+                "active_queries": int(result[1] or 0),
+                "idle_connections": int(result[2] or 0),
+                "waiting_connections": int(result[3] or 0),
+                "oldest_query_seconds": int(result[4] or 0),
+            }
+
+    async def health_check(self) -> Dict[str, Any]:
+        """Perform comprehensive health check.
+
+        Validates pool status, database connectivity, and basic query performance.
+        Based on Airweave's health monitoring pattern.
+
+        Returns:
+            Dict with health check results:
+            - status: "healthy" or "unhealthy"
+            - pool: Pool statistics
+            - database: Database connectivity status
+            - query_latency_ms: Simple query latency in milliseconds
+        """
+        health = {
+            "status": "healthy",
+            "timestamp": int(time.time()),
+        }
+
+        # Check pool status
+        try:
+            pool_stats = await self.get_pool_stats()
+            health["pool"] = pool_stats
+
+            # Warn if pool utilization is high
+            if pool_stats.get("pool_utilization", 0) > 0.8:
+                health["warnings"] = health.get("warnings", [])
+                health["warnings"].append("High pool utilization (>80%)")
+        except Exception as e:
+            health["status"] = "unhealthy"
+            health["pool_error"] = str(e)
+
+        # Check database connectivity and query performance
+        try:
+            start_time = time.time()
+            async with self.get_connection() as conn:
+                await conn.execute("SELECT 1")
+            query_latency_ms = (time.time() - start_time) * 1000
+
+            health["database"] = {
+                "connected": True,
+                "query_latency_ms": round(query_latency_ms, 2),
+            }
+
+            # Warn if latency is high
+            if query_latency_ms > 100:
+                health["warnings"] = health.get("warnings", [])
+                health["warnings"].append(f"High query latency ({query_latency_ms:.0f}ms)")
+        except Exception as e:
+            health["status"] = "unhealthy"
+            health["database"] = {
+                "connected": False,
+                "error": str(e),
+            }
+
+        return health
 
     # ===========================================================================
     # CLEANUP
