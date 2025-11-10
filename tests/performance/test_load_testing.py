@@ -422,3 +422,374 @@ class TestResourceScaling:
 
         # Concurrent should not scale linearly - much better than sequential
         assert times[-1] < times[0] * 10  # 100 concurrent shouldn't be 10x slower than 10
+
+
+class TestSustainedLoad1K:
+    """Test sustained load with 1000 operations."""
+
+    @pytest.mark.performance
+    @pytest.mark.asyncio
+    async def test_sustained_1000_sequential_recalls(self, mock_memory_store, mock_project_manager):
+        """Sustained load: 1000 sequential recall operations."""
+        recall_tool = RecallTool(mock_memory_store, mock_project_manager)
+        mock_memory_store.recall_with_reranking.return_value = []
+
+        start_time = time.time()
+        results = []
+        latencies = []
+
+        for i in range(1000):
+            op_start = time.time()
+            result = await recall_tool.execute(query=f"query {i}")
+            op_time = (time.time() - op_start) * 1000
+            results.append(result)
+            latencies.append(op_time)
+
+        elapsed = time.time() - start_time
+        success_count = sum(1 for r in results if r.status == ToolStatus.SUCCESS)
+
+        latencies.sort()
+        p50 = latencies[500]
+        p95 = latencies[950]
+        p99 = latencies[990]
+
+        print(f"1000 recalls: {elapsed:.2f}s ({elapsed/1000*1000:.2f}ms avg)")
+        print(f"  P50: {p50:.2f}ms, P95: {p95:.2f}ms, P99: {p99:.2f}ms")
+
+        assert success_count == 1000
+        assert elapsed < 60.0  # Complete in under 60s
+        assert p95 < 100.0  # P95 under 100ms
+
+    @pytest.mark.performance
+    @pytest.mark.asyncio
+    async def test_sustained_1000_sequential_remembers(self, mock_memory_store, mock_project_manager):
+        """Sustained load: 1000 sequential remember operations."""
+        remember_tool = RememberTool(mock_memory_store, mock_project_manager)
+
+        start_time = time.time()
+        results = []
+        latencies = []
+
+        for i in range(1000):
+            op_start = time.time()
+            result = await remember_tool.execute(content=f"Memory {i}")
+            op_time = (time.time() - op_start) * 1000
+            results.append(result)
+            latencies.append(op_time)
+
+        elapsed = time.time() - start_time
+        success_count = sum(1 for r in results if r.status == ToolStatus.SUCCESS)
+
+        latencies.sort()
+        p50 = latencies[500]
+        p95 = latencies[950]
+        p99 = latencies[990]
+
+        print(f"1000 remembers: {elapsed:.2f}s ({elapsed/1000*1000:.2f}ms avg)")
+        print(f"  P50: {p50:.2f}ms, P95: {p95:.2f}ms, P99: {p99:.2f}ms")
+
+        assert success_count == 1000
+        assert elapsed < 60.0
+        assert p95 < 100.0
+
+    @pytest.mark.performance
+    @pytest.mark.asyncio
+    async def test_sustained_1000_concurrent_mixed(self, mock_memory_store, mock_project_manager, mock_planning_store):
+        """Sustained load: 1000 concurrent mixed operations (batched)."""
+        recall_tool = RecallTool(mock_memory_store, mock_project_manager)
+        remember_tool = RememberTool(mock_memory_store, mock_project_manager)
+        decompose_tool = DecomposeTool(mock_planning_store)
+        mock_memory_store.recall_with_reranking.return_value = []
+
+        start_time = time.time()
+        total_success = 0
+        batch_size = 100
+        latencies = []
+
+        # Process in batches of 100
+        for batch in range(10):
+            batch_start = time.time()
+            tasks = []
+
+            for i in range(batch_size):
+                op_num = batch * batch_size + i
+                if op_num % 3 == 0:
+                    tasks.append(recall_tool.execute(query=f"query {op_num}"))
+                elif op_num % 3 == 1:
+                    tasks.append(remember_tool.execute(content=f"Memory {op_num}"))
+                else:
+                    tasks.append(decompose_tool.execute(task=f"Task {op_num}"))
+
+            results = await asyncio.gather(*tasks)
+            batch_time = (time.time() - batch_start) * 1000
+            latencies.append(batch_time)
+            total_success += sum(1 for r in results if r.status == ToolStatus.SUCCESS)
+
+        elapsed = time.time() - start_time
+        latencies.sort()
+
+        print(f"1000 concurrent mixed (10 batches): {elapsed:.2f}s")
+        print(f"  Batch latencies - P50: {latencies[5]:.2f}ms, P95: {latencies[9]:.2f}ms")
+
+        assert total_success >= 950  # Allow some failures
+        assert elapsed < 30.0  # Should complete faster than sequential
+
+
+class TestSustainedLoad5K:
+    """Test sustained load with 5000 operations."""
+
+    @pytest.mark.performance
+    @pytest.mark.asyncio
+    async def test_sustained_5000_sequential_recalls(self, mock_memory_store, mock_project_manager):
+        """Sustained load: 5000 sequential recall operations."""
+        recall_tool = RecallTool(mock_memory_store, mock_project_manager)
+        mock_memory_store.recall_with_reranking.return_value = []
+
+        start_time = time.time()
+        results = []
+        latencies = []
+        checkpoint_times = []
+
+        for i in range(5000):
+            op_start = time.time()
+            result = await recall_tool.execute(query=f"query {i}")
+            op_time = (time.time() - op_start) * 1000
+            results.append(result)
+            latencies.append(op_time)
+
+            # Track checkpoints every 1000 ops
+            if (i + 1) % 1000 == 0:
+                checkpoint_elapsed = time.time() - start_time
+                checkpoint_times.append(checkpoint_elapsed)
+
+        elapsed = time.time() - start_time
+        success_count = sum(1 for r in results if r.status == ToolStatus.SUCCESS)
+
+        latencies.sort()
+        p50 = latencies[2500]
+        p95 = latencies[4750]
+        p99 = latencies[4950]
+
+        print(f"5000 recalls: {elapsed:.2f}s total")
+        print(f"  Checkpoints: 1K={checkpoint_times[0]:.1f}s, 2K={checkpoint_times[1]:.1f}s, 3K={checkpoint_times[2]:.1f}s")
+        print(f"  4K={checkpoint_times[3]:.1f}s, 5K={checkpoint_times[4]:.1f}s")
+        print(f"  Latencies - P50: {p50:.2f}ms, P95: {p95:.2f}ms, P99: {p99:.2f}ms")
+
+        assert success_count == 5000
+        assert elapsed < 300.0  # Complete in under 5 minutes
+        assert p95 < 150.0  # P95 under 150ms even under sustained load
+
+    @pytest.mark.performance
+    @pytest.mark.asyncio
+    async def test_sustained_5000_sequential_remembers(self, mock_memory_store, mock_project_manager):
+        """Sustained load: 5000 sequential remember operations."""
+        remember_tool = RememberTool(mock_memory_store, mock_project_manager)
+
+        start_time = time.time()
+        results = []
+        latencies = []
+        checkpoint_times = []
+
+        for i in range(5000):
+            op_start = time.time()
+            result = await remember_tool.execute(content=f"Memory {i}")
+            op_time = (time.time() - op_start) * 1000
+            results.append(result)
+            latencies.append(op_time)
+
+            if (i + 1) % 1000 == 0:
+                checkpoint_elapsed = time.time() - start_time
+                checkpoint_times.append(checkpoint_elapsed)
+
+        elapsed = time.time() - start_time
+        success_count = sum(1 for r in results if r.status == ToolStatus.SUCCESS)
+
+        latencies.sort()
+        p50 = latencies[2500]
+        p95 = latencies[4750]
+        p99 = latencies[4950]
+
+        print(f"5000 remembers: {elapsed:.2f}s total")
+        print(f"  Checkpoints: 1K={checkpoint_times[0]:.1f}s, 2K={checkpoint_times[1]:.1f}s, 3K={checkpoint_times[2]:.1f}s")
+        print(f"  4K={checkpoint_times[3]:.1f}s, 5K={checkpoint_times[4]:.1f}s")
+        print(f"  Latencies - P50: {p50:.2f}ms, P95: {p95:.2f}ms, P99: {p99:.2f}ms")
+
+        assert success_count == 5000
+        assert elapsed < 300.0
+        assert p95 < 150.0
+
+    @pytest.mark.performance
+    @pytest.mark.asyncio
+    async def test_sustained_5000_concurrent_batched(self, mock_memory_store, mock_project_manager):
+        """Sustained load: 5000 concurrent operations in batches of 500."""
+        recall_tool = RecallTool(mock_memory_store, mock_project_manager)
+        remember_tool = RememberTool(mock_memory_store, mock_project_manager)
+        mock_memory_store.recall_with_reranking.return_value = []
+
+        start_time = time.time()
+        total_success = 0
+        batch_size = 500
+        batch_times = []
+
+        # Process in 10 batches of 500
+        for batch in range(10):
+            batch_start = time.time()
+            tasks = []
+
+            for i in range(batch_size):
+                op_num = batch * batch_size + i
+                if op_num % 2 == 0:
+                    tasks.append(recall_tool.execute(query=f"query {op_num}"))
+                else:
+                    tasks.append(remember_tool.execute(content=f"Memory {op_num}"))
+
+            results = await asyncio.gather(*tasks)
+            batch_time = time.time() - batch_start
+            batch_times.append(batch_time)
+            total_success += sum(1 for r in results if r.status == ToolStatus.SUCCESS)
+
+        elapsed = time.time() - start_time
+
+        print(f"5000 concurrent (10 batches of 500): {elapsed:.2f}s total")
+        print(f"  Batch times: min={min(batch_times):.2f}s, max={max(batch_times):.2f}s, avg={sum(batch_times)/len(batch_times):.2f}s")
+
+        assert total_success >= 4900  # Allow some failures
+        assert elapsed < 120.0  # Should be much faster than sequential
+
+
+class TestSustainedLoad10K:
+    """Test sustained load with 10000 operations."""
+
+    @pytest.mark.performance
+    @pytest.mark.asyncio
+    async def test_sustained_10000_sequential_recalls(self, mock_memory_store, mock_project_manager):
+        """Sustained load: 10000 sequential recall operations."""
+        recall_tool = RecallTool(mock_memory_store, mock_project_manager)
+        mock_memory_store.recall_with_reranking.return_value = []
+
+        start_time = time.time()
+        success_count = 0
+        latencies = []
+        checkpoint_times = []
+
+        for i in range(10000):
+            op_start = time.time()
+            result = await recall_tool.execute(query=f"query {i}")
+            op_time = (time.time() - op_start) * 1000
+            latencies.append(op_time)
+
+            if result.status == ToolStatus.SUCCESS:
+                success_count += 1
+
+            # Track checkpoints every 2000 ops
+            if (i + 1) % 2000 == 0:
+                checkpoint_elapsed = time.time() - start_time
+                checkpoint_times.append(checkpoint_elapsed)
+
+        elapsed = time.time() - start_time
+
+        latencies.sort()
+        p50 = latencies[5000]
+        p95 = latencies[9500]
+        p99 = latencies[9900]
+
+        print(f"10000 recalls: {elapsed:.2f}s total")
+        print(f"  Checkpoints: 2K={checkpoint_times[0]:.1f}s, 4K={checkpoint_times[1]:.1f}s, 6K={checkpoint_times[2]:.1f}s")
+        print(f"  8K={checkpoint_times[3]:.1f}s, 10K={checkpoint_times[4]:.1f}s")
+        print(f"  Latencies - P50: {p50:.2f}ms, P95: {p95:.2f}ms, P99: {p99:.2f}ms")
+
+        assert success_count == 10000
+        assert elapsed < 600.0  # Complete in under 10 minutes
+        assert p95 < 200.0  # P95 under 200ms even at 10K scale
+
+    @pytest.mark.performance
+    @pytest.mark.asyncio
+    async def test_sustained_10000_concurrent_large_batches(self, mock_memory_store, mock_project_manager):
+        """Sustained load: 10000 concurrent operations in batches of 1000."""
+        recall_tool = RecallTool(mock_memory_store, mock_project_manager)
+        remember_tool = RememberTool(mock_memory_store, mock_project_manager)
+        optimize_tool = OptimizeTool(mock_memory_store, mock_project_manager)
+        mock_memory_store.recall_with_reranking.return_value = []
+
+        start_time = time.time()
+        total_success = 0
+        batch_size = 1000
+        batch_times = []
+
+        # Process in 10 batches of 1000
+        for batch in range(10):
+            batch_start = time.time()
+            tasks = []
+
+            for i in range(batch_size):
+                op_num = batch * batch_size + i
+                if op_num % 3 == 0:
+                    tasks.append(recall_tool.execute(query=f"query {op_num}"))
+                elif op_num % 3 == 1:
+                    tasks.append(remember_tool.execute(content=f"Memory {op_num}"))
+                else:
+                    tasks.append(optimize_tool.execute())
+
+            results = await asyncio.gather(*tasks)
+            batch_time = time.time() - batch_start
+            batch_times.append(batch_time)
+            total_success += sum(1 for r in results if r.status == ToolStatus.SUCCESS)
+
+        elapsed = time.time() - start_time
+
+        print(f"10000 concurrent (10 batches of 1000): {elapsed:.2f}s total")
+        print(f"  Batch times: min={min(batch_times):.2f}s, max={max(batch_times):.2f}s, avg={sum(batch_times)/len(batch_times):.2f}s")
+        print(f"  Success rate: {total_success}/10000 ({100*total_success/10000:.1f}%)")
+
+        assert total_success >= 9800  # Allow 200 failures
+        assert elapsed < 180.0  # Should be reasonable despite 10K ops
+
+    @pytest.mark.performance
+    @pytest.mark.asyncio
+    async def test_sustained_10000_mixed_realistic(self, mock_memory_store, mock_project_manager, mock_planning_store, mock_mcp_server):
+        """Sustained load: 10000 mixed operations mimicking realistic workload."""
+        recall_tool = RecallTool(mock_memory_store, mock_project_manager)
+        remember_tool = RememberTool(mock_memory_store, mock_project_manager)
+        decompose_tool = DecomposeTool(mock_planning_store)
+        health_tool = SystemHealthCheckTool(mock_mcp_server)
+        mock_memory_store.recall_with_reranking.return_value = []
+
+        start_time = time.time()
+        total_ops = 10000
+        ops_per_batch = 500
+        total_success = 0
+        batch_times = []
+
+        # Realistic distribution: 40% recall, 35% remember, 20% decompose, 5% health checks
+        for batch in range(total_ops // ops_per_batch):
+            batch_start = time.time()
+            tasks = []
+
+            for i in range(ops_per_batch):
+                op_num = batch * ops_per_batch + i
+                rand_val = op_num % 100
+
+                if rand_val < 40:
+                    tasks.append(recall_tool.execute(query=f"query {op_num}"))
+                elif rand_val < 75:
+                    tasks.append(remember_tool.execute(content=f"Memory {op_num}"))
+                elif rand_val < 95:
+                    tasks.append(decompose_tool.execute(task=f"Task {op_num}"))
+                else:
+                    tasks.append(health_tool.execute())
+
+            results = await asyncio.gather(*tasks)
+            batch_time = time.time() - batch_start
+            batch_times.append(batch_time)
+            total_success += sum(1 for r in results if r.status == ToolStatus.SUCCESS)
+
+        elapsed = time.time() - start_time
+
+        print(f"10000 mixed realistic ops: {elapsed:.2f}s total")
+        print(f"  Batch times: min={min(batch_times):.2f}s, max={max(batch_times):.2f}s, avg={sum(batch_times)/len(batch_times):.2f}s")
+        print(f"  Success rate: {total_success}/{total_ops} ({100*total_success/total_ops:.1f}%)")
+        print(f"  Throughput: {total_ops/elapsed:.0f} ops/sec")
+
+        assert total_success >= 9700  # 97% success rate
+        assert elapsed < 200.0  # Must complete in under 200s
+        assert (total_ops / elapsed) > 50  # At least 50 ops/sec throughput
