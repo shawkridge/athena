@@ -20,6 +20,8 @@ class EntityType(str, Enum):
     PERSON = "Person"
     DECISION = "Decision"
     PATTERN = "Pattern"
+    AGENT = "Agent"
+    SKILL = "Skill"
 
 
 class RelationType(str, Enum):
@@ -34,6 +36,7 @@ class RelationType(str, Enum):
     RELATES_TO = "relates_to"  # General relation
     ACTIVE_IN = "active_in"  # Project active in directory
     ASSIGNED_TO = "assigned_to"  # Task assigned to agent
+    HAS_SKILL = "has_skill"  # Agent has skill
 
 
 class Entity(BaseModel):

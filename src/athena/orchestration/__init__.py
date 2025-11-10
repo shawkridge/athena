@@ -1,15 +1,40 @@
 """Orchestration layer - coordination of complex multi-agent operations.
 
-Implements the SubAgent and coordination patterns from the agentic diagram,
-enabling specialized agents to work in parallel with feedback coordination.
+Phase 1-2 Implementation: Task queue coordination system
+Phase 3+: Pattern learning and hierarchical scaling
 
 Key components:
-- SubAgentOrchestrator: Main orchestration engine
-- SubAgent types: Clustering, Validation, Extraction, Integration, etc.
-- Feedback coordination: Results feed back to dependent agents
-- Parallel execution: Multiple agents work simultaneously
+- TaskQueue: Task lifecycle in episodic memory
+- AgentRegistry: Agent capabilities in knowledge graph
+- CapabilityRouter: Skill-based task routing
+- SubAgentOrchestrator: Parallel specialization (existing)
+- EventBus: Pub-sub for events (Phase 2)
+- OrchestrationManager: Unified coordinator (Phase 3)
+
+Example::
+
+    from athena.orchestration import TaskQueue, AgentRegistry, CapabilityRouter
+
+    # Register agent
+    registry.register_agent("researcher", ["python", "web"])
+
+    # Create and route task
+    task_id = queue.create_task("Research asyncio", "research",
+                               requirements=["python"])
+    agent = router.route_task({"requirements": ["python"]})
+
+    # Execute workflow
+    queue.assign_task(task_id, agent)
+    queue.complete_task(task_id, result, metrics)
 """
 
+# Phase 1-2: New task coordination
+from .models import Task, Agent, TaskStatus, RoutingDecision
+from .task_queue import TaskQueue
+from .agent_registry import AgentRegistry
+from .capability_router import CapabilityRouter
+
+# Phase 1+: Existing subagent coordination
 from .subagent_orchestrator import (
     SubAgentOrchestrator,
     SubAgent,
@@ -24,6 +49,15 @@ from .subagent_orchestrator import (
 )
 
 __all__ = [
+    # Phase 1-2: Task coordination
+    "Task",
+    "Agent",
+    "TaskStatus",
+    "RoutingDecision",
+    "TaskQueue",
+    "AgentRegistry",
+    "CapabilityRouter",
+    # Phase 1+: SubAgent coordination
     "SubAgentOrchestrator",
     "SubAgent",
     "SubAgentTask",

@@ -228,11 +228,44 @@ class Database:
         if "code_quality_score" not in columns:
             cursor.execute("ALTER TABLE episodic_events ADD COLUMN code_quality_score REAL")
 
+        # Add orchestration task queue columns for multi-agent coordination
+        if "task_id" not in columns:
+            cursor.execute("ALTER TABLE episodic_events ADD COLUMN task_id TEXT")
+        if "task_type" not in columns:
+            cursor.execute("ALTER TABLE episodic_events ADD COLUMN task_type TEXT")
+        if "task_status" not in columns:
+            cursor.execute("ALTER TABLE episodic_events ADD COLUMN task_status TEXT DEFAULT 'pending'")
+        if "assigned_to" not in columns:
+            cursor.execute("ALTER TABLE episodic_events ADD COLUMN assigned_to TEXT")
+        if "assigned_at" not in columns:
+            cursor.execute("ALTER TABLE episodic_events ADD COLUMN assigned_at INTEGER")
+        if "priority" not in columns:
+            cursor.execute("ALTER TABLE episodic_events ADD COLUMN priority TEXT DEFAULT 'medium'")
+        if "requirements" not in columns:
+            cursor.execute("ALTER TABLE episodic_events ADD COLUMN requirements TEXT")
+        if "dependencies" not in columns:
+            cursor.execute("ALTER TABLE episodic_events ADD COLUMN dependencies TEXT")
+        if "started_at" not in columns:
+            cursor.execute("ALTER TABLE episodic_events ADD COLUMN started_at INTEGER")
+        if "completed_at" not in columns:
+            cursor.execute("ALTER TABLE episodic_events ADD COLUMN completed_at INTEGER")
+        if "error_message" not in columns:
+            cursor.execute("ALTER TABLE episodic_events ADD COLUMN error_message TEXT")
+        if "retry_count" not in columns:
+            cursor.execute("ALTER TABLE episodic_events ADD COLUMN retry_count INTEGER DEFAULT 0")
+        if "execution_duration_ms" not in columns:
+            cursor.execute("ALTER TABLE episodic_events ADD COLUMN execution_duration_ms INTEGER")
+        if "success" not in columns:
+            cursor.execute("ALTER TABLE episodic_events ADD COLUMN success BOOLEAN")
+
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_consolidation ON episodic_events(project_id, consolidation_status)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_code_type ON episodic_events(code_event_type)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_symbol ON episodic_events(file_path, symbol_name)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_language ON episodic_events(language)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_git_commit ON episodic_events(git_commit)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_task_status ON episodic_events(task_status)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_assigned_to ON episodic_events(assigned_to)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_task_type ON episodic_events(task_type)")
 
         # Working memory tables (supporting phonological loop and visuospatial sketchpad)
         # Schema must match WorkingMemoryItem model in models.py

@@ -161,6 +161,30 @@ ENABLE_VECTOR_CACHING = os.environ.get("ENABLE_VECTOR_CACHING", "true").lower() 
 
 
 # ============================================================================
+# TOON Serialization Configuration
+# ============================================================================
+
+# Enable TOON format for token-efficient LLM input
+ENABLE_TOON_FORMAT = os.environ.get("ENABLE_TOON_FORMAT", "false").lower() == "true"
+
+# Use TOON for specific data types
+TOON_USE_EPISODIC_EVENTS = os.environ.get("TOON_USE_EPISODIC_EVENTS", "true").lower() == "true"
+TOON_USE_KNOWLEDGE_GRAPH = os.environ.get("TOON_USE_KNOWLEDGE_GRAPH", "true").lower() == "true"
+TOON_USE_PROCEDURAL = os.environ.get("TOON_USE_PROCEDURAL", "true").lower() == "true"
+TOON_USE_SEMANTIC_SEARCH = os.environ.get("TOON_USE_SEMANTIC_SEARCH", "true").lower() == "true"
+TOON_USE_METRICS = os.environ.get("TOON_USE_METRICS", "true").lower() == "true"
+
+# TOON encoding timeout (seconds)
+TOON_ENCODING_TIMEOUT = int(os.environ.get("TOON_ENCODING_TIMEOUT", "10"))
+
+# Fallback to JSON if TOON fails
+TOON_FALLBACK_TO_JSON = os.environ.get("TOON_FALLBACK_TO_JSON", "true").lower() == "true"
+
+# Minimum token savings threshold for TOON (in percent)
+TOON_MIN_TOKEN_SAVINGS = float(os.environ.get("TOON_MIN_TOKEN_SAVINGS", "15.0"))
+
+
+# ============================================================================
 # Logging Configuration
 # ============================================================================
 
