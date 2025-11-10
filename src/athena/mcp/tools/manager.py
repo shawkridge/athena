@@ -45,6 +45,20 @@ class ToolManager:
                 RecallEventsTool,
                 GetTimelineTool,
             )
+            from .planning_tools import (
+                DecomposeTool,
+                ValidatePlanTool,
+                VerifyPlanTool,
+                OptimizePlanTool,
+            )
+            from .retrieval_tools import (
+                SmartRetrieveTool,
+                AnalyzeCoverageTool,
+            )
+            from .integration_tools import (
+                ConsolidateTool,
+                RunConsolidationTool,
+            )
 
             # Initialize memory tools
             recall_tool = RecallTool(
@@ -101,6 +115,45 @@ class ToolManager:
                 self.mcp_server.project_manager
             )
             self.registry.register(timeline_tool)
+
+            # Initialize planning tools
+            decompose_tool = DecomposeTool(self.mcp_server.planning_store)
+            self.registry.register(decompose_tool)
+
+            validate_plan_tool = ValidatePlanTool(self.mcp_server.plan_validator)
+            self.registry.register(validate_plan_tool)
+
+            verify_plan_tool = VerifyPlanTool(self.mcp_server.formal_verification)
+            self.registry.register(verify_plan_tool)
+
+            optimize_plan_tool = OptimizePlanTool(self.mcp_server.planning_store)
+            self.registry.register(optimize_plan_tool)
+
+            # Initialize retrieval tools
+            smart_retrieve_tool = SmartRetrieveTool(
+                self.mcp_server.store,
+                self.mcp_server.project_manager
+            )
+            self.registry.register(smart_retrieve_tool)
+
+            analyze_coverage_tool = AnalyzeCoverageTool(
+                self.mcp_server.store,
+                self.mcp_server.project_manager
+            )
+            self.registry.register(analyze_coverage_tool)
+
+            # Initialize integration tools
+            consolidate_tool = ConsolidateTool(
+                self.mcp_server.consolidation_system,
+                self.mcp_server.project_manager
+            )
+            self.registry.register(consolidate_tool)
+
+            run_consolidation_tool = RunConsolidationTool(
+                self.mcp_server.consolidation_system,
+                self.mcp_server.project_manager
+            )
+            self.registry.register(run_consolidation_tool)
 
             self.tools_initialized = True
             stats = self.registry.get_stats()

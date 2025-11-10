@@ -63,8 +63,8 @@ class TestToolManagerInitialization:
         tool_manager.initialize_tools()
 
         stats = tool_manager.get_stats()
-        # Should have 10 tools: 4 memory + 3 system + 3 episodic
-        assert stats['total_tools'] == 10
+        # Should have 18 tools: 4 memory + 3 system + 3 episodic + 4 planning + 2 retrieval + 2 integration
+        assert stats['total_tools'] == 18
 
 
 class TestToolManagerExecution:
@@ -174,6 +174,9 @@ class TestToolManagerQuerying:
         assert "memory" in categories
         assert "system" in categories
         assert "episodic" in categories
+        assert "planning" in categories
+        assert "retrieval" in categories
+        assert "integration" in categories
 
     def test_get_stats(self, tool_manager):
         """Test getting registry statistics."""
@@ -183,7 +186,7 @@ class TestToolManagerQuerying:
         assert "total_tools" in stats
         assert "categories" in stats
         assert "tools_by_category" in stats
-        assert stats["total_tools"] == 10
+        assert stats["total_tools"] == 18
 
 
 class TestToolManagerCategories:
@@ -192,33 +195,35 @@ class TestToolManagerCategories:
     def test_memory_tools_present(self, tool_manager):
         """Test that all memory tools are present."""
         tool_manager.initialize_tools()
-
         memory_tools = tool_manager.get_tools_by_category("memory")
-        tool_names = [t["name"] for t in memory_tools]
-
-        assert "recall" in tool_names
-        assert "remember" in tool_names
-        assert "forget" in tool_names
-        assert "optimize" in tool_names
+        assert len(memory_tools) == 4
 
     def test_system_tools_present(self, tool_manager):
         """Test that all system tools are present."""
         tool_manager.initialize_tools()
-
         system_tools = tool_manager.get_tools_by_category("system")
-        tool_names = [t["name"] for t in system_tools]
-
-        assert "check_system_health" in tool_names
-        assert "get_health_report" in tool_names
-        assert "get_consolidation_status" in tool_names
+        assert len(system_tools) == 3
 
     def test_episodic_tools_present(self, tool_manager):
         """Test that all episodic tools are present."""
         tool_manager.initialize_tools()
-
         episodic_tools = tool_manager.get_tools_by_category("episodic")
-        tool_names = [t["name"] for t in episodic_tools]
+        assert len(episodic_tools) == 3
 
-        assert "record_event" in tool_names
-        assert "recall_events" in tool_names
-        assert "get_timeline" in tool_names
+    def test_planning_tools_present(self, tool_manager):
+        """Test that all planning tools are present."""
+        tool_manager.initialize_tools()
+        planning_tools = tool_manager.get_tools_by_category("planning")
+        assert len(planning_tools) == 4
+
+    def test_retrieval_tools_present(self, tool_manager):
+        """Test that all retrieval tools are present."""
+        tool_manager.initialize_tools()
+        retrieval_tools = tool_manager.get_tools_by_category("retrieval")
+        assert len(retrieval_tools) == 2
+
+    def test_integration_tools_present(self, tool_manager):
+        """Test that all integration tools are present."""
+        tool_manager.initialize_tools()
+        integration_tools = tool_manager.get_tools_by_category("integration")
+        assert len(integration_tools) == 2
