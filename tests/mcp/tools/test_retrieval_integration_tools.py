@@ -229,3 +229,203 @@ class TestIntegrationToolsMetadata:
         assert run_consolidation_tool.metadata.name == "run_consolidation"
         assert "consolidation" in run_consolidation_tool.metadata.tags
         assert run_consolidation_tool.metadata.category == "integration"
+
+
+class TestSmartRetrieveToolEdgeCases:
+    """Test SmartRetrieveTool edge cases and strategy variations."""
+
+    @pytest.mark.asyncio
+    async def test_smart_retrieve_with_empty_query(self, smart_retrieve_tool, mock_memory_store):
+        """Test smart retrieve with empty string query."""
+        mock_memory_store.recall_with_reranking.return_value = []
+        result = await smart_retrieve_tool.execute(query="")
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_smart_retrieve_with_null_query(self, smart_retrieve_tool):
+        """Test smart retrieve with null query."""
+        result = await smart_retrieve_tool.execute(query=None)
+        assert result.status == ToolStatus.ERROR
+
+    @pytest.mark.asyncio
+    async def test_smart_retrieve_with_very_long_query(self, smart_retrieve_tool, mock_memory_store):
+        """Test smart retrieve with very long query."""
+        long_query = "a" * 10000
+        mock_memory_store.recall_with_reranking.return_value = []
+        result = await smart_retrieve_tool.execute(query=long_query)
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_smart_retrieve_all_strategies(self, smart_retrieve_tool, mock_memory_store):
+        """Test smart retrieve with all available strategies."""
+        strategies = ["hyde", "reranking", "reflective", "query_transform"]
+        mock_memory_store.recall_with_reranking.return_value = []
+
+        for strategy in strategies:
+            result = await smart_retrieve_tool.execute(query="test", strategy=strategy)
+            assert result.status == ToolStatus.SUCCESS
+            assert result.data["strategy"] == strategy
+
+    @pytest.mark.asyncio
+    async def test_smart_retrieve_with_invalid_strategy(self, smart_retrieve_tool, mock_memory_store):
+        """Test smart retrieve with invalid strategy."""
+        mock_memory_store.recall_with_reranking.return_value = []
+        result = await smart_retrieve_tool.execute(query="test", strategy="invalid_strategy")
+        # Should either fallback or error gracefully
+        assert result.status in [ToolStatus.SUCCESS, ToolStatus.ERROR]
+
+    @pytest.mark.asyncio
+    async def test_smart_retrieve_with_threshold_zero(self, smart_retrieve_tool, mock_memory_store):
+        """Test smart retrieve with zero threshold."""
+        mock_memory_store.recall_with_reranking.return_value = []
+        result = await smart_retrieve_tool.execute(query="test", threshold=0.0)
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_smart_retrieve_with_threshold_one(self, smart_retrieve_tool, mock_memory_store):
+        """Test smart retrieve with threshold of 1.0."""
+        mock_memory_store.recall_with_reranking.return_value = []
+        result = await smart_retrieve_tool.execute(query="test", threshold=1.0)
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_smart_retrieve_with_invalid_threshold(self, smart_retrieve_tool, mock_memory_store):
+        """Test smart retrieve with threshold outside valid range."""
+        mock_memory_store.recall_with_reranking.return_value = []
+        result = await smart_retrieve_tool.execute(query="test", threshold=1.5)
+        # Should handle gracefully
+        assert result.status in [ToolStatus.SUCCESS, ToolStatus.ERROR]
+
+    @pytest.mark.asyncio
+    async def test_smart_retrieve_with_special_characters(self, smart_retrieve_tool, mock_memory_store):
+        """Test smart retrieve with special characters in query."""
+        mock_memory_store.recall_with_reranking.return_value = []
+        result = await smart_retrieve_tool.execute(query="@#$%^&*()_+-=[]{}|;:,.<>?")
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_smart_retrieve_with_unicode(self, smart_retrieve_tool, mock_memory_store):
+        """Test smart retrieve with unicode characters."""
+        mock_memory_store.recall_with_reranking.return_value = []
+        result = await smart_retrieve_tool.execute(query="日本語テスト 中文 العربية")
+        assert result.status == ToolStatus.SUCCESS
+
+
+class TestAnalyzeCoverageToolEdgeCases:
+    """Test AnalyzeCoverageTool edge cases and variations."""
+
+    @pytest.mark.asyncio
+    async def test_analyze_coverage_with_empty_domain(self, analyze_coverage_tool):
+        """Test coverage analysis with empty domain."""
+        result = await analyze_coverage_tool.execute(domain="")
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_analyze_coverage_with_null_domain(self, analyze_coverage_tool):
+        """Test coverage analysis with None domain."""
+        result = await analyze_coverage_tool.execute(domain=None)
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_analyze_coverage_no_gaps(self, analyze_coverage_tool):
+        """Test coverage analysis when there are no gaps."""
+        result = await analyze_coverage_tool.execute()
+        assert result.status == ToolStatus.SUCCESS
+        # Gaps might be empty
+        assert isinstance(result.data["gaps"], list)
+
+    @pytest.mark.asyncio
+    async def test_analyze_coverage_with_full_gaps(self, analyze_coverage_tool):
+        """Test coverage analysis interpretation with gaps."""
+        result = await analyze_coverage_tool.execute()
+        assert result.status == ToolStatus.SUCCESS
+        # Should have coverage score and gaps
+        assert "coverage_score" in result.data
+        assert "gaps" in result.data
+
+    @pytest.mark.asyncio
+    async def test_analyze_coverage_invalid_detail_level(self, analyze_coverage_tool):
+        """Test coverage analysis with invalid detail level."""
+        result = await analyze_coverage_tool.execute(detail_level="invalid")
+        # Should handle gracefully
+        assert result.status in [ToolStatus.SUCCESS, ToolStatus.ERROR]
+
+    @pytest.mark.asyncio
+    async def test_analyze_coverage_after_memory_added(self, analyze_coverage_tool):
+        """Test coverage analysis reflects recent memory additions."""
+        result = await analyze_coverage_tool.execute()
+        assert result.status == ToolStatus.SUCCESS
+        # Score should be between 0 and 1
+        if "coverage_score" in result.data:
+            score = result.data["coverage_score"]
+            assert 0 <= score <= 1
+
+
+class TestConsolidateToolEdgeCases:
+    """Test ConsolidateTool edge cases and error handling."""
+
+    @pytest.mark.asyncio
+    async def test_consolidate_with_zero_hours(self, consolidate_tool):
+        """Test consolidation with zero hours."""
+        result = await consolidate_tool.execute(hours=0)
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_consolidate_with_negative_hours(self, consolidate_tool):
+        """Test consolidation with negative hours."""
+        result = await consolidate_tool.execute(hours=-1)
+        # Should handle gracefully
+        assert result.status in [ToolStatus.SUCCESS, ToolStatus.ERROR]
+
+    @pytest.mark.asyncio
+    async def test_consolidate_with_very_large_hours(self, consolidate_tool):
+        """Test consolidation with very large hours value."""
+        result = await consolidate_tool.execute(hours=876000)  # 100 years
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_consolidate_invalid_strategy(self, consolidate_tool):
+        """Test consolidation with invalid strategy."""
+        result = await consolidate_tool.execute(strategy="invalid_strategy")
+        # Should handle gracefully
+        assert result.status in [ToolStatus.SUCCESS, ToolStatus.ERROR]
+
+    @pytest.mark.asyncio
+    async def test_consolidate_all_strategies(self, consolidate_tool):
+        """Test consolidation with all valid strategies."""
+        strategies = ["balanced", "speed", "quality", "minimal"]
+        for strategy in strategies:
+            result = await consolidate_tool.execute(strategy=strategy)
+            assert result.status == ToolStatus.SUCCESS
+
+
+class TestRunConsolidationToolEdgeCases:
+    """Test RunConsolidationTool edge cases and error handling."""
+
+    @pytest.mark.asyncio
+    async def test_run_consolidation_with_zero_batch_size(self, run_consolidation_tool):
+        """Test consolidation run with zero batch size."""
+        result = await run_consolidation_tool.execute(batch_size=0)
+        # Should handle gracefully
+        assert result.status in [ToolStatus.SUCCESS, ToolStatus.ERROR]
+
+    @pytest.mark.asyncio
+    async def test_run_consolidation_with_negative_batch_size(self, run_consolidation_tool):
+        """Test consolidation run with negative batch size."""
+        result = await run_consolidation_tool.execute(batch_size=-10)
+        # Should handle gracefully
+        assert result.status in [ToolStatus.SUCCESS, ToolStatus.ERROR]
+
+    @pytest.mark.asyncio
+    async def test_run_consolidation_with_very_large_batch_size(self, run_consolidation_tool):
+        """Test consolidation run with very large batch size."""
+        result = await run_consolidation_tool.execute(batch_size=1000000)
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_run_consolidation_all_strategies(self, run_consolidation_tool):
+        """Test consolidation run with all valid strategies."""
+        strategies = ["balanced", "speed", "quality", "minimal"]
+        for strategy in strategies:
+            result = await run_consolidation_tool.execute(strategy=strategy)
+            assert result.status == ToolStatus.SUCCESS

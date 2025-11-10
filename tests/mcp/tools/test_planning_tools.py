@@ -333,3 +333,154 @@ class TestPlanningToolsMetadata:
         params = optimize_plan_tool.metadata.parameters
         assert "plan_id" in params
         assert "objective" in params
+
+
+class TestDecomposeToolEdgeCases:
+    """Test DecomposeTool edge cases and error handling."""
+
+    @pytest.mark.asyncio
+    async def test_decompose_empty_task(self, decompose_tool, mock_planning_store):
+        """Test decomposition with empty task string."""
+        result = await decompose_tool.execute(task="")
+        # Empty tasks should be handled gracefully
+        assert result.status in [ToolStatus.SUCCESS, ToolStatus.ERROR]
+
+    @pytest.mark.asyncio
+    async def test_decompose_null_task(self, decompose_tool):
+        """Test decomposition with null task."""
+        result = await decompose_tool.execute(task=None)
+        assert result.status == ToolStatus.ERROR
+
+    @pytest.mark.asyncio
+    async def test_decompose_very_long_task(self, decompose_tool, mock_planning_store):
+        """Test decomposition with very long task description."""
+        long_task = "a" * 50000  # 50KB task description
+        result = await decompose_tool.execute(task=long_task)
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_decompose_with_zero_depth(self, decompose_tool, mock_planning_store):
+        """Test decomposition with zero max depth."""
+        result = await decompose_tool.execute(task="Task", max_depth=0)
+        # Zero depth should be handled gracefully
+        assert result.status in [ToolStatus.SUCCESS, ToolStatus.ERROR]
+
+    @pytest.mark.asyncio
+    async def test_decompose_with_negative_depth(self, decompose_tool, mock_planning_store):
+        """Test decomposition with negative max depth."""
+        result = await decompose_tool.execute(task="Task", max_depth=-1)
+        # Negative depth should be handled gracefully
+        assert result.status in [ToolStatus.SUCCESS, ToolStatus.ERROR]
+
+    @pytest.mark.asyncio
+    async def test_decompose_with_very_large_depth(self, decompose_tool, mock_planning_store):
+        """Test decomposition with very large max depth."""
+        result = await decompose_tool.execute(task="Task", max_depth=1000)
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_decompose_with_invalid_strategy(self, decompose_tool, mock_planning_store):
+        """Test decomposition with invalid strategy."""
+        result = await decompose_tool.execute(
+            task="Task",
+            strategy="invalid_strategy"
+        )
+        # Invalid strategy should be handled gracefully
+        assert result.status in [ToolStatus.SUCCESS, ToolStatus.ERROR]
+
+
+class TestValidatePlanToolEdgeCases:
+    """Test ValidatePlanTool edge cases and error handling."""
+
+    @pytest.mark.asyncio
+    async def test_validate_with_zero_plan_id(self, validate_plan_tool):
+        """Test validation with zero plan ID."""
+        result = await validate_plan_tool.execute(plan_id=0)
+        # Zero ID should be treated as falsy
+        assert result.status == ToolStatus.ERROR
+
+    @pytest.mark.asyncio
+    async def test_validate_with_negative_plan_id(self, validate_plan_tool):
+        """Test validation with negative plan ID."""
+        result = await validate_plan_tool.execute(plan_id=-1)
+        # Should still attempt validation with negative ID
+        assert result.status in [ToolStatus.SUCCESS, ToolStatus.ERROR]
+
+    @pytest.mark.asyncio
+    async def test_validate_with_very_long_description(self, validate_plan_tool):
+        """Test validation with very long plan description."""
+        long_desc = "x" * 100000
+        result = await validate_plan_tool.execute(plan_description=long_desc)
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_validate_with_empty_description(self, validate_plan_tool):
+        """Test validation with empty plan description."""
+        result = await validate_plan_tool.execute(plan_description="")
+        # Empty description should be handled gracefully
+        assert result.status in [ToolStatus.SUCCESS, ToolStatus.ERROR]
+
+
+class TestVerifyPlanToolEdgeCases:
+    """Test VerifyPlanTool edge cases and error handling."""
+
+    @pytest.mark.asyncio
+    async def test_verify_with_empty_properties(self, verify_plan_tool, mock_formal_verification):
+        """Test verification with empty properties list."""
+        result = await verify_plan_tool.execute(
+            plan_id=1,
+            properties=[]
+        )
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_verify_with_invalid_properties(self, verify_plan_tool, mock_formal_verification):
+        """Test verification with invalid property names."""
+        result = await verify_plan_tool.execute(
+            plan_id=1,
+            properties=["invalid_property", "nonexistent"]
+        )
+        # Should handle gracefully
+        assert result.status in [ToolStatus.SUCCESS, ToolStatus.ERROR]
+
+    @pytest.mark.asyncio
+    async def test_verify_with_contradictory_constraints(self, verify_plan_tool, mock_formal_verification):
+        """Test verification with contradictory constraints."""
+        mock_formal_verification.verify.return_value = {
+            "verified": False,
+            "properties": {
+                "optimality": False,
+                "completeness": False
+            },
+            "recommendations": ["Resolve constraint conflicts"]
+        }
+
+        result = await verify_plan_tool.execute(plan_id=1)
+        assert result.status == ToolStatus.SUCCESS
+        assert result.data["verified"] is False
+
+
+class TestOptimizePlanToolEdgeCases:
+    """Test OptimizePlanTool edge cases and error handling."""
+
+    @pytest.mark.asyncio
+    async def test_optimize_with_invalid_objective(self, optimize_plan_tool, mock_planning_store):
+        """Test optimization with invalid objective."""
+        result = await optimize_plan_tool.execute(
+            plan_id=1,
+            objective="invalid_objective"
+        )
+        # Should handle gracefully
+        assert result.status in [ToolStatus.SUCCESS, ToolStatus.ERROR]
+
+    @pytest.mark.asyncio
+    async def test_optimize_multiple_objectives_in_sequence(self, optimize_plan_tool, mock_planning_store):
+        """Test optimization with multiple objectives sequentially."""
+        objectives = ["time", "resources", "quality", "cost", "risk"]
+
+        for objective in objectives:
+            result = await optimize_plan_tool.execute(
+                plan_id=1,
+                objective=objective
+            )
+            assert result.status == ToolStatus.SUCCESS

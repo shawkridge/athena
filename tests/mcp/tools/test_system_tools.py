@@ -268,3 +268,210 @@ class TestSystemToolsMetadata:
         params = health_report_tool.metadata.parameters
         assert "include_metrics" in params
         assert "format" in params
+
+
+class TestSystemHealthCheckToolEdgeCases:
+    """Test SystemHealthCheckTool edge cases and error handling."""
+
+    @pytest.mark.asyncio
+    async def test_health_check_with_null_component(self, health_check_tool, mock_mcp_server):
+        """Test health check with None component parameter."""
+        mock_health_checker = AsyncMock()
+        mock_health_checker.check = AsyncMock(return_value={
+            "status": "healthy",
+            "issues": []
+        })
+        mock_mcp_server._health_checker = mock_health_checker
+
+        result = await health_check_tool.execute(component=None)
+        assert result.status == ToolStatus.SUCCESS
+        assert result.data["component"] == "all"
+
+    @pytest.mark.asyncio
+    async def test_health_check_with_invalid_component(self, health_check_tool, mock_mcp_server):
+        """Test health check with invalid component name."""
+        mock_health_checker = AsyncMock()
+        mock_health_checker.check = AsyncMock(return_value={
+            "status": "healthy",
+            "issues": []
+        })
+        mock_mcp_server._health_checker = mock_health_checker
+
+        result = await health_check_tool.execute(component="nonexistent_component")
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_health_check_with_many_issues(self, health_check_tool, mock_mcp_server):
+        """Test health check with many issues detected."""
+        issues = [f"Issue {i}" for i in range(100)]
+        mock_health_checker = AsyncMock()
+        mock_health_checker.check = AsyncMock(return_value={
+            "status": "unhealthy",
+            "issues": issues
+        })
+        mock_mcp_server._health_checker = mock_health_checker
+
+        result = await health_check_tool.execute()
+        assert result.status == ToolStatus.SUCCESS
+        assert result.data["issue_count"] == 100
+
+    @pytest.mark.asyncio
+    async def test_health_check_with_special_component_name(self, health_check_tool, mock_mcp_server):
+        """Test health check with special characters in component name."""
+        mock_health_checker = AsyncMock()
+        mock_health_checker.check = AsyncMock(return_value={
+            "status": "healthy",
+            "issues": []
+        })
+        mock_mcp_server._health_checker = mock_health_checker
+
+        result = await health_check_tool.execute(component="db@#$%^&*()")
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_health_check_timeout_handling(self, health_check_tool, mock_mcp_server):
+        """Test health check when check times out."""
+        mock_health_checker = AsyncMock()
+        mock_health_checker.check = AsyncMock(
+            side_effect=TimeoutError("Check timed out")
+        )
+        mock_mcp_server._health_checker = mock_health_checker
+
+        result = await health_check_tool.execute()
+        # Should gracefully handle timeout
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_health_check_missing_health_checker_module(self, health_check_tool, mock_mcp_server):
+        """Test health check when HealthChecker module is not available."""
+        # Remove health checker
+        if hasattr(mock_mcp_server, '_health_checker'):
+            delattr(mock_mcp_server, '_health_checker')
+
+        # This should return "unavailable" message
+        result = await health_check_tool.execute()
+        assert result.status == ToolStatus.SUCCESS
+
+
+class TestHealthReportToolEdgeCases:
+    """Test HealthReportTool edge cases and error handling."""
+
+    @pytest.mark.asyncio
+    async def test_health_report_with_empty_metrics(self, health_report_tool, mock_mcp_server):
+        """Test health report with no metrics available."""
+        mock_health_checker = AsyncMock()
+        mock_health_checker.generate_report = AsyncMock(return_value={
+            "summary": "System is healthy",
+            "metrics": {}
+        })
+        mock_mcp_server._health_checker = mock_health_checker
+
+        result = await health_report_tool.execute(include_metrics=True)
+        assert result.status == ToolStatus.SUCCESS
+        assert result.data["metrics"] == {}
+
+    @pytest.mark.asyncio
+    async def test_health_report_with_invalid_format(self, health_report_tool, mock_mcp_server):
+        """Test health report with invalid format parameter."""
+        mock_health_checker = AsyncMock()
+        mock_health_checker.generate_report = AsyncMock(return_value={
+            "summary": "Report",
+            "metrics": {}
+        })
+        mock_mcp_server._health_checker = mock_health_checker
+
+        result = await health_report_tool.execute(format="invalid_format")
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_health_report_with_very_long_summary(self, health_report_tool, mock_mcp_server):
+        """Test health report with very long summary text."""
+        long_summary = "x" * 100000  # 100KB of text
+        mock_health_checker = AsyncMock()
+        mock_health_checker.generate_report = AsyncMock(return_value={
+            "summary": long_summary,
+            "metrics": {}
+        })
+        mock_mcp_server._health_checker = mock_health_checker
+
+        result = await health_report_tool.execute()
+        assert result.status == ToolStatus.SUCCESS
+        assert len(result.data["summary"]) == 100000
+
+    @pytest.mark.asyncio
+    async def test_health_report_with_many_metrics(self, health_report_tool, mock_mcp_server):
+        """Test health report with many metrics."""
+        large_metrics = {f"metric_{i}": f"value_{i}" for i in range(500)}
+        mock_health_checker = AsyncMock()
+        mock_health_checker.generate_report = AsyncMock(return_value={
+            "summary": "Report with many metrics",
+            "metrics": large_metrics
+        })
+        mock_mcp_server._health_checker = mock_health_checker
+
+        result = await health_report_tool.execute(include_metrics=True)
+        assert result.status == ToolStatus.SUCCESS
+        assert len(result.data["metrics"]) == 500
+
+
+class TestConsolidationStatusToolEdgeCases:
+    """Test ConsolidationStatusTool edge cases and error handling."""
+
+    @pytest.mark.asyncio
+    async def test_consolidation_status_with_zero_pending(self, mock_consolidation_system):
+        """Test consolidation status with no pending events."""
+        mock_consolidation_system.get_pending_count = Mock(return_value=0)
+        mock_consolidation_system.get_last_consolidation_time = Mock(return_value=datetime.now())
+        tool = ConsolidationStatusTool(mock_consolidation_system)
+
+        result = await tool.execute()
+        assert result.status == ToolStatus.SUCCESS
+        assert result.data["pending_events"] == 0
+
+    @pytest.mark.asyncio
+    async def test_consolidation_status_with_many_pending(self, mock_consolidation_system):
+        """Test consolidation status with many pending events."""
+        mock_consolidation_system.get_pending_count = Mock(return_value=100000)
+        mock_consolidation_system.get_last_consolidation_time = Mock(return_value=datetime.now())
+        tool = ConsolidationStatusTool(mock_consolidation_system)
+
+        result = await tool.execute()
+        assert result.status == ToolStatus.SUCCESS
+        assert result.data["pending_events"] == 100000
+
+    @pytest.mark.asyncio
+    async def test_consolidation_status_with_missing_time(self, mock_consolidation_system):
+        """Test consolidation status when last time is None."""
+        mock_consolidation_system.get_pending_count = Mock(return_value=5)
+        mock_consolidation_system.get_last_consolidation_time = Mock(return_value=None)
+        tool = ConsolidationStatusTool(mock_consolidation_system)
+
+        result = await tool.execute()
+        assert result.status == ToolStatus.SUCCESS
+        assert result.data["last_consolidation"] is None
+
+    @pytest.mark.asyncio
+    async def test_consolidation_status_with_get_pending_error(self, mock_consolidation_system):
+        """Test consolidation status when get_pending_count fails."""
+        mock_consolidation_system.get_pending_count = Mock(
+            side_effect=Exception("Count error")
+        )
+        mock_consolidation_system.get_last_consolidation_time = Mock(return_value=datetime.now())
+        tool = ConsolidationStatusTool(mock_consolidation_system)
+
+        result = await tool.execute()
+        # Should gracefully handle errors
+        assert result.status == ToolStatus.SUCCESS
+
+    @pytest.mark.asyncio
+    async def test_consolidation_status_with_get_time_error(self, mock_consolidation_system):
+        """Test consolidation status when get_last_consolidation_time fails."""
+        mock_consolidation_system.get_pending_count = Mock(return_value=5)
+        mock_consolidation_system.get_last_consolidation_time = Mock(
+            side_effect=Exception("Time error")
+        )
+        tool = ConsolidationStatusTool(mock_consolidation_system)
+
+        result = await tool.execute()
+        # Should gracefully handle errors
+        assert result.status == ToolStatus.SUCCESS
