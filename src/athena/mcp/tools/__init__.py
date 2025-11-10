@@ -2,6 +2,7 @@
 
 from .base import BaseTool, ToolMetadata, ToolResult, ToolStatus
 from .registry import ToolRegistry
+from .manager import ToolManager
 
 __all__ = [
     "BaseTool",
@@ -9,4 +10,5 @@ __all__ = [
     "ToolResult",
     "ToolStatus",
     "ToolRegistry",
+    "ToolManager",
 ]
