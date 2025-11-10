@@ -77,10 +77,19 @@ class TestToolLoader:
         loader = get_loader()
         registry = get_registry()
 
-        # First register tools
-        registry.register("memory.recall", RecallMemoryTool, category="memory")
-        registry.register("memory.store", StoreMemoryTool, category="memory")
-        registry.register("memory.health", HealthCheckTool, category="memory")
+        # First register tools (avoid duplicate error by checking if already registered)
+        try:
+            registry.register("test.recall", RecallMemoryTool, category="memory")
+        except ValueError:
+            pass  # Already registered
+        try:
+            registry.register("test.store", StoreMemoryTool, category="memory")
+        except ValueError:
+            pass  # Already registered
+        try:
+            registry.register("test.health", HealthCheckTool, category="memory")
+        except ValueError:
+            pass  # Already registered
 
         # Then verify discovery
         tools = registry.list_tools(category="memory")
@@ -91,11 +100,14 @@ class TestToolLoader:
         loader = get_loader()
         registry = get_registry()
 
-        # Register a tool
-        registry.register("memory.recall", RecallMemoryTool, category="memory")
+        # Register a tool (or skip if already registered)
+        try:
+            registry.register("test.recall", RecallMemoryTool, category="memory")
+        except ValueError:
+            pass  # Already registered
 
         # Load it
-        tool = loader.load_tool("memory.recall")
+        tool = loader.load_tool("test.recall")
         assert tool is not None
         assert isinstance(tool, RecallMemoryTool)
 
@@ -217,8 +229,9 @@ class TestToolComparison:
             assert hasattr(tool, 'execute')
             assert hasattr(tool, 'validate_input')
 
-            # metadata should be callable property
-            assert callable(tool.metadata.fget)
+            # metadata should return a ToolMetadata object
+            from athena.tools.base import ToolMetadata
+            assert isinstance(tool.metadata, ToolMetadata)
 
             # execute should be async
             import inspect
