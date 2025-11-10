@@ -38,7 +38,7 @@ class AgentRegistry:
 
     def _ensure_schema(self) -> None:
         """Create agent registry table if not exists."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS agents (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,7 +57,7 @@ class AgentRegistry:
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_agents_id ON agents(agent_id)"
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def register_agent(
         self,
@@ -78,7 +78,7 @@ class AgentRegistry:
         metadata = metadata or {}
         now = int(datetime.now().timestamp())
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Check if agent already exists
         cursor.execute("SELECT id FROM agents WHERE agent_id = ?", [agent_id])
@@ -104,7 +104,7 @@ class AgentRegistry:
                     json.dumps(metadata),
                 ],
             )
-            self.db.conn.commit()
+            # commit handled by cursor context
         except Exception as e:
             raise ValueError(f"Failed to register agent {agent_id}: {e}")
 
@@ -123,7 +123,7 @@ class AgentRegistry:
             List of agent IDs with matching capabilities
         """
         exclude = exclude or []
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         if not required:
             # Return all agents except excluded
@@ -166,7 +166,7 @@ class AgentRegistry:
         Returns:
             List of skill names
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("SELECT capabilities FROM agents WHERE agent_id = ?", [agent_id])
         row = cursor.fetchone()
 
@@ -196,7 +196,7 @@ class AgentRegistry:
         metrics = metrics or {}
         now = int(datetime.now().timestamp())
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT success_rate, avg_completion_ms, total_completed, total_failed
@@ -239,7 +239,7 @@ class AgentRegistry:
             """,
             [new_success_rate, new_avg, total_completed, total_failed, now, agent_id],
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def get_agent_health(self, agent_id: str) -> Dict[str, Any]:
         """Get health status of agent.
@@ -250,7 +250,7 @@ class AgentRegistry:
         Returns:
             Dict with {success_rate, avg_completion_ms, load, status, ...}
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT success_rate, avg_completion_ms, total_completed, total_failed, max_concurrent_tasks
@@ -288,7 +288,7 @@ class AgentRegistry:
             capability: New skill name
             confidence: Confidence in new skill (0-1)
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Get current capabilities
         cursor.execute("SELECT capabilities FROM agents WHERE agent_id = ?", [agent_id])
@@ -310,7 +310,7 @@ class AgentRegistry:
                 "UPDATE agents SET capabilities = ? WHERE agent_id = ?",
                 [json.dumps(capabilities), agent_id],
             )
-            self.db.conn.commit()
+            # commit handled by cursor context
 
     def deregister_agent(self, agent_id: str) -> None:
         """Remove agent from registry.
@@ -318,9 +318,9 @@ class AgentRegistry:
         Args:
             agent_id: Agent ID to remove
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("DELETE FROM agents WHERE agent_id = ?", [agent_id])
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def get_agent_statistics(self) -> AgentStatistics:
         """Get statistics about agents.
@@ -328,7 +328,7 @@ class AgentRegistry:
         Returns:
             AgentStatistics with counts and distributions
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Count agents
         cursor.execute("SELECT COUNT(*) as count FROM agents")

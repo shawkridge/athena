@@ -80,7 +80,7 @@ class ProcedureAutoCreator:
 
     def _ensure_schema(self):
         """Create procedure creation tracking tables."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Table: Procedure creation log
         cursor.execute("""
@@ -129,7 +129,7 @@ class ProcedureAutoCreator:
             ON procedure_usage(procedure_id)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create_procedure_from_pattern(
         self,
@@ -155,7 +155,7 @@ class ProcedureAutoCreator:
         if success_rate < 0.6:
             return None
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         # Determine category based on pattern name
@@ -179,7 +179,7 @@ class ProcedureAutoCreator:
         ))
 
         procedure_id = cursor.lastrowid
-        self.db.conn.commit()
+        # commit handled by cursor context
         return procedure_id
 
     def create_procedure_from_lesson(
@@ -198,7 +198,7 @@ class ProcedureAutoCreator:
         Returns:
             Procedure creation ID, or None if skipped
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         # Extract procedure name from lesson
@@ -223,7 +223,7 @@ class ProcedureAutoCreator:
         ))
 
         procedure_id = cursor.lastrowid
-        self.db.conn.commit()
+        # commit handled by cursor context
         return procedure_id
 
     def record_procedure_usage(
@@ -246,7 +246,7 @@ class ProcedureAutoCreator:
         Returns:
             Usage record ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         cursor.execute("""
@@ -268,7 +268,7 @@ class ProcedureAutoCreator:
         # Update procedure statistics
         self._update_procedure_stats(procedure_id)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return usage_id
 
     def _update_procedure_stats(self, procedure_id: int):
@@ -277,7 +277,7 @@ class ProcedureAutoCreator:
         Args:
             procedure_id: Procedure creation ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         # Count uses
@@ -310,7 +310,7 @@ class ProcedureAutoCreator:
         Returns:
             Procedure dict or None
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             SELECT id, procedure_name, category, confidence,
@@ -343,7 +343,7 @@ class ProcedureAutoCreator:
         Returns:
             List of procedure dicts
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             SELECT id, procedure_name, confidence, success_rate, total_uses
@@ -370,7 +370,7 @@ class ProcedureAutoCreator:
         Returns:
             Metrics dict
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Total procedures created
         cursor.execute("SELECT COUNT(*) FROM procedure_creations")

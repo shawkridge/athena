@@ -355,7 +355,7 @@ class CodeArtifactManager:
         """
         # Get all entities and dependencies
         entities = self.store.list_entities_in_project(project_id)
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM dependencies WHERE project_id = ?",
             (project_id,),

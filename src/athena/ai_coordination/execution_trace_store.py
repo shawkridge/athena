@@ -38,7 +38,7 @@ class ExecutionTraceStore:
 
     def _ensure_schema(self) -> None:
         """Create tables if they don't exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Execution traces table
         cursor.execute("""
@@ -87,7 +87,7 @@ class ExecutionTraceStore:
             ON execution_traces(outcome, created_at DESC)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def record_execution(self, trace: ExecutionTrace) -> int:
         """Record an execution attempt.
@@ -98,7 +98,7 @@ class ExecutionTraceStore:
         Returns:
             ID of inserted execution
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)  # Milliseconds
 
         # Get outcome value (handles both enum and string)
@@ -130,7 +130,7 @@ class ExecutionTraceStore:
             now
         ))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def get_execution(self, execution_id: int) -> Optional[ExecutionTrace]:
@@ -142,7 +142,7 @@ class ExecutionTraceStore:
         Returns:
             ExecutionTrace or None if not found
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM execution_traces WHERE id = ?",
             (execution_id,)
@@ -159,7 +159,7 @@ class ExecutionTraceStore:
         Returns:
             List of ExecutionTrace instances
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             SELECT * FROM execution_traces
             WHERE goal_id = ?
@@ -177,7 +177,7 @@ class ExecutionTraceStore:
         Returns:
             List of ExecutionTrace instances
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             SELECT * FROM execution_traces
             WHERE task_id = ?
@@ -196,7 +196,7 @@ class ExecutionTraceStore:
         Returns:
             List of ExecutionTrace instances
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         # Get outcome value (handles both enum and string)
         outcome_value = outcome.value if hasattr(outcome, 'value') else outcome
 
@@ -239,7 +239,7 @@ class ExecutionTraceStore:
         Returns:
             List of ExecutionTrace instances
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             SELECT * FROM execution_traces
             ORDER BY timestamp DESC
@@ -257,7 +257,7 @@ class ExecutionTraceStore:
         Returns:
             Success rate (0.0-1.0)
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Total executions
         cursor.execute(
@@ -361,7 +361,7 @@ class ExecutionTraceStore:
         Args:
             execution_id: Execution ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
 
         cursor.execute("""
@@ -370,7 +370,7 @@ class ExecutionTraceStore:
             WHERE id = ?
         """, ("consolidated", now, execution_id))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def get_unconsolidated_executions(self, goal_id: str) -> list[ExecutionTrace]:
         """Get unconsolidated executions for a goal.
@@ -381,7 +381,7 @@ class ExecutionTraceStore:
         Returns:
             List of unconsolidated ExecutionTrace instances
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             SELECT * FROM execution_traces
             WHERE goal_id = ? AND consolidation_status = 'unconsolidated'

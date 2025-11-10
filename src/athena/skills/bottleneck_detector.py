@@ -50,7 +50,7 @@ class BottleneckDetector:
         bottlenecks = []
 
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Count tasks per person
             cursor.execute(
@@ -122,7 +122,7 @@ class BottleneckDetector:
         bottlenecks = []
 
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Find blocked tasks
             cursor.execute(
@@ -199,7 +199,7 @@ class BottleneckDetector:
         bottlenecks = []
 
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Find tasks requiring same tools/data
             cursor.execute(

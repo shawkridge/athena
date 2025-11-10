@@ -119,7 +119,7 @@ class HealthTrendAnalyzer:
             List of health scores over time
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cutoff_time = int(
                 (datetime.utcnow() - timedelta(days=days)).timestamp()
             )
@@ -324,7 +324,7 @@ class HealthTrendAnalyzer:
             Dictionary with project-wide trend analysis
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT id FROM prospective_tasks

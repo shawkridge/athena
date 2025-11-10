@@ -42,7 +42,7 @@ class CodeContextStore:
 
     def _ensure_schema(self) -> None:
         """Create tables if they don't exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Code contexts table
         cursor.execute("""
@@ -157,7 +157,7 @@ class CodeContextStore:
             ON code_dependencies(from_file, to_file)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create_context(
         self,
@@ -179,7 +179,7 @@ class CodeContextStore:
         Returns:
             ID of created context
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)  # Milliseconds
         expires_at = now + (expires_in_hours * 3600 * 1000)
 
@@ -189,7 +189,7 @@ class CodeContextStore:
             VALUES (?, ?, ?, ?, ?, ?)
         """, (goal_id, task_id, session_id, architecture_notes, now, expires_at))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def get_context(self, context_id: int) -> Optional[CodeContext]:
@@ -201,7 +201,7 @@ class CodeContextStore:
         Returns:
             CodeContext or None if not found
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("SELECT * FROM code_contexts WHERE id = ?", (context_id,))
         row = cursor.fetchone()
         if not row:
@@ -217,7 +217,7 @@ class CodeContextStore:
         Returns:
             CodeContext or None
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM code_contexts WHERE task_id = ? ORDER BY created_at DESC LIMIT 1",
             (task_id,)
@@ -236,7 +236,7 @@ class CodeContextStore:
         Returns:
             List of CodeContexts
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM code_contexts WHERE goal_id = ? ORDER BY created_at DESC",
             (goal_id,)
@@ -265,7 +265,7 @@ class CodeContextStore:
         Returns:
             ID of file entry
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
         role_value = role.value if hasattr(role, "value") else role
 
@@ -279,7 +279,7 @@ class CodeContextStore:
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (context_id, file_path, relevance, role_value, lines_changed, last_mod_ms, now))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def get_relevant_files(
@@ -296,7 +296,7 @@ class CodeContextStore:
         Returns:
             List of FileInfo sorted by relevance descending
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             SELECT file_path, relevance, file_role, lines_changed, last_modified
             FROM code_context_files
@@ -342,7 +342,7 @@ class CodeContextStore:
         Returns:
             ID of dependency entry
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
         dep_type_value = dependency_type.value if hasattr(dependency_type, "value") else dependency_type
 
@@ -352,7 +352,7 @@ class CodeContextStore:
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (context_id, from_file, to_file, dep_type_value, description, strength, now))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def get_dependencies(self, context_id: int) -> list[FileDependency]:
@@ -364,7 +364,7 @@ class CodeContextStore:
         Returns:
             List of FileDependencies
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             SELECT from_file, to_file, dependency_type, description, strength
             FROM code_dependencies
@@ -394,7 +394,7 @@ class CodeContextStore:
         Returns:
             List of dependencies (both to and from the file)
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             SELECT from_file, to_file, dependency_type, description, strength
             FROM code_dependencies
@@ -436,7 +436,7 @@ class CodeContextStore:
         Returns:
             ID of change entry
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
 
         if timestamp is None:
@@ -449,7 +449,7 @@ class CodeContextStore:
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (context_id, file_path, change_ts, change_summary, author, session_id, now))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def get_recent_changes(self, context_id: int, limit: int = 20) -> list[RecentChange]:
@@ -462,7 +462,7 @@ class CodeContextStore:
         Returns:
             List of recent changes sorted by timestamp descending
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             SELECT file_path, change_timestamp, change_summary, author, session_id
             FROM code_recent_changes
@@ -507,7 +507,7 @@ class CodeContextStore:
         Returns:
             ID of issue entry
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
 
         if found_at is None:
@@ -523,7 +523,7 @@ class CodeContextStore:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (context_id, file_path, issue, severity_value, status_value, found_ts, resolution_notes, now))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def get_known_issues(
@@ -540,7 +540,7 @@ class CodeContextStore:
         Returns:
             List of known issues
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         if status_filter:
             status_value = status_filter.value if hasattr(status_filter, "value") else status_filter
@@ -580,7 +580,7 @@ class CodeContextStore:
         Returns:
             True if context is expired, False otherwise
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT expires_at FROM code_contexts WHERE id = ?",
             (context_id,)
@@ -604,7 +604,7 @@ class CodeContextStore:
             context_id: Context ID
             expires_in_hours: New expiration window
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
         expires_at = now + (expires_in_hours * 3600 * 1000)
 
@@ -614,7 +614,7 @@ class CodeContextStore:
             WHERE id = ?
         """, (expires_at, now, context_id))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def mark_consolidated(self, context_id: int) -> None:
         """Mark a code context as consolidated.
@@ -622,14 +622,14 @@ class CodeContextStore:
         Args:
             context_id: Context ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
         cursor.execute("""
             UPDATE code_contexts
             SET consolidation_status = 'consolidated', consolidated_at = ?
             WHERE id = ?
         """, (now, context_id))
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def get_unconsolidated_contexts(
         self,
@@ -645,7 +645,7 @@ class CodeContextStore:
         Returns:
             List of unconsolidated CodeContexts
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         if goal_id:
             cursor.execute("""
@@ -687,7 +687,7 @@ class CodeContextStore:
         ) = row
 
         # Retrieve related data
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Get relevant files
         cursor.execute(

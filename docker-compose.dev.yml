@@ -1,0 +1,107 @@
+# Athena Development Docker Compose
+# Enhanced for development with hot-reload and debugging
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  # Override base postgres service for development
+  postgres:
+    environment:
+      # Enable more verbose logging for development
+      POSTGRES_INITDB_ARGS: "-c shared_buffers=256MB -c effective_cache_size=1GB -c max_connections=100 -c log_statement=all -c log_min_duration_statement=100"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # Override Ollama for development
+  ollama:
+    # For development, you might want to pre-load models
+    # Build from custom Dockerfile that includes model pulls
+    environment:
+      OLLAMA_VERBOSE: "1"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # Override Athena for development with hot-reload
+  athena:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      # Add development args if needed
+      args:
+        INSTALL_DEV_DEPS: "true"
+    environment:
+      ENVIRONMENT: development
+      DEBUG: "1"
+      LOG_LEVEL: DEBUG
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      # Mount entire app directory for live reloading
+      - .:/app
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+      - ./tests:/app/tests
+      # Mount local models for faster startup
+      - ~/.ollama:/root/.ollama
+      - ~/.athena:/root/.athena
+      # Exclude virtual env and cache
+      - /app/.venv
+      - /app/__pycache__
+    # Override command for development
+    command: >
+      bash -c "
+        echo 'Waiting for services to be ready...' &&
+        sleep 10 &&
+        echo 'Upgrading database schema...' &&
+        python -m athena.migrations.runner &&
+        echo 'Starting Athena MCP server in development mode...' &&
+        python -m athena.mcp.server --debug
+      "
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "10"
+
+  # Postgres Browser for debugging (enable: --profile debug)
+  pgadmin:
+    profiles:
+      - debug
+    environment:
+      PGADMIN_CONFIG_CONSOLE_LOG_LEVEL: 10
+      SCRIPT_NAME: /pgadmin
+
+  # Redis for development (optional)
+  redis:
+    profiles:
+      - full
+      - debug
+
+  # Development tools container (optional)
+  dev-tools:
+    image: python:3.13-slim
+    container_name: athena-dev-tools
+    working_dir: /app
+    volumes:
+      - .:/app
+      - ~/.athena:/root/.athena
+    networks:
+      - athena-network
+    depends_on:
+      - postgres
+      - ollama
+      - athena
+    command: >
+      bash -c "
+        pip install -q pytest pytest-cov black ruff mypy &&
+        echo 'Development tools ready. Run tests with:' &&
+        echo '  docker-compose -f docker-compose.dev.yml exec dev-tools pytest tests/ -v' &&
+        while true; do sleep 1000; done
+      "
+    profiles:
+      - debug

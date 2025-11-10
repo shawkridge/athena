@@ -149,7 +149,7 @@ class TemporalSearchEnricher:
             List of causal relations
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Query temporal relations from graph store
             # This joins episodic events with their causal relationships

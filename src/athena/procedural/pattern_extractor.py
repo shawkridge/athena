@@ -41,7 +41,7 @@ class PatternExtractor:
         patterns = []
 
         # Get recent commits
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT id, commit_hash, commit_message, insertions, deletions,
@@ -105,7 +105,7 @@ class PatternExtractor:
         patterns = []
 
         # Get regressions and their fixes
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT id, regression_type, regression_description,
@@ -253,7 +253,7 @@ class PatternExtractor:
         commits = self.git_store.get_commits_by_file(file_path)
 
         # Get all regressions affecting this file
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT regression_type, regression_description, fix_commit

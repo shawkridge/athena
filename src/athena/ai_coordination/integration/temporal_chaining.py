@@ -48,7 +48,7 @@ class TemporalChainer:
 
     def _ensure_schema(self):
         """Create temporal_chains tables if they don't exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Table: Temporal chains linking events
         cursor.execute("""
@@ -104,7 +104,7 @@ class TemporalChainer:
             ON execution_sequences(session_id, sequence_order)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def link_temporal_events(
         self,
@@ -166,7 +166,7 @@ class TemporalChainer:
             "time_delta": int(time_delta),
         }
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         cursor.execute("""
@@ -185,7 +185,7 @@ class TemporalChainer:
         ))
 
         chain_id = cursor.lastrowid
-        self.db.conn.commit()
+        # commit handled by cursor context
         return chain_id
 
     def build_session_sequence(
@@ -204,7 +204,7 @@ class TemporalChainer:
         Returns:
             Number of sequences created
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Get all events for this session, ordered by timestamp
         cursor.execute("""
@@ -244,7 +244,7 @@ class TemporalChainer:
 
             sequence_count += 1
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return sequence_count
 
     def get_temporal_chain(self, event_id: int) -> dict:
@@ -256,7 +256,7 @@ class TemporalChainer:
         Returns:
             Dict with before/after chains
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Get events that led to this one (predecessors)
         cursor.execute("""
@@ -312,7 +312,7 @@ class TemporalChainer:
         Returns:
             List of sequence events
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             SELECT sequence_order, event_id, timestamp, outcome, metadata
@@ -353,7 +353,7 @@ class TemporalChainer:
         Returns:
             List of causal relationships
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             SELECT from_event_id, to_event_id, relation_type, causal_strength
@@ -389,7 +389,7 @@ class TemporalChainer:
         Returns:
             List of repeating pattern sequences
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Get sequence for session
         cursor.execute("""
@@ -424,7 +424,7 @@ class TemporalChainer:
         Returns:
             Dict with sequence metrics
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             SELECT COUNT(*), AVG(time_delta_seconds)

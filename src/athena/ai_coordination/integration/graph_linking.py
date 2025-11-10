@@ -72,7 +72,7 @@ class GraphLinker:
 
     def _ensure_schema(self):
         """Create graph entity tables if they don't exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Table: Graph entity refs (extended version with more details)
         cursor.execute("""
@@ -132,7 +132,7 @@ class GraphLinker:
             ON graph_entity_relationships(relation_type)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create_entity(
         self,
@@ -158,7 +158,7 @@ class GraphLinker:
         Returns:
             Entity ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Check if entity already exists
         cursor.execute("""
@@ -193,7 +193,7 @@ class GraphLinker:
         ))
 
         entity_id = cursor.lastrowid
-        self.db.conn.commit()
+        # commit handled by cursor context
         return entity_id
 
     def link_entities(
@@ -221,7 +221,7 @@ class GraphLinker:
         # Ensure strength is in valid range
         strength = max(0.0, min(1.0, strength))
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
         metadata_json = json.dumps(metadata) if metadata else None
 
@@ -241,7 +241,7 @@ class GraphLinker:
         ))
 
         rel_id = cursor.lastrowid
-        self.db.conn.commit()
+        # commit handled by cursor context
         return rel_id
 
     def get_entity(self, entity_name: str, entity_type: EntityType) -> Optional[dict]:
@@ -254,7 +254,7 @@ class GraphLinker:
         Returns:
             Entity dict or None
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             SELECT id, entity_name, entity_type, source_layer, source_id,
@@ -300,7 +300,7 @@ class GraphLinker:
         Returns:
             List of relationship dicts
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         relationships = []
 
         if direction in ("outgoing", "both"):
@@ -393,7 +393,7 @@ class GraphLinker:
             visited.add(entity_id)
 
             # Get entity details
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute("""
                 SELECT entity_name, entity_type, description
                 FROM graph_entity_nodes
@@ -480,7 +480,7 @@ class GraphLinker:
         Returns:
             Stats dict
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Get entity details
         cursor.execute("""

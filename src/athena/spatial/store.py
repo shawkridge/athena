@@ -1,11 +1,14 @@
 """Spatial graph storage and query operations."""
 
+import logging
 from datetime import datetime
 from typing import Any, List, Optional
 
 from ..core.database import Database
 from ..core.base_store import BaseStore
 from .models import SpatialNode, SpatialRelation
+
+logger = logging.getLogger(__name__)
 
 
 class SpatialStore:
@@ -35,7 +38,7 @@ class SpatialStore:
         Returns:
             Query result (row, list, or cursor based on parameters)
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         try:
             if params:
@@ -51,12 +54,12 @@ class SpatialStore:
                 return cursor
 
         except Exception as e:
-            self.db.conn.rollback()
+            # rollback handled by cursor context
             raise
 
     def commit(self):
         """Commit database transaction."""
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     @staticmethod
     def now_timestamp() -> int:
@@ -69,7 +72,13 @@ class SpatialStore:
 
     def _ensure_schema(self):
         """Ensure spatial tables exist."""
-        cursor = self.db.conn.cursor()
+        # For PostgreSQL async databases, schema is handled by _init_schema()
+        # Check if this is a PostgreSQL database (async)
+        if not hasattr(self.db, 'conn'):
+            logger.debug("SpatialStore: PostgreSQL async database detected. Schema management is handled by _init_schema().")
+            return
+
+        cursor = self.db.get_cursor()
 
         # Spatial nodes table
         cursor.execute("""
@@ -160,7 +169,7 @@ class SpatialStore:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_symbol_relations_from ON symbol_relations(from_symbol_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_symbol_relations_to ON symbol_relations(to_symbol_id)")
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def store_node(self, project_id: int, node: SpatialNode) -> int:
         """
@@ -233,7 +242,7 @@ class SpatialStore:
         if not nodes:
             return 0
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = self.now_timestamp()
 
         # De-duplicate nodes by full_path
@@ -265,7 +274,7 @@ class SpatialStore:
             self.commit()
             return len(unique_nodes)
         except Exception as e:
-            self.db.conn.rollback()
+            # rollback handled by cursor context
             raise e
 
     def batch_store_relations(self, project_id: int, relations: List[SpatialRelation]) -> int:
@@ -282,7 +291,7 @@ class SpatialStore:
         if not relations:
             return 0
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # De-duplicate relations by (from_path, to_path, type)
         seen_relations = set()
@@ -312,7 +321,7 @@ class SpatialStore:
             self.commit()
             return len(unique_relations)
         except Exception as e:
-            self.db.conn.rollback()
+            # rollback handled by cursor context
             raise e
 
     def get_node(self, project_id: int, full_path: str) -> Optional[SpatialNode]:
@@ -521,7 +530,7 @@ class SpatialStore:
         if not symbols:
             return 0
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = self.now_timestamp()
 
         # De-duplicate by full_path
@@ -558,7 +567,7 @@ class SpatialStore:
             self.commit()
             return len(unique_symbols)
         except Exception as e:
-            self.db.conn.rollback()
+            # rollback handled by cursor context
             raise e
 
     def list_symbols_by_file(self, project_id: int, file_path: str) -> List:

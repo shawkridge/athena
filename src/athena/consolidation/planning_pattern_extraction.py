@@ -407,7 +407,7 @@ class ConsolidationRouter:
         logger.debug(f"Recorded execution feedback (ID: {feedback_id})")
 
         # Check if we should trigger consolidation
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT COUNT(*) FROM execution_feedback WHERE project_id = ?",
             (project_id,),
@@ -439,7 +439,7 @@ class ConsolidationRouter:
             Most important learned pattern (for notification), or None
         """
         # Retrieve all feedback for project
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM execution_feedback WHERE project_id = ? ORDER BY created_at DESC LIMIT 50",
             (project_id,),

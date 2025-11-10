@@ -53,7 +53,7 @@ class PlanLearner:
         templates = {}
 
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Get completed tasks grouped by type keywords
             cursor.execute(

@@ -78,7 +78,14 @@ class ProceduralStore(BaseStore[Procedure]):
 
     def _ensure_schema(self):
         """Ensure procedural memory tables exist."""
-        cursor = self.db.conn.cursor()
+
+        # For PostgreSQL async databases, skip sync schema initialization
+        if not hasattr(self.db, 'conn'):
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema().")
+            return
+        cursor = self.db.get_cursor()
 
         # Procedures table
         cursor.execute("""
@@ -140,7 +147,7 @@ class ProceduralStore(BaseStore[Procedure]):
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_procedures_usage ON procedures(usage_count DESC)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_executions_procedure ON procedure_executions(procedure_id)")
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create_procedure(self, procedure: Procedure) -> int:
         """Create a new procedure.

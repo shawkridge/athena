@@ -55,7 +55,7 @@ class SafetyStore(BaseStore):
 
     def _ensure_schema(self):
         """Ensure all safety tables exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Safety policies table
         cursor.execute(
@@ -228,7 +228,7 @@ class SafetyStore(BaseStore):
             "CREATE INDEX IF NOT EXISTS idx_code_snapshots_file ON code_snapshots(file_path)"
         )
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     # SafetyPolicy operations
 

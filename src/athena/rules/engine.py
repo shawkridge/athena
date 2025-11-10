@@ -319,7 +319,7 @@ class RulesEngine:
         """
         for violation in validation.violations:
             try:
-                cursor = self.db.conn.cursor()
+                cursor = self.db.get_cursor()
                 cursor.execute(
                     """
                     INSERT INTO rule_validation_history
@@ -335,7 +335,7 @@ class RulesEngine:
                         int(datetime.now().timestamp()),
                     ),
                 )
-                self.db.conn.commit()
+                # commit handled by cursor context
                 logger.debug(f"Recorded violation history for rule {violation['rule_id']}")
             except Exception as e:
                 logger.error(f"Error recording violation history: {e}")
@@ -353,7 +353,7 @@ class RulesEngine:
         cutoff_time = int((datetime.now() - timedelta(days=days_back)).timestamp())
 
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT rule_id, COUNT(*) as violation_count

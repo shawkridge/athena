@@ -48,7 +48,7 @@ class AdvisoryLock:
 
             while time.time() - start_time < timeout_seconds:
                 try:
-                    cursor = self.db.conn.cursor()
+                    cursor = self.db.get_cursor()
 
                     # Try to insert lock record
                     expires_at = int(time.time()) + 300  # 5 minute default expiry
@@ -59,7 +59,7 @@ class AdvisoryLock:
 
                     if cursor.rowcount > 0:
                         # Lock acquired
-                        self.db.conn.commit()
+                        # commit handled by cursor context
                         self._local_locks[lock_key] = threading.get_ident()
                         return True
 
@@ -79,7 +79,7 @@ class AdvisoryLock:
                         """, (owner, int(time.time()), expires_at, lock_key, time.time()))
 
                         if cursor.rowcount > 0:
-                            self.db.conn.commit()
+                            # commit handled by cursor context
                             self._local_locks[lock_key] = threading.get_ident()
                             return True
 
@@ -114,12 +114,12 @@ class AdvisoryLock:
             del self._local_locks[lock_key]
 
             try:
-                cursor = self.db.conn.cursor()
+                cursor = self.db.get_cursor()
                 cursor.execute("""
                     DELETE FROM advisory_locks
                     WHERE lock_key = ?
                 """, (lock_key,))
-                self.db.conn.commit()
+                # commit handled by cursor context
                 return True
             except sqlite3.Error:
                 return False
@@ -147,12 +147,12 @@ class AdvisoryLock:
     def cleanup_expired(self):
         """Clean up expired locks."""
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute("""
                 DELETE FROM advisory_locks
                 WHERE expires_at < ?
             """, (time.time(),))
-            self.db.conn.commit()
+            # commit handled by cursor context
         except sqlite3.Error:
             pass  # Ignore cleanup errors
 
@@ -169,7 +169,7 @@ class ResourceManager:
         Args:
             quota: Quota configuration
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             INSERT OR REPLACE INTO resource_quotas
@@ -183,7 +183,7 @@ class ResourceManager:
             int(time.time())
         ))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def get_quota(self, resource_type: str, project_id: Optional[int] = None) -> Optional[ResourceQuota]:
         """Get current quota for a resource.
@@ -195,7 +195,7 @@ class ResourceManager:
         Returns:
             Current quota or None if not set
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             SELECT project_id, resource_type, quota_limit, current_usage, last_updated
@@ -247,7 +247,7 @@ class ResourceManager:
         if not self.check_quota(resource_type, amount, project_id):
             return False
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Update or insert usage
         cursor.execute("""
@@ -271,7 +271,7 @@ class ResourceManager:
             int(time.time())
         ))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
         # Log the allocation
         self._log_usage(resource_type, amount, project_id, "allocate")
@@ -286,7 +286,7 @@ class ResourceManager:
             amount: Amount to release
             project_id: Project ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             UPDATE resource_quotas
@@ -294,7 +294,7 @@ class ResourceManager:
             WHERE resource_type = ? AND (project_id = ? OR project_id IS NULL)
         """, (amount, int(time.time()), resource_type, project_id))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
         # Log the release
         self._log_usage(resource_type, -amount, project_id, "release")
@@ -309,13 +309,13 @@ class ResourceManager:
             operation: Operation type
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute("""
                 INSERT INTO resource_usage_log
                 (project_id, resource_type, operation, amount, timestamp)
                 VALUES (?, ?, ?, ?, ?)
             """, (project_id, resource_type, operation, amount, int(time.time())))
-            self.db.conn.commit()
+            # commit handled by cursor context
         except sqlite3.Error:
             pass  # Don't fail if logging fails
 
@@ -329,7 +329,7 @@ class ResourceManager:
         Returns:
             Usage statistics
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         since_time = int(time.time()) - (hours * 3600)
 
         # Current quotas

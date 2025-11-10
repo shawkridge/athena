@@ -85,7 +85,7 @@ class AttentionInhibition:
                     expires_at,
                 ),
             )
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def release_inhibition(self, inhibition_id: int) -> bool:
@@ -101,7 +101,7 @@ class AttentionInhibition:
             "DELETE FROM attention_inhibition WHERE id = ?",
             (inhibition_id,)
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.rowcount > 0
 
     def release_memory(
@@ -127,7 +127,7 @@ class AttentionInhibition:
             """,
             (project_id, memory_id, memory_layer)
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.rowcount
 
     def is_inhibited(
@@ -264,7 +264,7 @@ class AttentionInhibition:
             )
             removed_count += 1
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return removed_count
 
     def get_inhibited_memories(

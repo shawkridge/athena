@@ -25,7 +25,7 @@ class UncertaintyStore:
 
     def _ensure_schema(self):
         """Create tables on first use."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Plan alternatives table
         cursor.execute(
@@ -143,14 +143,14 @@ class UncertaintyStore:
             "CREATE INDEX IF NOT EXISTS idx_confidence_trends_project ON confidence_trends(project_id, aspect)"
         )
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create_plan_alternative(self, plan: PlanAlternative) -> PlanAlternative:
         """Create a new plan alternative."""
         import json
         from datetime import datetime
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             INSERT INTO plan_alternatives
@@ -174,7 +174,7 @@ class UncertaintyStore:
                 plan.rank,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         plan.id = cursor.lastrowid
         return plan
 
@@ -182,7 +182,7 @@ class UncertaintyStore:
         """Get plan alternative by ID."""
         import json
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM plan_alternatives WHERE id = ?",
             (id,),
@@ -198,7 +198,7 @@ class UncertaintyStore:
         """List plan alternatives for a task."""
         import json
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT * FROM plan_alternatives
@@ -215,7 +215,7 @@ class UncertaintyStore:
         import json
         from datetime import datetime
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
         cursor.execute(
             """
@@ -240,7 +240,7 @@ class UncertaintyStore:
                 now,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         score.id = cursor.lastrowid
         return score
 
@@ -250,7 +250,7 @@ class UncertaintyStore:
         """Get confidence scores for a task."""
         import json
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         if aspect:
             cursor.execute(
                 "SELECT * FROM confidence_scores WHERE task_id = ? AND aspect = ? ORDER BY created_at DESC",
@@ -271,7 +271,7 @@ class UncertaintyStore:
         import json
         from datetime import datetime
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             INSERT INTO uncertainty_breakdowns
@@ -289,7 +289,7 @@ class UncertaintyStore:
                 int(datetime.now().timestamp()),
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         # Return unchanged since UncertaintyBreakdown doesn't have id field
         return breakdown
 
@@ -297,7 +297,7 @@ class UncertaintyStore:
         """Get latest uncertainty breakdown for task."""
         import json
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM uncertainty_breakdowns WHERE task_id = ? ORDER BY created_at DESC LIMIT 1",
             (task_id,),
@@ -313,7 +313,7 @@ class UncertaintyStore:
         """Record confidence calibration data."""
         from datetime import datetime
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             INSERT INTO confidence_calibrations
@@ -331,7 +331,7 @@ class UncertaintyStore:
                 int(datetime.now().timestamp()),
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         calibration.id = cursor.lastrowid
         return calibration
 
@@ -339,7 +339,7 @@ class UncertaintyStore:
         self, project_id: int, aspect: str, limit: int = 100
     ) -> list[ConfidenceCalibration]:
         """Get calibration data for analysis."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT * FROM confidence_calibrations
@@ -359,7 +359,7 @@ class UncertaintyStore:
         import json
         from datetime import datetime
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             INSERT INTO confidence_trends
@@ -382,7 +382,7 @@ class UncertaintyStore:
                 int(datetime.now().timestamp()),
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         return trend
 
     def get_latest_trend(
@@ -391,7 +391,7 @@ class UncertaintyStore:
         """Get latest trend analysis."""
         import json
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT * FROM confidence_trends

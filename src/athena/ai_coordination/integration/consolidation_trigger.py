@@ -65,7 +65,7 @@ class ConsolidationTrigger:
 
     def _ensure_schema(self):
         """Create consolidation trigger tables."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Table: Consolidation trigger log
         cursor.execute("""
@@ -127,7 +127,7 @@ class ConsolidationTrigger:
             ON pattern_sources(pattern_id)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def should_consolidate(self, session_id: str) -> dict:
         """Determine if consolidation should occur for a session.
@@ -138,7 +138,7 @@ class ConsolidationTrigger:
         Returns:
             Dict with consolidation recommendation
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Count events in session
         cursor.execute("""
@@ -191,7 +191,7 @@ class ConsolidationTrigger:
         Returns:
             Consolidation trigger ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
         metadata_json = json.dumps(metadata) if metadata else None
 
@@ -217,7 +217,7 @@ class ConsolidationTrigger:
         ))
 
         trigger_id = cursor.lastrowid
-        self.db.conn.commit()
+        # commit handled by cursor context
         return trigger_id
 
     def mark_consolidation_started(self, trigger_id: int) -> bool:
@@ -229,7 +229,7 @@ class ConsolidationTrigger:
         Returns:
             Success status
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         cursor.execute("""
@@ -238,7 +238,7 @@ class ConsolidationTrigger:
             WHERE id = ?
         """, (ConsolidationStatus.RUNNING.value, now, trigger_id))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.rowcount > 0
 
     def mark_consolidation_completed(
@@ -263,7 +263,7 @@ class ConsolidationTrigger:
         Returns:
             Success status
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         cursor.execute("""
@@ -282,7 +282,7 @@ class ConsolidationTrigger:
             trigger_id
         ))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.rowcount > 0
 
     def link_pattern_to_source_events(
@@ -301,7 +301,7 @@ class ConsolidationTrigger:
         Returns:
             Number of links created
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
         link_count = 0
 
@@ -319,7 +319,7 @@ class ConsolidationTrigger:
             ))
             link_count += 1
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return link_count
 
     def get_consolidation_status(self, trigger_id: int) -> Optional[dict]:
@@ -331,7 +331,7 @@ class ConsolidationTrigger:
         Returns:
             Status dict or None
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             SELECT session_id, trigger_type, status, event_count,
@@ -370,7 +370,7 @@ class ConsolidationTrigger:
         Returns:
             List of consolidation dicts
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             SELECT id, trigger_type, status, event_count,
@@ -405,7 +405,7 @@ class ConsolidationTrigger:
         Returns:
             Metrics dict
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Total consolidations
         cursor.execute("""

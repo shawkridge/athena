@@ -55,7 +55,7 @@ class HealthMonitorAgent:
 
         # Get active tasks
         if task_ids is None:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT id FROM prospective_tasks

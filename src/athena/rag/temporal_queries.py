@@ -115,7 +115,7 @@ class TemporalQueries:
             TemporalEvent if found
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT id, content, event_type, timestamp, session_id, outcome
@@ -164,7 +164,7 @@ class TemporalQueries:
         related = []
 
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Find events within 24 hours after
             end_time = event.timestamp + timedelta(hours=24)
@@ -223,7 +223,7 @@ class TemporalQueries:
         related = []
 
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Find events within 24 hours before
             start_time = event.timestamp - timedelta(hours=24)
@@ -368,7 +368,7 @@ class TemporalQueries:
             Dict with pattern occurrences and statistics
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Find all matching events in window
             start_time = datetime.utcnow() - time_window

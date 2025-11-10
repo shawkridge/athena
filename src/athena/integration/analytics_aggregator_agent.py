@@ -125,7 +125,7 @@ class AnalyticsAggregatorAgent:
             Count of completed tasks
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cutoff_time = (
                 int(
                     (
@@ -346,7 +346,7 @@ class AnalyticsAggregatorAgent:
             summary = await self.analyze_project(project_id, "weekly")
 
             # Get active tasks count
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT COUNT(*) FROM prospective_tasks

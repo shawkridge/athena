@@ -52,7 +52,7 @@ class ConsolidationSystem:
 
     def _ensure_schema(self):
         """Ensure consolidation tables exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Consolidation runs
         cursor.execute("""
@@ -132,7 +132,7 @@ class ConsolidationSystem:
             "CREATE INDEX IF NOT EXISTS idx_conflicts_status ON memory_conflicts(status)"
         )
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def run_consolidation(
         self,
@@ -206,7 +206,7 @@ class ConsolidationSystem:
 
     def _score_memories(self, project_id: Optional[int]) -> float:
         """Score all memories based on access patterns and usefulness."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Get all memories
         if project_id:
@@ -234,13 +234,13 @@ class ConsolidationSystem:
             total_score += new_score
             count += 1
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
         return total_score / count if count > 0 else 0.0
 
     def _prune_memories(self, project_id: Optional[int], threshold: float = 0.1) -> int:
         """Prune low-value memories below threshold."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Find low-value memories
         if project_id:
@@ -439,7 +439,7 @@ class ConsolidationSystem:
     def _resolve_conflicts(self, project_id: Optional[int]) -> int:
         """Detect and resolve memory conflicts."""
         # Simple conflict detection: find duplicate or contradictory memories
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         if project_id:
             cursor.execute("""
@@ -477,7 +477,7 @@ class ConsolidationSystem:
 
     def _strengthen_memories(self, project_id: Optional[int]):
         """Strengthen frequently accessed memories."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         if project_id:
             cursor.execute("""
@@ -492,12 +492,12 @@ class ConsolidationSystem:
                 WHERE access_count > 5
             """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def _update_meta_statistics(self, project_id: Optional[int]):
         """Update meta-memory statistics."""
         # Update domain coverage for all domains
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         if project_id:
             cursor.execute(
@@ -512,7 +512,7 @@ class ConsolidationSystem:
 
     def _calculate_average_quality(self, project_id: Optional[int]) -> float:
         """Calculate average quality score."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         if project_id:
             cursor.execute(
@@ -527,7 +527,7 @@ class ConsolidationSystem:
 
     def _count_memories(self, project_id: Optional[int]) -> int:
         """Count memories."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         if project_id:
             cursor.execute("SELECT COUNT(*) as count FROM memories WHERE project_id = ?", (project_id,))
@@ -538,7 +538,7 @@ class ConsolidationSystem:
 
     def _create_run(self, run: ConsolidationRun) -> int:
         """Create a consolidation run record."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         consolidation_type_str = (
             run.consolidation_type.value
@@ -557,7 +557,7 @@ class ConsolidationSystem:
             consolidation_type_str,
         ))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def _complete_run(
@@ -577,7 +577,7 @@ class ConsolidationSystem:
         avg_information_density: Optional[float] = None,
     ):
         """Complete a consolidation run and store quality metrics."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Calculate overall quality score if metrics available
         overall_score = None
@@ -618,7 +618,7 @@ class ConsolidationSystem:
             run_id,
         ))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def _measure_consolidation_metrics(
         self,
@@ -647,7 +647,7 @@ class ConsolidationSystem:
             )
 
             # Get session ID for this project's consolidation
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             if project_id:
                 cursor.execute(
                     "SELECT session_id FROM episodic_events WHERE project_id = ? ORDER BY timestamp DESC LIMIT 1",
@@ -705,7 +705,7 @@ class ConsolidationSystem:
 
     def _save_pattern(self, pattern: ExtractedPattern):
         """Save an extracted pattern."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         pattern_type_str = (
             pattern.pattern_type.value
@@ -727,11 +727,11 @@ class ConsolidationSystem:
             json.dumps(pattern.source_events),
         ))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def get_latest_run(self, project_id: Optional[int] = None) -> Optional[ConsolidationRun]:
         """Get latest consolidation run."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         if project_id:
             cursor.execute(

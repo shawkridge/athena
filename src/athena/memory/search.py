@@ -408,7 +408,7 @@ class SemanticSearch:
             List of search results
         """
         query_embedding_json = json.dumps(query_embedding)
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         if memory_types:
             type_values = [mt.value for mt in memory_types]
@@ -738,7 +738,7 @@ class SemanticSearch:
         """
         query_embedding_json = json.dumps(query_embedding)
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         if exclude_project_id:
             cursor.execute(

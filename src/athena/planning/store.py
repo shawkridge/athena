@@ -42,7 +42,7 @@ class PlanningStore:
         Returns:
             Query result (row, list, or cursor based on parameters)
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         try:
             if params:
@@ -58,12 +58,12 @@ class PlanningStore:
                 return cursor
 
         except Exception as e:
-            self.db.conn.rollback()
+            # rollback handled by cursor context
             raise
 
     def commit(self):
         """Commit database transaction."""
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     @staticmethod
     def serialize_json(obj: Any) -> Optional[str]:
@@ -120,7 +120,14 @@ class PlanningStore:
 
     def _ensure_schema(self):
         """Ensure planning memory tables exist."""
-        cursor = self.db.conn.cursor()
+
+        # For PostgreSQL async databases, skip sync schema initialization
+        if not hasattr(self.db, 'conn'):
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema().")
+            return
+        cursor = self.db.get_cursor()
 
         # Planning patterns table
         cursor.execute("""
@@ -283,7 +290,7 @@ class PlanningStore:
             ON execution_feedback(project_id, created_at DESC)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     # ==================== PLANNING PATTERNS ====================
 

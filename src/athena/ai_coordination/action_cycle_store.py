@@ -39,7 +39,7 @@ class ActionCycleStore:
 
     def _ensure_schema(self) -> None:
         """Create tables if they don't exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Action cycles table
         cursor.execute("""
@@ -111,7 +111,7 @@ class ActionCycleStore:
             ON cycle_executions(cycle_id, attempt_number DESC)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create_cycle(
         self,
@@ -139,7 +139,7 @@ class ActionCycleStore:
         Returns:
             ID of created cycle
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
 
         # Serialize assumptions
@@ -165,7 +165,7 @@ class ActionCycleStore:
             now,
         ))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def get_cycle(self, cycle_id: int) -> Optional[ActionCycle]:
@@ -177,7 +177,7 @@ class ActionCycleStore:
         Returns:
             ActionCycle or None if not found
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("SELECT * FROM action_cycles WHERE id = ?", (cycle_id,))
         row = cursor.fetchone()
         if not row:
@@ -193,7 +193,7 @@ class ActionCycleStore:
         Returns:
             ActionCycle if found and active, None otherwise
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """SELECT * FROM action_cycles
                WHERE goal_id = ? AND status IN ('planning', 'executing', 'learning')
@@ -214,7 +214,7 @@ class ActionCycleStore:
         Returns:
             List of ActionCycles
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM action_cycles WHERE goal_id = ? ORDER BY created_at DESC",
             (goal_id,)
@@ -227,14 +227,14 @@ class ActionCycleStore:
         Args:
             cycle_id: Cycle ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
         cursor.execute("""
             UPDATE action_cycles
             SET status = ?, started_execution_at = ?
             WHERE id = ?
         """, (CycleStatus.EXECUTING.value, now, cycle_id))
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def record_execution_result(
         self,
@@ -262,7 +262,7 @@ class ActionCycleStore:
         Returns:
             ID of execution record
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
 
         lessons_json = None
@@ -316,7 +316,7 @@ class ActionCycleStore:
                 cycle_id,
             ))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return exec_id
 
     def should_replan(self, cycle_id: int) -> bool:
@@ -339,7 +339,7 @@ class ActionCycleStore:
             return False
 
         # Get last execution
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT outcome FROM cycle_executions WHERE cycle_id = ? ORDER BY attempt_number DESC LIMIT 1",
             (cycle_id,)
@@ -391,7 +391,7 @@ class ActionCycleStore:
         if not cycle:
             return
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Add plan adjustment
         adjustment = PlanAdjustment(
@@ -418,7 +418,7 @@ class ActionCycleStore:
             cycle_id,
         ))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def add_lesson(
         self,
@@ -454,12 +454,12 @@ class ActionCycleStore:
         new_lessons = cycle.lessons_learned + [new_lesson]
         lessons_json = json.dumps([l.dict() for l in new_lessons])
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "UPDATE action_cycles SET lessons_json = ? WHERE id = ?",
             (lessons_json, cycle_id)
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def complete_cycle(
         self,
@@ -474,7 +474,7 @@ class ActionCycleStore:
             final_status: "completed" or "abandoned"
             reason_if_abandoned: Why was it abandoned?
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
 
         cursor.execute("""
@@ -483,7 +483,7 @@ class ActionCycleStore:
             WHERE id = ?
         """, (final_status, now, reason_if_abandoned, cycle_id))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def abandon_cycle(
         self,
@@ -531,7 +531,7 @@ class ActionCycleStore:
         Returns:
             List of active ActionCycles
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             SELECT * FROM action_cycles
             WHERE session_id = ? AND status IN ('planning', 'executing', 'learning')
@@ -545,14 +545,14 @@ class ActionCycleStore:
         Args:
             cycle_id: Cycle ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
         cursor.execute("""
             UPDATE action_cycles
             SET consolidation_status = 'consolidated', consolidated_at = ?
             WHERE id = ?
         """, (now, cycle_id))
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def get_unconsolidated_cycles(self, limit: int = 100) -> list[ActionCycle]:
         """Get unconsolidated cycles for consolidation.
@@ -563,7 +563,7 @@ class ActionCycleStore:
         Returns:
             List of unconsolidated ActionCycles
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             SELECT * FROM action_cycles
             WHERE consolidation_status = 'unconsolidated'
@@ -628,7 +628,7 @@ class ActionCycleStore:
                 adjustments.append(PlanAdjustment(**adj_data))
 
         # Get executions for this cycle
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             SELECT attempt_number, execution_id, outcome, duration_seconds,
                    code_changes_count, errors_encountered, lessons_json, timestamp

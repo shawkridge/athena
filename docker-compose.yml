@@ -4,13 +4,13 @@ services:
     image: pgvector/pgvector:0.8.1-pg18-trixie
     container_name: athena-postgres
     environment:
-      POSTGRES_DB: athena
-      POSTGRES_USER: athena
-      POSTGRES_PASSWORD: athena_dev
+      POSTGRES_DB: ${POSTGRES_DB:-athena}
+      POSTGRES_USER: ${POSTGRES_USER:-athena}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-athena_dev}
       # PostgreSQL optimization
       POSTGRES_INITDB_ARGS: "-c shared_buffers=256MB -c effective_cache_size=1GB -c max_connections=100"
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       # Database persistence
       - postgres_data:/var/lib/postgresql/data
@@ -20,7 +20,7 @@ services:
       - athena-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U athena"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-athena}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -31,65 +31,149 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Llama.cpp - Local embeddings and LLM inference (CPU-optimized)
-  llamacpp:
-    image: ghcr.io/ggerganov/llama.cpp:server-latest
-    container_name: athena-llamacpp
+  # Ollama - Local embeddings and LLM inference (recommended over llama.cpp)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: athena-ollama
     environment:
-      # CPU optimization - adjust based on your CPU cores
-      GGML_NUM_THREADS: ${GGML_NUM_THREADS:-8}
-      GGML_NUM_THREADS_BATCH: ${GGML_NUM_THREADS_BATCH:-8}
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_NUM_THREAD: ${OLLAMA_NUM_THREAD:-8}
     ports:
-      - "8000:8000"
+      - "${OLLAMA_PORT:-11434}:11434"
     volumes:
-      # Model storage - mount local models directory
-      - ~/.athena/models:/models
-    command: >
-      -m /models/nomic-embed-text-v2-moe.Q6_K.gguf
-      -n 512
-      --embeddings
-      --port 8000
-      --host 0.0.0.0
-      --threads ${GGML_NUM_THREADS:-8}
+      # Model storage and cache
+      - ollama_data:/root/.ollama
+      - ~/.athena/models:/root/.ollama/models
     networks:
       - athena-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
       interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    depends_on:
-      postgres:
-        condition: service_healthy
+      timeout: 10s
+      retries: 30
+      start_period: 60s
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+
+  # Athena MCP Memory Server
+  athena:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: athena-mcp
+    environment:
+      # Core settings
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DEBUG: ${DEBUG:-0}
+
+      # Database (PostgreSQL)
+      ATHENA_POSTGRES_HOST: postgres
+      ATHENA_POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      ATHENA_POSTGRES_DB: ${POSTGRES_DB:-athena}
+      ATHENA_POSTGRES_USER: ${POSTGRES_USER:-athena}
+      ATHENA_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-athena_dev}
+
+      # Embeddings
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-ollama}
+      OLLAMA_HOST: http://ollama:11434
+
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FILE: /var/log/athena/athena.log
+
+      # Performance
+      CONSOLIDATION_BATCH_SIZE: ${CONSOLIDATION_BATCH_SIZE:-1000}
+      CACHE_SIZE_MB: ${CACHE_SIZE_MB:-512}
+      MAX_WORKERS: ${MAX_WORKERS:-4}
+
+      # Python
+      PYTHONUNBUFFERED: 1
+      PYTHONDONTWRITEBYTECODE: 1
+    ports:
+      - "${ATHENA_PORT:-8000}:8000"
+      - "${ATHENA_METRICS_PORT:-9000}:9000"
+    volumes:
+      # Data persistence
+      - ~/.athena:/home/athena/.athena
+      - athena_logs:/var/log/athena
+    networks:
+      - athena-network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # Redis - Optional caching layer
+  redis:
+    image: redis:7-alpine
+    container_name: athena-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - athena-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    profiles:
+      - full
 
   # PgAdmin - Optional database browser
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: athena-pgadmin
     ports:
-      - "5050:80"
+      - "${PGADMIN_PORT:-5050}:80"
     environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@athena.local
-      - PGADMIN_DEFAULT_PASSWORD=athena
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@athena.local}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-athena}
     volumes:
-      - pgadmin-data:/var/lib/pgadmin
+      - pgadmin_data:/var/lib/pgadmin
     networks:
       - athena-network
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     profiles:
       - debug
 
 volumes:
   postgres_data:
     driver: local
+  ollama_data:
+    driver: local
+  redis_data:
+    driver: local
   pgadmin_data:
+    driver: local
+  athena_logs:
     driver: local
 
 networks:

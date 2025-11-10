@@ -35,7 +35,7 @@ class ConversationStore:
         Returns:
             Query result (row, list, or cursor based on parameters)
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         try:
             if params:
@@ -51,12 +51,12 @@ class ConversationStore:
                 return cursor
 
         except Exception as e:
-            self.db.conn.rollback()
+            # rollback handled by cursor context
             raise
 
     def commit(self):
         """Commit database transaction."""
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     @staticmethod
     def serialize_json(obj: Any) -> Optional[str]:
@@ -113,7 +113,7 @@ class ConversationStore:
 
     def _ensure_schema(self):
         """Ensure conversation tables exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Sessions table
         cursor.execute(
@@ -220,7 +220,7 @@ class ConversationStore:
             "CREATE INDEX IF NOT EXISTS idx_messages_role ON messages(role)"
         )
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create_session(self, session_id: str, project_id: int) -> str:
         """Create new session.
@@ -448,7 +448,7 @@ class ConversationStore:
             Turn ID
         """
         # Store messages (reuse existing method that uses raw cursor)
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         user_msg_id = self._store_message(cursor, user_message)
         asst_msg_id = self._store_message(cursor, assistant_message)
 
@@ -725,7 +725,7 @@ class SessionResumptionManager:
                 return {"status": "not_found", "messages_loaded": 0}
 
             # Get messages from conversation
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 "SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY created_at",
                 (conversation_id,)

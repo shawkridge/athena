@@ -24,7 +24,7 @@ class ContextAdapterStore:
 
     def _ensure_schema(self):
         """Create tables on first use."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # External source connections table
         cursor.execute(
@@ -192,7 +192,7 @@ class ContextAdapterStore:
             "CREATE INDEX IF NOT EXISTS idx_sync_logs_source ON sync_logs(source_id, created_at DESC)"
         )
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create_connection(
         self, connection: ExternalSourceConnection
@@ -200,7 +200,7 @@ class ContextAdapterStore:
         """Create external source connection."""
         from datetime import datetime
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
         import json
 
@@ -229,7 +229,7 @@ class ContextAdapterStore:
                 now,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         connection.id = cursor.lastrowid
         return connection
 
@@ -237,7 +237,7 @@ class ContextAdapterStore:
         """Get connection by ID."""
         import json
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM external_source_connections WHERE id = ?",
             (id,),
@@ -251,7 +251,7 @@ class ContextAdapterStore:
         """List connections for project."""
         import json
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         if enabled_only:
             cursor.execute(
                 "SELECT * FROM external_source_connections WHERE project_id = ? AND enabled = 1 ORDER BY created_at DESC",
@@ -271,7 +271,7 @@ class ContextAdapterStore:
         """Create external data mapping."""
         from datetime import datetime
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             INSERT INTO external_data_mappings
@@ -291,13 +291,13 @@ class ContextAdapterStore:
                 int(datetime.now().timestamp()),
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         mapping.id = cursor.lastrowid
         return mapping
 
     def get_data_mapping(self, source_id: int, external_id: str) -> Optional[ExternalDataMapping]:
         """Get data mapping."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM external_data_mappings WHERE source_id = ? AND external_id = ?",
             (source_id, external_id),
@@ -309,7 +309,7 @@ class ContextAdapterStore:
 
     def list_data_mappings(self, source_id: int) -> list[ExternalDataMapping]:
         """List data mappings for source."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM external_data_mappings WHERE source_id = ? ORDER BY created_at DESC",
             (source_id,),
@@ -322,7 +322,7 @@ class ContextAdapterStore:
         import json
         from datetime import datetime
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             INSERT INTO imported_data
@@ -344,7 +344,7 @@ class ContextAdapterStore:
                 int(datetime.now().timestamp()),
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         data.id = cursor.lastrowid
         return data
 
@@ -352,7 +352,7 @@ class ContextAdapterStore:
         """List imported data from source."""
         import json
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM imported_data WHERE source_id = ? ORDER BY imported_at DESC LIMIT ?",
             (source_id, limit),
@@ -365,7 +365,7 @@ class ContextAdapterStore:
         import json
         from datetime import datetime
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
         cursor.execute(
             """
@@ -392,7 +392,7 @@ class ContextAdapterStore:
                 log.completed_at,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         log.id = cursor.lastrowid
         return log
 
@@ -400,7 +400,7 @@ class ContextAdapterStore:
         """Get sync history for source."""
         import json
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM sync_logs WHERE source_id = ? ORDER BY created_at DESC LIMIT ?",
             (source_id, limit),

@@ -49,7 +49,14 @@ class ProspectiveStore(BaseStore):
 
     def _ensure_schema(self):
         """Ensure prospective memory tables exist."""
-        cursor = self.db.conn.cursor()
+
+        # For PostgreSQL async databases, skip sync schema initialization
+        if not hasattr(self.db, 'conn'):
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema().")
+            return
+        cursor = self.db.get_cursor()
 
         # Tasks table
         cursor.execute("""
@@ -189,7 +196,7 @@ class ProspectiveStore(BaseStore):
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_tasks_priority ON prospective_tasks(priority)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_triggers_task ON task_triggers(task_id)")
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create_task(self, task: ProspectiveTask) -> int:
         """Create a new prospective task.

@@ -52,7 +52,7 @@ class ReflectionMetricsStore:
 
     def _ensure_schema(self):
         """Create metrics table if not exists."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS reflection_metrics (
                 id INTEGER PRIMARY KEY,
@@ -83,11 +83,11 @@ class ReflectionMetricsStore:
                 FOREIGN KEY(project_id) REFERENCES projects(id)
             )
         """)
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def record_metrics(self, metrics: ReflectionMetrics) -> int:
         """Record reflection metrics."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             INSERT INTO reflection_metrics (
                 project_id, timestamp, accuracy, false_positive_rate,
@@ -102,12 +102,12 @@ class ReflectionMetricsStore:
             metrics.query_latency_ms, metrics.wm_utilization,
             metrics.cognitive_load, metrics.workload_trend
         ))
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def get_recent_metrics(self, project_id: int, hours: int = 168) -> List[ReflectionMetrics]:
         """Get metrics from last N hours."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cutoff = datetime.now() - timedelta(hours=hours)
         cursor.execute("""
             SELECT * FROM reflection_metrics
@@ -134,7 +134,7 @@ class ReflectionMetricsStore:
 
     def record_alert(self, alert: ReflectionAlert) -> int:
         """Record a reflection alert."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             INSERT INTO reflection_alerts (
                 project_id, alert_type, severity, message,
@@ -144,12 +144,12 @@ class ReflectionMetricsStore:
             alert.project_id, alert.alert_type, alert.severity,
             alert.message, alert.recommended_action, alert.created_at
         ))
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def get_active_alerts(self, project_id: int) -> List[ReflectionAlert]:
         """Get unaddressed alerts."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             SELECT * FROM reflection_alerts
             WHERE project_id = ? AND dismissed_at IS NULL
@@ -349,7 +349,7 @@ class ReflectionScheduler:
 
     def _estimate_memory_size(self, project_id: int) -> int:
         """Estimate total memory database size."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("SELECT page_count * page_size FROM pragma_page_count(), pragma_page_size()")
         result = cursor.fetchone()
         return result[0] if result else 0

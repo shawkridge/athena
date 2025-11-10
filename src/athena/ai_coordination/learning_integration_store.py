@@ -39,7 +39,7 @@ class LearningIntegrationStore:
 
     def _ensure_schema(self) -> None:
         """Create tables if they don't exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Lessons to procedures table
         cursor.execute("""
@@ -133,7 +133,7 @@ class LearningIntegrationStore:
             ON learning_cycles(session_id)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create_lesson_to_procedure(
         self,
@@ -162,7 +162,7 @@ class LearningIntegrationStore:
         procedure_steps_json = json.dumps(procedure_steps or [])
         can_create = confidence >= 0.7
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             INSERT INTO lessons_to_procedures (
@@ -182,7 +182,7 @@ class LearningIntegrationStore:
                 now_timestamp,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
 
         return LessonToProcedure(
             id=cursor.lastrowid,
@@ -207,7 +207,7 @@ class LearningIntegrationStore:
         Returns:
             List of ProcedureCandidate objects
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT
@@ -270,7 +270,7 @@ class LearningIntegrationStore:
         source_json = json.dumps(source_lessons)
         draft_json = json.dumps(draft_procedure)
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             INSERT INTO procedure_candidates (
@@ -292,7 +292,7 @@ class LearningIntegrationStore:
                 now_timestamp,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
 
         return ProcedureCandidate(
             id=cursor.lastrowid,
@@ -319,7 +319,7 @@ class LearningIntegrationStore:
         Returns:
             True if updated successfully
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             UPDATE procedure_candidates
@@ -328,7 +328,7 @@ class LearningIntegrationStore:
             """,
             (procedure_id, candidate_id),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.rowcount > 0
 
     def create_feedback_update(
@@ -358,7 +358,7 @@ class LearningIntegrationStore:
         now_timestamp = int(time.time())
         new_data_json = json.dumps(new_data or {})
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             INSERT INTO feedback_updates (
@@ -377,7 +377,7 @@ class LearningIntegrationStore:
                 now_timestamp,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
 
         return FeedbackUpdate(
             id=cursor.lastrowid,
@@ -397,7 +397,7 @@ class LearningIntegrationStore:
         Returns:
             List of FeedbackUpdate objects
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT
@@ -437,7 +437,7 @@ class LearningIntegrationStore:
             True if updated successfully
         """
         now_timestamp = int(time.time())
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             UPDATE feedback_updates
@@ -446,7 +446,7 @@ class LearningIntegrationStore:
             """,
             (now_timestamp, feedback_id),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.rowcount > 0
 
     def get_lessons_by_confidence(
@@ -460,7 +460,7 @@ class LearningIntegrationStore:
         Returns:
             List of LessonToProcedure objects
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT
@@ -515,7 +515,7 @@ class LearningIntegrationStore:
         """
         now_timestamp = int(time.time())
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             INSERT INTO learning_cycles (
@@ -534,7 +534,7 @@ class LearningIntegrationStore:
                 now_timestamp,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
 
         return LearningCycle(
             id=cursor.lastrowid,
@@ -556,7 +556,7 @@ class LearningIntegrationStore:
         Returns:
             LearningCycle if found, None otherwise
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT
@@ -603,7 +603,7 @@ class LearningIntegrationStore:
         Returns:
             List of LearningCycle objects
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT
@@ -654,7 +654,7 @@ class LearningIntegrationStore:
         """
         cutoff_timestamp = int(time.time()) - (days * 86400)
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Count lessons
         cursor.execute(

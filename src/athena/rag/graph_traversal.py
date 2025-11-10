@@ -123,7 +123,7 @@ class GraphTraversal:
             GraphEntity if found, None otherwise
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT id, name, entity_type FROM graph_entities
@@ -183,7 +183,7 @@ class GraphTraversal:
         queue = deque([(root_id, 0)])  # (entity_id, depth)
         entities_by_depth = {}
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         while queue:
             current_id, depth = queue.popleft()
@@ -244,7 +244,7 @@ class GraphTraversal:
             GraphEntity if found
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT id, name, entity_type FROM graph_entities
@@ -300,7 +300,7 @@ class GraphTraversal:
         related_ids = {e.entity_id for e in related_entities}
 
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Get relations from root to related
             for rel_id in related_ids:
@@ -426,7 +426,7 @@ class GraphTraversal:
             List of similar entities
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT id, name, entity_type FROM graph_entities

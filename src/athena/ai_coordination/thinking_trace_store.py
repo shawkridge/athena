@@ -89,7 +89,7 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
 
     def _ensure_schema(self) -> None:
         """Create tables if they don't exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Thinking traces table
         cursor.execute("""
@@ -138,7 +138,7 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
             ON thinking_traces(was_reasoning_correct, created_at DESC)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def record_thinking(self, trace: ThinkingTrace) -> int:
         """Record a reasoning process.

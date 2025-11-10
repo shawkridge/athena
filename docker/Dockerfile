@@ -11,11 +11,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
-COPY requirements.txt .
-
-# Install Python dependencies
-RUN pip install --user --no-cache-dir -r requirements.txt
+# Install all Python dependencies to system site-packages
+# (not --user to avoid permission issues with non-root user later)
+RUN pip install --no-cache-dir \
+    anthropic>=0.7.0 \
+    pydantic>=2.0 \
+    sqlalchemy>=2.0 \
+    sqlite-vec>=0.1.0 \
+    psycopg[binary]>=3.1.0 \
+    psycopg-pool>=3.1.0 \
+    qdrant-client>=1.7.0 \
+    numpy>=1.20 \
+    scipy>=1.7 \
+    scikit-learn>=1.0 \
+    mcp>=1.18 \
+    fastapi>=0.104 \
+    uvicorn>=0.24 \
+    httpx>=0.24 \
+    ollama>=0.1.0 \
+    llama-cpp-python>=0.2.0 \
+    huggingface-hub>=0.20.0 \
+    pyyaml>=6.0 \
+    psutil>=5.0.0
 
 # ============================================================================
 # Production Stage
@@ -27,16 +44,23 @@ WORKDIR /app
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     curl \
     tini \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Python dependencies from builder
-COPY --from=builder /root/.local /root/.local
+# Copy Python site-packages from builder
+COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 
-# Set Python path
-ENV PATH=/root/.local/bin:$PATH \
-    PYTHONUNBUFFERED=1 \
+# Install remaining critical packages (in case build didn't complete all)
+RUN pip install --no-cache-dir \
+    mcp>=1.18 \
+    fastapi \
+    uvicorn
+
+# Set Python environment variables
+ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app/src
 
@@ -46,8 +70,18 @@ COPY scripts/ scripts/
 COPY monitoring/ monitoring/
 COPY . .
 
-# Create non-root user
-RUN groupadd -r athena && useradd -r -g athena athena
+# Clean Python cache to avoid bytecode issues
+RUN find /app -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; \
+    find /app -name "*.pyc" -delete 2>/dev/null; \
+    true
+
+# Create non-root user, home directory, and fix permissions
+RUN groupadd -r athena && \
+    useradd -r -g athena -m -d /home/athena athena && \
+    chown -R athena:athena /app && \
+    chmod -R u+rwX,g+rX,o-rwx /app && \
+    mkdir -p /home/athena/.athena && \
+    chown -R athena:athena /home/athena
 USER athena
 
 # Health check
@@ -60,5 +94,5 @@ EXPOSE 8000 9000
 # Use tini as init process (proper signal handling)
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
-# Start memory MCP server
-CMD ["python", "-m", "athena.mcp.server"]
+# Start the Athena MCP server
+CMD ["python", "-m", "athena.server"]

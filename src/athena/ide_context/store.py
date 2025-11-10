@@ -44,7 +44,7 @@ class IDEContextStore(BaseStore):
 
     def _ensure_schema(self):
         """Create database tables if they don't exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # IDE files table
         cursor.execute(
@@ -201,7 +201,7 @@ class IDEContextStore(BaseStore):
             "CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON ide_activity(timestamp)"
         )
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     # IDEFile CRUD operations
 

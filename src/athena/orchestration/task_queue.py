@@ -73,7 +73,7 @@ class TaskQueue:
         event_id = self.episodic.record_event(event)
 
         # Now update with task-specific fields
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             UPDATE episodic_events
@@ -94,7 +94,7 @@ class TaskQueue:
                 event_id,
             ],
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
 
         return task_id
 
@@ -114,7 +114,7 @@ class TaskQueue:
         Returns:
             List of Task objects
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         query = """
             SELECT * FROM episodic_events
@@ -143,7 +143,7 @@ class TaskQueue:
         Raises:
             ValueError: If task not found
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Verify task exists
         cursor.execute("SELECT id FROM episodic_events WHERE task_id = ?", [task_id])
@@ -162,7 +162,7 @@ class TaskQueue:
             """,
             [agent_id, now, task_id],
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def start_task(self, task_id: str) -> None:
         """Mark task as running.
@@ -170,7 +170,7 @@ class TaskQueue:
         Args:
             task_id: Task UUID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
 
         cursor.execute(
@@ -181,7 +181,7 @@ class TaskQueue:
             """,
             [now, task_id],
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def complete_task(
         self,
@@ -200,7 +200,7 @@ class TaskQueue:
         duration = metrics.get("duration_ms", 0)
         now = int(datetime.now().timestamp())
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute(
             """
@@ -213,7 +213,7 @@ class TaskQueue:
             """,
             [now, duration, task_id],
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
 
         # TODO: Store result as separate linked event
         # TODO: Publish task_completed event for subscribers (Phase 2)
@@ -226,7 +226,7 @@ class TaskQueue:
             error: Error message
             should_retry: Whether to schedule retry
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         if should_retry:
             # Retry: reset status, increment counter
@@ -255,7 +255,7 @@ class TaskQueue:
                 [error, now, task_id],
             )
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
         # TODO: Publish task_failed event for subscribers (Phase 2)
 
@@ -268,7 +268,7 @@ class TaskQueue:
         Returns:
             Task object or None if not found
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("SELECT * FROM episodic_events WHERE task_id = ?", [task_id])
         row = cursor.fetchone()
         return self._row_to_task(row) if row else None
@@ -290,7 +290,7 @@ class TaskQueue:
         Returns:
             List of matching tasks
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         query = "SELECT * FROM episodic_events WHERE task_id IS NOT NULL"
         params = []
@@ -330,7 +330,7 @@ class TaskQueue:
         Returns:
             QueueStatistics with counts and metrics
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Count by status
         cursor.execute(

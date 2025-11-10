@@ -263,7 +263,7 @@ class SessionResumptionManager:
         Returns:
             Session ID or None
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cutoff_time = int((datetime.now() - timedelta(hours=hours_back)).timestamp())
 
         cursor.execute(
@@ -338,7 +338,7 @@ Use this context to continue where we left off."""
         Returns:
             Summary of archived sessions
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cutoff_time = int((datetime.now() - timedelta(days=days)).timestamp())
 
         # Find old conversations

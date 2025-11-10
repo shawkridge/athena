@@ -141,7 +141,7 @@ class BatchExecutor:
         start_time = time.time()
 
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Begin transaction
             cursor.execute("BEGIN TRANSACTION")
@@ -152,7 +152,7 @@ class BatchExecutor:
 
             # Commit transaction
             cursor.execute("COMMIT")
-            self.db.conn.commit()
+            # commit handled by cursor context
 
             elapsed_ms = (time.time() - start_time) * 1000
             throughput = len(self.operations) / (elapsed_ms / 1000) if elapsed_ms > 0 else 0

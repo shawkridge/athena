@@ -37,7 +37,14 @@ class PatternStore:
 
     def _ensure_schema(self):
         """Create pattern tables if they don't exist."""
-        cursor = self.db.conn.cursor()
+
+        # For PostgreSQL async databases, skip sync schema initialization
+        if not hasattr(self.db, 'conn'):
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema().")
+            return
+        cursor = self.db.get_cursor()
 
         # Refactoring patterns table
         cursor.execute(
@@ -209,13 +216,13 @@ class PatternStore:
             """
         )
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create_refactoring_pattern(
         self, pattern: RefactoringPattern
     ) -> int:
         """Create a refactoring pattern."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
 
         cursor.execute(
@@ -242,12 +249,12 @@ class PatternStore:
                 now,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def create_bug_fix_pattern(self, pattern: BugFixPattern) -> int:
         """Create a bug-fix pattern."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
 
         cursor.execute(
@@ -276,14 +283,14 @@ class PatternStore:
                 now,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def create_code_smell_pattern(
         self, pattern: CodeSmellPattern
     ) -> int:
         """Create a code smell pattern."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
 
         cursor.execute(
@@ -307,7 +314,7 @@ class PatternStore:
                 now,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def get_refactoring_patterns(
@@ -317,7 +324,7 @@ class PatternStore:
         limit: int = 50,
     ) -> list[dict]:
         """Get refactoring patterns with optional filtering."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         query = "SELECT * FROM refactoring_patterns WHERE 1=1"
         params = []
@@ -356,7 +363,7 @@ class PatternStore:
         limit: int = 50,
     ) -> list[dict]:
         """Get bug-fix patterns with optional filtering."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         query = "SELECT * FROM bug_fix_patterns WHERE 1=1"
         params = []
@@ -394,7 +401,7 @@ class PatternStore:
         limit: int = 50,
     ) -> list[dict]:
         """Get code smell patterns."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         query = "SELECT * FROM code_smell_patterns WHERE 1=1"
         params = []
@@ -427,7 +434,7 @@ class PatternStore:
         self, application: PatternApplication
     ) -> int:
         """Record application of a pattern."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
 
         cursor.execute(
@@ -448,14 +455,14 @@ class PatternStore:
                 now,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def suggest_pattern(
         self, suggestion: PatternSuggestion
     ) -> int:
         """Create a pattern suggestion."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute(
             """
@@ -476,14 +483,14 @@ class PatternStore:
                 int(suggestion.created_at.timestamp()),
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def get_suggestions_for_file(
         self, file_path: str
     ) -> list[dict]:
         """Get pattern suggestions for a specific file."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute(
             """
@@ -508,7 +515,7 @@ class PatternStore:
 
     def get_statistics(self) -> dict:
         """Get pattern statistics."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Count patterns by type
         cursor.execute(
@@ -564,7 +571,7 @@ class PatternStore:
         self, pattern_type: str = "refactoring", limit: int = 10
     ) -> list[dict]:
         """Get most effective patterns."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         if pattern_type == "refactoring":
             cursor.execute(

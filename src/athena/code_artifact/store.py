@@ -42,7 +42,7 @@ class CodeArtifactStore:
         Returns:
             Query result (row, list, or cursor based on parameters)
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         try:
             if params:
@@ -58,12 +58,12 @@ class CodeArtifactStore:
                 return cursor
 
         except Exception as e:
-            self.db.conn.rollback()
+            # rollback handled by cursor context
             raise
 
     def commit(self):
         """Commit database transaction."""
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     @staticmethod
     def serialize_json(obj: Any) -> Optional[str]:
@@ -120,7 +120,7 @@ class CodeArtifactStore:
 
     def _ensure_schema(self):
         """Create database tables if they don't exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Code entities table
         cursor.execute(
@@ -327,7 +327,7 @@ class CodeArtifactStore:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_issues_project ON code_quality_issues(project_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_issues_severity ON code_quality_issues(severity)")
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     # CodeEntity CRUD operations
 

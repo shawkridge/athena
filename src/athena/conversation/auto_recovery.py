@@ -94,7 +94,7 @@ class AutoContextRecovery:
             - recovery_recommendation: What to do next
             - full_context: Complete context for restoration
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # 1. Get most recent session that has BOTH conversation events AND task context
         # Strategy: Look for session with most recent event that has task context

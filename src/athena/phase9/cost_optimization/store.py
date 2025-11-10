@@ -23,7 +23,7 @@ class CostOptimizationStore:
 
     def _ensure_schema(self):
         """Create tables on first use."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Resource rates table
         cursor.execute(
@@ -179,13 +179,13 @@ class CostOptimizationStore:
             "CREATE INDEX IF NOT EXISTS idx_cost_anomaly_alerts_project ON cost_anomaly_alerts(project_id, resolved)"
         )
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create_resource_rate(self, rate: ResourceRate) -> ResourceRate:
         """Create a new resource rate."""
         from datetime import datetime
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
         cursor.execute(
             """
@@ -206,13 +206,13 @@ class CostOptimizationStore:
                 now,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         rate.id = cursor.lastrowid
         return rate
 
     def get_resource_rate(self, name: str, organization_id: int) -> Optional[ResourceRate]:
         """Get resource rate by name."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM resource_rates WHERE name = ? AND organization_id = ?",
             (name, organization_id),
@@ -224,7 +224,7 @@ class CostOptimizationStore:
 
     def list_resource_rates(self, organization_id: int) -> list[ResourceRate]:
         """List all resource rates for organization."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM resource_rates WHERE organization_id = ? ORDER BY resource_type, name",
             (organization_id,),
@@ -237,7 +237,7 @@ class CostOptimizationStore:
         import json
         from datetime import datetime
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
         cursor.execute(
             """
@@ -262,7 +262,7 @@ class CostOptimizationStore:
                 now,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         cost.id = cursor.lastrowid
         return cost
 
@@ -270,7 +270,7 @@ class CostOptimizationStore:
         """Get latest task cost."""
         import json
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM task_costs WHERE task_id = ? ORDER BY created_at DESC LIMIT 1",
             (task_id,),
@@ -282,7 +282,7 @@ class CostOptimizationStore:
 
     def get_project_total_cost(self, project_id: int) -> float:
         """Get total cost for all tasks in project."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT COALESCE(SUM(total_cost), 0) FROM task_costs WHERE project_id = ?",
             (project_id,),
@@ -295,7 +295,7 @@ class CostOptimizationStore:
         import json
         from datetime import datetime
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
         cursor.execute(
             """
@@ -317,7 +317,7 @@ class CostOptimizationStore:
                 now,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         budget.id = cursor.lastrowid
         return budget
 
@@ -325,7 +325,7 @@ class CostOptimizationStore:
         """Get latest budget allocation for project."""
         import json
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM budget_allocations WHERE project_id = ? ORDER BY created_at DESC LIMIT 1",
             (project_id,),
@@ -339,7 +339,7 @@ class CostOptimizationStore:
         """Create ROI calculation."""
         from datetime import datetime
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             INSERT INTO roi_calculations
@@ -360,13 +360,13 @@ class CostOptimizationStore:
                 int(datetime.now().timestamp()),
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         roi.id = cursor.lastrowid
         return roi
 
     def get_roi_calculation(self, task_id: int) -> Optional[ROICalculation]:
         """Get ROI calculation for task."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM roi_calculations WHERE task_id = ? ORDER BY created_at DESC LIMIT 1",
             (task_id,),
@@ -382,7 +382,7 @@ class CostOptimizationStore:
         """Create cost optimization suggestion."""
         from datetime import datetime
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             INSERT INTO cost_optimizations
@@ -406,7 +406,7 @@ class CostOptimizationStore:
                 int(datetime.now().timestamp()),
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         optimization.id = cursor.lastrowid
         return optimization
 
@@ -414,7 +414,7 @@ class CostOptimizationStore:
         self, project_id: int, min_saving: float = 0.0
     ) -> list[CostOptimization]:
         """List cost optimization suggestions."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT * FROM cost_optimizations
@@ -430,7 +430,7 @@ class CostOptimizationStore:
         """Create cost anomaly alert."""
         from datetime import datetime
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             INSERT INTO cost_anomaly_alerts
@@ -453,13 +453,13 @@ class CostOptimizationStore:
                 alert.resolution_notes,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         alert.id = cursor.lastrowid
         return alert
 
     def get_active_alerts(self, project_id: int) -> list[CostAnomalyAlert]:
         """Get active cost anomaly alerts."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT * FROM cost_anomaly_alerts

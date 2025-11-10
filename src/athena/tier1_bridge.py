@@ -145,7 +145,7 @@ class Tier1OrchestrationPipeline:
             consolidation_quality = 0.0
 
             # Query episodic events
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             query = "SELECT COUNT(*) FROM episodic_events WHERE project_id = ?"
             params = [project_id]
 
@@ -196,7 +196,7 @@ class Tier1OrchestrationPipeline:
         """
         try:
             # Query events for surprise computation
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT id, content, timestamp FROM episodic_events
@@ -283,7 +283,7 @@ class Tier1OrchestrationPipeline:
         """
         try:
             # Query consolidated memories (semantic layer)
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT id FROM memories

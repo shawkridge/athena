@@ -9,7 +9,7 @@ Responsibilities:
 - Coordinate between phonological loop, visuospatial sketchpad, and episodic buffer
 """
 
-from typing import List, Optional
+from typing import List, Optional, Union, Any
 from datetime import datetime, timedelta
 import json
 
@@ -26,12 +26,13 @@ class CentralExecutive:
     Controls attention and manages goals across the cognitive system.
     """
 
-    def __init__(self, db: Database | str, embedder: EmbeddingModel):
-        # Accept either Database instance or path string
-        if isinstance(db, Database):
-            self.db = db
-        else:
+    def __init__(self, db: Any, embedder: EmbeddingModel):
+        # Accept either Database instance (SQLite or Postgres) or path string
+        if isinstance(db, str):
             self.db = Database(db)
+        else:
+            # Already a database object (SQLite or Postgres)
+            self.db = db
         self.embedder = embedder
         self.max_wm_capacity = 7  # Miller's law: 7±2 items
         # Initialize saliency calculator for auto-focus
@@ -40,6 +41,13 @@ class CentralExecutive:
 
     def _init_schema(self):
         """Ensure schema exists (for testing/standalone use)."""
+        # For PostgreSQL async databases, skip sync schema initialization
+        if not hasattr(self.db, 'conn'):
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(f"CentralExecutive: PostgreSQL async database detected. Schema management handled by _init_schema().")
+            return
+
         # Schema should already exist from migration, but create if needed for tests
         with self.db.conn:
             # Check if active_goals table exists
@@ -68,7 +76,7 @@ class CentralExecutive:
                         FOREIGN KEY (parent_goal_id) REFERENCES active_goals (id)
                     )
                 """)
-                self.db.conn.commit()
+                # commit handled by cursor context
 
     # ========================================================================
     # Goal Management

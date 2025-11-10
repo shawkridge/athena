@@ -48,7 +48,14 @@ class GraphStore(BaseStore[Entity]):
 
     def _ensure_schema(self):
         """Ensure knowledge graph tables exist."""
-        cursor = self.db.conn.cursor()
+
+        # For PostgreSQL async databases, skip sync schema initialization
+        if not hasattr(self.db, 'conn'):
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema().")
+            return
+        cursor = self.db.get_cursor()
 
         # Entities table
         cursor.execute("""
@@ -138,7 +145,7 @@ class GraphStore(BaseStore[Entity]):
             "CREATE INDEX IF NOT EXISTS idx_communities_level ON communities(level)"
         )
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create_entity(self, entity: Entity) -> int:
         """Create a new entity.

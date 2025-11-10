@@ -67,7 +67,7 @@ class SmartRecall:
 
     def _ensure_schema(self):
         """Create smart recall tracking tables."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Table: Recall operations log
         cursor.execute("""
@@ -114,7 +114,7 @@ class SmartRecall:
             ON reuse_effectiveness(solution_type, outcome)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def recall_for_problem(
         self,
@@ -196,7 +196,7 @@ class SmartRecall:
         Returns:
             List of procedure candidates
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Query procedure_creations table for relevant procedures
         cursor.execute("""
@@ -233,7 +233,7 @@ class SmartRecall:
         Returns:
             List of similar problems with their solutions
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Query semantic memory or episodic events for similar problems
         cursor.execute("""
@@ -315,7 +315,7 @@ class SmartRecall:
         Returns:
             Reuse record ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         cursor.execute("""
@@ -336,7 +336,7 @@ class SmartRecall:
         ))
 
         reuse_id = cursor.lastrowid
-        self.db.conn.commit()
+        # commit handled by cursor context
         return reuse_id
 
     def get_recall_metrics(self) -> dict:
@@ -345,7 +345,7 @@ class SmartRecall:
         Returns:
             Metrics dict
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Total recalls
         cursor.execute("SELECT COUNT(*) FROM recall_operations")
@@ -379,7 +379,7 @@ class SmartRecall:
 
     def _find_relevant_procedures(self, query: str, limit: int) -> list[dict]:
         """Find relevant procedures for query."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         try:
             # Query procedures - simple keyword matching
@@ -432,7 +432,7 @@ class SmartRecall:
         Returns:
             Recall operation ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         cursor.execute("""
@@ -442,5 +442,5 @@ class SmartRecall:
         """, (query, problem_type, now, results_count))
 
         recall_id = cursor.lastrowid
-        self.db.conn.commit()
+        # commit handled by cursor context
         return recall_id

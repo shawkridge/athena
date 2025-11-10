@@ -72,7 +72,7 @@ class ActionCycleEnhancer:
 
     def _ensure_schema(self):
         """Create action cycle enhancement tables."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Table: Plan enhancements applied
         cursor.execute("""
@@ -115,7 +115,7 @@ class ActionCycleEnhancer:
             ON enhancement_feedback(outcome)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def analyze_plan(
         self,
@@ -183,7 +183,7 @@ class ActionCycleEnhancer:
         Returns:
             Enhancement record ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         cursor.execute("""
@@ -206,7 +206,7 @@ class ActionCycleEnhancer:
         ))
 
         enhancement_id = cursor.lastrowid
-        self.db.conn.commit()
+        # commit handled by cursor context
         return enhancement_id
 
     def record_enhancement_feedback(
@@ -225,7 +225,7 @@ class ActionCycleEnhancer:
         Returns:
             Feedback record ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         cursor.execute("""
@@ -251,7 +251,7 @@ class ActionCycleEnhancer:
             WHERE id = ?
         """, (effectiveness, enhancement_id))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return feedback_id
 
     def get_enhancement_effectiveness(self) -> dict:
@@ -260,7 +260,7 @@ class ActionCycleEnhancer:
         Returns:
             Effectiveness metrics dict
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # By enhancement type
         cursor.execute("""
@@ -301,7 +301,7 @@ class ActionCycleEnhancer:
         Returns:
             List of enhancement suggestions
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Find procedures with high success rate
         cursor.execute("""
@@ -354,7 +354,7 @@ class ActionCycleEnhancer:
         Returns:
             Improvement suggestions
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Find similar past goals
         cursor.execute("""

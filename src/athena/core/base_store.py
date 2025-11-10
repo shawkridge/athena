@@ -85,7 +85,7 @@ class BaseStore(ABC, Generic[T]):
         Returns:
             Query result (row, list, or cursor based on parameters)
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         try:
             if params:
@@ -101,12 +101,12 @@ class BaseStore(ABC, Generic[T]):
                 return cursor
 
         except Exception as e:
-            self.db.conn.rollback()
+            # rollback handled by cursor context
             raise
 
     def commit(self):
         """Commit database transaction."""
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create(
         self,

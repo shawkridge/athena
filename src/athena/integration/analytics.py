@@ -109,7 +109,7 @@ class TaskAnalytics:
         cutoff_time = datetime.now() - timedelta(days=days_back)
 
         # Get completed tasks
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT * FROM prospective_tasks

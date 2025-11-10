@@ -258,7 +258,7 @@ class TaskMonitor:
     def _count_issues(self, task_id: int, issue_type: str) -> int:
         """Count issues of a type for a task."""
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 f"""
                 SELECT COUNT(*) as count

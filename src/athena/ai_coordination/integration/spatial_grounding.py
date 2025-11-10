@@ -42,7 +42,7 @@ class SpatialGrounder:
 
     def _ensure_schema(self):
         """Create spatial_grounding tables if they don't exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Table: Integration links between coordination and memory layers
         cursor.execute("""
@@ -91,7 +91,7 @@ class SpatialGrounder:
             ON graph_entity_refs(entity_name, entity_type)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def link_code_context_to_spatial(
         self,
@@ -109,7 +109,7 @@ class SpatialGrounder:
         Returns:
             Number of spatial links created
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         link_count = 0
         now = int(datetime.now().timestamp() * 1000)
 
@@ -140,7 +140,7 @@ class SpatialGrounder:
 
                 link_count += 1
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return link_count
 
     def link_execution_location(
@@ -163,7 +163,7 @@ class SpatialGrounder:
         Returns:
             Link ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         metadata = {
@@ -187,7 +187,7 @@ class SpatialGrounder:
         ))
 
         link_id = cursor.lastrowid
-        self.db.conn.commit()
+        # commit handled by cursor context
         return link_id
 
     def get_files_for_task(self, task_id: str) -> list[str]:
@@ -199,7 +199,7 @@ class SpatialGrounder:
         Returns:
             List of file paths
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             SELECT DISTINCT metadata
@@ -228,7 +228,7 @@ class SpatialGrounder:
         Returns:
             Dict with scope information
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             SELECT COUNT(DISTINCT metadata), metadata
@@ -271,7 +271,7 @@ class SpatialGrounder:
         Returns:
             Link ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         metadata = {
@@ -294,7 +294,7 @@ class SpatialGrounder:
         ))
 
         link_id = cursor.lastrowid
-        self.db.conn.commit()
+        # commit handled by cursor context
         return link_id
 
     def get_execution_locations(self, execution_id: str) -> list[dict]:
@@ -306,7 +306,7 @@ class SpatialGrounder:
         Returns:
             List of location dicts
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             SELECT metadata
@@ -335,7 +335,7 @@ class SpatialGrounder:
         Returns:
             Dict with spatial context
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             SELECT link_type, metadata

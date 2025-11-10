@@ -39,7 +39,14 @@ class MetaMemoryStore(BaseStore):
 
     def _ensure_schema(self):
         """Ensure meta-memory tables exist."""
-        cursor = self.db.conn.cursor()
+
+        # For PostgreSQL async databases, skip sync schema initialization
+        if not hasattr(self.db, 'conn'):
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema().")
+            return
+        cursor = self.db.get_cursor()
 
         # Memory quality table
         cursor.execute("""
@@ -111,7 +118,7 @@ class MetaMemoryStore(BaseStore):
             "CREATE INDEX IF NOT EXISTS idx_transfer_from ON knowledge_transfers(from_project_id)"
         )
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def record_access(self, memory_id: int, memory_layer: str, useful: bool = False):
         """Record a memory access.

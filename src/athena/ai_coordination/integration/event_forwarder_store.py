@@ -69,7 +69,7 @@ class EventForwarderStore(BaseStore[ForwardingLogEntry]):
 
     def _ensure_schema(self):
         """Create forwarding log tables if they don't exist"""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Forwarding log table - tracks all forwards
         cursor.execute("""
@@ -114,7 +114,7 @@ class EventForwarderStore(BaseStore[ForwardingLogEntry]):
             ON forwarding_log(timestamp)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def log_forwarding(
         self,

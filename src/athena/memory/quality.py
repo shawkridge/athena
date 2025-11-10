@@ -267,7 +267,7 @@ Be strict but fair. Focus on actionable feedback."""
             List of quality scores, sorted by overall_quality (lowest first)
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Query semantic memories for project
             query = """

@@ -63,7 +63,7 @@ class ResearchStore(BaseStore):
 
     def _ensure_schema(self):
         """Ensure research tables exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Research tasks table
         cursor.execute("""
@@ -122,7 +122,7 @@ class ResearchStore(BaseStore):
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_research_findings_task ON research_findings(research_task_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_agent_progress_task ON agent_progress(research_task_id)")
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create_task(self, topic: str, project_id: Optional[int] = None) -> int:
         """Create a new research task.

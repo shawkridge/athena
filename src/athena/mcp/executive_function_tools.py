@@ -323,7 +323,7 @@ class ExecutiveFunctionMCPHandlers:
 
             # Fallback: get highest priority goal directly from active_goals table
             if not recommendation and self.db:
-                cursor = self.db.conn.cursor()
+                cursor = self.db.get_cursor()
                 cursor.execute(
                     "SELECT id, goal_text, priority FROM active_goals WHERE project_id = ? ORDER BY priority DESC LIMIT 1",
                     (project_id,)

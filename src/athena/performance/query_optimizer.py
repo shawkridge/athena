@@ -98,13 +98,13 @@ class QueryOptimizer:
         skipped = 0
         failed = 0
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         for index_def in self.RECOMMENDED_INDEXES:
             try:
                 sql = index_def.get_create_sql()
                 cursor.execute(sql)
-                self.db.conn.commit()
+                # commit handled by cursor context
                 created += 1
             except Exception as e:
                 if skip_existing and "already exists" in str(e).lower():
@@ -126,7 +126,7 @@ class QueryOptimizer:
         Returns:
             Dictionary with performance metrics
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         stats = {
             "timestamp": datetime.now().isoformat(),
             "tables": {},
@@ -192,7 +192,7 @@ class QueryOptimizer:
         Returns:
             List of plan steps
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         try:
             # Prepare query with parameters
@@ -304,7 +304,7 @@ class QueryOptimizer:
         Returns:
             Dictionary with stats
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         stats = {}
 
         try:

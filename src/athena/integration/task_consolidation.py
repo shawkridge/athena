@@ -128,7 +128,7 @@ class TaskConsolidation:
             List of events related to this task
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT * FROM episodic_events
@@ -434,7 +434,7 @@ class TaskConsolidation:
             # Get recently completed tasks
             cutoff_time = datetime.now() - timedelta(hours=hours_back)
 
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT * FROM prospective_tasks

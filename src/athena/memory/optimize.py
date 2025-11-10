@@ -28,7 +28,7 @@ class MemoryOptimizer:
         Args:
             project_id: Project ID to update
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute(
             """
@@ -60,7 +60,7 @@ class MemoryOptimizer:
             (project_id,),
         )
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def prune_low_value_memories(
         self,
@@ -80,7 +80,7 @@ class MemoryOptimizer:
         Returns:
             Number of memories that would be/were pruned
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         age_cutoff = int(time.time()) - (age_threshold_days * 86400)
 
@@ -130,7 +130,7 @@ class MemoryOptimizer:
         self.update_usefulness_scores(project_id)
 
         # Get stats before pruning
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT COUNT(*), AVG(usefulness_score) FROM memories WHERE project_id = ?",
             (project_id,),
@@ -160,7 +160,7 @@ class MemoryOptimizer:
             """,
                 (project_id, int(time.time()), pruned, avg_score_after or 0.0),
             )
-            self.db.conn.commit()
+            # commit handled by cursor context
 
         return {
             "before_count": before_count,
@@ -180,7 +180,7 @@ class MemoryOptimizer:
         Returns:
             Optimization stats
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM optimization_stats WHERE project_id = ?", (project_id,)
         )

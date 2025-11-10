@@ -161,7 +161,7 @@ class ReplanningMonitor:
                 minutes=self.MONITORING_WINDOW_MINUTES
             )
 
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT COUNT(*) as error_count

@@ -68,7 +68,7 @@ class WorkingMemoryCapacityEnforcer:
     def _ensure_schema(self) -> None:
         """Create working_memory table if it doesn't exist."""
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS working_memory (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,7 +96,7 @@ class WorkingMemoryCapacityEnforcer:
                 ON working_memory(project_id, activation_level)
             """)
 
-            self.db.conn.commit()
+            # commit handled by cursor context
             self.logger.debug("Ensured working_memory schema exists")
 
         except Exception as e:
@@ -163,7 +163,7 @@ class WorkingMemoryCapacityEnforcer:
             Exception: If database query fails
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Query all WM items (activation will be calculated in Python)
             cursor.execute("""
@@ -328,7 +328,7 @@ class WorkingMemoryCapacityEnforcer:
             ID of inserted item
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             now = datetime.now().isoformat()
 
             cursor.execute("""
@@ -348,7 +348,7 @@ class WorkingMemoryCapacityEnforcer:
                 importance
             ))
 
-            self.db.conn.commit()
+            # commit handled by cursor context
             return cursor.lastrowid
 
         except Exception as e:
@@ -368,7 +368,7 @@ class WorkingMemoryCapacityEnforcer:
             True if successful, False if item not found
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             now = datetime.now().isoformat()
 
             cursor.execute("""
@@ -377,7 +377,7 @@ class WorkingMemoryCapacityEnforcer:
                 WHERE id = ? AND project_id = ?
             """, (now, item_id, project_id))
 
-            self.db.conn.commit()
+            # commit handled by cursor context
 
             if cursor.rowcount > 0:
                 self.logger.debug(f"Rehearsed WM item {item_id}")
@@ -405,7 +405,7 @@ class WorkingMemoryCapacityEnforcer:
             List of items with activation > threshold
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute("""
                 SELECT id, content, activation_level, importance_score,
                        content_type, last_accessed
@@ -460,7 +460,7 @@ class WorkingMemoryCapacityEnforcer:
             Number of items removed
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Get all items
             cursor.execute("""
@@ -497,7 +497,7 @@ class WorkingMemoryCapacityEnforcer:
                     WHERE project_id = ? AND id IN ({placeholders})
                 """, [project_id] + ids_to_remove)
 
-                self.db.conn.commit()
+                # commit handled by cursor context
                 self.logger.info(f"Removed {len(ids_to_remove)} decayed items from project {project_id}")
 
             return len(ids_to_remove)

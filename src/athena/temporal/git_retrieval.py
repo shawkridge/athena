@@ -95,7 +95,7 @@ class GitTemporalRetrieval:
             end_time = intro_time + timedelta(hours=lookback_hours)
 
         # Query all commits between intro and fix
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT gc.id, gc.commit_hash, gc.commit_message, gc.author,
@@ -220,7 +220,7 @@ class GitTemporalRetrieval:
 
         Ranked by impact estimate and number of regressions.
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT gr.introducing_commit, COUNT(*) as regression_count,
@@ -330,7 +330,7 @@ class GitTemporalRetrieval:
 
         Shows distribution by type, severity, fix rates, etc.
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Total regressions by type
         cursor.execute(
@@ -390,7 +390,7 @@ class GitTemporalRetrieval:
 
         related_regressions = []
         if include_regressions:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT DISTINCT gr.id, gr.regression_type,

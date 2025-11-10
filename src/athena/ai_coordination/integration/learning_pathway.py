@@ -39,7 +39,7 @@ class LearningPathway:
 
     def _ensure_schema(self):
         """Create learning pathway tables."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Table: Learning pathways (tracks progression)
         cursor.execute("""
@@ -82,7 +82,7 @@ class LearningPathway:
             ON learning_pathways(source_type, source_id)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create_execution_pathway(
         self,
@@ -104,7 +104,7 @@ class LearningPathway:
         Returns:
             Pathway ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         cursor.execute("""
@@ -124,7 +124,7 @@ class LearningPathway:
         ))
 
         pathway_id = cursor.lastrowid
-        self.db.conn.commit()
+        # commit handled by cursor context
         return pathway_id
 
     def create_thinking_pathway(
@@ -147,7 +147,7 @@ class LearningPathway:
         Returns:
             Pathway ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         cursor.execute("""
@@ -167,7 +167,7 @@ class LearningPathway:
         ))
 
         pathway_id = cursor.lastrowid
-        self.db.conn.commit()
+        # commit handled by cursor context
         return pathway_id
 
     def create_action_cycle_pathway(
@@ -190,7 +190,7 @@ class LearningPathway:
         Returns:
             Pathway ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         cursor.execute("""
@@ -210,7 +210,7 @@ class LearningPathway:
         ))
 
         pathway_id = cursor.lastrowid
-        self.db.conn.commit()
+        # commit handled by cursor context
         return pathway_id
 
     def link_to_semantic(
@@ -227,7 +227,7 @@ class LearningPathway:
         Returns:
             Success status
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             UPDATE learning_pathways
@@ -235,7 +235,7 @@ class LearningPathway:
             WHERE id = ?
         """, (semantic_id, "consolidated", pathway_id))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.rowcount > 0
 
     def link_to_procedural(
@@ -252,7 +252,7 @@ class LearningPathway:
         Returns:
             Success status
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             UPDATE learning_pathways
@@ -260,7 +260,7 @@ class LearningPathway:
             WHERE id = ?
         """, (procedural_id, pathway_id))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.rowcount > 0
 
     def mark_consolidated(self, pathway_id: int) -> bool:
@@ -272,7 +272,7 @@ class LearningPathway:
         Returns:
             Success status
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         cursor.execute("""
@@ -281,7 +281,7 @@ class LearningPathway:
             WHERE id = ?
         """, (now, "consolidated", pathway_id))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.rowcount > 0
 
     def get_pathway(self, pathway_id: int) -> Optional[dict]:
@@ -293,7 +293,7 @@ class LearningPathway:
         Returns:
             Pathway dict or None
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             SELECT id, session_id, pathway_type, source_id, source_type,
@@ -332,7 +332,7 @@ class LearningPathway:
         Returns:
             List of pathway dicts
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         if status:
             cursor.execute("""
@@ -377,7 +377,7 @@ class LearningPathway:
         Returns:
             Metric ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         cursor.execute("""
@@ -387,7 +387,7 @@ class LearningPathway:
         """, (pathway_id, metric_name, metric_value, now))
 
         metric_id = cursor.lastrowid
-        self.db.conn.commit()
+        # commit handled by cursor context
         return metric_id
 
     def get_pathway_metrics(self, pathway_id: int) -> dict:
@@ -399,7 +399,7 @@ class LearningPathway:
         Returns:
             Metrics dict
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             SELECT metric_name, AVG(metric_value), COUNT(*), MAX(recorded_at)
@@ -427,7 +427,7 @@ class LearningPathway:
         Returns:
             Effectiveness metrics dict
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Count pathways by type
         cursor.execute("""

@@ -35,7 +35,7 @@ class RulesStore(BaseStore):
 
     def _ensure_schema(self):
         """Ensure all required tables exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Check if tables already exist
         cursor.execute("""

@@ -30,7 +30,7 @@ class ProjectContextStore:
 
     def _ensure_schema(self) -> None:
         """Create tables if they don't exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Project contexts table
         cursor.execute("""
@@ -89,7 +89,7 @@ class ProjectContextStore:
             ON project_decisions(project_id, created_at DESC)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def get_or_create(self, project_id: str, name: str, description: str = "") -> ProjectContext:
         """Get existing project context or create new one.
@@ -102,7 +102,7 @@ class ProjectContextStore:
         Returns:
             ProjectContext instance
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Try to get existing
         cursor.execute(
@@ -122,7 +122,7 @@ class ProjectContextStore:
             VALUES (?, ?, ?, ?, ?, ?)
         """, (project_id, name, description, ProjectPhase.PLANNING.value, now, now))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
         cursor.execute(
             "SELECT * FROM project_contexts WHERE project_id = ?",
@@ -140,7 +140,7 @@ class ProjectContextStore:
         Returns:
             ProjectContext or None if not found
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM project_contexts WHERE project_id = ?",
             (project_id,)
@@ -155,7 +155,7 @@ class ProjectContextStore:
             project_id: Project identifier
             phase: New phase
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)  # Milliseconds for better precision
 
         cursor.execute("""
@@ -164,7 +164,7 @@ class ProjectContextStore:
             WHERE project_id = ?
         """, (phase.value, now, project_id))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def update_goal(self, project_id: str, goal_id: Optional[str]) -> None:
         """Update current goal.
@@ -173,7 +173,7 @@ class ProjectContextStore:
             project_id: Project identifier
             goal_id: UUID of current goal, or None to clear
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)  # Milliseconds for better precision
 
         cursor.execute("""
@@ -182,7 +182,7 @@ class ProjectContextStore:
             WHERE project_id = ?
         """, (goal_id, now, project_id))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def update_progress(
         self,
@@ -199,7 +199,7 @@ class ProjectContextStore:
             in_progress: Number of in-progress goals
             blocked: Number of blocked goals
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)  # Milliseconds for better precision
 
         updates = ["updated_at = ?"]
@@ -222,7 +222,7 @@ class ProjectContextStore:
             params
         )
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def update_architecture(self, project_id: str, architecture: dict) -> None:
         """Update architecture documentation.
@@ -231,7 +231,7 @@ class ProjectContextStore:
             project_id: Project identifier
             architecture: Architecture dict (modules, entry_points, dependencies, etc.)
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)  # Milliseconds for better precision
 
         cursor.execute("""
@@ -240,7 +240,7 @@ class ProjectContextStore:
             WHERE project_id = ?
         """, (json.dumps(architecture), now, project_id))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def add_decision(self, decision: Decision) -> int:
         """Record a decision made in the project.
@@ -251,7 +251,7 @@ class ProjectContextStore:
         Returns:
             ID of inserted decision
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(time.time() * 1000)  # Milliseconds for better precision
 
         cursor.execute("""
@@ -267,7 +267,7 @@ class ProjectContextStore:
             now
         ))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def get_decisions(self, project_id: str, limit: int = 20) -> list[Decision]:
@@ -280,7 +280,7 @@ class ProjectContextStore:
         Returns:
             List of Decision instances
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             SELECT * FROM project_decisions
             WHERE project_id = ?
@@ -296,7 +296,7 @@ class ProjectContextStore:
         Args:
             error: ErrorPattern to track
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Check if error already exists
         cursor.execute("""
@@ -330,7 +330,7 @@ class ProjectContextStore:
                 error.resolved
             ))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def get_error_patterns(self, project_id: str, unresolved_only: bool = True) -> list[ErrorPattern]:
         """Get error patterns for project.
@@ -342,7 +342,7 @@ class ProjectContextStore:
         Returns:
             List of ErrorPattern instances
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         if unresolved_only:
             cursor.execute("""
@@ -365,7 +365,7 @@ class ProjectContextStore:
         Args:
             error_id: ID of error to mark resolved
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             UPDATE project_errors
@@ -373,7 +373,7 @@ class ProjectContextStore:
             WHERE id = ?
         """, (error_id,))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def _row_to_context(self, row: tuple) -> ProjectContext:
         """Convert database row to ProjectContext.

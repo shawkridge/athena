@@ -405,7 +405,7 @@ class CursorManager:
             - cursor_data (TEXT): JSON-serialized cursor state
             - updated_at (INTEGER): Unix timestamp of last update
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS event_source_cursors (
@@ -422,7 +422,7 @@ class CursorManager:
             ON event_source_cursors(updated_at DESC)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def get_cursor(self, source_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve stored cursor for a source.
@@ -439,7 +439,7 @@ class CursorManager:
                 cursor = GitHubCursor.from_dict(cursor_data)
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute("""
                 SELECT cursor_data FROM event_source_cursors
                 WHERE source_id = ?
@@ -473,7 +473,7 @@ class CursorManager:
             cursor_mgr.update_cursor("filesystem:/project", cursor.to_dict())
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             now = int(datetime.now().timestamp())
 
             # Serialize cursor data to JSON
@@ -484,10 +484,10 @@ class CursorManager:
                 VALUES (?, ?, ?)
             """, (source_id, cursor_json, now))
 
-            self.db.conn.commit()
+            # commit handled by cursor context
 
         except Exception as e:
-            self.db.conn.rollback()
+            # rollback handled by cursor context
             import logging
             logging.error(f"Failed to update cursor for {source_id}: {e}")
             raise
@@ -506,19 +506,19 @@ class CursorManager:
             cursor_mgr.delete_cursor("slack:channel123")
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute("""
                 DELETE FROM event_source_cursors
                 WHERE source_id = ?
             """, (source_id,))
 
             deleted = cursor.rowcount > 0
-            self.db.conn.commit()
+            # commit handled by cursor context
 
             return deleted
 
         except Exception as e:
-            self.db.conn.rollback()
+            # rollback handled by cursor context
             import logging
             logging.error(f"Failed to delete cursor for {source_id}: {e}")
             return False
@@ -538,7 +538,7 @@ class CursorManager:
                 print(f"{cursor_info['source_id']}: {cursor_info['updated_at']}")
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute("""
                 SELECT source_id, cursor_data, updated_at
                 FROM event_source_cursors

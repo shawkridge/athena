@@ -121,7 +121,7 @@ class SaliencyCalculator:
             Frequency score (0-1)
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Try to get access count from semantic or episodic memory table
             tables = {
@@ -186,7 +186,7 @@ class SaliencyCalculator:
             Recency score (0-1)
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Get last accessed/created timestamp
             if layer == "episodic":
@@ -246,7 +246,7 @@ class SaliencyCalculator:
         try:
             if current_goal is None:
                 # Fallback: use usefulness score
-                cursor = self.db.conn.cursor()
+                cursor = self.db.get_cursor()
                 if layer == "semantic":
                     query = "SELECT usefulness_score FROM memories WHERE id = ? AND project_id = ?"
                 else:
@@ -258,7 +258,7 @@ class SaliencyCalculator:
                 return result[0] if result and result[0] else 0.5
 
             # Goal-based relevance using embedding similarity
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Get memory content
             if layer == "semantic":
@@ -329,7 +329,7 @@ class SaliencyCalculator:
             if not context_events or len(context_events) == 0:
                 return 0.0
 
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Get memory content
             if layer == "semantic":

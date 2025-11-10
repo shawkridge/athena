@@ -144,7 +144,7 @@ class SpatialContextIntegration:
         memories = []
 
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Find episodic events with file context
             cursor.execute(
@@ -257,7 +257,7 @@ class SpatialContextIntegration:
         }
 
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Query all episodic events with file context
             cursor.execute(
@@ -352,7 +352,7 @@ class SpatialContextIntegration:
             List of matching file paths
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             sql = """
                 SELECT DISTINCT content FROM episodic_events

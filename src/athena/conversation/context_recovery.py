@@ -128,7 +128,7 @@ class ContextSnapshot:
             List of recovered conversation events with content
         """
         store = self._get_episodic_store()
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Search in specific session
         cursor.execute(
@@ -174,7 +174,7 @@ class ContextSnapshot:
             List of matching conversation events
         """
         store = self._get_episodic_store()
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Full-text keyword search
         keywords = query.lower().split()
@@ -232,7 +232,7 @@ class ContextSnapshot:
         Returns:
             Statistics about conversation events in session
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute(
             """

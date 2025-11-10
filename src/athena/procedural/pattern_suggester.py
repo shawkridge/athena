@@ -170,7 +170,7 @@ class PatternSuggester:
         Returns:
             True if successfully marked applied
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute(
             """
@@ -181,7 +181,7 @@ class PatternSuggester:
             (feedback, suggestion_id),
         )
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.rowcount > 0
 
     def dismiss_suggestion(self, suggestion_id: int, reason: Optional[str] = None) -> bool:
@@ -194,7 +194,7 @@ class PatternSuggester:
         Returns:
             True if successfully marked dismissed
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute(
             """
@@ -205,7 +205,7 @@ class PatternSuggester:
             (reason, suggestion_id),
         )
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.rowcount > 0
 
     def measure_suggestion_effectiveness(
@@ -215,7 +215,7 @@ class PatternSuggester:
 
         Returns stats on how often suggestions were applied vs dismissed.
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute(
             """
@@ -257,7 +257,7 @@ class PatternSuggester:
 
         Returns aggregated stats on suggestion effectiveness.
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Total suggestions
         cursor.execute("SELECT COUNT(*) FROM pattern_suggestions")

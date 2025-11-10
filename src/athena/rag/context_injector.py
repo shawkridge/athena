@@ -311,7 +311,7 @@ class ContextInjector:
         try:
             # Query the attention system from the database
             # This integrates with the /focus and /inhibit commands
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
 
             # Get focused memories (high salience)
             cursor.execute("""

@@ -182,7 +182,7 @@ class EstimationImprover:
             Number of historical tasks of this type
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT COUNT(*) FROM prospective_tasks
@@ -288,7 +288,7 @@ class EstimationImprover:
             Tuple of (lower_bound, upper_bound) in minutes
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT

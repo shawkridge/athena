@@ -114,7 +114,7 @@ class CapabilityRouter:
         Returns:
             True if rebalancing recommended
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Get utilization stats
         cursor.execute(
@@ -159,7 +159,7 @@ class CapabilityRouter:
         Returns:
             Dict with routing stats
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Count by status
         cursor.execute(

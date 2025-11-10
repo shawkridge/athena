@@ -99,7 +99,7 @@ class Tier1Phase5Integration:
             base_health = self.task_monitor.get_task_health(task_id)
 
             # Get task metadata for saliency computation
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT content FROM episodic_events
@@ -134,7 +134,7 @@ class Tier1Phase5Integration:
                         0.5,
                     ),
                 )
-                self.db.conn.commit()
+                # commit handled by cursor context
                 temp_mem_id = cursor.lastrowid
 
                 saliency = self.saliency_calc.compute_saliency(
@@ -143,7 +143,7 @@ class Tier1Phase5Integration:
 
                 # Clean up temp memory
                 cursor.execute("DELETE FROM memories WHERE id = ?", (temp_mem_id,))
-                self.db.conn.commit()
+                # commit handled by cursor context
 
             except Exception as e:
                 logger.warning(f"Failed to compute saliency for task {task_id}: {e}")
@@ -190,7 +190,7 @@ class Tier1Phase5Integration:
             patterns = self.task_analytics.discover_patterns(project_id)
 
             # Weight patterns by saliency of contributing tasks
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 """
                 SELECT id, content FROM memories
@@ -270,7 +270,7 @@ class Tier1Phase5Integration:
             for i, step in enumerate(base_plan.get("steps", [])):
                 try:
                     # Create temporary memory for step
-                    cursor = self.db.conn.cursor()
+                    cursor = self.db.get_cursor()
                     cursor.execute(
                         """
                         INSERT INTO memories (project_id, content, memory_type, tags, created_at, updated_at, access_count, usefulness_score)
@@ -287,7 +287,7 @@ class Tier1Phase5Integration:
                             0.5,
                         ),
                     )
-                    self.db.conn.commit()
+                    # commit handled by cursor context
                     temp_mem_id = cursor.lastrowid
 
                     saliency = self.saliency_calc.compute_saliency(
@@ -296,7 +296,7 @@ class Tier1Phase5Integration:
 
                     # Clean up
                     cursor.execute("DELETE FROM memories WHERE id = ?", (temp_mem_id,))
-                    self.db.conn.commit()
+                    # commit handled by cursor context
 
                     step_saliencies.append(
                         {"step": step, "saliency": saliency, "index": i}

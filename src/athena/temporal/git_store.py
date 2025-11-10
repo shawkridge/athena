@@ -31,7 +31,7 @@ class GitStore:
 
     def _ensure_schema(self):
         """Create git-aware tables if they don't exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Git commits table
         cursor.execute(
@@ -222,13 +222,13 @@ class GitStore:
             """
         )
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create_commit(
         self, git_metadata: GitMetadata, event_id: Optional[int] = None
     ) -> int:
         """Insert a git commit and return its ID."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
 
         cursor.execute(
@@ -256,14 +256,14 @@ class GitStore:
                 now,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def add_file_change(
         self, commit_id: int, file_change: GitFileChange
     ) -> int:
         """Add a file change to a commit."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
 
         cursor.execute(
@@ -285,7 +285,7 @@ class GitStore:
                 now,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def create_commit_event(
@@ -305,7 +305,7 @@ class GitStore:
 
     def get_commit(self, commit_hash: str) -> Optional[dict]:
         """Retrieve a commit by hash."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT id, event_id, commit_hash, commit_message, author,
@@ -340,7 +340,7 @@ class GitStore:
 
     def get_commit_file_changes(self, commit_id: int) -> list[dict]:
         """Get all file changes for a commit."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT id, file_path, change_type, old_path,
@@ -366,7 +366,7 @@ class GitStore:
 
     def get_commits_by_author(self, author: str, limit: int = 100) -> list[dict]:
         """Get commits by a specific author."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT id, commit_hash, commit_message, committed_timestamp,
@@ -395,7 +395,7 @@ class GitStore:
 
     def get_commits_by_file(self, file_path: str, limit: int = 50) -> list[dict]:
         """Get all commits that touched a specific file."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT DISTINCT gc.id, gc.commit_hash, gc.commit_message,
@@ -425,7 +425,7 @@ class GitStore:
         self, regression: RegressionAnalysis
     ) -> int:
         """Record a regression analysis."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
 
         cursor.execute(
@@ -455,14 +455,14 @@ class GitStore:
                 now,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def get_regressions_by_type(
         self, regression_type: RegressionType, limit: int = 50
     ) -> list[dict]:
         """Get all regressions of a specific type."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT id, regression_description, introducing_commit,
@@ -495,7 +495,7 @@ class GitStore:
         self, commit_hash: str
     ) -> list[dict]:
         """Get all regressions introduced by a commit."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT id, regression_type, regression_description,
@@ -526,7 +526,7 @@ class GitStore:
         self, metrics: AuthorMetrics
     ) -> int:
         """Update or create author metrics."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
 
         cursor.execute(
@@ -561,12 +561,12 @@ class GitStore:
                 now,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def get_author_metrics(self, author: str) -> Optional[dict]:
         """Get metrics for a specific author."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT id, author, email, commits_count,
@@ -608,7 +608,7 @@ class GitStore:
         self, relation: GitTemporalRelation
     ) -> int:
         """Create a git temporal relation between commits."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute(
             """
@@ -629,14 +629,14 @@ class GitStore:
                 int(relation.inferred_at.timestamp()),
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def get_temporal_relations_from(
         self, commit_hash: str
     ) -> list[dict]:
         """Get all temporal relations from a commit."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT to_commit, relation_type, strength,
@@ -663,7 +663,7 @@ class GitStore:
         self, metrics: BranchMetrics
     ) -> int:
         """Update or create branch metrics."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
 
         cursor.execute(
@@ -692,12 +692,12 @@ class GitStore:
                 now,
             ),
         )
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.lastrowid
 
     def get_branch_metrics(self, branch_name: str) -> Optional[dict]:
         """Get metrics for a specific branch."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             """
             SELECT id, branch_name, is_main, is_protected,

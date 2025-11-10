@@ -140,7 +140,7 @@ class ProjectCoordinatorAgent:
             Total task count
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             placeholders = ",".join("?" * len(project_ids))
             cursor.execute(
                 f"""

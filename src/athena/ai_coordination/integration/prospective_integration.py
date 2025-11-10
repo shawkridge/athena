@@ -72,7 +72,7 @@ class ProspectiveIntegration:
 
     def _ensure_schema(self):
         """Create prospective integration tables."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Table: Prospective tasks created from learning
         cursor.execute("""
@@ -123,7 +123,7 @@ class ProspectiveIntegration:
             ON task_effectiveness(outcome)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def create_prospective_task(
         self,
@@ -139,7 +139,7 @@ class ProspectiveIntegration:
         Returns:
             Task ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         # Calculate feasibility
@@ -164,7 +164,7 @@ class ProspectiveIntegration:
         ))
 
         task_id = cursor.lastrowid
-        self.db.conn.commit()
+        # commit handled by cursor context
         return task_id
 
     def should_trigger_task(self, task_id: int, current_context: dict) -> bool:
@@ -177,7 +177,7 @@ class ProspectiveIntegration:
         Returns:
             True if task should be triggered
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             SELECT trigger_type, trigger_value, status
@@ -219,7 +219,7 @@ class ProspectiveIntegration:
         Returns:
             Success status
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         cursor.execute("""
@@ -228,7 +228,7 @@ class ProspectiveIntegration:
             WHERE id = ?
         """, (now, task_id))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.rowcount > 0
 
     def complete_task(self, task_id: int) -> bool:
@@ -240,7 +240,7 @@ class ProspectiveIntegration:
         Returns:
             Success status
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         cursor.execute("""
@@ -249,7 +249,7 @@ class ProspectiveIntegration:
             WHERE id = ?
         """, (now, task_id))
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return cursor.rowcount > 0
 
     def record_task_effectiveness(
@@ -272,7 +272,7 @@ class ProspectiveIntegration:
         Returns:
             Effectiveness record ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
         cursor.execute("""
@@ -287,7 +287,7 @@ class ProspectiveIntegration:
         # Update task status and feasibility
         self._update_task_feasibility(task_id)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
         return effectiveness_id
 
     def get_pending_tasks(self) -> list[dict]:
@@ -296,7 +296,7 @@ class ProspectiveIntegration:
         Returns:
             List of pending task dicts
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         try:
             cursor.execute("""
@@ -329,7 +329,7 @@ class ProspectiveIntegration:
         Returns:
             Effectiveness metrics dict
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Count by outcome
         cursor.execute("""
@@ -396,7 +396,7 @@ class ProspectiveIntegration:
         Args:
             task_id: Task ID
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("""
             SELECT AVG(CASE WHEN was_useful THEN 1 ELSE 0 END)

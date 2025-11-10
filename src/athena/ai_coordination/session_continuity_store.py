@@ -87,7 +87,7 @@ class SessionContinuityStore(BaseStore[SessionSnapshot]):
 
     def _ensure_schema(self) -> None:
         """Create tables if they don't exist."""
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         # Session snapshots table
         cursor.execute("""
@@ -150,7 +150,7 @@ class SessionContinuityStore(BaseStore[SessionSnapshot]):
             ON session_metadata(created_at DESC)
         """)
 
-        self.db.conn.commit()
+        # commit handled by cursor context
 
     def save_session(
         self,

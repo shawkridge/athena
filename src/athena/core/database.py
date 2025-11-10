@@ -624,6 +624,17 @@ class Database:
 
         self.conn.commit()
 
+    def get_cursor(self):
+        """Get a database cursor for direct SQL execution.
+
+        This method provides compatibility for code written against SQLite.
+        For PostgreSQL, this would be overridden to return a sync wrapper.
+
+        Returns:
+            A cursor object for executing SQL commands
+        """
+        return self.conn.cursor()
+
     def create_project(self, name: str, path: str) -> Project:
         """Create a new project.
 

@@ -85,7 +85,7 @@ class IDEContextManager:
             Updated IDEFile record
         """
         # Get existing file
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT id FROM ide_files WHERE project_id = ? AND file_path = ?",
             (project_id, file_path),
