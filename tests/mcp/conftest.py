@@ -11,6 +11,7 @@ Provides:
 import pytest
 import tempfile
 import numpy as np
+import sys
 from pathlib import Path
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from datetime import datetime
@@ -18,6 +19,25 @@ from datetime import datetime
 # Suppress warnings in tests
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+# Create mock EmbeddingModel BEFORE any imports that use it
+class MockEmbeddingModel:
+    def __init__(self, model=None, provider=None):
+        self.model = model or "mock"
+        self.provider = "mock"
+        self.backend = None
+        self.embedding_dim = 768
+        self.available = True
+
+    def embed(self, text: str):
+        """Return deterministic embedding based on text."""
+        seed = hash(text) % (2**32)
+        np.random.seed(seed)
+        return np.random.randn(768).tolist()
+
+    def embed_batch(self, texts):
+        """Batch embedding."""
+        return [self.embed(text) for text in texts]
 
 
 # ============================================================================
@@ -35,28 +55,28 @@ def temp_db():
         # Cleanup handled by tempfile context manager
 
 
-@pytest.fixture
-def mcp_server(temp_db):
+@pytest.fixture(autouse=False)
+def mcp_server(temp_db, monkeypatch):
     """Create MCP server instance with test database and mocked embeddings."""
-    from src.athena.mcp.handlers import MemoryMCPServer
-
     db_path = str(temp_db.db_path)
 
-    # Mock embedding backend
-    with patch('src.athena.core.embeddings.EmbeddingManager') as mock_embeddings:
-        mock_instance = Mock()
-        mock_instance.embed.return_value = np.random.randn(768).tolist()
-        mock_instance.embed_batch.return_value = [
-            np.random.randn(768).tolist() for _ in range(10)
-        ]
-        mock_embeddings.return_value = mock_instance
+    # Patch the EmbeddingModel before importing anything that uses it
+    from src.athena.core import embeddings
+    from src.athena.memory import store as memory_store_module
 
-        server = MemoryMCPServer(db_path=db_path, enable_advanced_rag=False)
+    monkeypatch.setattr(embeddings, 'EmbeddingModel', MockEmbeddingModel)
+    monkeypatch.setattr(memory_store_module, 'EmbeddingModel', MockEmbeddingModel)
 
-        # Patch embeddings on the server
-        server.embeddings = mock_instance
+    # Re-import to pick up the mocked class
+    import importlib
+    importlib.reload(memory_store_module)
 
-        yield server
+    # Now import and create the server
+    from src.athena.mcp.handlers import MemoryMCPServer
+
+    server = MemoryMCPServer(db_path=db_path, enable_advanced_rag=False)
+
+    yield server
 
 
 @pytest.fixture

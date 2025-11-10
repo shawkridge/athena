@@ -24,44 +24,13 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 from unittest.mock import Mock, AsyncMock, patch
 
-from src.athena.mcp.handlers import MemoryMCPServer
-from src.athena.core.database import Database
 from src.athena.core.models import MemoryType
 from src.athena.episodic.models import EventType, EventOutcome, EventContext
 from src.athena.procedural.models import ProcedureCategory
 from src.athena.prospective.models import TaskStatus, TaskPriority
 from src.athena.graph.models import EntityType, RelationType
 
-
-# ============================================================================
-# Fixtures
-# ============================================================================
-
-
-@pytest.fixture
-def temp_db():
-    """Create temporary database for testing."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        db_path = Path(tmpdir) / "test.db"
-        yield Database(str(db_path))
-
-
-@pytest.fixture
-def mcp_server(temp_db):
-    """Create MCP server instance with test database."""
-    db_path = str(temp_db.db_path)
-    return MemoryMCPServer(db_path=db_path, enable_advanced_rag=False)
-
-
-@pytest.fixture
-def project_id(temp_db):
-    """Create a test project."""
-    from src.athena.memory import MemoryStore
-    from src.athena.projects import ProjectManager
-    memory_store = MemoryStore(str(temp_db.db_path))
-    pm = ProjectManager(memory_store)
-    project = pm.get_or_create_project("test_project")
-    return str(project.id)
+# Fixtures are imported from conftest.py (mcp_server, temp_db, project_id)
 
 
 # ============================================================================
@@ -289,7 +258,7 @@ class TestEpisodicOperations:
         result = await mcp_server._handle_record_event({
             "project_id": project_id,
             "event_type": "action",
-            "description": "User logged in",
+            "content": "User logged in",
             "context": {"ip": "192.168.1.1", "browser": "Chrome"}
         })
 
@@ -303,7 +272,7 @@ class TestEpisodicOperations:
         await mcp_server._handle_record_event({
             "project_id": project_id,
             "event_type": "action",
-            "description": "Test event"
+            "content": "Test event"
         })
 
         # Recall events
@@ -322,7 +291,7 @@ class TestEpisodicOperations:
             await mcp_server._handle_record_event({
                 "project_id": project_id,
                 "event_type": "action",
-                "description": f"Event {i}"
+                "content": f"Event {i}"
             })
 
         # Get timeline
@@ -338,7 +307,7 @@ class TestEpisodicOperations:
         events = [
             {
                 "event_type": "action",
-                "description": f"Batch event {i}",
+                "content": f"Batch event {i}",
                 "timestamp": datetime.now().isoformat()
             }
             for i in range(5)
@@ -451,10 +420,8 @@ class TestProspectiveOperations:
         """Test creating a task."""
         result = await mcp_server._handle_create_task({
             "project_id": project_id,
-            "title": "Implement feature X",
-            "description": "Add support for new feature",
-            "priority": "high",
-            "due_date": (datetime.now() + timedelta(days=7)).isoformat()
+            "content": "Implement feature X",
+            "priority": "high"
         })
 
         assert result is not None
@@ -523,8 +490,8 @@ class TestKnowledgeGraphOperations:
         result = await mcp_server._handle_create_entity({
             "project_id": project_id,
             "name": "Python",
-            "entity_type": "technology",
-            "description": "Programming language"
+            "entity_type": "Concept",
+            "observations": ["Programming language"]
         })
 
         assert result is not None
@@ -536,20 +503,20 @@ class TestKnowledgeGraphOperations:
         await mcp_server._handle_create_entity({
             "project_id": project_id,
             "name": "Python",
-            "entity_type": "technology"
+            "entity_type": "Concept"
         })
         await mcp_server._handle_create_entity({
             "project_id": project_id,
             "name": "Django",
-            "entity_type": "technology"
+            "entity_type": "Concept"
         })
 
         # Then create relation
         result = await mcp_server._handle_create_relation({
             "project_id": project_id,
-            "source_name": "Python",
-            "target_name": "Django",
-            "relation_type": "used_by"
+            "from_entity": "Python",
+            "to_entity": "Django",
+            "relation_type": "enables"
         })
 
         assert result is not None
@@ -572,7 +539,7 @@ class TestKnowledgeGraphOperations:
         await mcp_server._handle_create_entity({
             "project_id": project_id,
             "name": "API",
-            "entity_type": "concept"
+            "entity_type": "Concept"
         })
 
         # Search
@@ -863,7 +830,7 @@ class TestMultiOperationWorkflows:
             record_result = await mcp_server._handle_record_event({
                 "project_id": project_id,
                 "event_type": "action",
-                "description": f"Action {i}"
+                "content": f"Action {i}"
             })
             assert record_result is not None
 
