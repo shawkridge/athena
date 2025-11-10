@@ -108,14 +108,6 @@ class PostgresDatabase:
         self._pool: Optional[AsyncConnectionPool] = None
         self._initialized = False
 
-        # Try to initialize schema synchronously on __init__
-        # This allows stores to call _ensure_schema() without errors
-        # If called from async context, this will be skipped and retried later
-        try:
-            self._init_schema_sync()
-        except Exception as e:
-            logger.warning(f"Sync schema init failed (will retry): {e}")
-
     async def initialize(self):
         """Initialize connection pool and create schema."""
         if self._initialized:

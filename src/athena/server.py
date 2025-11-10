@@ -34,7 +34,7 @@ async def main():
         # Initialize database schema asynchronously
         await server.store.db.initialize()
 
-        # Run MCP server
+        # Run MCP server (blocks indefinitely)
         await server.run()
     except KeyboardInterrupt:
         pass
@@ -42,7 +42,11 @@ async def main():
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
     finally:
-        server.store.close()
+        # Close database connection asynchronously
+        try:
+            await server.store.db.close()
+        except Exception:
+            pass  # Best effort cleanup
 
 
 if __name__ == "__main__":
