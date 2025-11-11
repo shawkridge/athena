@@ -1573,3 +1573,157 @@ class MemoryAPI:
                 "error": str(e),
                 "timestamp": datetime.now().isoformat(),
             }
+
+    # ===== API DISCOVERY =====
+
+    def _init_api_discovery(self):
+        """Initialize API discovery system (lazy initialization)."""
+        if hasattr(self, "_discovery") and self._discovery is not None:
+            return
+
+        try:
+            from ..api.discovery import APIDiscovery
+
+            self._discovery = APIDiscovery()
+        except Exception as e:
+            logger.warning(f"Failed to initialize API discovery: {e}")
+            self._discovery = None
+
+    def discover_apis(
+        self, category: Optional[str] = None
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """Discover available memory APIs.
+
+        Args:
+            category: Optional category filter (e.g., 'memory', 'graph')
+
+        Returns:
+            Dictionary mapping category names to lists of API specs (compact format)
+
+        Example:
+            apis = api.discover_apis()
+            memory_apis = api.discover_apis(category="memory")
+        """
+        self._init_api_discovery()
+
+        if self._discovery is None:
+            logger.warning("API discovery not available")
+            return {}
+
+        try:
+            if category:
+                specs = self._discovery.get_apis_by_category(category)
+                return {category: [spec.to_compact_dict() for spec in specs]}
+            else:
+                all_apis = self._discovery.discover_all()
+                return {
+                    cat: [spec.to_compact_dict() for spec in specs]
+                    for cat, specs in all_apis.items()
+                }
+        except Exception as e:
+            logger.error(f"Failed to discover APIs: {e}")
+            return {}
+
+    def get_api_spec(self, api_path: str) -> Optional[Dict[str, Any]]:
+        """Get detailed specification for a specific API.
+
+        Args:
+            api_path: API path in format 'category/function' (e.g., 'memory/recall')
+
+        Returns:
+            Full API specification as dictionary, or None if not found
+
+        Example:
+            spec = api.get_api_spec("memory/recall")
+            print(f"Parameters: {spec['parameters']}")
+        """
+        self._init_api_discovery()
+
+        if self._discovery is None:
+            logger.warning("API discovery not available")
+            return None
+
+        try:
+            spec = self._discovery.get_api(api_path)
+            return spec.to_dict() if spec else None
+        except Exception as e:
+            logger.error(f"Failed to get API spec for {api_path}: {e}")
+            return None
+
+    def get_api_documentation(self, api_path: str) -> Optional[str]:
+        """Get markdown documentation for a specific API.
+
+        Args:
+            api_path: API path in format 'category/function'
+
+        Returns:
+            Markdown documentation or None if not found
+
+        Example:
+            docs = api.get_api_documentation("memory/recall")
+            print(docs)
+        """
+        self._init_api_discovery()
+
+        if self._discovery is None:
+            logger.warning("API discovery not available")
+            return None
+
+        try:
+            spec = self._discovery.get_api(api_path)
+            return spec.to_markdown() if spec else None
+        except Exception as e:
+            logger.error(f"Failed to get documentation for {api_path}: {e}")
+            return None
+
+    def search_apis(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """Search for APIs matching a query.
+
+        Performs text-based search on API names and docstrings.
+
+        Args:
+            query: Search query
+            limit: Maximum number of results to return
+
+        Returns:
+            List of matching API specifications (compact format)
+
+        Example:
+            results = api.search_apis("semantic")
+            for result in results:
+                print(f"Found: {result['name']}")
+        """
+        self._init_api_discovery()
+
+        if self._discovery is None:
+            logger.warning("API discovery not available")
+            return []
+
+        try:
+            specs = self._discovery.search_apis(query, limit=limit)
+            return [spec.to_compact_dict() for spec in specs]
+        except Exception as e:
+            logger.error(f"Failed to search APIs: {e}")
+            return []
+
+    def list_api_categories(self) -> List[str]:
+        """List all available API categories.
+
+        Returns:
+            List of category names
+
+        Example:
+            categories = api.list_api_categories()
+            print(f"Available categories: {categories}")
+        """
+        self._init_api_discovery()
+
+        if self._discovery is None:
+            logger.warning("API discovery not available")
+            return []
+
+        try:
+            return self._discovery.get_api_categories()
+        except Exception as e:
+            logger.error(f"Failed to list API categories: {e}")
+            return []
