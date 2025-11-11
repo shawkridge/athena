@@ -344,11 +344,14 @@ async def handle_find_code_dependencies(server: Any, args: dict) -> List[TextCon
         file_path = args.get("file_path", "")
         entity_name = args.get("entity_name", "")
         repo_path = args.get("repo_path", "")
+        limit = min(args.get("limit", 10), 100)
 
         if not file_path:
-            return [TextContent(type="text", text="Error: file_path parameter is required")]
+            result = StructuredResult.error("file_path parameter is required", metadata={"operation": "find_code_dependencies"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
         if not entity_name:
-            return [TextContent(type="text", text="Error: entity_name parameter is required")]
+            result = StructuredResult.error("entity_name parameter is required", metadata={"operation": "find_code_dependencies"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
         if not repo_path:
             repo_path = str(Path(file_path).parent)
 
@@ -363,49 +366,56 @@ async def handle_find_code_dependencies(server: Any, args: dict) -> List[TextCon
             deps = search_engine.find_dependencies(file_path, entity_name)
 
             if not deps.get("found"):
-                return [TextContent(
-                    type="text",
-                    text=f"Entity '{entity_name}' not found in {file_path}"
-                )]
-
-            # Format dependencies
-            response_parts = [
-                f"**Dependency Analysis**",
-                f"Entity: `{deps['entity']}`",
-                f"File: `{deps['file']}`",
-            ]
-
-            if deps.get("direct_dependencies"):
-                response_parts.append(
-                    f"\n**Direct Dependencies** ({len(deps['direct_dependencies'])}):"
+                result = StructuredResult.success(
+                    data=[],
+                    metadata={
+                        "operation": "find_code_dependencies",
+                        "schema": "code_analysis",
+                        "entity": entity_name,
+                        "file": file_path,
+                        "found": False,
+                    }
                 )
-                for dep in deps["direct_dependencies"][:10]:
-                    response_parts.append(f"- `{dep}`")
+            else:
+                # Format dependencies for structured response
+                direct_deps = deps.get("direct_dependencies", [])[:limit]
+                transitive_deps = deps.get("transitive_dependencies", [])[:limit]
+                dependents = deps.get("dependents", [])[:limit]
 
-            if deps.get("transitive_dependencies"):
-                response_parts.append(
-                    f"\n**Transitive Dependencies** ({len(deps['transitive_dependencies'])}):"
+                formatted_data = {
+                    "entity": deps['entity'],
+                    "file": deps['file'],
+                    "direct_dependencies": direct_deps,
+                    "transitive_dependencies": sorted(transitive_deps)[:limit],
+                    "dependents": sorted(dependents)[:limit],
+                }
+
+                result = StructuredResult.success(
+                    data=formatted_data,
+                    metadata={
+                        "operation": "find_code_dependencies",
+                        "schema": "code_analysis",
+                        "entity": entity_name,
+                        "file": file_path,
+                        "direct_count": len(direct_deps),
+                        "transitive_count": len(transitive_deps),
+                        "dependents_count": len(dependents),
+                    },
+                    pagination=PaginationMetadata(
+                        returned=len(direct_deps) + len(transitive_deps) + len(dependents),
+                        limit=limit,
+                    )
                 )
-                for dep in sorted(deps["transitive_dependencies"])[:10]:
-                    response_parts.append(f"- `{dep}`")
-
-            if deps.get("dependents"):
-                response_parts.append(
-                    f"\n**Dependents** ({len(deps['dependents'])}):"
-                )
-                for dep in sorted(deps["dependents"])[:10]:
-                    response_parts.append(f"- `{dep}`")
-
-            response = "\n".join(response_parts)
-            return [TextContent(type="text", text=response)]
 
         except Exception as deps_err:
             logger.debug(f"Dependency finding error: {deps_err}")
-            return [TextContent(type="text", text=f"Analysis Error: {str(deps_err)}")]
+            result = StructuredResult.error(f"Analysis Error: {str(deps_err)}", metadata={"operation": "find_code_dependencies"})
 
     except Exception as e:
         logger.error(f"Error in handle_find_code_dependencies: {e}", exc_info=True)
-        return [TextContent(type="text", text=f"Error: {str(e)}")]
+        result = StructuredResult.error(str(e), metadata={"operation": "find_code_dependencies"})
+
+    return [result.as_optimized_content(schema_name="code_analysis")]
 
 
 async def handle_index_code_repository(server: Any, args: dict) -> List[TextContent]:

@@ -4464,17 +4464,48 @@ class MemoryMCPServer:
             )
 
             if not path:
-                return [TextContent(type="text", text="No path found between memories")]
+                result = StructuredResult.success(
+                    data=[],
+                    metadata={
+                        "operation": "find_memory_path",
+                        "schema": "memory",
+                        "from_id": from_memory_id,
+                        "to_id": to_memory_id,
+                    }
+                )
+            else:
+                # Format path for structured response
+                formatted_path = []
+                for i, link in enumerate(path):
+                    formatted_path.append({
+                        "hop": i + 1,
+                        "from_id": link.from_memory_id,
+                        "to_id": link.to_memory_id,
+                        "strength": round(link.link_strength, 2),
+                    })
 
-            response = f"✓ Found path ({len(path)} hops):\n"
-            for i, link in enumerate(path):
-                response += f"  {i+1}. {link.from_memory_id} → {link.to_memory_id} (strength: {link.link_strength:.2f})\n"
+                result = StructuredResult.success(
+                    data=formatted_path,
+                    metadata={
+                        "operation": "find_memory_path",
+                        "schema": "memory",
+                        "from_id": from_memory_id,
+                        "from_layer": from_layer,
+                        "to_id": to_memory_id,
+                        "to_layer": to_layer,
+                        "hops": len(formatted_path),
+                    },
+                    pagination=PaginationMetadata(
+                        returned=len(formatted_path),
+                    )
+                )
 
-            return [TextContent(type="text", text=response)]
         except KeyError as e:
-            return [TextContent(type="text", text=f"Error: Missing required parameter {str(e)}")]
+            result = StructuredResult.error(f"Missing required parameter: {str(e)}", metadata={"operation": "find_memory_path"})
         except Exception as e:
-            return [TextContent(type="text", text=f"Error: {str(e)}")]
+            result = StructuredResult.error(str(e), metadata={"operation": "find_memory_path"})
+
+        return [result.as_optimized_content(schema_name="memory")]
 
     # Phase 2: Attention System handlers
     async def _handle_get_attention_state(self, args: dict) -> list[TextContent]:
@@ -10501,42 +10532,46 @@ Anomalies:
         try:
             symbol = args.get("symbol")
             if not symbol:
-                return [TextContent(type="text", text=json.dumps({
-                    "status": "error", "error": "symbol parameter is required"
-                }))]
+                result = StructuredResult.error("symbol parameter is required", metadata={"operation": "find_symbol_dependencies"})
+                return [result.as_optimized_content(schema_name="code_analysis")]
 
-            response = {
-                "status": "success",
-                "symbol": symbol,
-                "dependencies": [],
-                "dependency_count": 0,
-                "timestamp": datetime.utcnow().isoformat() + "Z"
-            }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=[],
+                metadata={
+                    "operation": "find_symbol_dependencies",
+                    "schema": "code_analysis",
+                    "symbol": symbol,
+                    "dependency_count": 0,
+                }
+            )
         except Exception as e:
             logger.error(f"Error in _handle_find_symbol_dependencies: {e}")
-            return [TextContent(type="text", text=json.dumps({"status": "error", "error": str(e)}))]
+            result = StructuredResult.error(str(e), metadata={"operation": "find_symbol_dependencies"})
+
+        return [result.as_optimized_content(schema_name="code_analysis")]
 
     async def _handle_find_symbol_dependents(self, args: dict) -> list[TextContent]:
         """Find symbols that depend on a given symbol."""
         try:
             symbol = args.get("symbol")
             if not symbol:
-                return [TextContent(type="text", text=json.dumps({
-                    "status": "error", "error": "symbol parameter is required"
-                }))]
+                result = StructuredResult.error("symbol parameter is required", metadata={"operation": "find_symbol_dependents"})
+                return [result.as_optimized_content(schema_name="code_analysis")]
 
-            response = {
-                "status": "success",
-                "symbol": symbol,
-                "dependents": [],
-                "dependent_count": 0,
-                "timestamp": datetime.utcnow().isoformat() + "Z"
-            }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=[],
+                metadata={
+                    "operation": "find_symbol_dependents",
+                    "schema": "code_analysis",
+                    "symbol": symbol,
+                    "dependent_count": 0,
+                }
+            )
         except Exception as e:
             logger.error(f"Error in _handle_find_symbol_dependents: {e}")
-            return [TextContent(type="text", text=json.dumps({"status": "error", "error": str(e)}))]
+            result = StructuredResult.error(str(e), metadata={"operation": "find_symbol_dependents"})
+
+        return [result.as_optimized_content(schema_name="code_analysis")]
 
     async def _handle_activate_goal(self, args: dict) -> list[TextContent]:
         """Activate a specific goal for focus."""
