@@ -3614,19 +3614,45 @@ class MemoryMCPServer:
 
     async def _handle_get_expertise(self, args: dict) -> list[TextContent]:
         """Handle get_expertise tool call."""
-        all_coverage = self.meta_store.list_domains(limit=args.get("limit", 10))
+        try:
+            limit = min(args.get("limit", 10), 100)
+            all_coverage = self.meta_store.list_domains(limit=limit)
 
-        if not all_coverage:
-            return [TextContent(type="text", text="No domain coverage data available.")]
+            if not all_coverage:
+                result = StructuredResult.success(
+                    data=[],
+                    metadata={
+                        "operation": "get_expertise",
+                        "schema": "meta",
+                    }
+                )
+            else:
+                formatted_domains = []
+                for coverage in all_coverage:
+                    expertise_str = coverage.expertise_level.value if hasattr(coverage.expertise_level, 'value') else str(coverage.expertise_level)
+                    formatted_domains.append({
+                        "domain": coverage.domain,
+                        "expertise_level": expertise_str,
+                        "memory_count": coverage.memory_count,
+                        "avg_usefulness": round(coverage.avg_usefulness, 2),
+                    })
 
-        response = f"Expertise Levels ({len(all_coverage)} domains):\n\n"
-        for coverage in all_coverage:
-            expertise_str = coverage.expertise_level.value if hasattr(coverage.expertise_level, 'value') else str(coverage.expertise_level)
-            emoji = {"novice": "🌱", "beginner": "🌱", "intermediate": "🌿", "advanced": "🌳", "expert": "🏆"}.get(expertise_str.lower(), "")
-            response += f"{emoji} **{coverage.domain}**: {expertise_str}\n"
-            response += f"   {coverage.memory_count} memories, avg usefulness {coverage.avg_usefulness:.2f}\n\n"
+                result = StructuredResult.success(
+                    data=formatted_domains,
+                    metadata={
+                        "operation": "get_expertise",
+                        "schema": "meta",
+                        "domain_count": len(formatted_domains),
+                    },
+                    pagination=PaginationMetadata(
+                        returned=len(formatted_domains),
+                        limit=limit,
+                    )
+                )
+        except Exception as e:
+            result = StructuredResult.error(str(e), metadata={"operation": "get_expertise"})
 
-        return [TextContent(type="text", text=response)]
+        return [result.as_optimized_content(schema_name="meta")]
 
     # ===== COMMAND DISCOVERABILITY (Gap 5) =====
     def suggest_commands(self, project_id: int, context_type: str = "auto") -> list[dict]:
@@ -4125,62 +4151,65 @@ class MemoryMCPServer:
     # Working Memory handlers
     async def _handle_get_working_memory(self, args: dict) -> list[TextContent]:
         """Handle get_working_memory tool call."""
-        project = self.project_manager.get_or_create_project()
-        component_filter = args.get("component", "all")
+        try:
+            project = self.project_manager.get_or_create_project()
+            component_filter = args.get("component", "all")
 
-        items = []
+            items = []
 
-        if component_filter in ["phonological", "all"]:
-            phono_items = self.phonological_loop.get_items(project.id)
-            for item in phono_items:
-                items.append({
-                    "component": "phonological",
-                    "id": item.id,
-                    "content": item.content,
-                    "activation": getattr(item, "current_activation", getattr(item, "activation_level", 0)),
-                    "importance": getattr(item, "importance_score", 0),
-                })
+            if component_filter in ["phonological", "all"]:
+                phono_items = self.phonological_loop.get_items(project.id)
+                for item in phono_items:
+                    items.append({
+                        "component": "phonological",
+                        "id": item.id,
+                        "content": item.content,
+                        "activation": round(getattr(item, "current_activation", getattr(item, "activation_level", 0)), 2),
+                        "importance": round(getattr(item, "importance_score", 0), 2),
+                    })
 
-        if component_filter in ["visuospatial", "all"]:
-            spatial_items = self.visuospatial_sketchpad.get_items(project.id)
-            for item in spatial_items:
-                items.append({
-                    "component": "visuospatial",
-                    "id": item.id,
-                    "content": item.content,
-                    "activation": getattr(item, "current_activation", getattr(item, "activation_level", 0)),
-                    "file_path": getattr(item, "file_path", ""),
-                })
+            if component_filter in ["visuospatial", "all"]:
+                spatial_items = self.visuospatial_sketchpad.get_items(project.id)
+                for item in spatial_items:
+                    items.append({
+                        "component": "visuospatial",
+                        "id": item.id,
+                        "content": item.content,
+                        "activation": round(getattr(item, "current_activation", getattr(item, "activation_level", 0)), 2),
+                        "file_path": getattr(item, "file_path", ""),
+                    })
 
-        if component_filter in ["episodic_buffer", "all"]:
-            buffer_items = self.episodic_buffer.get_items(project.id)
-            for item in buffer_items:
-                items.append({
-                    "component": "episodic_buffer",
-                    "id": item.id,
-                    "content": item.content,
-                    "activation": getattr(item, "current_activation", getattr(item, "activation_level", 0)),
-                    "chunk_size": getattr(item, "chunk_size", 0),
-                })
+            if component_filter in ["episodic_buffer", "all"]:
+                buffer_items = self.episodic_buffer.get_items(project.id)
+                for item in buffer_items:
+                    items.append({
+                        "component": "episodic_buffer",
+                        "id": item.id,
+                        "content": item.content,
+                        "activation": round(getattr(item, "current_activation", getattr(item, "activation_level", 0)), 2),
+                        "chunk_size": getattr(item, "chunk_size", 0),
+                    })
 
-        capacity_status = "full" if len(items) >= 7 else "available"
+            # Sort by activation
+            items_sorted = sorted(items, key=lambda x: x["activation"], reverse=True)
 
-        response = f"**Working Memory** (Capacity: {len(items)}/7, Status: {capacity_status})\n\n"
+            result = StructuredResult.success(
+                data=items_sorted,
+                metadata={
+                    "operation": "get_working_memory",
+                    "schema": "episodic",
+                    "component_filter": component_filter,
+                    "capacity": f"{len(items)}/7",
+                    "status": "full" if len(items) >= 7 else "available",
+                },
+                pagination=PaginationMetadata(
+                    returned=len(items),
+                )
+            )
+        except Exception as e:
+            result = StructuredResult.error(str(e), metadata={"operation": "get_working_memory"})
 
-        if not items:
-            response += "No items in working memory.\n"
-        else:
-            for item in sorted(items, key=lambda x: x["activation"], reverse=True):
-                response += f"**[{item['component'].upper()}]** (ID: {item['id']})\n"
-                response += f"  Content: {item['content'][:80]}{'...' if len(item['content']) > 80 else ''}\n"
-                response += f"  Activation: {item['activation']:.2f}"
-                if "importance" in item:
-                    response += f" | Importance: {item['importance']:.2f}"
-                if "file_path" in item and item["file_path"]:
-                    response += f" | File: {item['file_path']}"
-                response += "\n\n"
-
-        return [TextContent(type="text", text=response)]
+        return [result.as_optimized_content(schema_name="episodic")]
 
     async def _handle_update_working_memory(self, args: dict) -> list[TextContent]:
         """Handle update_working_memory tool call.
@@ -4355,28 +4384,59 @@ class MemoryMCPServer:
 
     async def _handle_get_active_goals(self, args: dict) -> list[TextContent]:
         """Handle get_active_goals tool call."""
-        project = self.project_manager.get_or_create_project()
-        include_subgoals = args.get("include_subgoals", True)
+        try:
+            project = self.project_manager.get_or_create_project()
+            include_subgoals = args.get("include_subgoals", True)
 
-        goals = self.central_executive.get_active_goals(project.id)
+            goals = self.central_executive.get_active_goals(project.id)
 
-        if not include_subgoals:
-            goals = [g for g in goals if g.goal_type == "primary"]
+            if not include_subgoals:
+                goals = [g for g in goals if g.goal_type == "primary"]
 
-        if not goals:
-            return [TextContent(type="text", text="No active goals for this project.")]
+            if not goals:
+                result = StructuredResult.success(
+                    data=[],
+                    metadata={
+                        "operation": "get_active_goals",
+                        "schema": "prospective",
+                        "project_id": project.id,
+                        "include_subgoals": include_subgoals,
+                    },
+                    pagination=PaginationMetadata(
+                        returned=0,
+                    )
+                )
+            else:
+                # Format goals for structured response
+                formatted_goals = []
+                for goal in goals:
+                    formatted_goals.append({
+                        "id": goal.id,
+                        "text": goal.goal_text,
+                        "priority": goal.priority,
+                        "status": goal.status,
+                        "progress": round(goal.progress * 100, 1),
+                        "type": goal.goal_type,
+                        "parent_id": goal.parent_goal_id if hasattr(goal, 'parent_goal_id') else None,
+                    })
 
-        response = f"**Active Goals** ({len(goals)} total)\n\n"
+                result = StructuredResult.success(
+                    data=formatted_goals,
+                    metadata={
+                        "operation": "get_active_goals",
+                        "schema": "prospective",
+                        "project_id": project.id,
+                        "include_subgoals": include_subgoals,
+                        "count": len(formatted_goals),
+                    },
+                    pagination=PaginationMetadata(
+                        returned=len(formatted_goals),
+                    )
+                )
+        except Exception as e:
+            result = StructuredResult.error(str(e), metadata={"operation": "get_active_goals"})
 
-        for goal in goals:
-            prefix = "  └─ " if goal.goal_type == "subgoal" else "▸"
-            response += f"{prefix} **[Priority {goal.priority}]** {goal.goal_text}\n"
-            response += f"   Status: {goal.status} | Progress: {goal.progress * 100:.0f}%\n"
-            if goal.parent_goal_id:
-                response += f"   Parent: Goal #{goal.parent_goal_id}\n"
-            response += "\n"
-
-        return [TextContent(type="text", text=response)]
+        return [result.as_optimized_content(schema_name="prospective")]
 
     async def _handle_set_goal(self, args: dict) -> list[TextContent]:
         """Handle set_goal tool call."""
@@ -4412,7 +4472,7 @@ class MemoryMCPServer:
         memory_id = args["memory_id"]
         layer = args.get("layer", "semantic")  # Default to semantic layer
         project_id = args.get("project_id", 1)  # Provide default project_id
-        max_results = args.get("max_results", 20)
+        max_results = min(args.get("max_results", 20), 100)
 
         try:
             neighbors = self.association_network.get_neighbors(
@@ -4423,15 +4483,47 @@ class MemoryMCPServer:
                 max_results=max_results
             )
 
-            response = f"✓ Found {len(neighbors)} associations for memory {memory_id}:\n"
-            for link in neighbors:
-                direction = "→" if link.from_memory_id == memory_id else "←"
-                other_id = link.to_memory_id if link.from_memory_id == memory_id else link.from_memory_id
-                response += f"  {memory_id} {direction} {other_id} (strength: {link.link_strength:.2f})\n"
+            if not neighbors:
+                result = StructuredResult.success(
+                    data=[],
+                    metadata={
+                        "operation": "get_associations",
+                        "schema": "semantic",
+                        "memory_id": memory_id,
+                        "layer": layer,
+                    }
+                )
+            else:
+                formatted_links = []
+                for link in neighbors:
+                    direction = "→" if link.from_memory_id == memory_id else "←"
+                    other_id = link.to_memory_id if link.from_memory_id == memory_id else link.from_memory_id
+                    formatted_links.append({
+                        "from_id": link.from_memory_id,
+                        "to_id": link.to_memory_id,
+                        "strength": round(link.link_strength, 2),
+                        "direction": direction,
+                    })
 
-            return [TextContent(type="text", text=response)]
+                result = StructuredResult.success(
+                    data=formatted_links,
+                    metadata={
+                        "operation": "get_associations",
+                        "schema": "semantic",
+                        "memory_id": memory_id,
+                        "layer": layer,
+                        "count": len(formatted_links),
+                    },
+                    pagination=PaginationMetadata(
+                        returned=len(formatted_links),
+                        limit=max_results,
+                    )
+                )
+
         except Exception as e:
-            return [TextContent(type="text", text=f"Error: {str(e)}")]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_associations"})
+
+        return [result.as_optimized_content(schema_name="semantic")]
 
     async def _handle_strengthen_association(self, args: dict) -> list[TextContent]:
         """Handle strengthen_association tool call."""
