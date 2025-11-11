@@ -334,6 +334,9 @@ class MemoryMCPServer:
 
         self.server = Server("athena")
 
+        # Initialize OperationRouter as singleton (avoid recreating on every tool call - saves ~100ms per call)
+        self.operation_router = OperationRouter(self)
+
         # Register tool handlers
         self._register_tools()
 
@@ -1194,8 +1197,8 @@ class MemoryMCPServer:
                 return [TextContent(type="text", text=json.dumps(error_response, indent=2))]
 
             try:
-                # Initialize operation router
-                router = OperationRouter(self)
+                # Use singleton operation router (initialized in __init__)
+                router = self.operation_router
 
                 # Check if this is a meta-tool (Strategy 1)
                 meta_tools = list(OperationRouter.OPERATION_MAPS.keys())
