@@ -12,6 +12,7 @@ from mcp.types import Tool, TextContent
 
 from .rate_limiter import MCPRateLimiter, rate_limit_response
 from .operation_router import OperationRouter
+from .structured_result import StructuredResult, ResultStatus, PaginationMetadata
 from ..core.models import MemoryType
 from ..memory import MemoryStore
 from ..memory.quality import SemanticMemoryQualityAnalyzer
@@ -1237,69 +1238,107 @@ class MemoryMCPServer:
 
     async def _handle_remember(self, args: dict) -> list[TextContent]:
         """Handle remember tool call."""
-        project = await self.project_manager.get_or_create_project()
+        try:
+            project = await self.project_manager.get_or_create_project()
 
-        memory_id = await self.store.remember(
-            content=args["content"],
-            memory_type=MemoryType(args["memory_type"]),
-            project_id=project.id,
-            tags=args.get("tags", []),
-        )
+            memory_id = await self.store.remember(
+                content=args["content"],
+                memory_type=MemoryType(args["memory_type"]),
+                project_id=project.id,
+                tags=args.get("tags", []),
+            )
 
-        response = f"✓ Stored memory (ID: {memory_id}) in project '{project.name}'\n"
-        response += f"Type: {args['memory_type']}\n"
-        response += f"Content: {args['content'][:100]}{'...' if len(args['content']) > 100 else ''}"
+            result = StructuredResult.success(
+                data={"memory_id": memory_id, "project_name": project.name},
+                metadata={
+                    "operation": "remember",
+                    "memory_type": args["memory_type"],
+                    "project_id": project.id,
+                },
+            )
+        except Exception as e:
+            result = StructuredResult.error(str(e), metadata={"operation": "remember"})
 
-        return [TextContent(type="text", text=response)]
+        return [result.as_text_content()]
 
     async def _handle_recall(self, args: dict) -> list[TextContent]:
         """Handle recall tool call."""
-        project = await self.project_manager.require_project()
+        try:
+            project = await self.project_manager.require_project()
 
-        memory_types = None
-        if "memory_types" in args and args["memory_types"]:
-            memory_types = [MemoryType(mt) for mt in args["memory_types"]]
+            memory_types = None
+            if "memory_types" in args and args["memory_types"]:
+                memory_types = [MemoryType(mt) for mt in args["memory_types"]]
 
-        results = self.store.recall_with_reranking(
-            query=args["query"], project_id=project.id, k=args.get("k", 5)
-        )
+            k = min(int(args.get("k", 5)), 100)
+            results = self.store.recall_with_reranking(
+                query=args["query"], project_id=project.id, k=k
+            )
 
-        if not results:
-            return [TextContent(type="text", text="No relevant memories found.")]
+            # Format results for response
+            formatted_results = []
+            for result in results:
+                memory_type = result.memory.memory_type if isinstance(result.memory.memory_type, str) else result.memory.memory_type.value
+                formatted_results.append({
+                    "memory_id": result.memory.id,
+                    "type": memory_type,
+                    "similarity": round(result.similarity, 2),
+                    "content": result.memory.content,
+                    "tags": result.memory.tags or [],
+                })
 
-        response = f"Found {len(results)} relevant memories:\n\n"
-        for result in results:
-            # memory_type is already a string due to use_enum_values = True
-            memory_type = result.memory.memory_type if isinstance(result.memory.memory_type, str) else result.memory.memory_type.value
-            response += f"[{memory_type.upper()}] "
-            response += f"(similarity: {result.similarity:.2f}) "
-            response += f"{result.memory.content}\n"
-            if result.memory.tags:
-                response += f"  Tags: {', '.join(result.memory.tags)}\n"
-            response += "\n"
+            result = StructuredResult.success(
+                data=formatted_results,
+                metadata={
+                    "operation": "recall",
+                    "query": args["query"],
+                    "project_id": project.id,
+                },
+                pagination=PaginationMetadata(
+                    returned=len(formatted_results),
+                    limit=k,
+                    has_more=len(formatted_results) == k,
+                ),
+            )
+        except Exception as e:
+            result = StructuredResult.error(str(e), metadata={"operation": "recall"})
 
-        return [TextContent(type="text", text=response)]
+        return [result.as_text_content()]
 
     async def _handle_forget(self, args: dict) -> list[TextContent]:
         """Handle forget tool call."""
-        memory_id = args.get("memory_id")
-        query = args.get("query")
+        try:
+            memory_id = args.get("memory_id")
+            query = args.get("query")
 
-        if not memory_id and not query:
-            return [TextContent(type="text", text="Error: Must provide either 'memory_id' or 'query' parameter")]
-
-        if memory_id:
-            # Delete specific memory by ID
-            deleted = self.store.forget(memory_id)
-            if deleted:
-                response = f"✓ Deleted memory {memory_id}"
+            if not memory_id and not query:
+                result = StructuredResult.error(
+                    "Must provide either 'memory_id' or 'query' parameter",
+                    metadata={"operation": "forget"}
+                )
+            elif memory_id:
+                # Delete specific memory by ID
+                deleted = self.store.forget(memory_id)
+                if deleted:
+                    result = StructuredResult.success(
+                        data={"deleted_id": memory_id},
+                        metadata={"operation": "forget"}
+                    )
+                else:
+                    result = StructuredResult.error(
+                        f"Memory {memory_id} not found",
+                        metadata={"operation": "forget"}
+                    )
             else:
-                response = f"✗ Memory {memory_id} not found"
-        else:
-            # If no memory_id provided, just return error asking for ID
-            response = f"✗ Query-based forget not supported. Please provide 'memory_id' parameter"
+                # If no memory_id provided, just return error asking for ID
+                result = StructuredResult.error(
+                    "Query-based forget not supported. Please provide 'memory_id' parameter",
+                    metadata={"operation": "forget"}
+                )
+        except Exception as e:
+            result = StructuredResult.error(str(e), metadata={"operation": "forget"})
 
-        return [TextContent(type="text", text=response)]
+        return [result.as_text_content()]
 
     async def _handle_list_memories(self, args: dict) -> list[TextContent]:
         """Handle list_memories tool call."""
@@ -2109,6 +2148,122 @@ class MemoryMCPServer:
                 logger.debug(f"Could not auto-link procedure: {e}")
 
         return [TextContent(type="text", text=response)]
+
+    # Procedure versioning handlers
+    async def _handle_compare_procedure_versions(self, args: dict) -> list[TextContent]:
+        """Handle comparing two procedure versions."""
+        try:
+            from .structured_result import StructuredResult
+            from ..procedural.versioning import ProcedureVersionStore
+
+            procedure_id = args.get("procedure_id")
+            v1 = args.get("version_1")
+            v2 = args.get("version_2")
+
+            if not all([procedure_id, v1, v2]):
+                result = StructuredResult.error(
+                    "Missing required parameters: procedure_id, version_1, version_2",
+                    metadata={"operation": "compare_procedure_versions"}
+                )
+            else:
+                version_store = ProcedureVersionStore(self.db)
+                comparison = version_store.compare_versions(procedure_id, v1, v2)
+
+                if "error" in comparison:
+                    result = StructuredResult.error(
+                        comparison["error"],
+                        metadata={"operation": "compare_procedure_versions"}
+                    )
+                else:
+                    result = StructuredResult.success(
+                        data=comparison,
+                        metadata={
+                            "operation": "compare_procedure_versions",
+                            "procedure_id": procedure_id,
+                        }
+                    )
+        except Exception as e:
+            result = StructuredResult.error(
+                str(e),
+                metadata={"operation": "compare_procedure_versions"}
+            )
+
+        return [result.as_text_content()]
+
+    async def _handle_rollback_procedure(self, args: dict) -> list[TextContent]:
+        """Handle rolling back procedure to specific version."""
+        try:
+            from .structured_result import StructuredResult
+            from ..procedural.versioning import ProcedureVersionStore
+
+            procedure_id = args.get("procedure_id")
+            to_version = args.get("to_version")
+
+            if not all([procedure_id, to_version]):
+                result = StructuredResult.error(
+                    "Missing required parameters: procedure_id, to_version",
+                    metadata={"operation": "rollback_procedure"}
+                )
+            else:
+                version_store = ProcedureVersionStore(self.db)
+                rollback_result = version_store.rollback(procedure_id, to_version)
+
+                if "error" in rollback_result:
+                    result = StructuredResult.error(
+                        rollback_result["error"],
+                        metadata={"operation": "rollback_procedure"}
+                    )
+                else:
+                    result = StructuredResult.success(
+                        data=rollback_result,
+                        metadata={
+                            "operation": "rollback_procedure",
+                            "procedure_id": procedure_id,
+                        }
+                    )
+        except Exception as e:
+            result = StructuredResult.error(
+                str(e),
+                metadata={"operation": "rollback_procedure"}
+            )
+
+        return [result.as_text_content()]
+
+    async def _handle_list_procedure_versions(self, args: dict) -> list[TextContent]:
+        """Handle listing all versions for a procedure."""
+        try:
+            from .structured_result import StructuredResult
+            from ..procedural.versioning import ProcedureVersionStore
+
+            procedure_id = args.get("procedure_id")
+
+            if not procedure_id:
+                result = StructuredResult.error(
+                    "Missing required parameter: procedure_id",
+                    metadata={"operation": "list_procedure_versions"}
+                )
+            else:
+                version_store = ProcedureVersionStore(self.db)
+                versions = version_store.list_versions(procedure_id)
+
+                result = StructuredResult.success(
+                    data=versions,
+                    metadata={
+                        "operation": "list_procedure_versions",
+                        "procedure_id": procedure_id,
+                    },
+                    pagination=PaginationMetadata(
+                        returned=len(versions),
+                        has_more=False
+                    )
+                )
+        except Exception as e:
+            result = StructuredResult.error(
+                str(e),
+                metadata={"operation": "list_procedure_versions"}
+            )
+
+        return [result.as_text_content()]
 
     # Prospective memory handlers
     async def _handle_create_task(self, args: dict) -> list[TextContent]:
