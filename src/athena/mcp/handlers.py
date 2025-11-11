@@ -1444,72 +1444,135 @@ class MemoryMCPServer:
 
     async def _handle_recall_events(self, args: dict) -> list[TextContent]:
         """Handle recall_events tool call."""
-        project = await self.project_manager.require_project()
-        from datetime import datetime, timedelta
+        try:
+            project = await self.project_manager.require_project()
+            from datetime import datetime, timedelta
 
-        # Handle timeframe filter
-        if "timeframe" in args:
-            timeframe = args["timeframe"]
-            now = datetime.now()
-            if timeframe == "today":
-                start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
-                events = self.episodic_store.get_events_by_date(project.id, start_of_day, now)
-            elif timeframe == "yesterday":
-                start_of_yesterday = (now - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-                end_of_yesterday = start_of_yesterday.replace(hour=23, minute=59, second=59)
-                events = self.episodic_store.get_events_by_date(project.id, start_of_yesterday, end_of_yesterday)
-            elif timeframe == "this_week":
-                events = self.episodic_store.get_recent_events(project.id, hours=168, limit=args.get("limit", 10))
-            elif timeframe == "last_week":
-                week_start = now - timedelta(days=14)
-                week_end = now - timedelta(days=7)
-                events = [e for e in self.episodic_store.get_recent_events(project.id, hours=336, limit=50)
-                          if week_start <= e.timestamp <= week_end]
-            elif timeframe == "this_month":
-                events = self.episodic_store.get_recent_events(project.id, hours=720, limit=args.get("limit", 10))
+            # Handle timeframe filter
+            if "timeframe" in args:
+                timeframe = args["timeframe"]
+                now = datetime.now()
+                if timeframe == "today":
+                    start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                    events = self.episodic_store.get_events_by_date(project.id, start_of_day, now)
+                elif timeframe == "yesterday":
+                    start_of_yesterday = (now - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+                    end_of_yesterday = start_of_yesterday.replace(hour=23, minute=59, second=59)
+                    events = self.episodic_store.get_events_by_date(project.id, start_of_yesterday, end_of_yesterday)
+                elif timeframe == "this_week":
+                    events = self.episodic_store.get_recent_events(project.id, hours=168, limit=args.get("limit", 10))
+                elif timeframe == "last_week":
+                    week_start = now - timedelta(days=14)
+                    week_end = now - timedelta(days=7)
+                    events = [e for e in self.episodic_store.get_recent_events(project.id, hours=336, limit=50)
+                              if week_start <= e.timestamp <= week_end]
+                elif timeframe == "this_month":
+                    events = self.episodic_store.get_recent_events(project.id, hours=720, limit=args.get("limit", 10))
+                else:
+                    events = self.episodic_store.get_recent_events(project.id, hours=168, limit=args.get("limit", 10))
+            elif "query" in args:
+                events = self.episodic_store.search_events(project.id, args["query"], limit=args.get("limit", 10))
+            elif "event_type" in args:
+                from ..episodic.models import EventType
+                events = self.episodic_store.get_events_by_type(project.id, EventType(args["event_type"]), limit=args.get("limit", 10))
             else:
-                events = self.episodic_store.get_recent_events(project.id, hours=168, limit=args.get("limit", 10))
-        elif "query" in args:
-            events = self.episodic_store.search_events(project.id, args["query"], limit=args.get("limit", 10))
-        elif "event_type" in args:
-            from ..episodic.models import EventType
-            events = self.episodic_store.get_events_by_type(project.id, EventType(args["event_type"]), limit=args.get("limit", 10))
-        else:
-            events = self.episodic_store.get_recent_events(project.id, limit=args.get("limit", 10))
+                events = self.episodic_store.get_recent_events(project.id, limit=args.get("limit", 10))
 
-        if not events:
-            return [TextContent(type="text", text="No events found.")]
+            if not events:
+                result = StructuredResult.success(
+                    data=[],
+                    metadata={
+                        "operation": "recall_events",
+                        "schema": "episodic_events",
+                        "timeframe": args.get("timeframe", "recent"),
+                    }
+                )
+            else:
+                # Format events for structured response
+                formatted_events = []
+                for event in events:
+                    event_type_str = event.event_type.value if hasattr(event.event_type, 'value') else str(event.event_type)
+                    outcome_str = None
+                    if event.outcome:
+                        outcome_str = event.outcome.value if hasattr(event.outcome, 'value') else str(event.outcome)
 
-        response = f"Found {len(events)} events:\n\n"
-        for event in events:
-            event_type_str = event.event_type.value if hasattr(event.event_type, 'value') else str(event.event_type)
-            response += f"[{event.timestamp}] {event_type_str.upper()}\n"
-            response += f"  {event.content}\n"
-            if event.outcome:
-                outcome_str = event.outcome.value if hasattr(event.outcome, 'value') else str(event.outcome)
-                response += f"  Outcome: {outcome_str}\n"
-            response += "\n"
+                    formatted_events.append({
+                        "id": event.id,
+                        "timestamp": event.timestamp.isoformat() if event.timestamp else None,
+                        "type": event_type_str,
+                        "content": event.content,
+                        "outcome": outcome_str,
+                        "context": event.context if hasattr(event, 'context') else None,
+                    })
 
-        return [TextContent(type="text", text=response)]
+                result = StructuredResult.success(
+                    data=formatted_events,
+                    metadata={
+                        "operation": "recall_events",
+                        "schema": "episodic_events",
+                        "timeframe": args.get("timeframe", "recent"),
+                        "count": len(formatted_events),
+                    },
+                    pagination=PaginationMetadata(
+                        returned=len(formatted_events),
+                        limit=args.get("limit", 10),
+                    )
+                )
+        except Exception as e:
+            result = StructuredResult.error(str(e), metadata={"operation": "recall_events"})
+
+        # Use TOON optimization for episodic events
+        return [result.as_optimized_content(schema_name="episodic_events")]
 
     async def _handle_get_timeline(self, args: dict) -> list[TextContent]:
         """Handle get_timeline tool call."""
-        project = await self.project_manager.require_project()
+        try:
+            project = await self.project_manager.require_project()
 
-        days = args.get("days", 7)
-        limit = args.get("limit", 20)
+            days = args.get("days", 7)
+            limit = args.get("limit", 20)
 
-        events = self.episodic_store.get_recent_events(project.id, hours=days*24, limit=limit)
+            events = self.episodic_store.get_recent_events(project.id, hours=days*24, limit=limit)
 
-        if not events:
-            return [TextContent(type="text", text=f"No events in the last {days} days.")]
+            if not events:
+                result = StructuredResult.success(
+                    data=[],
+                    metadata={
+                        "operation": "get_timeline",
+                        "schema": "episodic_events",
+                        "days": days,
+                    }
+                )
+            else:
+                # Format timeline events
+                timeline_events = []
+                for event in events:
+                    event_type_str = event.event_type.value if hasattr(event.event_type, 'value') else str(event.event_type)
+                    timeline_events.append({
+                        "id": event.id,
+                        "timestamp": event.timestamp.isoformat() if event.timestamp else None,
+                        "type": event_type_str,
+                        "content": event.content[:100],  # Preview only
+                    })
 
-        response = f"Timeline for last {days} days ({len(events)} events):\n\n"
-        for event in events:
-            response += f"[{event.timestamp.strftime('%Y-%m-%d %H:%M')}] {event.event_type}\n"
-            response += f"  {event.content[:80]}{'...' if len(event.content) > 80 else ''}\n\n"
+                result = StructuredResult.success(
+                    data=timeline_events,
+                    metadata={
+                        "operation": "get_timeline",
+                        "schema": "episodic_events",
+                        "days": days,
+                        "count": len(timeline_events),
+                    },
+                    pagination=PaginationMetadata(
+                        returned=len(timeline_events),
+                        limit=limit,
+                    )
+                )
+        except Exception as e:
+            result = StructuredResult.error(str(e), metadata={"operation": "get_timeline"})
 
-        return [TextContent(type="text", text=response)]
+        # Use TOON optimization for timeline events
+        return [result.as_optimized_content(schema_name="episodic_events")]
 
     async def _handle_batch_record_events(self, args: dict) -> list[TextContent]:
         """Handle batch_record_events tool call (10x throughput improvement).
@@ -3094,36 +3157,70 @@ class MemoryMCPServer:
 
     async def _handle_search_graph(self, args: dict) -> list[TextContent]:
         """Handle search_graph tool call."""
-        entities = self.graph_store.search_entities(args["query"])[:5]
+        try:
+            query = args["query"]
+            entities = self.graph_store.search_entities(query)[:5]
+            depth = args.get("depth", 1)
 
-        if not entities:
-            return [TextContent(type="text", text=f"No entities found matching '{args['query']}'.")]
+            if not entities:
+                result = StructuredResult.success(
+                    data=[],
+                    metadata={
+                        "operation": "search_graph",
+                        "schema": "knowledge_graph",
+                        "query": query,
+                    }
+                )
+            else:
+                # Format entities with relations and observations
+                formatted_entities = []
+                for entity in entities:
+                    entity_type_str = entity.entity_type.value if hasattr(entity.entity_type, 'value') else str(entity.entity_type)
 
-        response = f"Found {len(entities)} entities:\n\n"
-        depth = args.get("depth", 1)
+                    # Get observations
+                    observations = self.graph_store.get_entity_observations(entity.id)
+                    obs_list = [obs.content for obs in observations[:3]] if observations else []
 
-        for entity in entities:
-            response += f"**{entity.name}** ({entity.entity_type})\n"
+                    # Get relations if depth > 0
+                    relations_list = []
+                    if depth > 0:
+                        relations = self.graph_store.get_entity_relations(entity.id, direction="both")
+                        if relations:
+                            for rel, related in relations[:5]:
+                                rel_type_str = rel.relation_type.value if hasattr(rel.relation_type, 'value') else str(rel.relation_type)
+                                relations_list.append({
+                                    "type": rel_type_str,
+                                    "related_entity": related.name,
+                                    "direction": "from" if rel.from_entity_id == entity.id else "to",
+                                })
 
-            # Get observations
-            observations = self.graph_store.get_entity_observations(entity.id)
-            if observations:
-                response += f"  Observations:\n"
-                for obs in observations[:3]:
-                    response += f"    - {obs.content}\n"
+                    formatted_entities.append({
+                        "id": entity.id,
+                        "name": entity.name,
+                        "type": entity_type_str,
+                        "observations": obs_list,
+                        "relations": relations_list,
+                    })
 
-            # Get relations if depth > 0
-            if depth > 0:
-                relations = self.graph_store.get_entity_relations(entity.id, direction="both")
-                if relations:
-                    response += f"  Relations:\n"
-                    for rel, related in relations[:5]:
-                        direction = "-->" if rel.from_entity_id == entity.id else "<--"
-                        response += f"    {direction} {rel.relation_type} {direction} {related.name}\n"
+                result = StructuredResult.success(
+                    data=formatted_entities,
+                    metadata={
+                        "operation": "search_graph",
+                        "schema": "knowledge_graph",
+                        "query": query,
+                        "depth": depth,
+                        "count": len(formatted_entities),
+                    },
+                    pagination=PaginationMetadata(
+                        returned=len(formatted_entities),
+                        limit=5,
+                    )
+                )
+        except Exception as e:
+            result = StructuredResult.error(str(e), metadata={"operation": "search_graph"})
 
-            response += "\n"
-
-        return [TextContent(type="text", text=response)]
+        # Use TOON optimization for knowledge graph queries
+        return [result.as_optimized_content(schema_name="knowledge_graph")]
 
     async def _handle_search_graph_with_depth(self, args: dict) -> list[TextContent]:
         """Handle search_graph_with_depth tool call for enhanced graph traversal."""
@@ -3207,16 +3304,37 @@ class MemoryMCPServer:
 
                 response += "\n"
 
-            response += f"{'=' * 60}\n"
-            response += f"Total entities found: {len(visited)}\n"
-            response += f"Max depth reached: {len(results_by_level) - 1}\n"
+            # Convert to structured format
+            structured_results = []
+            for level in range(len(results_by_level)):
+                level_entities = results_by_level[level]
+                for entity in level_entities[:5]:
+                    structured_results.append({
+                        "id": entity.id,
+                        "name": entity.name,
+                        "type": entity.entity_type.value if hasattr(entity.entity_type, 'value') else str(entity.entity_type),
+                        "level": level,
+                    })
 
-            return [TextContent(type="text", text=response)]
+            result = StructuredResult.success(
+                data=structured_results,
+                metadata={
+                    "operation": "search_graph_with_depth",
+                    "schema": "knowledge_graph",
+                    "query": query,
+                    "depth": max_depth,
+                    "direction": direction,
+                    "relation_type": relation_type,
+                    "total_entities": len(visited),
+                    "max_depth_reached": len(results_by_level) - 1,
+                }
+            )
+            return [result.as_optimized_content(schema_name="knowledge_graph")]
 
         except Exception as e:
             logger.error(f"Error in search_graph_with_depth [args={args}]: {e}", exc_info=True)
-            error_response = json.dumps({"error": str(e), "tool": "search_graph_with_depth"})
-            return [TextContent(type="text", text=error_response)]
+            result = StructuredResult.error(str(e), metadata={"operation": "search_graph_with_depth"})
+            return [result.as_optimized_content(schema_name="knowledge_graph")]
 
     async def _handle_get_graph_metrics(self, args: dict) -> list[TextContent]:
         """Handle get_graph_metrics tool call for graph analysis."""
