@@ -1,12 +1,13 @@
-"""Semantic search implementation using PostgreSQL hybrid or Qdrant (with PostgreSQL fallback)."""
+"""Semantic search implementation using PostgreSQL pgvector hybrid search."""
 
 import asyncio
 import time
 import logging
-from typing import Optional, TYPE_CHECKING
+from typing import Optional
 
 from ..core.embeddings import EmbeddingModel
 from ..core.models import Memory, MemorySearchResult, MemoryType
+from ..core.database_postgres import PostgresDatabase
 from ..core.config import (
     RAG_QUERY_EXPANSION_ENABLED,
     RAG_QUERY_EXPANSION_VARIANTS,
@@ -14,40 +15,25 @@ from ..core.config import (
     RAG_QUERY_EXPANSION_CACHE_SIZE,
 )
 
-if TYPE_CHECKING:
-    from ..rag.qdrant_adapter import QdrantAdapter
-    from ..core.database_postgres import PostgresDatabase
-
 logger = logging.getLogger(__name__)
 
 
 class SemanticSearch:
-    """Semantic search over memory vectors with PostgreSQL hybrid or Qdrant."""
+    """Semantic search over memory vectors using PostgreSQL pgvector."""
 
     def __init__(
         self,
-        db: "PostgresDatabase",
+        db: PostgresDatabase,
         embedder: EmbeddingModel,
-        qdrant: Optional["QdrantAdapter"] = None
     ):
         """Initialize semantic search.
 
         Args:
             db: PostgresDatabase instance (required)
-            embedder: Embedding model
-            qdrant: Optional Qdrant adapter for vector search
+            embedder: Embedding model for vector generation
         """
         self.db = db
         self.embedder = embedder
-        self.qdrant = qdrant
-
-        # Ensure PostgreSQL backend is available
-        self._is_postgres = self._check_postgres()
-        if not self._is_postgres:
-            raise ValueError(
-                "SemanticSearch requires PostgreSQL database. "
-                "SQLite fallback has been removed."
-            )
 
         # Initialize query expander (optional, graceful degradation)
         self._query_expander = None
@@ -83,19 +69,7 @@ class SemanticSearch:
             except ImportError as e:
                 logger.warning(f"Query expansion unavailable (missing dependencies): {e}")
 
-        logger.info("SemanticSearch initialized with PostgreSQL hybrid backend")
-
-    def _check_postgres(self) -> bool:
-        """Check if database is PostgresDatabase.
-
-        Returns:
-            True if database is PostgreSQL, False otherwise
-        """
-        try:
-            from ..core.database_postgres import PostgresDatabase
-            return isinstance(self.db, PostgresDatabase)
-        except (ImportError, AttributeError):
-            return False
+        logger.info("SemanticSearch initialized with PostgreSQL pgvector backend")
 
     def recall(
         self,
@@ -114,7 +88,7 @@ class SemanticSearch:
         4. Rerank merged results by similarity
         5. Return top-k results
 
-        Uses PostgreSQL hybrid search with optional Qdrant fallback.
+        Uses PostgreSQL pgvector hybrid search.
 
         Args:
             query: Search query
@@ -150,28 +124,15 @@ class SemanticSearch:
                     # Generate embedding for variant
                     query_embedding = self.embedder.embed(variant_query)
 
-                    # Execute search - try PostgreSQL first, then Qdrant
-                    try:
-                        variant_results = self._recall_postgres(
-                            query_embedding,
-                            project_id,
-                            variant_query,
-                            results_per_variant,
-                            memory_types,
-                            min_similarity,
-                        )
-                    except Exception as e:
-                        logger.warning(f"PostgreSQL search failed for variant, trying Qdrant: {e}")
-                        if self.qdrant:
-                            variant_results = self._recall_qdrant(
-                                query_embedding,
-                                project_id,
-                                results_per_variant,
-                                memory_types,
-                                min_similarity,
-                            )
-                        else:
-                            raise
+                    # Execute PostgreSQL search
+                    variant_results = self._recall_postgres(
+                        query_embedding,
+                        project_id,
+                        variant_query,
+                        results_per_variant,
+                        memory_types,
+                        min_similarity,
+                    )
 
                     all_results.extend(variant_results)
 
@@ -198,19 +159,10 @@ class SemanticSearch:
         # Single query (no expansion or expansion failed)
         query_embedding = self.embedder.embed(query)
 
-        # Use PostgreSQL hybrid search (primary)
-        try:
-            return self._recall_postgres(
-                query_embedding, project_id, query, k, memory_types, min_similarity
-            )
-        except Exception as e:
-            logger.warning(f"PostgreSQL search failed, trying Qdrant: {e}")
-            if self.qdrant:
-                return self._recall_qdrant(
-                    query_embedding, project_id, k, memory_types, min_similarity
-                )
-            else:
-                raise
+        # Use PostgreSQL pgvector hybrid search
+        return self._recall_postgres(
+            query_embedding, project_id, query, k, memory_types, min_similarity
+        )
 
     def _recall_postgres(
         self,
@@ -246,17 +198,6 @@ class SemanticSearch:
             )
             logger.debug(f"PostgreSQL hybrid search returned {len(results)} results")
             return results
-        except Exception as e:
-            logger.error(f"PostgreSQL search failed: {e}. Falling back to Qdrant if available.")
-            # Fall back to Qdrant if available, otherwise fail
-            if self.qdrant:
-                return self._recall_qdrant(
-                    query_embedding, project_id, k, memory_types, min_similarity
-                )
-            else:
-                raise ValueError(
-                    f"PostgreSQL search failed and no Qdrant fallback available: {e}"
-                )
 
     async def _recall_postgres_async(
         self,
@@ -327,61 +268,6 @@ class SemanticSearch:
                 )
 
         return results
-
-    def _recall_qdrant(
-        self,
-        query_embedding: list[float],
-        project_id: int,
-        k: int,
-        memory_types: Optional[list[MemoryType]],
-        min_similarity: float,
-    ) -> list[MemorySearchResult]:
-        """Search using Qdrant vector database.
-
-        Args:
-            query_embedding: Query embedding vector
-            project_id: Project ID to filter by
-            k: Number of results
-            memory_types: Optional memory type filter
-            min_similarity: Minimum similarity threshold
-
-        Returns:
-            List of search results
-        """
-        # Build filters for Qdrant
-        filters = {"project_id": project_id}
-        if memory_types:
-            filters["memory_type"] = [mt.value for mt in memory_types]
-
-        # Search Qdrant
-        qdrant_results = self.qdrant.search(
-            query_embedding=query_embedding,
-            limit=k,
-            score_threshold=min_similarity,
-            filters=filters,
-        )
-
-        # Convert Qdrant results to MemorySearchResult
-        results = []
-        for rank, qdrant_mem in enumerate(qdrant_results, 1):
-            # Fetch full memory metadata from database
-            # NOTE: Using sync wrapper to avoid complex async refactoring
-            memory = self.db.get_memory_sync(qdrant_mem.id) if hasattr(self.db, 'get_memory_sync') else None
-            if memory:
-                # Update access stats
-                self.db.update_access_stats(memory.id)
-
-                results.append(
-                    MemorySearchResult(
-                        memory=memory,
-                        similarity=qdrant_mem.score if qdrant_mem.score else 0.0,
-                        rank=rank
-                    )
-                )
-
-        logger.debug(f"Qdrant search returned {len(results)} results")
-        return results
-
 
     def _merge_results(
         self, all_results: list[MemorySearchResult], k: int
@@ -519,7 +405,7 @@ class SemanticSearch:
     ) -> list[MemorySearchResult]:
         """Search across all projects.
 
-        Uses PostgreSQL hybrid search (primary) with Qdrant fallback.
+        Uses PostgreSQL pgvector hybrid search.
 
         Args:
             query: Search query
@@ -554,22 +440,12 @@ class SemanticSearch:
         Returns:
             Search results from all projects
         """
-        try:
-            results = asyncio.run(
-                self._search_across_projects_postgres_async(
-                    query_embedding, query_text, exclude_project_id, k
-                )
+        results = asyncio.run(
+            self._search_across_projects_postgres_async(
+                query_embedding, query_text, exclude_project_id, k
             )
-            return results
-        except Exception as e:
-            logger.error(f"PostgreSQL cross-project search failed: {e}")
-            if self.qdrant:
-                logger.info("Falling back to Qdrant for cross-project search")
-                # Qdrant doesn't have built-in cross-project filtering, so return empty
-                logger.warning("Qdrant fallback does not support cross-project search")
-                return []
-            else:
-                raise
+        )
+        return results
 
     async def _search_across_projects_postgres_async(
         self,

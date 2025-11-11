@@ -172,7 +172,7 @@ class ProceduralStore(BaseStore[Procedure]):
                 success_rate, usage_count, avg_completion_time_ms,
                 created_at, last_used, created_by
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
             (
                 procedure.name,
@@ -204,7 +204,7 @@ class ProceduralStore(BaseStore[Procedure]):
         Returns:
             Procedure if found, None otherwise
         """
-        row = self.execute("SELECT * FROM procedures WHERE id = ?", (procedure_id,), fetch_one=True)
+        row = self.execute("SELECT * FROM procedures WHERE id = %s", (procedure_id,), fetch_one=True)
 
         if not row:
             return None
@@ -223,7 +223,7 @@ class ProceduralStore(BaseStore[Procedure]):
         Returns:
             Procedure if found, None otherwise
         """
-        row = self.execute("SELECT * FROM procedures WHERE name = ?", (name,), fetch_one=True)
+        row = self.execute("SELECT * FROM procedures WHERE name = %s", (name,), fetch_one=True)
 
         if not row:
             return None
@@ -254,7 +254,7 @@ class ProceduralStore(BaseStore[Procedure]):
             rows = self.execute(
                 """
                 SELECT * FROM procedures
-                WHERE category = ?
+                WHERE category = %s
                 ORDER BY usage_count DESC, success_rate DESC
                 LIMIT ?
             """,
@@ -291,7 +291,7 @@ class ProceduralStore(BaseStore[Procedure]):
         where_clauses = []
         params = []
         for word in query_words:
-            where_clauses.append("(LOWER(name) LIKE ? OR LOWER(description) LIKE ?)")
+            where_clauses.append("(LOWER(name) LIKE %s OR LOWER(description) LIKE %s)")
             params.extend([f"%{word}%", f"%{word}%"])
 
         if not where_clauses:
@@ -303,7 +303,7 @@ class ProceduralStore(BaseStore[Procedure]):
         if context:
             # Filter by applicable contexts (check if any context tag matches)
             for ctx in context[:3]:  # Check up to 3 context tags
-                sql += " AND applicable_contexts LIKE ?"
+                sql += " AND applicable_contexts LIKE %s"
                 params.append(f"%{ctx}%")
 
         sql += " ORDER BY usage_count DESC, success_rate DESC LIMIT 20"
@@ -329,7 +329,7 @@ class ProceduralStore(BaseStore[Procedure]):
         """
         # Get current stats
         row = self.execute(
-            "SELECT success_rate, usage_count, avg_completion_time_ms FROM procedures WHERE id = ?",
+            "SELECT success_rate, usage_count, avg_completion_time_ms FROM procedures WHERE id = %s",
             (procedure_id,),
             fetch_one=True,
         )
@@ -358,7 +358,7 @@ class ProceduralStore(BaseStore[Procedure]):
             """
             UPDATE procedures
             SET success_rate = ?, usage_count = ?, avg_completion_time_ms = ?, last_used = ?
-            WHERE id = ?
+            WHERE id = %s
         """,
             (success_rate, usage_count, avg_time, int(time.time()), procedure_id),
         )
@@ -379,7 +379,7 @@ class ProceduralStore(BaseStore[Procedure]):
                 procedure_id, project_id, timestamp, outcome,
                 duration_ms, variables, learned
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """,
             (
                 execution.procedure_id,
@@ -418,7 +418,7 @@ class ProceduralStore(BaseStore[Procedure]):
         rows = self.execute(
             """
             SELECT * FROM procedure_executions
-            WHERE procedure_id = ?
+            WHERE procedure_id = %s
             ORDER BY timestamp DESC
             LIMIT ?
         """,
@@ -463,7 +463,7 @@ class ProceduralStore(BaseStore[Procedure]):
             INSERT INTO procedure_params (
                 procedure_id, param_name, param_type, required, default_value, description
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s)
         """,
             (
                 parameter.procedure_id,
@@ -488,7 +488,7 @@ class ProceduralStore(BaseStore[Procedure]):
             List of parameters
         """
         rows = self.execute(
-            "SELECT * FROM procedure_params WHERE procedure_id = ?", (procedure_id,),
+            "SELECT * FROM procedure_params WHERE procedure_id = %s", (procedure_id,),
             fetch_all=True,
         )
 

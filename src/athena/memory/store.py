@@ -15,9 +15,6 @@ from ..core.async_utils import run_async
 from .optimize import MemoryOptimizer
 from .search import SemanticSearch
 
-# Qdrant support is deprecated - we use PostgreSQL + pgvector instead
-# QdrantAdapter import removed as part of host-based refactor
-
 logger = logging.getLogger(__name__)
 
 
@@ -31,36 +28,26 @@ class MemoryStore(BaseStore):
         self,
         db_path: Optional[str | Path] = None,
         embedding_model: Optional[str] = None,
-        use_qdrant: bool = False,
         backend: Optional[str] = None,
     ):
         """Initialize memory store with PostgreSQL + pgvector.
 
         Uses PostgreSQL exclusively for both storage and vector operations.
-        For host-based development, uses PostgreSQL with pgvector extension.
 
         Args:
             db_path: Ignored (kept for backwards compatibility)
             embedding_model: Model name/path for embeddings (default: from config/provider)
-            use_qdrant: Deprecated - always disabled. Use PostgreSQL + pgvector instead.
-            backend: Force backend ('postgres' recommended, 'sqlite' discouraged)
+            backend: Database backend (always PostgreSQL with pgvector)
         """
-        # Force PostgreSQL for host-based development
-        # We use PostgreSQL + pgvector exclusively, not Qdrant or SQLite
-        logger.info("Initializing MemoryStore with PostgreSQL + pgvector backend")
+        logger.info("Initializing MemoryStore with PostgreSQL pgvector backend")
         self.db = get_database(backend='postgres')
 
         super().__init__(self.db)
         # EmbeddingModel will use config provider (llamacpp at localhost:8001)
         self.embedder = EmbeddingModel(embedding_model)
 
-        # Qdrant is deprecated - we use PostgreSQL pgvector instead
-        self.qdrant = None
-        if use_qdrant:
-            logger.warning("Qdrant support is deprecated. Using PostgreSQL + pgvector instead.")
-
-        # SemanticSearch will use PostgreSQL pgvector for vector operations
-        self.search = SemanticSearch(self.db, self.embedder, qdrant=None)
+        # SemanticSearch uses PostgreSQL pgvector for vector operations
+        self.search = SemanticSearch(self.db, self.embedder)
         self.optimizer = MemoryOptimizer(self.db)
 
     @staticmethod
@@ -105,9 +92,7 @@ class MemoryStore(BaseStore):
     ) -> int:
         """Store a new memory with embedding.
 
-        Implements dual-write pattern:
-        - SQLite: Metadata (content, tags, timestamps)
-        - Qdrant: Embeddings for semantic search
+        Stores metadata and embeddings in PostgreSQL with pgvector.
 
         Args:
             content: Memory content
@@ -136,44 +121,17 @@ class MemoryStore(BaseStore):
             tags=tags or [],
         )
 
-        # Store embedding in Qdrant if available
-        if self.qdrant:
-            try:
-                self.qdrant.add_memory(
-                    memory_id=memory_id,
-                    content=content,
-                    embedding=embedding,
-                    metadata={
-                        "project_id": project_id,
-                        "memory_type": memory_type.value,
-                        "tags": tags or [],
-                    }
-                )
-                logger.debug(f"Stored embedding in Qdrant: memory_id={memory_id}")
-            except Exception as e:
-                logger.error(f"Failed to store embedding in Qdrant for memory {memory_id}: {e}")
-                # Continue - metadata is already in SQLite
-
         return memory_id
 
     def forget(self, memory_id: int) -> bool:
-        """Delete a memory from both SQLite and Qdrant.
+        """Delete a memory from PostgreSQL.
 
         Args:
             memory_id: Memory ID to delete
 
         Returns:
-            True if deleted from SQLite, False if not found
+            True if deleted, False if not found
         """
-        # Delete from Qdrant first (non-blocking failure)
-        if self.qdrant:
-            try:
-                self.qdrant.delete_memory(memory_id)
-                logger.debug(f"Deleted memory {memory_id} from Qdrant")
-            except Exception as e:
-                logger.warning(f"Failed to delete memory {memory_id} from Qdrant: {e}")
-
-        # Delete from SQLite (authoritative)
         return self.db.delete_memory(memory_id)
 
     def list_memories(

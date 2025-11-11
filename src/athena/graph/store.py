@@ -164,7 +164,7 @@ class GraphStore(BaseStore[Entity]):
             self.execute(
                 """
                 INSERT INTO entities (name, entity_type, project_id, created_at, updated_at, metadata)
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s)
             """,
                 (
                     entity.name,
@@ -183,7 +183,7 @@ class GraphStore(BaseStore[Entity]):
             row = self.execute(
                 """
                 SELECT id FROM entities
-                WHERE name = ? AND entity_type = ? AND project_id IS ?
+                WHERE name = %s AND entity_type = %s AND project_id IS %s
             """,
                 (entity.name, entity_type_str, entity.project_id),
                 fetch_one=True,
@@ -210,7 +210,7 @@ class GraphStore(BaseStore[Entity]):
         Returns:
             Entity if found, None otherwise
         """
-        row = self.execute("SELECT * FROM entities WHERE id = ?", (entity_id,), fetch_one=True)
+        row = self.execute("SELECT * FROM entities WHERE id = %s", (entity_id,), fetch_one=True)
 
         if not row:
             return None
@@ -234,7 +234,7 @@ class GraphStore(BaseStore[Entity]):
         row = self.execute(
             """
             SELECT * FROM entities
-            WHERE name = ? AND entity_type = ? AND project_id IS ?
+            WHERE name = %s AND entity_type = %s AND project_id IS %s
         """,
             (name, entity_type, project_id),
             fetch_one=True,
@@ -255,7 +255,7 @@ class GraphStore(BaseStore[Entity]):
         Returns:
             True if deleted, False if not found
         """
-        self.execute("DELETE FROM entities WHERE id = ?", (entity_id,))
+        self.execute("DELETE FROM entities WHERE id = %s", (entity_id,))
         self.commit()
         return True
 
@@ -280,7 +280,7 @@ class GraphStore(BaseStore[Entity]):
                 from_entity_id, to_entity_id, relation_type,
                 strength, confidence, created_at, valid_from, valid_until, metadata
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
             (
                 relation.from_entity_id,
@@ -318,7 +318,7 @@ class GraphStore(BaseStore[Entity]):
         Returns:
             True if deleted, False if not found
         """
-        self.execute("DELETE FROM entity_relations WHERE id = ?", (relation_id,))
+        self.execute("DELETE FROM entity_relations WHERE id = %s", (relation_id,))
         self.commit()
         return True
 
@@ -337,7 +337,7 @@ class GraphStore(BaseStore[Entity]):
                 entity_id, content, observation_type,
                 confidence, source, timestamp, superseded_by
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
         """,
             (
                 observation.entity_id,
@@ -376,7 +376,7 @@ class GraphStore(BaseStore[Entity]):
         rows = self.execute(
             """
             SELECT * FROM entity_observations
-            WHERE entity_id = ? AND superseded_by IS NULL
+            WHERE entity_id = %s AND superseded_by IS NULL
             ORDER BY timestamp DESC
         """,
             (entity_id,),
@@ -422,7 +422,7 @@ class GraphStore(BaseStore[Entity]):
                     e.created_at as entity_created_at, e.updated_at, e.metadata as entity_metadata
                 FROM entity_relations r
                 JOIN entities e ON r.to_entity_id = e.id
-                WHERE r.from_entity_id = ?
+                WHERE r.from_entity_id = %s
             """
         elif direction == "to":
             query = """
@@ -434,7 +434,7 @@ class GraphStore(BaseStore[Entity]):
                     e.created_at as entity_created_at, e.updated_at, e.metadata as entity_metadata
                 FROM entity_relations r
                 JOIN entities e ON r.from_entity_id = e.id
-                WHERE r.to_entity_id = ?
+                WHERE r.to_entity_id = %s
             """
         else:  # both
             query = """
@@ -494,7 +494,7 @@ class GraphStore(BaseStore[Entity]):
         Returns:
             List of matching entities
         """
-        sql = "SELECT * FROM entities WHERE name LIKE ?"
+        sql = "SELECT * FROM entities WHERE name LIKE %s"
         params = [f"%{query}%"]
 
         if entity_type:
@@ -525,7 +525,7 @@ class GraphStore(BaseStore[Entity]):
         """
         # Get entities
         if project_id is not None:
-            rows = self.execute("SELECT * FROM entities WHERE project_id = ?", (project_id,), fetch_all=True)
+            rows = self.execute("SELECT * FROM entities WHERE project_id = %s", (project_id,), fetch_all=True)
         else:
             rows = self.execute("SELECT * FROM entities", fetch_all=True)
 

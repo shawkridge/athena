@@ -253,7 +253,7 @@ class EpisodicStore(BaseStore):
                 duration_ms, files_changed, lines_added, lines_deleted,
                 learned, confidence, surprise_score, surprise_normalized, surprise_coherence
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
             (
                 event.project_id,
@@ -288,7 +288,7 @@ class EpisodicStore(BaseStore):
             # Store in vector table (rowid must match event_id)
             self.execute("""
                 INSERT INTO event_vectors (rowid, embedding)
-                VALUES (?, ?)
+                VALUES (%s, %s)
             """, (event_id, self.serialize_json(embedding)))
 
         except Exception as e:
@@ -352,7 +352,7 @@ class EpisodicStore(BaseStore):
                     duration_ms, files_changed, lines_added, lines_deleted,
                     learned, confidence
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, data)
 
             # Get the last inserted ID and work backward
@@ -381,7 +381,7 @@ class EpisodicStore(BaseStore):
                 if embedding_data:
                     cursor.executemany("""
                         INSERT INTO event_vectors (rowid, embedding)
-                        VALUES (?, ?)
+                        VALUES (%s, %s)
                     """, embedding_data)
 
             except Exception as e:
@@ -404,7 +404,7 @@ class EpisodicStore(BaseStore):
         Returns:
             Event if found, None otherwise
         """
-        row = self.execute("SELECT * FROM episodic_events WHERE id = ?", (event_id,), fetch_one=True)
+        row = self.execute("SELECT * FROM episodic_events WHERE id = %s", (event_id,), fetch_one=True)
 
         if not row:
             return None
@@ -431,7 +431,7 @@ class EpisodicStore(BaseStore):
         rows = self.execute(
             """
             SELECT * FROM episodic_events
-            WHERE project_id = ? AND timestamp BETWEEN ? AND ?
+            WHERE project_id = %s AND timestamp BETWEEN %s AND %s
             ORDER BY timestamp DESC
         """,
             (project_id, start_ts, end_ts),
@@ -452,7 +452,7 @@ class EpisodicStore(BaseStore):
         rows = self.execute(
             """
             SELECT * FROM episodic_events
-            WHERE session_id = ?
+            WHERE session_id = %s
             ORDER BY timestamp ASC
         """,
             (session_id,),
@@ -479,7 +479,7 @@ class EpisodicStore(BaseStore):
         rows = self.execute(
             """
             SELECT * FROM episodic_events
-            WHERE project_id = ? AND event_type = ?
+            WHERE project_id = %s AND event_type = %s
             ORDER BY timestamp DESC
             LIMIT ?
         """,
@@ -505,9 +505,9 @@ class EpisodicStore(BaseStore):
         rows = self.execute(
             """
             SELECT * FROM episodic_events
-            WHERE project_id = ? AND timestamp > ?
+            WHERE project_id = %s AND timestamp > %s
             ORDER BY timestamp DESC
-            LIMIT ?
+            LIMIT %s
         """,
             (project_id, cutoff, limit),
             fetch_all=True
@@ -541,19 +541,19 @@ class EpisodicStore(BaseStore):
             # Skip very short words and common stop words
             if len(keyword) < 3 or keyword in ['the', 'and', 'or', 'but', 'for', 'are', 'was', 'were', 'what', 'when', 'where', 'how', 'why', 'who']:
                 continue
-            where_conditions.append("LOWER(content) LIKE ?")
+            where_conditions.append("LOWER(content) LIKE %s")
             params.append(f"%{keyword}%")
 
         if not where_conditions:
             # If no valid keywords, fall back to original behavior
-            where_conditions = ["content LIKE ?"]
+            where_conditions = ["content LIKE %s"]
             params = [project_id, f"%{query}%"]
 
         where_clause = " OR ".join(where_conditions)
 
         sql = f"""
             SELECT * FROM episodic_events
-            WHERE project_id = ? AND ({where_clause})
+            WHERE project_id = %s AND ({where_clause})
             ORDER BY timestamp DESC
             LIMIT ?
         """
@@ -612,7 +612,7 @@ class EpisodicStore(BaseStore):
         cursor = self.execute(
             """
             INSERT INTO event_outcomes (event_id, metric_name, metric_value)
-            VALUES (?, ?, ?)
+            VALUES (%s, %s, %s)
         """,
             (metric.event_id, metric.metric_name, metric.metric_value),
         )
@@ -629,7 +629,7 @@ class EpisodicStore(BaseStore):
             List of metrics
         """
         rows = self.execute(
-            "SELECT * FROM event_outcomes WHERE event_id = ?", (event_id,), fetch_all=True
+            "SELECT * FROM event_outcomes WHERE event_id = %s", (event_id,), fetch_all=True
         )
 
         metrics = []
@@ -659,7 +659,7 @@ class EpisodicStore(BaseStore):
         self.execute(
             """
             INSERT OR REPLACE INTO event_relations (from_event_id, to_event_id, relation_type, strength)
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
         """,
             (from_event_id, to_event_id, relation_type, strength),
         )
@@ -769,7 +769,7 @@ class EpisodicStore(BaseStore):
         """
         query = """
             SELECT * FROM episodic_events
-            WHERE project_id = ?
+            WHERE project_id = %s
             AND timestamp >= ?
             AND timestamp <= ?
         """
@@ -811,7 +811,7 @@ class EpisodicStore(BaseStore):
             UPDATE episodic_events
             SET consolidation_status = 'consolidated',
                 consolidated_at = ?
-            WHERE id = ?
+            WHERE id = %s
         """,
             (int(consolidated_at.timestamp()), event_id)
         )
@@ -838,7 +838,7 @@ class EpisodicStore(BaseStore):
             query = f"""
                 SELECT from_event_id, to_event_id, relation_type, strength
                 FROM event_relations
-                WHERE (from_event_id = ? OR to_event_id = ?)
+                WHERE (from_event_id = %s OR to_event_id = %s)
                 AND relation_type IN ({placeholders})
             """
             params = [event_id, event_id] + relation_types
@@ -846,7 +846,7 @@ class EpisodicStore(BaseStore):
             query = """
                 SELECT from_event_id, to_event_id, relation_type, strength
                 FROM event_relations
-                WHERE from_event_id = ? OR to_event_id = ?
+                WHERE from_event_id = %s OR to_event_id = %s
             """
             params = [event_id, event_id]
 
@@ -933,7 +933,7 @@ class EpisodicStore(BaseStore):
         """
         try:
             row = self.execute("""
-                SELECT embedding FROM event_vectors WHERE rowid = ?
+                SELECT embedding FROM event_vectors WHERE rowid = %s
             """, (event_id,), fetch_one=True)
 
             if row and row['embedding']:
@@ -963,7 +963,7 @@ class EpisodicStore(BaseStore):
         rows = self.execute(
             """
             SELECT * FROM episodic_events
-            WHERE project_id = ? AND surprise_score IS NOT NULL AND surprise_score > ?
+            WHERE project_id = %s AND surprise_score IS NOT NULL AND surprise_score > %s
             ORDER BY surprise_score DESC, timestamp DESC
             LIMIT ?
         """,
@@ -1056,7 +1056,7 @@ class EpisodicStore(BaseStore):
                 consolidation_status, code_event_type, file_path, symbol_name, symbol_type,
                 language, diff, git_commit, git_author, test_name, test_passed,
                 error_type, stack_trace, performance_metrics, code_quality_score
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             event.project_id,
             event.session_id,
@@ -1115,7 +1115,7 @@ class EpisodicStore(BaseStore):
         rows = self.execute(
             """
             SELECT * FROM episodic_events
-            WHERE project_id = ? AND file_path = ? AND code_event_type IS NOT NULL
+            WHERE project_id = %s AND file_path = %s AND code_event_type IS NOT NULL
             ORDER BY timestamp DESC
             LIMIT ?
             """,
@@ -1147,7 +1147,7 @@ class EpisodicStore(BaseStore):
             rows = self.execute(
                 """
                 SELECT * FROM episodic_events
-                WHERE project_id = ? AND symbol_name = ? AND file_path = ?
+                WHERE project_id = %s AND symbol_name = %s AND file_path = %s
                     AND code_event_type IS NOT NULL
                 ORDER BY timestamp DESC
                 LIMIT ?
@@ -1159,7 +1159,7 @@ class EpisodicStore(BaseStore):
             rows = self.execute(
                 """
                 SELECT * FROM episodic_events
-                WHERE project_id = ? AND symbol_name = ? AND code_event_type IS NOT NULL
+                WHERE project_id = %s AND symbol_name = %s AND code_event_type IS NOT NULL
                 ORDER BY timestamp DESC
                 LIMIT ?
                 """,
@@ -1188,7 +1188,7 @@ class EpisodicStore(BaseStore):
         rows = self.execute(
             """
             SELECT * FROM episodic_events
-            WHERE project_id = ? AND code_event_type = ?
+            WHERE project_id = %s AND code_event_type = %s
             ORDER BY timestamp DESC
             LIMIT ?
             """,
@@ -1217,7 +1217,7 @@ class EpisodicStore(BaseStore):
         rows = self.execute(
             """
             SELECT * FROM episodic_events
-            WHERE project_id = ? AND language = ? AND code_event_type IS NOT NULL
+            WHERE project_id = %s AND language = %s AND code_event_type IS NOT NULL
             ORDER BY timestamp DESC
             LIMIT ?
             """,
@@ -1247,7 +1247,7 @@ class EpisodicStore(BaseStore):
             rows = self.execute(
                 """
                 SELECT * FROM episodic_events
-                WHERE project_id = ? AND test_name IS NOT NULL AND test_passed = 0
+                WHERE project_id = %s AND test_name IS NOT NULL AND test_passed = 0
                 ORDER BY timestamp DESC
                 LIMIT ?
                 """,
@@ -1258,7 +1258,7 @@ class EpisodicStore(BaseStore):
             rows = self.execute(
                 """
                 SELECT * FROM episodic_events
-                WHERE project_id = ? AND test_name IS NOT NULL
+                WHERE project_id = %s AND test_name IS NOT NULL
                 ORDER BY timestamp DESC
                 LIMIT ?
                 """,
@@ -1288,7 +1288,7 @@ class EpisodicStore(BaseStore):
             rows = self.execute(
                 """
                 SELECT * FROM episodic_events
-                WHERE project_id = ? AND code_event_type = 'bug_discovery' AND language = ?
+                WHERE project_id = %s AND code_event_type = 'bug_discovery' AND language = %s
                 ORDER BY timestamp DESC
                 LIMIT ?
                 """,
@@ -1299,7 +1299,7 @@ class EpisodicStore(BaseStore):
             rows = self.execute(
                 """
                 SELECT * FROM episodic_events
-                WHERE project_id = ? AND code_event_type = 'bug_discovery'
+                WHERE project_id = %s AND code_event_type = 'bug_discovery'
                 ORDER BY timestamp DESC
                 LIMIT ?
                 """,

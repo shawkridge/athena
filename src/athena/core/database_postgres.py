@@ -25,6 +25,7 @@ try:
     import psycopg
     from psycopg_pool import AsyncConnectionPool
     from psycopg import sql
+    from psycopg.rows import dict_row
     PSYCOPG_AVAILABLE = True
 except ImportError:
     PSYCOPG_AVAILABLE = False
@@ -48,6 +49,181 @@ def embed_to_vector_str(embedding: List[float]) -> str:
     if not embedding:
         return "[]"
     return "[" + ",".join(f"{float(x):.6f}" for x in embedding) + "]"
+
+
+class SyncCursor:
+    """Synchronous cursor wrapper around async PostgreSQL connection.
+
+    Bridges async PostgreSQL operations with synchronous store code.
+    Used by BaseStore and subclasses to maintain compatibility with
+    existing sync-oriented memory layer code.
+    """
+
+    def __init__(self, db: "PostgresDatabase"):
+        """Initialize sync cursor with database reference.
+
+        Args:
+            db: PostgresDatabase instance
+        """
+        self.db = db
+        self._connection = None
+        self._cursor = None
+        self._results = None
+        self._row_index = 0
+        self._lastrowid = None
+        self._rowcount = 0
+
+    @staticmethod
+    def _row_to_tuple(row):
+        """Return row as-is.
+
+        psycopg3 RoleRow objects support both dict and tuple access,
+        so we don't need to convert them.
+
+        Args:
+            row: Row from psycopg3 cursor
+
+        Returns:
+            Row object (RoleRow which acts as both dict and tuple)
+        """
+        return row
+
+    async def _get_connection_async(self):
+        """Get async connection from pool."""
+        if self._pool is None:
+            await self.db.initialize()
+        return await self.db._pool.getconn()
+
+    def _run_async(self, coro):
+        """Run async coroutine in sync context."""
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # Already in async context - use thread pool
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    future = loop.run_in_executor(pool, asyncio.run, coro)
+                    return future.result()
+            else:
+                # No running loop - safe to use run()
+                return loop.run_until_complete(coro)
+        except RuntimeError:
+            # No event loop - create one
+            return asyncio.run(coro)
+
+    async def _get_conn_async(self):
+        """Get connection from pool."""
+        if self.db._pool is None:
+            await self.db.initialize()
+        return await self.db._pool.getconn()
+
+    def _execute_async(self, query: str, params: tuple = None):
+        """Execute query asynchronously against PostgreSQL.
+
+        Query must use PostgreSQL syntax with %s placeholders (not SQLite ?).
+        Returns dict-like rows for SELECT queries.
+        """
+        async def _exec():
+            # Query should be in PostgreSQL format
+            pg_query = query.strip()
+
+            # Use context manager to properly handle connection lifecycle
+            async with self.db.get_connection() as conn:
+                # For SELECT queries, use dict_row factory to get dict-like rows
+                if pg_query.upper().startswith("SELECT"):
+                    cursor = conn.cursor(row_factory=dict_row)
+                else:
+                    cursor = conn.cursor()
+
+                if params:
+                    await cursor.execute(pg_query, params)
+                else:
+                    await cursor.execute(pg_query)
+
+                # For SELECT queries, fetch results as dicts. For others, just get row count
+                if pg_query.upper().startswith("SELECT"):
+                    self._results = await cursor.fetchall()
+                else:
+                    # For non-SELECT queries, don't try to fetch
+                    self._results = []
+
+                self._row_index = 0
+                # Store row count for lastrowid compatibility
+                self._lastrowid = cursor.lastrowid if hasattr(cursor, 'lastrowid') else None
+                self._rowcount = cursor.rowcount if hasattr(cursor, 'rowcount') else 0
+                return self._results
+
+        return self._run_async(_exec())
+
+    def execute(self, query: str, params: tuple = None):
+        """Execute SQL query synchronously.
+
+        Args:
+            query: SQL query string
+            params: Query parameters (tuple)
+
+        Returns:
+            Self for method chaining
+        """
+        self._execute_async(query, params)
+        return self
+
+    def fetchone(self):
+        """Fetch one row from results.
+
+        Returns:
+            Tuple representing one row, or None if no more rows
+        """
+        if self._results is None:
+            return None
+        if self._row_index >= len(self._results):
+            return None
+        row = self._results[self._row_index]
+        self._row_index += 1
+        return row
+
+    def fetchall(self):
+        """Fetch all rows from results.
+
+        Returns:
+            List of tuples representing all rows
+        """
+        if self._results is None:
+            return []
+        result = self._results[self._row_index:]
+        self._row_index = len(self._results)
+        return result
+
+    def fetchmany(self, size: int = 1):
+        """Fetch multiple rows.
+
+        Args:
+            size: Number of rows to fetch
+
+        Returns:
+            List of tuples
+        """
+        if self._results is None:
+            return []
+        result = self._results[self._row_index : self._row_index + size]
+        self._row_index += size
+        return result
+
+    def close(self):
+        """Close cursor."""
+        self._results = None
+        self._row_index = 0
+
+    @property
+    def lastrowid(self):
+        """Get last inserted row ID."""
+        return self._lastrowid if hasattr(self, '_lastrowid') else None
+
+    @property
+    def rowcount(self):
+        """Get number of rows affected."""
+        return self._rowcount if hasattr(self, '_rowcount') else 0
 
 
 class PostgresDatabase:
@@ -167,6 +343,22 @@ class PostgresDatabase:
 
         async with self._pool.connection() as conn:
             yield conn
+
+    def get_cursor(self) -> SyncCursor:
+        """Get a synchronous cursor for use with sync store code.
+
+        This bridges async PostgreSQL with synchronous BaseStore implementations.
+        Used by EpisodicStore, SemanticStore, and all other memory layer stores.
+
+        Returns:
+            SyncCursor instance with execute(), fetchone(), fetchall() methods
+
+        Example:
+            cursor = db.get_cursor()
+            cursor.execute("SELECT * FROM episodic_events WHERE id = %s", (123,))
+            row = cursor.fetchone()
+        """
+        return SyncCursor(self)
 
     async def _init_schema(self):
         """Create database schema if not exists.

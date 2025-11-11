@@ -34,50 +34,46 @@ SESSION_START_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 log "Session ID: $SESSION_ID"
 log "Started: $SESSION_START_TIME"
 
-# Initialize session using MCP tools
+# Initialize session using direct Python API (local-first)
 log "Loading semantic memories and context..."
 
-# 1. Load top semantic memories to working memory
-mcp__athena__memory_tools smart_retrieve \
-  --query "recent work and projects" \
-  --limit 5 2>/dev/null || true
-
-log_info "✓ Semantic memories loaded (top 5 by relevance)"
-
-# 2. Check and load active goals
-mcp__athena__task_management_tools get_active_goals \
-  --project-id 1 2>/dev/null || true
-
-log_info "✓ Active goals retrieved"
-
-# 3. Check memory health
-mcp__athena__memory_tools evaluate_memory_quality 2>/dev/null || true
-
-log_info "✓ Memory health assessed"
-
-# 4. Invoke session-initializer agent to handle setup
+# Invoke session-initializer agent (uses direct Python API)
 python3 << 'PYTHON_EOF'
 import sys
-import json
+import logging
 sys.path.insert(0, '/home/user/.claude/hooks/lib')
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(name)s - %(levelname)s - %(message)s',
+    stream=sys.stderr
+)
+
 from agent_invoker import AgentInvoker
-from load_monitor import LoadMonitor
 
-# Initialize components
-invoker = AgentInvoker()
-monitor = LoadMonitor()
+try:
+    # Initialize agent invoker (uses direct Python API)
+    invoker = AgentInvoker()
 
-# Invoke session-initializer agent
-invoker.invoke_agent("session-initializer", {
-    "session_id": "$SESSION_ID",
-    "timestamp": "$SESSION_START_TIME"
-})
+    # Invoke session-initializer agent
+    success = invoker.invoke_agent("session-initializer", {
+        "session_id": "$SESSION_ID",
+        "timestamp": "$SESSION_START_TIME"
+    })
 
-# Get current load status
-status = monitor.get_status()
+    if success:
+        print("✓ Session initialized and context loaded", file=sys.stderr)
+    else:
+        print("⚠ Session initialization completed with warnings", file=sys.stderr)
+
+except Exception as e:
+    print(f"✗ Error during session initialization: {e}", file=sys.stderr)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
 PYTHON_EOF
 
-log_info "✓ Cognitive load baseline established"
+log_info "✓ Memory context loaded via direct Python API"
 log "=== Session Context Loaded Successfully ==="
 log "Memory is ready for your work session. Begin your tasks when ready."
 

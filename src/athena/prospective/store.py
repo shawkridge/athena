@@ -219,7 +219,7 @@ class ProspectiveStore(BaseStore):
                 phase, plan_json, plan_created_at,
                 notes, blocked_reason, failure_reason, lessons_learned
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
             (
                 task.project_id,
@@ -252,7 +252,7 @@ class ProspectiveStore(BaseStore):
         Returns:
             Task if found, None otherwise
         """
-        row = self.execute("SELECT * FROM prospective_tasks WHERE id = ?", (task_id,), fetch_one=True)
+        row = self.execute("SELECT * FROM prospective_tasks WHERE id = %s", (task_id,), fetch_one=True)
 
         if not row:
             return None
@@ -276,7 +276,7 @@ class ProspectiveStore(BaseStore):
                 """
                 UPDATE prospective_tasks
                 SET status = ?, completed_at = ?
-                WHERE id = ?
+                WHERE id = %s
             """,
                 (status_str, int(time.time()), task_id),
             )
@@ -285,13 +285,13 @@ class ProspectiveStore(BaseStore):
                 """
                 UPDATE prospective_tasks
                 SET status = ?, blocked_reason = ?
-                WHERE id = ?
+                WHERE id = %s
             """,
                 (status_str, reason, task_id),
             )
         else:
             self.execute(
-                "UPDATE prospective_tasks SET status = ? WHERE id = ?",
+                "UPDATE prospective_tasks SET status = %s WHERE id = %s",
                 (status_str, task_id),
             )
 
@@ -320,7 +320,7 @@ class ProspectiveStore(BaseStore):
             """
             UPDATE prospective_tasks
             SET phase = ?, phase_started_at = ?, plan_json = ?, plan_created_at = ?
-            WHERE id = ?
+            WHERE id = %s
         """,
             (phase_str, now_ts, plan_json, now_ts if plan else None, task_id),
         )
@@ -379,7 +379,7 @@ class ProspectiveStore(BaseStore):
             UPDATE prospective_tasks
             SET phase = ?, phase_started_at = ?, phase_metrics_json = ?,
                 actual_duration_minutes = ?
-            WHERE id = ?
+            WHERE id = %s
         """,
             (
                 next_phase_str,
@@ -437,7 +437,7 @@ class ProspectiveStore(BaseStore):
             """
             UPDATE prospective_tasks
             SET plan_json = ?, plan_created_at = ?
-            WHERE id = ?
+            WHERE id = %s
         """,
             (plan_json, int(task.plan_created_at.timestamp()), task_id),
         )
@@ -470,7 +470,7 @@ class ProspectiveStore(BaseStore):
             """
             UPDATE prospective_tasks
             SET plan_json = ?
-            WHERE id = ?
+            WHERE id = %s
         """,
             (plan_json, task_id),
         )
@@ -524,7 +524,7 @@ class ProspectiveStore(BaseStore):
         """
         phase_str = phase.value if isinstance(phase, TaskPhase) else phase
 
-        sql = "SELECT * FROM prospective_tasks WHERE phase = ?"
+        sql = "SELECT * FROM prospective_tasks WHERE phase = %s"
         params = [phase_str]
 
         if project_id is not None:
@@ -550,7 +550,7 @@ class ProspectiveStore(BaseStore):
             List of all tasks in the project
         """
         rows = self.execute(
-            "SELECT * FROM prospective_tasks WHERE project_id = ? ORDER BY created_at DESC LIMIT ?",
+            "SELECT * FROM prospective_tasks WHERE project_id = %s ORDER BY created_at DESC LIMIT %s",
             (project_id, limit),
             fetch_all=True
         )
@@ -643,7 +643,7 @@ class ProspectiveStore(BaseStore):
         cursor = self.execute(
             """
             INSERT INTO task_triggers (task_id, trigger_type, trigger_condition, fired, fired_at)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s)
         """,
             (
                 trigger.task_id,
@@ -665,7 +665,7 @@ class ProspectiveStore(BaseStore):
         Returns:
             List of triggers
         """
-        rows = self.execute("SELECT * FROM task_triggers WHERE task_id = ?", (task_id,), fetch_all=True)
+        rows = self.execute("SELECT * FROM task_triggers WHERE task_id = %s", (task_id,), fetch_all=True)
 
         triggers = []
         for row in (rows or []):
@@ -693,7 +693,7 @@ class ProspectiveStore(BaseStore):
             """
             UPDATE task_triggers
             SET fired = 1, fired_at = ?
-            WHERE id = ?
+            WHERE id = %s
         """,
             (int(time.time()), trigger_id),
         )
@@ -775,7 +775,7 @@ class ProspectiveStore(BaseStore):
         self.execute(
             """
             INSERT OR REPLACE INTO task_dependencies (task_id, depends_on_task_id, dependency_type)
-            VALUES (?, ?, ?)
+            VALUES (%s, %s, %s)
         """,
             (dependency.task_id, dependency.depends_on_task_id, dependency.dependency_type),
         )
@@ -794,7 +794,7 @@ class ProspectiveStore(BaseStore):
             """
             SELECT t.* FROM prospective_tasks t
             JOIN task_dependencies d ON t.id = d.depends_on_task_id
-            WHERE d.task_id = ?
+            WHERE d.task_id = %s
         """,
             (task_id,),
             fetch_all=True
@@ -824,7 +824,7 @@ class ProspectiveStore(BaseStore):
         """
         sql = """
             SELECT * FROM prospective_tasks
-            WHERE status = ? AND id != ?
+            WHERE status = %s AND id != %s
         """
         params = [status.value if isinstance(status, TaskStatus) else status, task.id or -1]
 
@@ -858,7 +858,7 @@ class ProspectiveStore(BaseStore):
 
         sql = """
             SELECT * FROM prospective_tasks
-            WHERE status = ? AND completed_at > ?
+            WHERE status = %s AND completed_at > %s
         """
         params = [TaskStatus.COMPLETED.value, cutoff_time]
 

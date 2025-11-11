@@ -408,7 +408,7 @@ class MemoryAPI:
                 ),
             )
 
-            event_id = self.episodic.store_event(event)
+            event_id = self.episodic.record_event(event)
             logger.info(f"Remembered event: {event_type} (ID: {event_id})")
             return event_id
 

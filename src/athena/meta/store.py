@@ -132,7 +132,7 @@ class MetaMemoryStore(BaseStore):
         self.execute(
             """
             INSERT INTO memory_quality (memory_id, memory_layer, access_count, useful_count, last_accessed)
-            VALUES (?, ?, 1, ?, ?)
+            VALUES (%s, %s, 1, %s, %s)
             ON CONFLICT(memory_id, memory_layer) DO UPDATE SET
                 access_count = access_count + 1,
                 useful_count = useful_count + ?,
@@ -153,7 +153,7 @@ class MetaMemoryStore(BaseStore):
             """
             UPDATE memory_quality
             SET usefulness_score = CAST(useful_count AS REAL) / access_count
-            WHERE memory_id = ? AND memory_layer = ?
+            WHERE memory_id = %s AND memory_layer = %s
         """,
             (memory_id, memory_layer),
         )
@@ -173,7 +173,7 @@ class MetaMemoryStore(BaseStore):
         row = self.execute(
             """
             SELECT * FROM memory_quality
-            WHERE memory_id = ? AND memory_layer = ?
+            WHERE memory_id = %s AND memory_layer = %s
         """,
             (memory_id, memory_layer),
             fetch_one=True
@@ -192,7 +192,7 @@ class MetaMemoryStore(BaseStore):
         self.execute(
             """
             INSERT INTO memory_quality (memory_id, memory_layer, confidence)
-            VALUES (?, ?, ?)
+            VALUES (%s, %s, %s)
             ON CONFLICT(memory_id, memory_layer) DO UPDATE SET
                 confidence = ?
         """,
@@ -215,7 +215,7 @@ class MetaMemoryStore(BaseStore):
         """
         sql = """
             SELECT * FROM memory_quality
-            WHERE usefulness_score < ? AND access_count >= 5
+            WHERE usefulness_score < %s AND access_count >= 5
         """
         params = [threshold]
 
@@ -256,7 +256,7 @@ class MetaMemoryStore(BaseStore):
                 gaps, strength_areas,
                 first_encounter, expertise_level
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT(domain) DO UPDATE SET
                 memory_count = ?,
                 episodic_count = ?,
@@ -303,7 +303,7 @@ class MetaMemoryStore(BaseStore):
 
         # Get existing ID
         row = self.execute(
-            "SELECT id FROM domain_coverage WHERE domain = ?",
+            "SELECT id FROM domain_coverage WHERE domain = %s",
             (domain.domain,),
             fetch_one=True
         )
@@ -319,7 +319,7 @@ class MetaMemoryStore(BaseStore):
             DomainCoverage if found, None otherwise
         """
         row = self.execute(
-            "SELECT * FROM domain_coverage WHERE domain = ?",
+            "SELECT * FROM domain_coverage WHERE domain = %s",
             (domain_name,),
             fetch_one=True
         )
@@ -364,7 +364,7 @@ class MetaMemoryStore(BaseStore):
                 knowledge_item_id, knowledge_layer,
                 transferred_at, applicability_score
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s)
         """,
             (
                 transfer.from_project_id,
