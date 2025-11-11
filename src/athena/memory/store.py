@@ -117,7 +117,7 @@ class MemoryStore(BaseStore):
             updated_at=row.get('updated_at'),
         )
 
-    def remember(
+    async def remember(
         self,
         content: str,
         memory_type: MemoryType | str,
@@ -155,8 +155,8 @@ class MemoryStore(BaseStore):
             embedding=None if self.qdrant else embedding,  # Skip if using Qdrant
         )
 
-        # Store metadata in SQLite
-        memory_id = self.db.store_memory(memory)
+        # Store metadata in PostgreSQL
+        memory_id = await self.db.store_memory(memory)
 
         # Store embedding in Qdrant if available
         if self.qdrant:
@@ -225,7 +225,7 @@ class MemoryStore(BaseStore):
         """
         return self.db.create_project(name, path)
 
-    def get_project_by_path(self, path: str) -> Optional[Project]:
+    async def get_project_by_path(self, path: str) -> Optional[Project]:
         """Find project by path.
 
         Args:
@@ -234,7 +234,7 @@ class MemoryStore(BaseStore):
         Returns:
             Project if found, None otherwise
         """
-        return self.db.get_project_by_path(path)
+        return await self.db.get_project_by_path(path)
 
     def recall(
         self,
@@ -478,6 +478,71 @@ class MemoryStore(BaseStore):
 
         # Return oldest first
         return list(reversed(history))
+
+    async def create_task(self, task):
+        """Create a new task in the database.
+
+        Args:
+            task: ProspectiveTask instance
+
+        Returns:
+            Saved task with ID
+        """
+        return await self.db.create_task(task)
+
+    async def get_connection(self, source_id: int):
+        """Get external data source connection.
+
+        Args:
+            source_id: Data source ID
+
+        Returns:
+            Connection object or None
+        """
+        # This delegates to database implementation if it exists
+        if hasattr(self.db, 'get_external_connection'):
+            return await self.db.get_external_connection(source_id)
+        return None
+
+    async def create_sync_log(self, sync_log):
+        """Create a sync log entry.
+
+        Args:
+            sync_log: SyncLog instance
+
+        Returns:
+            Created sync log with ID
+        """
+        if hasattr(self.db, 'create_sync_log'):
+            return await self.db.create_sync_log(sync_log)
+        return sync_log
+
+    async def get_sync_history(self, source_id: int, limit: int = 5):
+        """Get sync history for a source.
+
+        Args:
+            source_id: Data source ID
+            limit: Maximum number of records
+
+        Returns:
+            List of sync logs
+        """
+        if hasattr(self.db, 'get_sync_history'):
+            return await self.db.get_sync_history(source_id, limit)
+        return []
+
+    async def create_data_mapping(self, mapping):
+        """Create a data mapping entry.
+
+        Args:
+            mapping: DataMapping instance
+
+        Returns:
+            Created mapping with ID
+        """
+        if hasattr(self.db, 'create_data_mapping'):
+            return await self.db.create_data_mapping(mapping)
+        return mapping
 
     def close(self):
         """Close database connection."""

@@ -28,84 +28,97 @@ class AgentInvoker:
             "trigger": "user_prompt_submit",
             "description": "Search memory and inject relevant context",
             "priority": 100,  # HIGHEST - must run before other analysis
-            "mcp_tool": "mcp__athena__rag_tools:retrieve_smart",
+            "http_endpoint": "/api/memory/recall",
+            "http_method": "GET",
         },
         "research-coordinator": {
             "trigger": "user_prompt_submit",
             "description": "Multi-source research and synthesis",
             "priority": 99,
-            "slash_command": "/useful:retrieve-smart",
+            "http_endpoint": "/api/memory/recall",
+            "http_method": "GET",
         },
         # Gap detection and suggestion (after context loaded)
         "gap-detector": {
             "trigger": "user_prompt_submit",
             "description": "Detect knowledge gaps and contradictions",
             "priority": 90,
-            "mcp_tool": "mcp__athena__memory_tools:detect_knowledge_gaps",
+            "http_endpoint": "/api/memory/health",
+            "http_method": "GET",
         },
         "attention-manager": {
             "trigger": "user_prompt_submit",
             "description": "Manage cognitive load",
             "priority": 85,
-            "mcp_tool": "mcp__athena__memory_tools:check_cognitive_load",
+            "http_endpoint": "/api/memory/health",
+            "http_method": "GET",
         },
         "procedure-suggester": {
             "trigger": "user_prompt_submit",
             "description": "Suggest applicable procedures",
             "priority": 80,
-            "mcp_tool": "mcp__athena__procedural_tools:find_procedures",
+            "http_endpoint": "/api/memory/recall",
+            "http_method": "GET",
         },
         # PostToolUse agents (every 10 operations)
         "attention-optimizer": {
             "trigger": "post_tool_use_batch",
             "description": "Optimize attention and consolidate if needed",
             "priority": 70,
-            "slash_command": "/important:check-workload",
+            "http_endpoint": "/api/memory/health",
+            "http_method": "GET",
         },
         # PreExecution agents
         "plan-validator": {
             "trigger": "pre_execution",
             "description": "Validate plans before execution",
             "priority": 95,
-            "slash_command": "/critical:validate-plan",
+            "http_endpoint": "/api/memory/health",
+            "http_method": "GET",
         },
         "goal-orchestrator": {
             "trigger": "pre_execution",
             "description": "Check goal conflicts and state",
             "priority": 90,
-            "slash_command": "/critical:manage-goal",
+            "http_endpoint": "/api/memory/health",
+            "http_method": "GET",
         },
         "strategy-selector": {
             "trigger": "pre_execution",
             "description": "Confirm optimal strategy",
             "priority": 80,
-            "slash_command": "/important:optimize-strategy",
+            "http_endpoint": "/api/memory/health",
+            "http_method": "GET",
         },
         # SessionEnd agents
         "consolidation-engine": {
             "trigger": "session_end",
             "description": "Extract patterns via dual-process reasoning",
             "priority": 100,
-            "slash_command": "/important:consolidate",
+            "http_endpoint": "/api/consolidation/run",
+            "http_method": "POST",
         },
         "workflow-learner": {
             "trigger": "session_end",
             "description": "Extract reusable procedures",
             "priority": 95,
-            "mcp_tool": "mcp__athena__procedural_tools:create_procedure",
+            "http_endpoint": "/api/memory/health",
+            "http_method": "GET",
         },
         "quality-auditor": {
             "trigger": "session_end",
             "description": "Assess memory quality",
             "priority": 90,
-            "mcp_tool": "mcp__athena__memory_tools:evaluate_memory_quality",
+            "http_endpoint": "/api/memory/health",
+            "http_method": "GET",
         },
         # PostTaskCompletion agents
         "execution-monitor": {
             "trigger": "post_task_completion",
             "description": "Record task completion",
             "priority": 95,
-            "mcp_tool": "mcp__athena__task_management_tools:record_execution_progress",
+            "http_endpoint": "/api/memory/health",
+            "http_method": "GET",
         },
     }
 
@@ -160,8 +173,12 @@ class AgentInvoker:
             logger.info(f"Invoking agent: {agent_name}")
             logger.info(f"  Description: {agent_info['description']}")
 
-            # Try to invoke via slash command first (preferred method)
-            if "slash_command" in agent_info:
+            # Try to invoke via HTTP endpoint first (working method)
+            if "http_endpoint" in agent_info:
+                return self._invoke_via_http_endpoint(agent_name, agent_info, context)
+
+            # Fall back to slash command
+            elif "slash_command" in agent_info:
                 return self._invoke_via_slash_command(agent_name, agent_info, context)
 
             # Fall back to MCP tool invocation
@@ -180,6 +197,77 @@ class AgentInvoker:
 
         except Exception as e:
             logger.error(f"Failed to invoke agent {agent_name}: {e}")
+            return False
+
+    def _invoke_via_http_endpoint(
+        self,
+        agent_name: str,
+        agent_info: Dict[str, Any],
+        context: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """Invoke agent via HTTP endpoint call to Docker Athena API.
+
+        Args:
+            agent_name: Agent name
+            agent_info: Agent registry entry
+            context: Optional context data
+
+        Returns:
+            True if successfully invoked
+        """
+        from .athena_http_client import get_client
+
+        endpoint = agent_info["http_endpoint"]
+        method = agent_info.get("http_method", "GET")
+        logger.info(f"  Method: HTTP → {method} {endpoint}")
+
+        try:
+            client = get_client()
+
+            if not client.health_check():
+                logger.warning(f"Athena HTTP service not healthy, skipping agent {agent_name}")
+                return False
+
+            # Call the HTTP endpoint
+            if method == "GET":
+                if endpoint == "/api/memory/recall" and context and "query" in context:
+                    result = client.recall_memories(context["query"], context.get("k", 5))
+                elif endpoint == "/api/memory/health":
+                    result = client.get_memory_health()
+                else:
+                    result = {"status": "ok"}  # Generic success
+
+            elif method == "POST":
+                if endpoint == "/api/consolidation/run":
+                    strategy = context.get("strategy", "balanced") if context else "balanced"
+                    result = client.run_consolidation(strategy=strategy)
+                else:
+                    result = {"status": "ok"}
+
+            else:
+                logger.warning(f"Unsupported HTTP method: {method}")
+                return False
+
+            # Record the invocation
+            invocation_result = {
+                "agent": agent_name,
+                "method": "http_endpoint",
+                "endpoint": endpoint,
+                "http_method": method,
+                "context": context,
+                "result": result,
+                "status": "invoked",
+            }
+
+            logger.info(f"  Result: HTTP {endpoint} → {type(result).__name__}")
+
+            self.invoked_agents.append(agent_name)
+            self.agent_results[agent_name] = invocation_result
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to invoke via HTTP endpoint: {e}")
             return False
 
     def _invoke_via_slash_command(

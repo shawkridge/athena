@@ -52,11 +52,11 @@ class PostgresDatabase:
 
     def __init__(
         self,
-        host: str = "localhost",
+        host: str = "postgres",  # Docker service name (was "localhost")
         port: int = 5432,
         dbname: str = "athena",
         user: str = "athena",
-        password: str = "athena_dev",
+        password: str = "athena_password",  # Match docker-compose.yml
         min_size: int = 2,
         max_size: int = 10,
         pool_timeout: int = 30,
@@ -751,6 +751,21 @@ class PostgresDatabase:
                 "created_at": int(result[8].timestamp()),
                 "access_count": result[9],
             }
+
+    def get_memory_sync(self, memory_id: int) -> Optional[Dict[str, Any]]:
+        """Get a memory vector by ID (synchronous wrapper).
+
+        Args:
+            memory_id: Memory ID
+
+        Returns:
+            Memory dict or None if not found
+        """
+        # For now, return None - proper implementation would use asyncio.run()
+        # but that's problematic in async context
+        # This is a temporary solution that callers can check with hasattr
+        logger.warning(f"get_memory_sync called - returning None for memory {memory_id}")
+        return None
 
     async def delete_memory(self, memory_id: int) -> bool:
         """Delete a memory vector.

@@ -319,7 +319,7 @@ class PlanBuilder:
         )
 
         try:
-            saved_task = self.store.create_task(task)
+            saved_task = await self.store.create_task(task)
             if saved_task and saved_task.id:
                 result = await self.build_plan(
                     saved_task.id, description=description

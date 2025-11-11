@@ -20,14 +20,14 @@ class ProjectManager:
         self.store = store
         self._current_project: Optional[Project] = None
 
-    def detect_current_project(self) -> Optional[Project]:
+    async def detect_current_project(self) -> Optional[Project]:
         """Detect current project from working directory.
 
         Returns:
             Current project if detected, None otherwise
         """
         cwd = os.getcwd()
-        project = self.store.get_project_by_path(cwd)
+        project = await self.store.get_project_by_path(cwd)
 
         if project:
             self.store.db.update_project_access(project.id)
@@ -35,7 +35,7 @@ class ProjectManager:
 
         return project
 
-    def get_or_create_project(self, name: Optional[str] = None) -> Project:
+    async def get_or_create_project(self, name: Optional[str] = None) -> Project:
         """Get current project or create if doesn't exist.
 
         Args:
@@ -45,7 +45,7 @@ class ProjectManager:
             Current or newly created project
         """
         cwd = os.getcwd()
-        project = self.store.get_project_by_path(cwd)
+        project = await self.store.get_project_by_path(cwd)
 
         if project:
             self._current_project = project
@@ -55,7 +55,7 @@ class ProjectManager:
         if not name:
             name = Path(cwd).name
 
-        project = self.store.create_project(name, cwd)
+        project = await self.store.create_project(name, cwd)
         self._current_project = project
         return project
 
@@ -64,7 +64,7 @@ class ProjectManager:
         """Get currently active project."""
         return self._current_project
 
-    def require_project(self) -> Project:
+    async def require_project(self) -> Project:
         """Get current project or raise error.
 
         Returns:
@@ -74,7 +74,7 @@ class ProjectManager:
             RuntimeError: If no project is active
         """
         if not self._current_project:
-            self._current_project = self.detect_current_project()
+            self._current_project = await self.detect_current_project()
 
         if not self._current_project:
             raise RuntimeError(

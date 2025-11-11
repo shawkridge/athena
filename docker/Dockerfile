@@ -13,11 +13,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install all Python dependencies to system site-packages
 # (not --user to avoid permission issues with non-root user later)
+# Note: PostgreSQL only, no SQLite
 RUN pip install --no-cache-dir \
     anthropic>=0.7.0 \
     pydantic>=2.0 \
     sqlalchemy>=2.0 \
-    sqlite-vec>=0.1.0 \
     psycopg[binary]>=3.1.0 \
     psycopg-pool>=3.1.0 \
     qdrant-client>=1.7.0 \

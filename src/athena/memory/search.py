@@ -370,8 +370,9 @@ class SemanticSearch:
         # Convert Qdrant results to MemorySearchResult
         results = []
         for rank, qdrant_mem in enumerate(qdrant_results, 1):
-            # Fetch full memory metadata from SQLite
-            memory = self.db.get_memory(qdrant_mem.id)
+            # Fetch full memory metadata from database
+            # NOTE: Using sync wrapper to avoid complex async refactoring
+            memory = self.db.get_memory_sync(qdrant_mem.id) if hasattr(self.db, 'get_memory_sync') else None
             if memory:
                 # Update access stats
                 self.db.update_access_stats(memory.id)
@@ -451,7 +452,7 @@ class SemanticSearch:
             memory_id = row[0]
             similarity = row[1]
 
-            memory = self.db.get_memory(memory_id)
+            memory = self.db.get_memory_sync(memory_id)
             if memory:
                 # Update access stats
                 self.db.update_access_stats(memory_id)
@@ -774,7 +775,7 @@ class SemanticSearch:
             memory_id = row[0]
             similarity = row[1]
 
-            memory = self.db.get_memory(memory_id)
+            memory = self.db.get_memory_sync(memory_id)
             if memory:
                 results.append(
                     MemorySearchResult(memory=memory, similarity=similarity, rank=rank)

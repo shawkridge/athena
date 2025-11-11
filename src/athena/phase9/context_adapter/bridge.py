@@ -38,7 +38,7 @@ class ExternalSystemBridge:
         import time
         from datetime import datetime
 
-        connection = self.store.get_connection(source_id)
+        connection = await self.store.get_connection(source_id)
         if not connection or not connection.enabled:
             raise ValueError(f"Connection {source_id} not found or disabled")
 
@@ -92,7 +92,7 @@ class ExternalSystemBridge:
         import time
         from datetime import datetime
 
-        connection = self.store.get_connection(source_id)
+        connection = await self.store.get_connection(source_id)
         if not connection or not connection.enabled:
             raise ValueError(f"Connection {source_id} not found or disabled")
 
@@ -149,9 +149,9 @@ class ExternalSystemBridge:
 
         return self.store.create_data_mapping(mapping)
 
-    def get_sync_status(self, source_id: int) -> dict:
+    async def get_sync_status(self, source_id: int) -> dict:
         """Get current sync status for source."""
-        connection = self.store.get_connection(source_id)
+        connection = await self.store.get_connection(source_id)
         if not connection:
             return {"error": "Connection not found"}
 

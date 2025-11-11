@@ -21,12 +21,13 @@ async def main():
     from .http.server import AthenaHTTPServer
     from .core.database_postgres import PostgresDatabase
 
-    # Get database configuration from environment
-    db_host = os.getenv("ATHENA_POSTGRES_HOST", "localhost")
-    db_port = int(os.getenv("ATHENA_POSTGRES_PORT", "5432"))
-    db_name = os.getenv("ATHENA_POSTGRES_DB", "athena")
-    db_user = os.getenv("ATHENA_POSTGRES_USER", "athena")
-    db_password = os.getenv("ATHENA_POSTGRES_PASSWORD", "athena_dev")
+    # Hardcoded Docker configuration (no environment variable fallback)
+    # These values match docker-compose.yml and pgvector service
+    db_host = "postgres"  # Docker service name
+    db_port = 5432
+    db_name = "athena"
+    db_user = "athena"
+    db_password = "athena_password"
 
     # Get server configuration from environment
     host = os.getenv("ATHENA_HOST", "0.0.0.0")

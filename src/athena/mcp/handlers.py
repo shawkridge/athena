@@ -153,11 +153,13 @@ class MemoryMCPServer:
         """Initialize MCP server.
 
         Args:
-            db_path: Path to SQLite database
+            db_path: Path to SQLite database (ignored for PostgreSQL Docker deployment)
             enable_advanced_rag: If True, enable advanced RAG features (HyDE, LLM reranking, temporal enrichment)
                 Works with both Ollama (local) and Claude LLM (API-based)
         """
-        self.store = MemoryStore(db_path)
+        # Use PostgreSQL in Docker, SQLite locally
+        # db_path is ignored for PostgreSQL
+        self.store = MemoryStore(db_path=db_path, backend='postgres')
         self.project_manager = ProjectManager(self.store)
 
         # Initialize MCP rate limiter
@@ -1206,9 +1208,9 @@ class MemoryMCPServer:
 
     async def _handle_remember(self, args: dict) -> list[TextContent]:
         """Handle remember tool call."""
-        project = self.project_manager.get_or_create_project()
+        project = await self.project_manager.get_or_create_project()
 
-        memory_id = self.store.remember(
+        memory_id = await self.store.remember(
             content=args["content"],
             memory_type=MemoryType(args["memory_type"]),
             project_id=project.id,
@@ -1223,7 +1225,7 @@ class MemoryMCPServer:
 
     async def _handle_recall(self, args: dict) -> list[TextContent]:
         """Handle recall tool call."""
-        project = self.project_manager.require_project()
+        project = await self.project_manager.require_project()
 
         memory_types = None
         if "memory_types" in args and args["memory_types"]:
@@ -1272,7 +1274,7 @@ class MemoryMCPServer:
 
     async def _handle_list_memories(self, args: dict) -> list[TextContent]:
         """Handle list_memories tool call."""
-        project = self.project_manager.require_project()
+        project = await self.project_manager.require_project()
 
         memories = self.store.list_memories(
             project_id=project.id, limit=args.get("limit", 20), sort_by=args.get("sort_by", "useful")
@@ -1293,7 +1295,7 @@ class MemoryMCPServer:
 
     async def _handle_optimize(self, args: dict) -> list[TextContent]:
         """Handle optimize tool call."""
-        project = self.project_manager.require_project()
+        project = await self.project_manager.require_project()
 
         stats = self.store.optimize(project_id=project.id, dry_run=args.get("dry_run", False))
 
@@ -1372,7 +1374,7 @@ class MemoryMCPServer:
 
     async def _handle_recall_events(self, args: dict) -> list[TextContent]:
         """Handle recall_events tool call."""
-        project = self.project_manager.require_project()
+        project = await self.project_manager.require_project()
         from datetime import datetime, timedelta
 
         # Handle timeframe filter
@@ -1422,7 +1424,7 @@ class MemoryMCPServer:
 
     async def _handle_get_timeline(self, args: dict) -> list[TextContent]:
         """Handle get_timeline tool call."""
-        project = self.project_manager.require_project()
+        project = await self.project_manager.require_project()
 
         days = args.get("days", 7)
         limit = args.get("limit", 20)
@@ -1986,7 +1988,7 @@ class MemoryMCPServer:
         PHASE 5 AUTO-INTEGRATION: Automatically creates Knowledge Graph entity
         for successful procedures to enable cross-layer linking and procedure discovery.
         """
-        project = self.project_manager.require_project()
+        project = await self.project_manager.require_project()
 
         # Get procedure by name
         procedure_name = args.get("procedure_name")
@@ -2176,7 +2178,7 @@ class MemoryMCPServer:
 
     async def _handle_list_tasks(self, args: dict) -> list[TextContent]:
         """Handle list_tasks tool call."""
-        project = self.project_manager.require_project()
+        project = await self.project_manager.require_project()
 
         status_filter = TaskStatus(args["status"]) if "status" in args else None
         priority_filter = TaskPriority(args["priority"]) if "priority" in args else None
@@ -3500,7 +3502,7 @@ class MemoryMCPServer:
             }
 
     # ===== RESEARCH FINDINGS INTEGRATION (Gap 2) =====
-    def store_research_findings(
+    async def store_research_findings(
         self,
         findings: list[dict],
         research_topic: str,
@@ -3534,7 +3536,7 @@ class MemoryMCPServer:
 
             # Store finding in semantic memory with source metadata
             try:
-                memory_id = self.store.remember(
+                memory_id = await self.store.remember(
                     content=finding_content,
                     memory_type=finding_type,
                     project_id=project_id,
@@ -3578,7 +3580,7 @@ class MemoryMCPServer:
         project_id = args.get("project_id")
         if not project_id:
             try:
-                project = self.project_manager.require_project()
+                project = await self.project_manager.require_project()
                 project_id = project.id
             except:
                 project_id = None  # Allow global consolidation without project
@@ -5193,17 +5195,17 @@ class MemoryMCPServer:
         except Exception as e:
             return [TextContent(type="text", text=f"✗ Error in Planning Validation Benchmark: {str(e)}")]
 
-    def _on_research_finding_discovered(self, finding: ResearchFinding) -> None:
+    async def _on_research_finding_discovered(self, finding: ResearchFinding) -> None:
         """Callback when research agent discovers a finding.
 
         Args:
             finding: Finding discovered
         """
         try:
-            project = self.project_manager.get_or_create_project()
+            project = await self.project_manager.get_or_create_project()
             # Store finding to semantic memory automatically
             if finding.id:
-                self._store_finding_to_memory(finding, project.id)
+                await self._store_finding_to_memory(finding, project.id)
                 logger.info(f"Finding stored to memory: {finding.title[:50]}...")
         except Exception as e:
             logger.error(f"Error in finding discovery callback: {e}")
@@ -5223,7 +5225,7 @@ class MemoryMCPServer:
         except Exception as e:
             logger.error(f"Error in status update callback: {e}")
 
-    def _store_finding_to_memory(self, finding: ResearchFinding, project_id: int) -> Optional[int]:
+    async def _store_finding_to_memory(self, finding: ResearchFinding, project_id: int) -> Optional[int]:
         """Store a research finding to semantic memory.
 
         Args:
@@ -5240,7 +5242,7 @@ class MemoryMCPServer:
                 content += f"\n\nSource: {finding.url}"
 
             # Store to semantic memory
-            memory_id = self.store.remember(
+            memory_id = await self.store.remember(
                 content=content,
                 memory_type=MemoryType.FACT,
                 project_id=project_id,
@@ -6753,7 +6755,7 @@ Recommendation: {recommendation}
     async def _handle_generate_confidence_scores(self, args: dict) -> list[TextContent]:
         """Generate confidence scores for task estimates."""
         try:
-            project = self.project_manager.require_project()
+            project = await self.project_manager.require_project()
 
             task_id = args.get("task_id", 0)  # Default to 0 if not provided (project-level score)
             estimate = args.get("estimate", 100)  # Default estimate if not provided
@@ -6809,7 +6811,7 @@ Bounds (95% confidence): {lower_bound:.1f} - {upper_bound:.1f}
     async def _handle_analyze_uncertainty(self, args: dict) -> list[TextContent]:
         """Analyze uncertainty breakdown."""
         try:
-            project = self.project_manager.require_project()
+            project = await self.project_manager.require_project()
 
             task_id = args.get("task_id", 0)  # Default to 0 for project-level analysis
             estimate = args.get("estimate", 100)  # Default estimate
@@ -6855,7 +6857,7 @@ Mitigation Strategies:
     async def _handle_generate_alternative_plans(self, args: dict) -> list[TextContent]:
         """Generate alternative execution plans."""
         try:
-            project = self.project_manager.require_project()
+            project = await self.project_manager.require_project()
 
             task_id = args.get("task_id")
             base_estimate = args.get("base_estimate")
@@ -6907,7 +6909,7 @@ Plans:
     async def _handle_estimate_confidence_interval(self, args: dict) -> list[TextContent]:
         """Calculate confidence interval for estimate."""
         try:
-            project = self.project_manager.require_project()
+            project = await self.project_manager.require_project()
 
             task_id = args.get("task_id", 0)  # Default to 0 if not provided (project-level score)
             estimate = args.get("estimate", 100)  # Default estimate if not provided
@@ -6949,7 +6951,7 @@ Interpretation: We can be 95% confident the actual value will fall between {lowe
     async def _handle_calculate_task_cost(self, args: dict) -> list[TextContent]:
         """Calculate total task cost."""
         try:
-            project = self.project_manager.require_project()
+            project = await self.project_manager.require_project()
 
             task_id = args.get("task_id")
             project_id = args.get("project_id", project.id)
@@ -6995,7 +6997,7 @@ Cost per Minute: ${task_cost.total_cost / estimated_duration_minutes:.2f}
     async def _handle_calculate_roi(self, args: dict) -> list[TextContent]:
         """Calculate return on investment."""
         try:
-            project = self.project_manager.require_project()
+            project = await self.project_manager.require_project()
 
             task_id = args.get("task_id")
             total_cost = args.get("total_cost")
@@ -7040,7 +7042,7 @@ Payback Period: {(roi.payback_period_days or 30) / 30:.1f} months
     async def _handle_suggest_cost_optimizations(self, args: dict) -> list[TextContent]:
         """Get cost optimization suggestions."""
         try:
-            project = self.project_manager.require_project()
+            project = await self.project_manager.require_project()
 
             task_id = args.get("task_id")
             current_cost = args.get("current_cost")
@@ -10082,7 +10084,7 @@ Anomalies:
             # If no goal_id provided, try to get first active goal
             if not goal_id:
                 try:
-                    project = self.project_manager.require_project()
+                    project = await self.project_manager.require_project()
                     # Get first active goal if available
                     active_goals = self.central_executive.get_active_goals(project.id)
                     if active_goals:
@@ -10148,7 +10150,7 @@ Anomalies:
             # If no goal_id, try to auto-detect from task_id or get first active goal
             if not goal_id:
                 try:
-                    project = self.project_manager.require_project()
+                    project = await self.project_manager.require_project()
                     # First try to get goal from task relationship
                     if task_id:
                         # Check if task has associated goal
@@ -10192,7 +10194,7 @@ Anomalies:
             # If no goal_id, try to get first active goal
             if not goal_id:
                 try:
-                    project = self.project_manager.require_project()
+                    project = await self.project_manager.require_project()
                     active_goals = self.central_executive.get_active_goals(project.id)
                     if active_goals:
                         goal_id = active_goals[0].id

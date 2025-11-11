@@ -1,19 +1,11 @@
-"""Database factory for supporting multiple backends (SQLite, PostgreSQL).
+"""Database factory for PostgreSQL backend only.
 
-This module provides configuration-driven database selection,
-allowing seamless transition from Phase 4 (SQLite) to Phase 5 (PostgreSQL).
+Docker-only configuration: PostgreSQL is the only supported backend.
+No SQLite fallback.
 """
 
 import os
-from typing import Union, Optional
-from pathlib import Path
-
-# Try to import both backends
-try:
-    from .database import Database as SQLiteDatabase
-    SQLITE_AVAILABLE = True
-except ImportError:
-    SQLITE_AVAILABLE = False
+from typing import Optional
 
 try:
     from .database_postgres import PostgresDatabase
@@ -23,38 +15,31 @@ except ImportError:
 
 
 class DatabaseFactory:
-    """Factory for creating database instances based on configuration.
+    """Factory for creating PostgreSQL database instances.
 
-    Priority order:
-    1. ATHENA_DB_TYPE environment variable
-    2. ATHENA_POSTGRES_* environment variables (for PostgreSQL)
-    3. ATHENA_DB_PATH environment variable (for SQLite)
-    4. Default: SQLite at ~/.athena/memory.db
+    Docker configuration (no fallback):
+    - ATHENA_POSTGRES_HOST: postgres (Docker service name)
+    - ATHENA_POSTGRES_PORT: 5432
+    - ATHENA_POSTGRES_DB: athena
+    - ATHENA_POSTGRES_USER: athena
+    - ATHENA_POSTGRES_PASSWORD: athena_password
 
     Usage:
-        # Automatic selection based on environment
+        # Automatic creation with hardcoded Docker defaults
         db = DatabaseFactory.create()
-
-        # Force PostgreSQL
-        db = DatabaseFactory.create(backend='postgres')
-
-        # Force SQLite
-        db = DatabaseFactory.create(backend='sqlite')
 
         # Custom PostgreSQL connection
         db = DatabaseFactory.create(
-            backend='postgres',
             host='localhost',
             port=5432,
             dbname='athena',
             user='athena',
-            password='athena_dev'
+            password='athena_password'
         )
     """
 
-    # Supported backends
+    # Only PostgreSQL supported
     BACKENDS = {
-        'sqlite': SQLiteDatabase if SQLITE_AVAILABLE else None,
         'postgres': PostgresDatabase if POSTGRES_AVAILABLE else None,
         'postgresql': PostgresDatabase if POSTGRES_AVAILABLE else None,
     }
@@ -64,111 +49,58 @@ class DatabaseFactory:
         cls,
         backend: Optional[str] = None,
         **kwargs
-    ) -> Union[SQLiteDatabase, PostgresDatabase]:
-        """Create a database instance.
+    ) -> PostgresDatabase:
+        """Create a PostgreSQL database instance.
 
         Args:
-            backend: Database backend ('sqlite', 'postgres', or None for auto-detect)
-            **kwargs: Backend-specific configuration
+            backend: Ignored (PostgreSQL only)
+            **kwargs: PostgreSQL-specific configuration
 
         Returns:
-            Database instance (SQLiteDatabase or PostgresDatabase)
+            PostgresDatabase instance
 
         Raises:
-            ValueError: If backend is not available or invalid
+            ValueError: If PostgreSQL backend is not available
         """
 
-        # Auto-detect backend if not specified
-        if backend is None:
-            backend = cls._detect_backend()
-
-        backend = backend.lower()
-
-        if backend not in cls.BACKENDS:
-            raise ValueError(
-                f"Unknown backend: {backend}. "
-                f"Supported: {list(cls.BACKENDS.keys())}"
-            )
-
-        backend_class = cls.BACKENDS[backend]
+        # PostgreSQL only
+        backend_class = cls.BACKENDS.get('postgres')
         if backend_class is None:
             raise ValueError(
-                f"Backend '{backend}' is not available. "
-                f"Install required dependencies (psycopg for PostgreSQL, sqlite3 for SQLite)"
+                "PostgreSQL backend is not available. "
+                "Install required dependencies: pip install psycopg[binary]>=3.1.0"
             )
 
-        # Create instance based on backend
-        if backend == 'sqlite':
-            return cls._create_sqlite(**kwargs)
-        else:  # postgres or postgresql
-            return cls._create_postgres(**kwargs)
+        return cls._create_postgres(**kwargs)
 
-    @classmethod
-    def _detect_backend(cls) -> str:
-        """Detect backend from environment.
-
-        Detection priority:
-        1. ATHENA_DB_TYPE environment variable
-        2. ATHENA_POSTGRES_HOST (if set, use PostgreSQL)
-        3. Default to SQLite
-
-        Returns:
-            Backend name ('sqlite' or 'postgres')
-        """
-
-        # Check explicit backend selection
-        if 'ATHENA_DB_TYPE' in os.environ:
-            return os.environ['ATHENA_DB_TYPE'].lower()
-
-        # Check PostgreSQL environment variables
-        if os.environ.get('ATHENA_POSTGRES_HOST'):
-            return 'postgres'
-
-        # Default to SQLite
-        return 'sqlite'
-
-    @classmethod
-    def _create_sqlite(cls, **kwargs) -> SQLiteDatabase:
-        """Create SQLite database instance.
-
-        Args:
-            **kwargs: SQLite-specific config (db_path)
-
-        Returns:
-            SQLiteDatabase instance
-        """
-
-        # Get database path from kwargs or environment
-        if 'db_path' in kwargs:
-            db_path = kwargs['db_path']
-        else:
-            db_path = os.environ.get(
-                'ATHENA_DB_PATH',
-                str(Path.home() / '.athena' / 'memory.db')
-            )
-
-        return SQLiteDatabase(db_path)
 
     @classmethod
     def _create_postgres(cls, **kwargs) -> PostgresDatabase:
-        """Create PostgreSQL database instance.
+        """Create PostgreSQL database instance with hardcoded Docker defaults.
+
+        Docker configuration (no fallback):
+        - host: postgres (Docker service name)
+        - port: 5432
+        - dbname: athena
+        - user: athena
+        - password: athena_password
 
         Args:
-            **kwargs: PostgreSQL-specific config (host, port, dbname, user, password, etc.)
+            **kwargs: PostgreSQL-specific config (only used if passed explicitly)
 
         Returns:
             PostgresDatabase instance
         """
 
-        # Get configuration from kwargs or environment
+        # Hardcoded Docker defaults - no environment variable fallback
         config = {
-            'host': kwargs.get('host') or os.environ.get('ATHENA_POSTGRES_HOST', 'localhost'),
-            'port': int(kwargs.get('port') or os.environ.get('ATHENA_POSTGRES_PORT', '5432')),
-            'dbname': kwargs.get('dbname') or os.environ.get('ATHENA_POSTGRES_DBNAME', 'athena'),
-            'user': kwargs.get('user') or os.environ.get('ATHENA_POSTGRES_USER', 'athena'),
-            'password': kwargs.get('password') or os.environ.get('ATHENA_POSTGRES_PASSWORD', 'athena_dev'),
-            'min_size': int(kwargs.get('min_size') or os.environ.get('ATHENA_POSTGRES_MIN_SIZE', '2')),
-            'max_size': int(kwargs.get('max_size') or os.environ.get('ATHENA_POSTGRES_MAX_SIZE', '10')),
+            'host': kwargs.get('host', 'postgres'),
+            'port': int(kwargs.get('port', '5432')),
+            'dbname': kwargs.get('dbname', 'athena'),
+            'user': kwargs.get('user', 'athena'),
+            'password': kwargs.get('password', 'athena_password'),
+            'min_size': int(kwargs.get('min_size', '2')),
+            'max_size': int(kwargs.get('max_size', '10')),
         }
 
         return PostgresDatabase(**config)
@@ -178,7 +110,7 @@ class DatabaseFactory:
         """Get list of available backends.
 
         Returns:
-            List of available backend names
+            List of available backend names (PostgreSQL only)
         """
         return [name for name, impl in cls.BACKENDS.items() if impl is not None]
 
@@ -190,42 +122,34 @@ class DatabaseFactory:
             backend: Backend name to check
 
         Returns:
-            True if available, False otherwise
+            True if PostgreSQL is available, False otherwise
         """
         return cls.BACKENDS.get(backend.lower()) is not None
 
 
 # Convenience function for quick database creation
-def get_database(
-    backend: Optional[str] = None,
-    **kwargs
-) -> Union[SQLiteDatabase, PostgresDatabase]:
-    """Get a database instance.
+def get_database(**kwargs) -> PostgresDatabase:
+    """Get a PostgreSQL database instance.
 
     This is a convenience function that wraps DatabaseFactory.create().
 
     Args:
-        backend: Database backend ('sqlite', 'postgres', or None for auto-detect)
-        **kwargs: Backend-specific configuration
+        **kwargs: PostgreSQL-specific configuration (optional, uses hardcoded Docker defaults)
 
     Returns:
-        Database instance
+        PostgresDatabase instance
 
     Example:
-        # Auto-detect from environment
+        # Use hardcoded Docker defaults
         db = get_database()
-
-        # Explicit PostgreSQL
-        db = get_database(backend='postgres')
 
         # Custom configuration
         db = get_database(
-            backend='postgres',
             host='localhost',
             port=5432,
             dbname='athena',
             user='athena',
-            password='athena_dev'
+            password='athena_password'
         )
     """
-    return DatabaseFactory.create(backend, **kwargs)
+    return DatabaseFactory.create(**kwargs)
