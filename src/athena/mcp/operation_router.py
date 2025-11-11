@@ -420,6 +420,17 @@ class OperationRouter:
         "explore_concept_network": "_handle_explore_concept_network",
     }
 
+    # CODE_EXECUTION_TOOLS: 7 operations (Phase 3 Week 11)
+    CODE_EXECUTION_OPERATIONS = {
+        "execute_code": "_handle_execute_code",
+        "execute_procedure": "_handle_execute_procedure",
+        "validate_code": "_handle_validate_code",
+        "generate_procedure_code": "_handle_generate_procedure_code",
+        "get_execution_context": "_handle_get_execution_context",
+        "record_execution": "_handle_record_execution",
+        "get_sandbox_config": "_handle_get_sandbox_config",
+    }
+
     # All operation maps
     OPERATION_MAPS = {
         "memory_tools": MEMORY_OPERATIONS,
@@ -456,6 +467,7 @@ class OperationRouter:
         "code_search_tools": CODE_SEARCH_OPERATIONS,
         "code_analysis_tools": CODE_ANALYSIS_OPERATIONS,
         "external_knowledge_tools": EXTERNAL_KNOWLEDGE_OPERATIONS,
+        "code_execution_tools": CODE_EXECUTION_OPERATIONS,
     }
 
     def __init__(self, handler_instance: Any):

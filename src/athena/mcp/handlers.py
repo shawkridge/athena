@@ -1152,6 +1152,32 @@ class MemoryMCPServer:
                         "required": ["operation"],
                     },
                 ),
+                Tool(
+                    name="code_execution_tools",
+                    description="Sandboxed code execution and procedure execution (execute_code, execute_procedure, validate_code, generate_procedure_code, get_execution_context, record_execution, get_sandbox_config). Phase 3 Week 11. Use 'operation' parameter.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "operation": {
+                                "type": "string",
+                                "enum": ["execute_code", "execute_procedure", "validate_code", "generate_procedure_code", "get_execution_context", "record_execution", "get_sandbox_config"],
+                                "description": "Code execution operation",
+                            },
+                            "code": {"type": "string", "description": "Python, JavaScript, or bash code to execute"},
+                            "language": {"type": "string", "enum": ["python", "javascript", "bash"], "description": "Code language", "default": "python"},
+                            "procedure_name": {"type": "string", "description": "Name of procedure to execute"},
+                            "procedure_id": {"type": "string", "description": "ID of procedure to execute"},
+                            "timeout_seconds": {"type": "integer", "description": "Execution timeout in seconds", "default": 30},
+                            "sandbox_mode": {"type": "string", "enum": ["srt", "restricted_python", "mock"], "description": "Sandbox mode", "default": "mock"},
+                            "capture_io": {"type": "boolean", "description": "Capture stdout/stderr", "default": True},
+                            "allow_network": {"type": "boolean", "description": "Allow network access", "default": False},
+                            "allow_filesystem": {"type": "boolean", "description": "Allow filesystem access", "default": False},
+                            "context_id": {"type": "string", "description": "Execution context ID for tracking"},
+                            "project_id": {"type": "integer", "description": "Project ID for procedure execution"},
+                        },
+                        "required": ["operation"],
+                    },
+                ),
             ]
 
         @self.server.call_tool()
@@ -11106,6 +11132,213 @@ Anomalies:
         """Explore concept relationships interactively."""
         from .handlers_external_knowledge import handle_explore_concept_network
         return await handle_explore_concept_network(self, args)
+
+    # ============================================================================
+    # CODE_EXECUTION_TOOLS: Phase 3 Week 11 - Sandboxed Code Execution
+    # ============================================================================
+
+    async def _handle_execute_code(self, args: dict) -> list[TextContent]:
+        """Execute code safely in sandbox."""
+        try:
+            from ..mcp.memory_api import MemoryAPI
+
+            api = MemoryAPI.create(self.db)
+            code = args.get("code", "")
+            language = args.get("language", "python")
+            timeout_seconds = args.get("timeout_seconds", 30)
+            capture_io = args.get("capture_io", True)
+            allow_network = args.get("allow_network", False)
+            allow_filesystem = args.get("allow_filesystem", False)
+
+            result = api.execute_code(
+                code=code,
+                language=language,
+                timeout_seconds=timeout_seconds,
+                capture_io=capture_io,
+                allow_network=allow_network,
+                allow_filesystem=allow_filesystem,
+            )
+
+            response = {
+                "status": "success" if result.success else "error",
+                "sandbox_id": result.sandbox_id,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "exit_code": result.exit_code,
+                "execution_time_ms": result.execution_time_ms,
+                "violations": result.violations,
+            }
+            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+        except Exception as e:
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps({"status": "error", "error": str(e)}, indent=2),
+                )
+            ]
+
+    async def _handle_execute_procedure(self, args: dict) -> list[TextContent]:
+        """Execute a procedure in sandbox."""
+        try:
+            from ..mcp.memory_api import MemoryAPI
+
+            api = MemoryAPI.create(self.db)
+            procedure_name = args.get("procedure_name")
+            procedure_id = args.get("procedure_id")
+
+            if not procedure_name and not procedure_id:
+                raise ValueError("Must provide either procedure_name or procedure_id")
+
+            result = api.execute_procedure(
+                procedure_name=procedure_name, procedure_id=procedure_id
+            )
+
+            response = {
+                "status": "success" if result.success else "error",
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "execution_time_ms": result.execution_time_ms,
+                "violations": result.violations,
+            }
+            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+        except Exception as e:
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps({"status": "error", "error": str(e)}, indent=2),
+                )
+            ]
+
+    async def _handle_validate_code(self, args: dict) -> list[TextContent]:
+        """Validate code for security violations."""
+        try:
+            from ..mcp.memory_api import MemoryAPI
+
+            api = MemoryAPI.create(self.db)
+            code = args.get("code", "")
+            language = args.get("language", "python")
+
+            result = api.validate_code(code=code, language=language)
+
+            response = {
+                "status": "valid" if result.get("valid", True) else "invalid",
+                "violations": result.get("violations", []),
+                "warnings": result.get("warnings", []),
+                "confidence_score": result.get("confidence_score", 0.0),
+            }
+            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+        except Exception as e:
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps({"status": "error", "error": str(e)}, indent=2),
+                )
+            ]
+
+    async def _handle_generate_procedure_code(self, args: dict) -> list[TextContent]:
+        """Generate code for a procedure using LLM."""
+        try:
+            from ..mcp.memory_api import MemoryAPI
+
+            api = MemoryAPI.create(self.db)
+            procedure_name = args.get("procedure_name")
+            procedure_id = args.get("procedure_id")
+
+            if not procedure_name and not procedure_id:
+                raise ValueError("Must provide either procedure_name or procedure_id")
+
+            result = api.generate_procedure_code(
+                procedure_name=procedure_name, procedure_id=procedure_id
+            )
+
+            response = {
+                "status": "success",
+                "code": result.get("code", ""),
+                "confidence_score": result.get("confidence_score", 0.0),
+                "validation_result": result.get("validation_result", {}),
+            }
+            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+        except Exception as e:
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps({"status": "error", "error": str(e)}, indent=2),
+                )
+            ]
+
+    async def _handle_get_execution_context(self, args: dict) -> list[TextContent]:
+        """Get execution context for tracking."""
+        try:
+            from ..mcp.memory_api import MemoryAPI
+
+            api = MemoryAPI.create(self.db)
+            context_id = args.get("context_id")
+
+            context = api.get_execution_context(context_id=context_id)
+
+            response = {
+                "status": "success",
+                "context": context.to_dict() if context else None,
+            }
+            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+        except Exception as e:
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps({"status": "error", "error": str(e)}, indent=2),
+                )
+            ]
+
+    async def _handle_record_execution(self, args: dict) -> list[TextContent]:
+        """Record execution event in memory."""
+        try:
+            from ..mcp.memory_api import MemoryAPI
+
+            api = MemoryAPI.create(self.db)
+            procedure_name = args.get("procedure_name")
+            duration_ms = args.get("duration_ms", 0)
+            learned = args.get("learned", "")
+
+            api.record_execution(
+                procedure_name=procedure_name, duration_ms=duration_ms, learned=learned
+            )
+
+            response = {
+                "status": "success",
+                "message": f"Recorded execution for {procedure_name}",
+            }
+            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+        except Exception as e:
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps({"status": "error", "error": str(e)}, indent=2),
+                )
+            ]
+
+    async def _handle_get_sandbox_config(self, args: dict) -> list[TextContent]:
+        """Get current sandbox configuration."""
+        try:
+            from ..sandbox.srt_config import SandboxConfig
+
+            config = SandboxConfig.default()
+
+            response = {
+                "status": "success",
+                "mode": config.mode.value,
+                "timeout_seconds": config.timeout_seconds,
+                "memory_limit_mb": config.memory_limit_mb,
+                "allow_network": config.allow_network,
+                "allow_filesystem": config.allow_filesystem,
+            }
+            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+        except Exception as e:
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps({"status": "error", "error": str(e)}, indent=2),
+                )
+            ]
 
     async def run(self):
         """Run the MCP server."""
