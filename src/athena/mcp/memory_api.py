@@ -118,25 +118,40 @@ class MemoryAPI:
         self.meta = manager.meta
         self.consolidation = manager.consolidation
 
-        # Ensure default project exists
-        self._ensure_default_project()
+        # Default project ID (lazy-initialized on first use)
+        self._default_project_id: Optional[int] = None
 
         logger.info("MemoryAPI initialized with all memory layers")
 
     def _ensure_default_project(self) -> int:
         """Ensure a default project exists for memory operations.
 
+        Lazily creates default project on first use. Uses async/sync bridge
+        to handle PostgreSQL async create_project() in sync context.
+
         Returns:
             Project ID for use in memory operations
         """
+        if self._default_project_id is not None:
+            return self._default_project_id
+
         try:
             import os
             cwd = os.getcwd()
             project_name = os.path.basename(cwd) or "default"
 
-            # Create a project for this working directory
-            # This uses the synchronous MemoryStore.create_project() method
-            project = self.semantic.create_project(project_name, cwd)
+            # Try to use the sync wrapper if available
+            if hasattr(self.semantic, 'create_project'):
+                # Synchronous method on MemoryStore
+                project = self.semantic.create_project(project_name, cwd)
+                if project and project.id:
+                    self._default_project_id = project.id
+                    logger.debug(f"Created/retrieved project: {project_name} (ID: {project.id})")
+                    return project.id
+
+            # Fallback: use database's async create_project with async/sync bridge
+            coro = self.db.create_project(project_name, cwd)
+            project = run_async(coro)
             if project and project.id:
                 self._default_project_id = project.id
                 logger.debug(f"Created/retrieved project: {project_name} (ID: {project.id})")
@@ -145,7 +160,7 @@ class MemoryAPI:
         except Exception as e:
             logger.debug(f"Could not create project: {e}")
 
-        # Fallback: use default project ID
+        # Fallback: use default project ID (1 is reserved for default)
         self._default_project_id = 1
         logger.debug("Using default project ID: 1")
         return 1
@@ -242,15 +257,23 @@ class MemoryAPI:
 
             mapped_type = memory_type_map.get(memory_type.lower(), MemoryType.FACT)
 
-            # Run async semantic.remember() call synchronously
-            memory_id = _run_async(
-                self.semantic.remember(
+            # Use sync wrapper if available, otherwise run async call synchronously
+            if hasattr(self.semantic, 'remember_sync'):
+                memory_id = self.semantic.remember_sync(
                     content=content,
                     memory_type=mapped_type,
                     project_id=project_id,
                     tags=tags,
                 )
-            )
+            else:
+                memory_id = _run_async(
+                    self.semantic.remember(
+                        content=content,
+                        memory_type=mapped_type,
+                        project_id=project_id,
+                        tags=tags,
+                    )
+                )
 
             logger.info(f"Remembered content: {memory_type} → {mapped_type} (ID: {memory_id})")
             return memory_id

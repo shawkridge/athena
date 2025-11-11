@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from ..core.models import Project
+from ..core.async_utils import run_async
 from ..memory import MemoryStore
 
 
@@ -82,3 +83,43 @@ class ProjectManager:
             )
 
         return self._current_project
+
+    # Sync wrappers for async methods (Phase 2: Executable Procedures)
+    def detect_current_project_sync(self) -> Optional[Project]:
+        """Synchronous wrapper for detect_current_project().
+
+        Detect current project from working directory in sync context.
+
+        Returns:
+            Current project if detected, None otherwise
+        """
+        coro = self.detect_current_project()
+        return run_async(coro)
+
+    def get_or_create_project_sync(self, name: Optional[str] = None) -> Project:
+        """Synchronous wrapper for get_or_create_project().
+
+        Get current project or create if doesn't exist in sync context.
+
+        Args:
+            name: Optional project name (defaults to directory name)
+
+        Returns:
+            Current or newly created project
+        """
+        coro = self.get_or_create_project(name)
+        return run_async(coro)
+
+    def require_project_sync(self) -> Project:
+        """Synchronous wrapper for require_project().
+
+        Get current project or raise error in sync context.
+
+        Returns:
+            Current project
+
+        Raises:
+            RuntimeError: If no project is active
+        """
+        coro = self.require_project()
+        return run_async(coro)

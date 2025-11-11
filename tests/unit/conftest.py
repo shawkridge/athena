@@ -71,10 +71,16 @@ def pytest_configure(config):
     import os
 
     # Ensure tests use SQLite, not PostgreSQL
-    # Remove PostgreSQL environment variables
-    for key in list(os.environ.keys()):
-        if 'POSTGRES' in key or 'DATABASE_URL' in key.upper():
-            del os.environ[key]
+    # Remove ALL PostgreSQL-related environment variables
+    postgres_keys = [
+        'POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_USER', 'POSTGRES_PASSWORD',
+        'POSTGRES_DB', 'DATABASE_URL', 'SQLALCHEMY_DATABASE_URI',
+        'ATHENA_POSTGRES_HOST', 'ATHENA_POSTGRES_PORT', 'ATHENA_POSTGRES_USER',
+        'ATHENA_POSTGRES_PASSWORD', 'ATHENA_POSTGRES_DB', 'ATHENA_POSTGRES_MIN_SIZE',
+        'ATHENA_POSTGRES_MAX_SIZE',
+    ]
+    for key in postgres_keys:
+        os.environ.pop(key, None)
 
     import athena.core.embeddings
     import athena.memory.store

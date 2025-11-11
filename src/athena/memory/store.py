@@ -11,6 +11,7 @@ from ..core.base_store import BaseStore
 from ..core.embeddings import EmbeddingModel
 from ..core.models import Memory, MemorySearchResult, MemoryType, Project
 from ..core import config
+from ..core.async_utils import run_async
 from .optimize import MemoryOptimizer
 from .search import SemanticSearch
 
@@ -146,17 +147,16 @@ class MemoryStore(BaseStore):
         # Generate embedding
         embedding = self.embedder.embed(content)
 
-        # Create memory object WITHOUT embedding (metadata only for SQLite)
-        memory = Memory(
+        # Store in PostgreSQL with correct signature
+        # PostgreSQL expects: store_memory(project_id, content, embedding, memory_type, ...)
+        memory_type_str = memory_type.value if isinstance(memory_type, MemoryType) else str(memory_type)
+        memory_id = await self.db.store_memory(
             project_id=project_id,
             content=content,
-            memory_type=memory_type,
+            embedding=embedding,
+            memory_type=memory_type_str,
             tags=tags or [],
-            embedding=None if self.qdrant else embedding,  # Skip if using Qdrant
         )
-
-        # Store metadata in PostgreSQL
-        memory_id = await self.db.store_memory(memory)
 
         # Store embedding in Qdrant if available
         if self.qdrant:
@@ -543,6 +543,44 @@ class MemoryStore(BaseStore):
         if hasattr(self.db, 'create_data_mapping'):
             return await self.db.create_data_mapping(mapping)
         return mapping
+
+    # Sync wrappers for async methods (Phase 2: Executable Procedures)
+    def remember_sync(
+        self,
+        content: str,
+        memory_type: MemoryType | str,
+        project_id: int,
+        tags: Optional[list[str]] = None,
+    ) -> int:
+        """Synchronous wrapper for remember().
+
+        Store a new memory with embedding in a sync context.
+
+        Args:
+            content: Memory content
+            memory_type: Type of memory
+            project_id: Project ID
+            tags: Optional tags
+
+        Returns:
+            ID of stored memory
+        """
+        coro = self.remember(content, memory_type, project_id, tags)
+        return run_async(coro)
+
+    def get_project_by_path_sync(self, path: str) -> Optional[Project]:
+        """Synchronous wrapper for get_project_by_path().
+
+        Find project by path in a sync context.
+
+        Args:
+            path: Directory path
+
+        Returns:
+            Project if found, None otherwise
+        """
+        coro = self.get_project_by_path(path)
+        return run_async(coro)
 
     def close(self):
         """Close database connection."""
