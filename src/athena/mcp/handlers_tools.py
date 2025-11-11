@@ -15,6 +15,7 @@ import logging
 from typing import Any, List
 
 from mcp.types import TextContent
+from .structured_result import StructuredResult, PaginationMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -305,6 +306,8 @@ async def handle_list_hooks(server: Any, args: dict) -> List[TextContent]:
     Shows hook registry with execution counts and error status.
     """
     try:
+        limit = args.get("limit", 50)
+
         # Lazy initialize HookDispatcher
         if not hasattr(server, '_hook_dispatcher'):
             from ..hooks.dispatcher import HookDispatcher
@@ -322,18 +325,33 @@ async def handle_list_hooks(server: Any, args: dict) -> List[TextContent]:
                     "last_error": info.get("last_error")
                 })
 
-            response = f"""**Hook Registry**
-Total Hooks: {len(hooks_info)}
-Hooks:
-{json.dumps(hooks_info, indent=2)}"""
+            hooks_info = hooks_info[:limit]
+
+            result = StructuredResult.success(
+                data=hooks_info,
+                metadata={
+                    "operation": "list_hooks",
+                    "schema": "hooks",
+                    "total_hooks": len(hooks_info),
+                },
+                pagination=PaginationMetadata(
+                    returned=len(hooks_info),
+                    limit=limit,
+                )
+            )
+
         except Exception as op_err:
             logger.debug(f"Hook listing error: {op_err}")
-            response = "Error: Could not list hooks"
+            result = StructuredResult.error(
+                f"Could not list hooks: {str(op_err)}",
+                metadata={"operation": "list_hooks"}
+            )
 
-        return [TextContent(type="text", text=response)]
     except Exception as e:
         logger.error(f"Error in handle_list_hooks: {e}", exc_info=True)
-        return [TextContent(type="text", text=f"Error: {str(e)}")]
+        result = StructuredResult.error(str(e), metadata={"operation": "list_hooks"})
+
+    return [result.as_optimized_content(schema_name="hooks")]
 
 
 async def handle_configure_rate_limiting(server: Any, args: dict) -> List[TextContent]:

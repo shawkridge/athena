@@ -15,6 +15,7 @@ from typing import Any, List, Optional, Dict
 from pathlib import Path
 
 from mcp.types import TextContent
+from .structured_result import StructuredResult, PaginationMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -59,13 +60,15 @@ async def handle_search_code_semantically(server: Any, args: dict) -> List[TextC
     try:
         query = args.get("query", "")
         repo_path = args.get("repo_path", "")
-        limit = args.get("limit", 10)
+        limit = min(args.get("limit", 10), 100)
         min_score = args.get("min_score", 0.3)
 
         if not query:
-            return [TextContent(type="text", text="Error: query parameter is required")]
+            result = StructuredResult.error("query parameter is required", metadata={"operation": "search_code_semantically"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
         if not repo_path:
-            return [TextContent(type="text", text="Error: repo_path parameter is required")]
+            result = StructuredResult.error("repo_path parameter is required", metadata={"operation": "search_code_semantically"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
 
         # Initialize search engine and build index
         search_engine = _get_or_init_tree_sitter_search(server, repo_path)
@@ -78,40 +81,44 @@ async def handle_search_code_semantically(server: Any, args: dict) -> List[TextC
         try:
             results = search_engine.search(query, top_k=limit, min_score=min_score)
 
-            # Format results
+            # Format results for structured response
             formatted_results = []
-            for i, result in enumerate(results or [], 1):
-                unit = result.unit
-                formatted_results.append(
-                    f"**#{i} {unit.name}** (`{unit.type}`)\n"
-                    f"File: `{unit.file_path}:{unit.start_line}-{unit.end_line}`\n"
-                    f"Relevance: {result.relevance:.2%}\n"
-                    f"Signature: `{unit.signature[:60]}...`"
+            for i, search_result in enumerate(results or [], 1):
+                unit = search_result.unit
+                formatted_results.append({
+                    "rank": i,
+                    "name": unit.name,
+                    "type": unit.type,
+                    "file": unit.file_path,
+                    "lines": f"{unit.start_line}-{unit.end_line}",
+                    "relevance": round(search_result.relevance * 100, 1),
+                    "signature": unit.signature[:60] if hasattr(unit, 'signature') else "N/A"
+                })
+
+            result = StructuredResult.success(
+                data=formatted_results,
+                metadata={
+                    "operation": "search_code_semantically",
+                    "schema": "code_analysis",
+                    "query": query,
+                    "repo_path": repo_path,
+                    "min_score": min_score,
+                },
+                pagination=PaginationMetadata(
+                    returned=len(formatted_results),
+                    limit=limit,
                 )
-
-            if not formatted_results:
-                result_text = "No matching code elements found for the query."
-            else:
-                result_text = "\n\n".join(formatted_results)
-
-            response = f"""**Semantic Code Search Results**
-Query: {query}
-Repository: {repo_path}
-Limit: {limit}
-Min Score: {min_score}
-Results Found: {len(results) if results else 0}
-
-{result_text}"""
-
-            return [TextContent(type="text", text=response)]
+            )
 
         except Exception as search_err:
             logger.debug(f"Code search error: {search_err}")
-            return [TextContent(type="text", text=f"Search Error: {str(search_err)}")]
+            result = StructuredResult.error(f"Search Error: {str(search_err)}", metadata={"operation": "search_code_semantically"})
 
     except Exception as e:
         logger.error(f"Error in handle_search_code_semantically: {e}", exc_info=True)
-        return [TextContent(type="text", text=f"Error: {str(e)}")]
+        result = StructuredResult.error(str(e), metadata={"operation": "search_code_semantically"})
+
+    return [result.as_optimized_content(schema_name="code_analysis")]
 
 
 async def handle_search_code_by_type(server: Any, args: dict) -> List[TextContent]:
@@ -127,12 +134,14 @@ async def handle_search_code_by_type(server: Any, args: dict) -> List[TextConten
         unit_type = args.get("unit_type", "")
         repo_path = args.get("repo_path", "")
         query = args.get("query")
-        limit = args.get("limit", 10)
+        limit = min(args.get("limit", 10), 100)
 
         if not unit_type:
-            return [TextContent(type="text", text="Error: unit_type parameter is required")]
+            result = StructuredResult.error("unit_type parameter is required", metadata={"operation": "search_code_by_type"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
         if not repo_path:
-            return [TextContent(type="text", text="Error: repo_path parameter is required")]
+            result = StructuredResult.error("repo_path parameter is required", metadata={"operation": "search_code_by_type"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
 
         # Initialize search engine
         search_engine = _get_or_init_tree_sitter_search(server, repo_path)
@@ -144,38 +153,43 @@ async def handle_search_code_by_type(server: Any, args: dict) -> List[TextConten
         try:
             results = search_engine.search_by_type(unit_type, query, limit)
 
-            # Format results
+            # Format results for structured response
             formatted_results = []
-            for i, result in enumerate(results or [], 1):
-                unit = result.unit
-                formatted_results.append(
-                    f"**#{i} {unit.name}** ({unit.type})\n"
-                    f"File: `{unit.file_path}:{unit.start_line}`\n"
-                    f"Relevance: {result.relevance:.2%}"
+            for i, search_result in enumerate(results or [], 1):
+                unit = search_result.unit
+                formatted_results.append({
+                    "rank": i,
+                    "name": unit.name,
+                    "type": unit.type,
+                    "file": unit.file_path,
+                    "line": unit.start_line,
+                    "relevance": round(search_result.relevance * 100, 1)
+                })
+
+            result = StructuredResult.success(
+                data=formatted_results,
+                metadata={
+                    "operation": "search_code_by_type",
+                    "schema": "code_analysis",
+                    "unit_type": unit_type,
+                    "query_filter": query,
+                    "repo_path": repo_path,
+                },
+                pagination=PaginationMetadata(
+                    returned=len(formatted_results),
+                    limit=limit,
                 )
-
-            if not formatted_results:
-                result_text = f"No {unit_type} elements found."
-            else:
-                result_text = "\n\n".join(formatted_results)
-
-            response = f"""**Code Search by Type**
-Type: {unit_type}
-Query: {query or 'None'}
-Repository: {repo_path}
-Results: {len(results) if results else 0}
-
-{result_text}"""
-
-            return [TextContent(type="text", text=response)]
+            )
 
         except Exception as search_err:
             logger.debug(f"Type search error: {search_err}")
-            return [TextContent(type="text", text=f"Search Error: {str(search_err)}")]
+            result = StructuredResult.error(f"Search Error: {str(search_err)}", metadata={"operation": "search_code_by_type"})
 
     except Exception as e:
         logger.error(f"Error in handle_search_code_by_type: {e}", exc_info=True)
-        return [TextContent(type="text", text=f"Error: {str(e)}")]
+        result = StructuredResult.error(str(e), metadata={"operation": "search_code_by_type"})
+
+    return [result.as_optimized_content(schema_name="code_analysis")]
 
 
 async def handle_search_code_by_name(server: Any, args: dict) -> List[TextContent]:
@@ -191,12 +205,14 @@ async def handle_search_code_by_name(server: Any, args: dict) -> List[TextConten
         name = args.get("name", "")
         repo_path = args.get("repo_path", "")
         exact = args.get("exact", False)
-        limit = args.get("limit", 10)
+        limit = min(args.get("limit", 10), 100)
 
         if not name:
-            return [TextContent(type="text", text="Error: name parameter is required")]
+            result = StructuredResult.error("name parameter is required", metadata={"operation": "search_code_by_name"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
         if not repo_path:
-            return [TextContent(type="text", text="Error: repo_path parameter is required")]
+            result = StructuredResult.error("repo_path parameter is required", metadata={"operation": "search_code_by_name"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
 
         # Initialize search engine
         search_engine = _get_or_init_tree_sitter_search(server, repo_path)
@@ -208,38 +224,43 @@ async def handle_search_code_by_name(server: Any, args: dict) -> List[TextConten
         try:
             results = search_engine.search_by_name(name, limit, exact)
 
-            # Format results
+            # Format results for structured response
             formatted_results = []
-            for i, result in enumerate(results or [], 1):
-                unit = result.unit
-                formatted_results.append(
-                    f"**#{i} {unit.name}** ({unit.type})\n"
-                    f"File: `{unit.file_path}:{unit.start_line}`\n"
-                    f"Match Score: {result.relevance:.2%}"
+            for i, search_result in enumerate(results or [], 1):
+                unit = search_result.unit
+                formatted_results.append({
+                    "rank": i,
+                    "name": unit.name,
+                    "type": unit.type,
+                    "file": unit.file_path,
+                    "line": unit.start_line,
+                    "match_score": round(search_result.relevance * 100, 1)
+                })
+
+            result = StructuredResult.success(
+                data=formatted_results,
+                metadata={
+                    "operation": "search_code_by_name",
+                    "schema": "code_analysis",
+                    "name": name,
+                    "exact_match": exact,
+                    "repo_path": repo_path,
+                },
+                pagination=PaginationMetadata(
+                    returned=len(formatted_results),
+                    limit=limit,
                 )
-
-            if not formatted_results:
-                result_text = f"No elements with name '{name}' found."
-            else:
-                result_text = "\n\n".join(formatted_results)
-
-            response = f"""**Code Search by Name**
-Name: {name}
-Exact Match: {exact}
-Repository: {repo_path}
-Results: {len(results) if results else 0}
-
-{result_text}"""
-
-            return [TextContent(type="text", text=response)]
+            )
 
         except Exception as search_err:
             logger.debug(f"Name search error: {search_err}")
-            return [TextContent(type="text", text=f"Search Error: {str(search_err)}")]
+            result = StructuredResult.error(f"Search Error: {str(search_err)}", metadata={"operation": "search_code_by_name"})
 
     except Exception as e:
         logger.error(f"Error in handle_search_code_by_name: {e}", exc_info=True)
-        return [TextContent(type="text", text=f"Error: {str(e)}")]
+        result = StructuredResult.error(str(e), metadata={"operation": "search_code_by_name"})
+
+    return [result.as_optimized_content(schema_name="code_analysis")]
 
 
 async def handle_analyze_code_file(server: Any, args: dict) -> List[TextContent]:

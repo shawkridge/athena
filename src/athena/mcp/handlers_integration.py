@@ -16,6 +16,7 @@ Organized by domain for clarity and maintainability.
 import logging
 from typing import Optional, List
 from mcp.types import TextContent
+from .structured_result import StructuredResult, PaginationMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -758,6 +759,8 @@ async def handle_list_automation_rules(server, args: dict) -> List[TextContent]:
         List of active automation rules with details
     """
     try:
+        limit = args.get("limit", 50)
+
         # Get automation orchestrator
         if not hasattr(server, '_automation_orchestrator'):
             from ..automation.orchestrator import AutomationOrchestrator
@@ -770,27 +773,37 @@ async def handle_list_automation_rules(server, args: dict) -> List[TextContent]:
             logger.debug(f"List rules error: {list_err}")
             rules = []
 
-        response = f"""**Automation Rules**
+        rules = rules[:limit]
 
-Total Rules: {len(rules) if rules else 0}
-"""
+        # Format rules for structured response
+        formatted_rules = []
+        for rule in rules:
+            rule_dict = rule.to_dict() if hasattr(rule, 'to_dict') else rule
+            if isinstance(rule_dict, dict):
+                formatted_rules.append({
+                    "id": rule_dict.get('id', 'N/A'),
+                    "name": rule_dict.get('name', 'Unknown'),
+                    "trigger_event": rule_dict.get('trigger_event', 'N/A'),
+                    "action": rule_dict.get('action', 'N/A'),
+                    "status": rule_dict.get('status', 'active')
+                })
 
-        if rules:
-            for rule in rules:
-                rule_dict = rule.to_dict() if hasattr(rule, 'to_dict') else rule
-                if isinstance(rule_dict, dict):
-                    response += f"""
-**{rule_dict.get('name', 'Unknown')}** (ID: {rule_dict.get('id', 'N/A')})
-Trigger: {rule_dict.get('trigger_event', 'N/A')}
-Action: {rule_dict.get('action', 'N/A')}
-Status: {rule_dict.get('status', 'active')}
-"""
-
-        return [TextContent(type="text", text=response)]
+        result = StructuredResult.success(
+            data=formatted_rules,
+            metadata={
+                "operation": "list_automation_rules",
+                "schema": "automation",
+            },
+            pagination=PaginationMetadata(
+                returned=len(formatted_rules),
+                limit=limit,
+            )
+        )
 
     except Exception as e:
-        logger.error(f"Error in list_automation_rules: {e}", exc_info=True)
-        return [TextContent(type="text", text=f"Error: {str(e)}")]
+        result = StructuredResult.error(str(e), metadata={"operation": "list_automation_rules"})
+
+    return [result.as_optimized_content(schema_name="automation")]
 
 
 async def handle_update_automation_config(server, args: dict) -> List[TextContent]:
@@ -1193,23 +1206,31 @@ async def handle_list_active_conversations(server, args: dict) -> List[TextConte
             logger.debug(f"List conversations error: {list_err}")
             conversations = []
 
-        response = f"""**Active Conversations**
+        # Format conversations for structured response
+        formatted_conversations = []
+        for conv in conversations:
+            conv_dict = conv.to_dict() if hasattr(conv, 'to_dict') else conv
+            if isinstance(conv_dict, dict):
+                formatted_conversations.append({
+                    "id": conv_dict.get('id', 'N/A'),
+                    "title": conv_dict.get('title', 'Untitled'),
+                    "message_count": conv_dict.get('message_count', 0),
+                    "status": conv_dict.get('status', 'active')
+                })
 
-Total: {len(conversations) if conversations else 0}
-"""
-
-        if conversations:
-            for conv in conversations:
-                conv_dict = conv.to_dict() if hasattr(conv, 'to_dict') else conv
-                if isinstance(conv_dict, dict):
-                    response += f"""
-**{conv_dict.get('title', 'Untitled')}** (ID: {conv_dict.get('id', 'N/A')})
-Messages: {conv_dict.get('message_count', 0)}
-Status: {conv_dict.get('status', 'active')}
-"""
-
-        return [TextContent(type="text", text=response)]
+        result = StructuredResult.success(
+            data=formatted_conversations,
+            metadata={
+                "operation": "list_active_conversations",
+                "schema": "conversation",
+            },
+            pagination=PaginationMetadata(
+                returned=len(formatted_conversations),
+                limit=limit,
+            )
+        )
 
     except Exception as e:
-        logger.error(f"Error in list_active_conversations: {e}", exc_info=True)
-        return [TextContent(type="text", text=f"Error: {str(e)}")]
+        result = StructuredResult.error(str(e), metadata={"operation": "list_active_conversations"})
+
+    return [result.as_optimized_content(schema_name="conversation")]

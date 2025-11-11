@@ -1409,32 +1409,70 @@ class MemoryMCPServer:
 
     async def _handle_search_projects(self, args: dict) -> list[TextContent]:
         """Handle search_projects tool call."""
-        exclude_id = None
-        if args.get("exclude_current", False):
-            current = self.project_manager.detect_current_project()
-            if current:
-                exclude_id = current.id
+        try:
+            k = min(int(args.get("k", 5)), 100)
+            exclude_id = None
+            if args.get("exclude_current", False):
+                current = self.project_manager.detect_current_project()
+                if current:
+                    exclude_id = current.id
 
-        results = self.store.search_across_projects(
-            query=args["query"], exclude_project_id=exclude_id, k=5
-        )
+            results = self.store.search_across_projects(
+                query=args["query"], exclude_project_id=exclude_id, k=k
+            )
 
-        if not results:
-            return [TextContent(type="text", text="No relevant memories found across projects.")]
+            if not results:
+                result = StructuredResult.success(
+                    data=[],
+                    metadata={
+                        "operation": "search_projects",
+                        "schema": "semantic_search",
+                        "query": args["query"],
+                        "exclude_current": args.get("exclude_current", False),
+                    },
+                    pagination=PaginationMetadata(
+                        returned=0,
+                        limit=k,
+                    )
+                )
+            else:
+                # Format results for structured response
+                formatted_results = []
+                for search_result in results:
+                    # Get project info
+                    cursor = self.store.db.conn.cursor()
+                    cursor.execute("SELECT name FROM projects WHERE id = ?", (search_result.memory.project_id,))
+                    row = cursor.fetchone()
+                    project_name = row[0] if row else "Unknown"
 
-        response = f"Found {len(results)} memories across projects:\n\n"
-        for result in results:
-            # Get project info
-            cursor = self.store.db.conn.cursor()
-            cursor.execute("SELECT name FROM projects WHERE id = ?", (result.memory.project_id,))
-            project_name = cursor.fetchone()[0]
+                    # memory_type is already a string due to use_enum_values = True
+                    memory_type = search_result.memory.memory_type if isinstance(search_result.memory.memory_type, str) else search_result.memory.memory_type.value
 
-            # memory_type is already a string due to use_enum_values = True
-            memory_type = result.memory.memory_type if isinstance(result.memory.memory_type, str) else result.memory.memory_type.value
-            response += f"Project: {project_name} | [{memory_type.upper()}]\n"
-            response += f"  {result.memory.content}\n\n"
+                    formatted_results.append({
+                        "project": project_name,
+                        "memory_type": memory_type.upper(),
+                        "content": search_result.memory.content[:200],
+                        "usefulness_score": round(search_result.memory.usefulness_score, 2) if hasattr(search_result.memory, 'usefulness_score') else 0.0,
+                    })
 
-        return [TextContent(type="text", text=response)]
+                result = StructuredResult.success(
+                    data=formatted_results,
+                    metadata={
+                        "operation": "search_projects",
+                        "schema": "semantic_search",
+                        "query": args["query"],
+                        "exclude_current": args.get("exclude_current", False),
+                        "count": len(formatted_results),
+                    },
+                    pagination=PaginationMetadata(
+                        returned=len(formatted_results),
+                        limit=k,
+                    )
+                )
+        except Exception as e:
+            result = StructuredResult.error(str(e), metadata={"operation": "search_projects"})
+
+        return [result.as_optimized_content(schema_name="semantic_search")]
 
     # Episodic memory handlers
     async def _handle_record_event(self, args: dict) -> list[TextContent]:
@@ -6610,7 +6648,11 @@ class MemoryMCPServer:
             limit = args.get("limit", 50)
 
             if not project_id:
-                return [TextContent(type="text", text="Missing project_id")]
+                result = StructuredResult.error(
+                    "Missing project_id",
+                    metadata={"operation": "list_rules"}
+                )
+                return [result.as_optimized_content(schema_name="validation")]
 
             rules = self.rules_store.list_rules(project_id, enabled_only=enabled_only)
 
@@ -6619,14 +6661,35 @@ class MemoryMCPServer:
 
             rules = rules[:limit]
 
-            result = f"Found {len(rules)} rule(s) for project {project_id}:\n"
+            # Format rules for structured response
+            formatted_rules = []
             for rule in rules:
-                result += f"  - ID {rule.id}: {rule.name} ({rule.category}, severity={rule.severity})\n"
+                category_val = str(rule.category) if not isinstance(rule.category, str) else rule.category
+                formatted_rules.append({
+                    "id": rule.id,
+                    "name": rule.name,
+                    "category": category_val,
+                    "severity": str(rule.severity) if hasattr(rule, 'severity') else "unknown",
+                    "enabled": enabled_only  # inferred from filter
+                })
 
-            return [TextContent(type="text", text=result)]
+            result = StructuredResult.success(
+                data=formatted_rules,
+                metadata={
+                    "operation": "list_rules",
+                    "schema": "validation",
+                    "project_id": project_id,
+                    "category_filter": category,
+                },
+                pagination=PaginationMetadata(
+                    returned=len(formatted_rules),
+                    limit=limit,
+                )
+            )
         except Exception as e:
-            logger.error(f"Error in list_rules: {e}", exc_info=True)
-            return [TextContent(type="text", text=f"Error: {str(e)}")]
+            result = StructuredResult.error(str(e), metadata={"operation": "list_rules"})
+
+        return [result.as_optimized_content(schema_name="validation")]
 
     async def _handle_validate_task_against_rules(self, args: dict) -> list[TextContent]:
         """Handle validate_task_against_rules tool call."""
@@ -7730,6 +7793,7 @@ Anomalies:
         try:
             project_id = args.get("project_id")
             source_type = args.get("source_type")
+            limit = args.get("limit", 50)
 
             # Create store
             context_store = ContextAdapterStore(self.store.db)
@@ -7743,25 +7807,26 @@ Anomalies:
             if source_type:
                 connections = [c for c in connections if c.source_type.value == source_type]
 
-            # Build JSON response
-            now = datetime.utcnow().isoformat() + "Z"
+            connections = connections[:limit]
 
             if not connections:
-                response_data = {
-                    "status": "success",
-                    "timestamp": now,
-                    "sources_summary": {
-                        "total_count": 0,
-                        "active_count": 0,
-                        "disabled_count": 0,
-                        "by_type": {}
+                result = StructuredResult.success(
+                    data=[],
+                    metadata={
+                        "operation": "list_external_sources",
+                        "schema": "integration",
+                        "project_id": project_id,
+                        "source_type_filter": source_type,
+                        "recommendations": [
+                            "No external sources configured. Consider connecting GitHub, Jira, or Slack.",
+                            "Start with GitHub for version control awareness."
+                        ]
                     },
-                    "sources": [],
-                    "recommendations": [
-                        "No external sources configured. Consider connecting GitHub, Jira, or Slack for enhanced integration.",
-                        "Start with GitHub for version control awareness and commit history tracking."
-                    ]
-                }
+                    pagination=PaginationMetadata(
+                        returned=0,
+                        limit=limit,
+                    )
+                )
             else:
                 # Calculate statistics
                 active_count = sum(1 for c in connections if c.enabled)
@@ -7771,7 +7836,7 @@ Anomalies:
                     source_type_val = conn.source_type.value.upper()
                     by_type[source_type_val] = by_type.get(source_type_val, 0) + 1
 
-                # Build sources array
+                # Format sources array
                 sources_list = []
                 for conn in connections:
                     sources_list.append({
@@ -7787,38 +7852,41 @@ Anomalies:
                 # Generate recommendations
                 recommendations = []
                 if disabled_count > 0:
-                    recommendations.append(f"Enable {disabled_count} disabled source(s) to resume synchronization")
+                    recommendations.append(f"Enable {disabled_count} disabled source(s)")
                 if len(connections) > 5:
-                    recommendations.append("Consider consolidating sources - 5+ connections may impact sync performance")
+                    recommendations.append("Consider consolidating 5+ connections")
                 if "GITHUB" not in by_type:
-                    recommendations.append("Add GitHub integration for version control awareness and code change tracking")
+                    recommendations.append("Add GitHub integration")
                 if active_count == 0:
-                    recommendations.append("All sources are disabled. Enable at least one for active integration")
+                    recommendations.append("Enable at least one source")
                 if not recommendations:
-                    recommendations.append(f"Active integration with {active_count} source(s) - monitor sync frequency")
+                    recommendations.append(f"Active: {active_count} source(s)")
 
-                response_data = {
-                    "status": "success",
-                    "timestamp": now,
-                    "sources_summary": {
-                        "total_count": len(connections),
-                        "active_count": active_count,
-                        "disabled_count": disabled_count,
-                        "by_type": by_type
+                result = StructuredResult.success(
+                    data=sources_list,
+                    metadata={
+                        "operation": "list_external_sources",
+                        "schema": "integration",
+                        "project_id": project_id,
+                        "source_type_filter": source_type,
+                        "summary": {
+                            "total_count": len(connections),
+                            "active_count": active_count,
+                            "disabled_count": disabled_count,
+                            "by_type": by_type
+                        },
+                        "recommendations": recommendations[:3]
                     },
-                    "sources": sources_list,
-                    "recommendations": recommendations[:3]  # Top 3 recommendations
-                }
+                    pagination=PaginationMetadata(
+                        returned=len(sources_list),
+                        limit=limit,
+                    )
+                )
 
-            return [TextContent(type="text", text=json.dumps(response_data, indent=2))]
         except Exception as e:
-            logger.error(f"Error in list_external_sources: {e}", exc_info=True)
-            error_response = {
-                "status": "error",
-                "error": str(e),
-                "timestamp": datetime.utcnow().isoformat() + "Z"
-            }
-            return [TextContent(type="text", text=json.dumps(error_response, indent=2))]
+            result = StructuredResult.error(str(e), metadata={"operation": "list_external_sources"})
+
+        return [result.as_optimized_content(schema_name="integration")]
 
     async def _handle_sync_with_external_system(self, args: dict) -> list[TextContent]:
         """Sync with external system with quality metrics and performance tracking."""
