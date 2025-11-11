@@ -10224,8 +10224,7 @@ Anomalies:
             project = self.project_manager.get_or_create_project()
             layer = args.get("layer", "all").lower()
 
-            response = f"Memory Layer Health Report\n"
-            response += f"=" * 50 + "\n"
+            layers_health = {}
 
             # Episodic layer
             if layer in ["episodic", "all"]:
@@ -10236,11 +10235,12 @@ Anomalies:
                         (project.id,)
                     )
                     count = cursor.fetchone()[0]
-                    response += f"\n📅 Episodic Layer\n"
-                    response += f"  Events: {count}\n"
-                    response += f"  Health: {'✓ Good' if count > 0 else '⚠ Empty'}\n"
+                    layers_health["episodic"] = {
+                        "events": count,
+                        "health": "Good" if count > 0 else "Empty"
+                    }
                 except Exception as e:
-                    response += f"\n📅 Episodic Layer: Error ({str(e)[:30]})\n"
+                    layers_health["episodic"] = {"error": str(e)[:30]}
 
             # Semantic layer
             if layer in ["semantic", "all"]:
@@ -10251,25 +10251,25 @@ Anomalies:
                         (project.id,)
                     )
                     count = cursor.fetchone()[0]
-                    response += f"\n💾 Semantic Layer\n"
-                    response += f"  Memories: {count}\n"
-                    response += f"  Health: {'✓ Good' if count > 0 else '⚠ Empty'}\n"
+                    layers_health["semantic"] = {
+                        "memories": count,
+                        "health": "Good" if count > 0 else "Empty"
+                    }
                 except Exception as e:
-                    response += f"\n💾 Semantic Layer: Error ({str(e)[:30]})\n"
+                    layers_health["semantic"] = {"error": str(e)[:30]}
 
             # Procedural layer
             if layer in ["procedural", "all"]:
                 try:
                     cursor = self.procedural_store.db.conn.cursor()
-                    cursor.execute(
-                        "SELECT COUNT(*) FROM procedures"
-                    )
+                    cursor.execute("SELECT COUNT(*) FROM procedures")
                     count = cursor.fetchone()[0]
-                    response += f"\n🔄 Procedural Layer\n"
-                    response += f"  Procedures: {count}\n"
-                    response += f"  Health: {'✓ Good' if count > 0 else '⚠ Empty'}\n"
+                    layers_health["procedural"] = {
+                        "procedures": count,
+                        "health": "Good" if count > 0 else "Empty"
+                    }
                 except Exception as e:
-                    response += f"\n🔄 Procedural Layer: Error ({str(e)[:30]})\n"
+                    layers_health["procedural"] = {"error": str(e)[:30]}
 
             # Prospective layer
             if layer in ["prospective", "all"]:
@@ -10280,11 +10280,12 @@ Anomalies:
                         (project.id,)
                     )
                     count = cursor.fetchone()[0]
-                    response += f"\n⏳ Prospective Layer\n"
-                    response += f"  Tasks: {count}\n"
-                    response += f"  Health: {'✓ Good' if count > 0 else '⚠ Empty'}\n"
+                    layers_health["prospective"] = {
+                        "tasks": count,
+                        "health": "Good" if count > 0 else "Empty"
+                    }
                 except Exception as e:
-                    response += f"\n⏳ Prospective Layer: Error ({str(e)[:30]})\n"
+                    layers_health["prospective"] = {"error": str(e)[:30]}
 
             # Graph layer
             if layer in ["graph", "all"]:
@@ -10297,28 +10298,39 @@ Anomalies:
                     entity_count = cursor.fetchone()[0]
                     cursor.execute("SELECT COUNT(*) FROM entity_relations")
                     relation_count = cursor.fetchone()[0]
-                    response += f"\n📊 Knowledge Graph Layer\n"
-                    response += f"  Entities: {entity_count}\n"
-                    response += f"  Relations: {relation_count}\n"
-                    response += f"  Health: {'✓ Good' if entity_count > 0 else '⚠ Empty'}\n"
+                    layers_health["graph"] = {
+                        "entities": entity_count,
+                        "relations": relation_count,
+                        "health": "Good" if entity_count > 0 else "Empty"
+                    }
                 except Exception as e:
-                    response += f"\n📊 Knowledge Graph Layer: Error ({str(e)[:30]})\n"
+                    layers_health["graph"] = {"error": str(e)[:30]}
 
             # Meta-memory layer
             if layer in ["meta-memory", "all"]:
-                response += f"\n🎯 Meta-Memory Layer\n"
-                response += f"  Status: ✓ Active\n"
-                response += f"  Health: ✓ Good\n"
+                layers_health["meta_memory"] = {
+                    "status": "Active",
+                    "health": "Good"
+                }
 
-            response += f"\n" + "=" * 50 + "\n"
-            response += f"Overall System Health: ✓ Operational"
+            structured_data = {
+                "project_id": project.id,
+                "layer_filter": layer,
+                "layers": layers_health,
+                "overall_health": "Operational"
+            }
 
-            return [TextContent(type="text", text=response)]
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_layer_health", "schema": "meta"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="meta")]
 
         except Exception as e:
             logger.error(f"Error in get_layer_health [args={args}]: {e}", exc_info=True)
-            error_response = json.dumps({"error": str(e), "tool": "get_layer_health"})
-            return [TextContent(type="text", text=error_response)]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_layer_health"})
+            return [result.as_optimized_content(schema_name="meta")]
 
     async def _handle_get_task_health(self, args: dict) -> list[TextContent]:
         """Handle get_task_health tool call.
@@ -10771,22 +10783,26 @@ Anomalies:
         try:
             symbol = args.get("symbol")
             if not symbol:
-                return [TextContent(type="text", text=json.dumps({
-                    "status": "error", "error": "symbol parameter is required"
-                }))]
+                result = StructuredResult.error("symbol parameter is required", metadata={"operation": "get_symbol_info"})
+                return [result.as_optimized_content(schema_name="code_analysis")]
 
-            response = {
-                "status": "success",
+            structured_data = {
                 "symbol": symbol,
                 "type": "unknown",
                 "references": 0,
                 "definitions": 0,
                 "timestamp": datetime.utcnow().isoformat() + "Z"
             }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_symbol_info", "schema": "code_analysis"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="code_analysis")]
         except Exception as e:
             logger.error(f"Error in _handle_get_symbol_info: {e}")
-            return [TextContent(type="text", text=json.dumps({"status": "error", "error": str(e)}))]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_symbol_info"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
 
     async def _handle_find_symbol_dependencies(self, args: dict) -> list[TextContent]:
         """Find dependencies of a symbol."""
@@ -10870,16 +10886,21 @@ Anomalies:
     async def _handle_get_goal_priority_ranking(self, args: dict) -> list[TextContent]:
         """Get ranking of active goals by priority."""
         try:
-            response = {
-                "status": "success",
+            structured_data = {
                 "goals": [],
                 "count": 0,
                 "timestamp": datetime.utcnow().isoformat() + "Z"
             }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_goal_priority_ranking", "schema": "prospective"},
+                pagination=PaginationMetadata(returned=0)
+            )
+            return [result.as_optimized_content(schema_name="prospective")]
         except Exception as e:
             logger.error(f"Error in _handle_get_goal_priority_ranking: {e}")
-            return [TextContent(type="text", text=json.dumps({"status": "error", "error": str(e)}))]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_goal_priority_ranking"})
+            return [result.as_optimized_content(schema_name="prospective")]
 
     async def _handle_recommend_next_goal(self, args: dict) -> list[TextContent]:
         """Get AI recommendation for next goal to focus on."""
@@ -10980,18 +11001,23 @@ Anomalies:
     async def _handle_get_workflow_status(self, args: dict) -> list[TextContent]:
         """Get status of current workflow execution."""
         try:
-            response = {
-                "status": "success",
+            structured_data = {
                 "active_goals": 0,
                 "completed_goals": 0,
                 "blocked_goals": 0,
                 "current_focus": None,
                 "timestamp": datetime.utcnow().isoformat() + "Z"
             }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_workflow_status", "schema": "prospective"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="prospective")]
         except Exception as e:
             logger.error(f"Error in _handle_get_workflow_status: {e}")
-            return [TextContent(type="text", text=json.dumps({"status": "error", "error": str(e)}))]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_workflow_status"})
+            return [result.as_optimized_content(schema_name="prospective")]
 
     # ============================================================================
     # PHASE 1: Integration Tools (12 handlers)
