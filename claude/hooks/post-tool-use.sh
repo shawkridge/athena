@@ -43,22 +43,26 @@ echo "$COUNTER" > "$OPERATIONS_COUNTER_FILE"
 # Record episodic event to memory via direct Python import
 log "Recording episodic event: $TOOL_NAME ($TOOL_STATUS)"
 
+# Source environment variables for database connections
+if [ -f "/home/user/.work/athena/.env.local" ]; then
+    export $(grep -v '^#' /home/user/.work/athena/.env.local | xargs)
+fi
+
 # Call Python directly to record episodic event
-# This stores tool execution details in episodic memory for later consolidation
+# This stores tool execution details in memory for later consolidation
 python3 << 'PYTHON_EOF'
 import sys
 import os
 import json
 from datetime import datetime
 
-# Add athena and hooks lib to path
-sys.path.insert(0, '/home/user/.work/athena/src')
-sys.path.insert(0, '/home/user/.claude/hooks/lib')
+# Add hooks lib to path
+sys.path.insert(0, '/home/user/.work/athena/claude/hooks/lib')
 
 try:
     from memory_helper import record_episodic_event
 
-    # Record the episodic event
+    # Record the tool execution event
     event_data = {
         "tool_name": os.environ.get('TOOL_NAME', 'unknown'),
         "status": os.environ.get('TOOL_STATUS', 'unknown'),
@@ -66,16 +70,19 @@ try:
         "timestamp": datetime.utcnow().isoformat() + 'Z'
     }
 
+    # Convert event data to JSON string for the memory content
+    content_str = f"Tool: {event_data['tool_name']} | Status: {event_data['status']} | Duration: {event_data['duration_ms']}ms"
+
     event_id = record_episodic_event(
-        event_type="tool_execution",
-        content=json.dumps(event_data),
+        event_type="TOOL_EXECUTION",
+        content=content_str,
         metadata=event_data
     )
 
     if event_id:
-        print(f"✓ Episodic event recorded (ID: {event_id})", file=sys.stderr)
+        print(f"✓ Tool execution recorded (ID: {event_id})", file=sys.stderr)
     else:
-        print(f"⚠ Event recording failed", file=sys.stderr)
+        print(f"⚠ Event recording may have failed (returned None)", file=sys.stderr)
 
 except Exception as e:
     print(f"⚠ Event recording failed: {str(e)}", file=sys.stderr)

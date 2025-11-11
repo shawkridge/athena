@@ -37,6 +37,11 @@ log_info "Operations Recorded: $OPERATIONS_COUNT"
 # Phase 1: Run consolidation with balanced strategy
 log "Phase 1: Running consolidation (System 1 + selective System 2)..."
 
+# Source environment variables for database connections
+if [ -f "/home/user/.work/athena/.env.local" ]; then
+    export $(grep -v '^#' /home/user/.work/athena/.env.local | xargs)
+fi
+
 # Run consolidation using direct Python import
 # This performs dual-process reasoning:
 # - System 1: Fast statistical clustering (~100ms)
@@ -45,9 +50,8 @@ python3 << 'PYTHON_EOF'
 import sys
 import os
 
-# Add athena and hooks lib to path
-sys.path.insert(0, '/home/user/.work/athena/src')
-sys.path.insert(0, '/home/user/.claude/hooks/lib')
+# Add hooks lib to path
+sys.path.insert(0, '/home/user/.work/athena/claude/hooks/lib')
 
 try:
     from memory_helper import run_consolidation

@@ -56,16 +56,19 @@ invoker.invoke_agent("goal-orchestrator", {
 })
 PYTHON_EOF
 
+# Source environment variables for database connections
+if [ -f "/home/user/.work/athena/.env.local" ]; then
+    export $(grep -v '^#' /home/user/.work/athena/.env.local | xargs)
+fi
+
 # Record task progress via direct Python import
 python3 << 'PYTHON_EOF'
 import sys
 import os
-import json
 from datetime import datetime
 
-# Add athena and hooks lib to path
-sys.path.insert(0, '/home/user/.work/athena/src')
-sys.path.insert(0, '/home/user/.claude/hooks/lib')
+# Add hooks lib to path
+sys.path.insert(0, '/home/user/.work/athena/claude/hooks/lib')
 
 try:
     from memory_helper import record_episodic_event
@@ -81,16 +84,19 @@ try:
         "timestamp": datetime.utcnow().isoformat() + 'Z'
     }
 
+    # Format content for memory storage
+    content_str = f"Task: {task_data['task_name']} | Status: {task_data['status']} | Quality: {task_data['quality_score']:.2f} | Time: {task_data['actual_time_minutes']}min"
+
     event_id = record_episodic_event(
-        event_type="task_completion",
-        content=json.dumps(task_data),
+        event_type="TASK_COMPLETION",
+        content=content_str,
         metadata=task_data
     )
 
     if event_id:
         print(f"✓ Task progress recorded (ID: {event_id})", file=sys.stderr)
     else:
-        print(f"⚠ Task recording failed", file=sys.stderr)
+        print(f"⚠ Task recording may have failed (returned None)", file=sys.stderr)
 
 except Exception as e:
     print(f"⚠ Task recording failed: {str(e)}", file=sys.stderr)

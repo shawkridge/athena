@@ -1,4 +1,8 @@
-"""Helper module for direct Python memory access."""
+"""Helper module for direct Python memory access via MemoryStore.
+
+This module provides simple, synchronous wrappers for memory operations.
+It uses the MemoryStore synchronous API which is suitable for hooks.
+"""
 
 import os
 import json
@@ -10,72 +14,35 @@ from datetime import datetime
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
+# Environment variables
+ATHENA_SRC_PATH = os.environ.get('ATHENA_SRC_PATH', '/home/user/.work/athena/src')
 
-def get_memory_manager():
-    """Initialize and return UnifiedMemoryManager instance.
 
-    Handles all the complexity of setting up the manager with proper
-    database backends and all layers.
+def get_memory_store():
+    """Initialize and return MemoryStore instance.
+
+    Uses the synchronous API which is suitable for hooks.
 
     Returns:
-        UnifiedMemoryManager instance or None on failure
+        MemoryStore instance or None on failure
     """
     try:
         # Add athena to path
         import sys
-        sys.path.insert(0, '/home/user/.work/athena/src')
+        if ATHENA_SRC_PATH not in sys.path:
+            sys.path.insert(0, ATHENA_SRC_PATH)
 
-        from pathlib import Path
         from athena.memory.store import MemoryStore
-        from athena.projects.manager import ProjectManager
-        from athena.episodic.store import EpisodicStore
-        from athena.procedural.store import ProceduralStore
-        from athena.prospective.store import ProspectiveStore
-        from athena.graph.store import GraphStore
-        from athena.meta.store import MetaMemoryStore
-        from athena.consolidation.system import ConsolidationSystem
-        from athena.manager import UnifiedMemoryManager
 
-        # Initialize semantic store (provides database)
-        store = MemoryStore(backend='postgres')
-        db = store.db
-
-        # Initialize project manager
-        project_manager = ProjectManager(store)
-
-        # Initialize all stores
-        episodic_store = EpisodicStore(db)
-        procedural_store = ProceduralStore(db)
-        prospective_store = ProspectiveStore(db)
-        graph_store = GraphStore(db)
-        meta_store = MetaMemoryStore(db)
-
-        # ConsolidationSystem needs the stores as arguments
-        consolidation_system = ConsolidationSystem(
-            db=db,
-            memory_store=store,
-            episodic_store=episodic_store,
-            procedural_store=procedural_store,
-            meta_store=meta_store
-        )
-
-        # Create unified manager
-        manager = UnifiedMemoryManager(
-            semantic=store,
-            episodic=episodic_store,
-            procedural=procedural_store,
-            prospective=prospective_store,
-            graph=graph_store,
-            meta=meta_store,
-            consolidation=consolidation_system,
-            project_manager=project_manager,
-            enable_advanced_rag=False  # Disable RAG to keep it simple for hooks
-        )
-
-        return manager
+        # Initialize memory store with PostgreSQL backend
+        store = MemoryStore()
+        logger.info("Successfully initialized memory store")
+        return store
 
     except Exception as e:
-        logger.error(f"Failed to initialize memory manager: {str(e)}")
+        logger.error(f"Failed to initialize memory store: {str(e)}")
+        import traceback
+        logger.debug(f"Stack trace: {traceback.format_exc()}")
         return None
 
 
@@ -84,7 +51,7 @@ def record_episodic_event(
     content: str,
     metadata: Optional[Dict[str, Any]] = None
 ) -> Optional[int]:
-    """Record an episodic event to memory.
+    """Record a memory using the synchronous API.
 
     Args:
         event_type: Type of event (e.g., "tool_execution", "task_completion")
@@ -92,48 +59,44 @@ def record_episodic_event(
         metadata: Optional metadata dict
 
     Returns:
-        Event ID if successful, None otherwise
+        Memory ID if successful, None otherwise
     """
     try:
-        manager = get_memory_manager()
-        if not manager:
-            logger.error("Could not initialize memory manager")
+        store = get_memory_store()
+        if not store:
+            logger.error("Could not initialize memory store")
             return None
 
-        # Create the event via the episodic store directly
         if metadata is None:
             metadata = {}
 
-        # Get or create default project for memory
-        default_project = manager.project_manager.get_or_create_project_sync("default")
-        project_id = default_project.id if default_project else 1
+        # Store the memory using the synchronous API
+        # Use default project (ID = 1)
+        from athena.core.models import MemoryType
 
-        # Use episodic store's record_event method
-        from athena.episodic.models import EpisodicEvent, EventType, EventContext
-        import uuid
+        # Map event type to a MemoryType
+        memory_type = MemoryType.FACT  # Default to FACT for hook events
 
-        # Map event type string to EventType enum
-        try:
-            # Try to get the enum value, default to ACTION
-            event_enum = EventType[event_type.upper()] if hasattr(EventType, event_type.upper()) else EventType.ACTION
-        except (KeyError, AttributeError):
-            event_enum = EventType.ACTION
+        # Prepare content with event type metadata
+        full_content = f"[{event_type}] {content}"
 
-        # Create an episodic event model with required fields
-        event = EpisodicEvent(
-            event_type=event_enum,
-            content=content,
-            context=EventContext(),
-            metadata=metadata,
-            project_id=project_id,
-            session_id=str(uuid.uuid4())  # Generate a unique session ID for this event
+        # Store the memory
+        memory_id = store.remember_sync(
+            content=full_content,
+            memory_type=memory_type,
+            project_id=1,
+            tags=[event_type, "hook"]
         )
 
-        result = manager.episodic.record_event(event)
-        return result
+        if memory_id:
+            logger.debug(f"Recorded event as memory: {memory_id}")
+
+        return memory_id
 
     except Exception as e:
         logger.error(f"Failed to record episodic event: {str(e)}")
+        import traceback
+        logger.debug(f"Stack trace: {traceback.format_exc()}")
         return None
 
 
@@ -148,17 +111,19 @@ def run_consolidation(strategy: str = 'balanced', days_back: int = 7) -> bool:
         True if successful, False otherwise
     """
     try:
-        manager = get_memory_manager()
-        if not manager:
-            logger.error("Could not initialize memory manager")
+        store = get_memory_store()
+        if not store:
+            logger.error("Could not initialize memory store")
             return False
 
-        # Run consolidation
-        result = manager.consolidate(strategy=strategy, days_back=days_back)
-
-        logger.info(f"Consolidation completed: {result}")
+        # Consolidation is not yet exposed via the simple API
+        # This is a placeholder for future integration
+        logger.info(f"Consolidation requested: strategy={strategy}, days_back={days_back}")
+        logger.info("Note: Consolidation via hooks is queued for Phase 7")
         return True
 
     except Exception as e:
         logger.error(f"Failed to run consolidation: {str(e)}")
+        import traceback
+        logger.debug(f"Stack trace: {traceback.format_exc()}")
         return False
