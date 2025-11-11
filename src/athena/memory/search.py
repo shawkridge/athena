@@ -188,16 +188,15 @@ class SemanticSearch:
         Returns:
             List of search results
         """
-        try:
-            # Use asyncio.run() to bridge sync/async gap
-            # This is safe because SemanticSearch is meant to be called from sync code
-            results = asyncio.run(
-                self._recall_postgres_async(
-                    query_embedding, project_id, query_text, k, memory_types, min_similarity
-                )
+        # Use asyncio.run() to bridge sync/async gap
+        # This is safe because SemanticSearch is meant to be called from sync code
+        results = asyncio.run(
+            self._recall_postgres_async(
+                query_embedding, project_id, query_text, k, memory_types, min_similarity
             )
-            logger.debug(f"PostgreSQL hybrid search returned {len(results)} results")
-            return results
+        )
+        logger.debug(f"PostgreSQL hybrid search returned {len(results)} results")
+        return results
 
     async def _recall_postgres_async(
         self,
