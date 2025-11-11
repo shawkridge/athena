@@ -1727,3 +1727,228 @@ class MemoryAPI:
         except Exception as e:
             logger.error(f"Failed to list API categories: {e}")
             return []
+
+    # Marketplace methods
+
+    def _init_marketplace(self):
+        """Initialize marketplace components."""
+        if hasattr(self, "_marketplace_store") and self._marketplace_store is not None:
+            return
+
+        try:
+            from ..api.marketplace_store import MarketplaceStore
+            from ..api.semantic_search import SemanticProcedureSearch
+            from ..api.recommendations import RecommendationEngine
+
+            self._marketplace_store = MarketplaceStore(self.db)
+            self._semantic_search = SemanticProcedureSearch(self._marketplace_store, self._get_embedding_model())
+            self._recommendations = RecommendationEngine(self._marketplace_store, self._semantic_search)
+        except Exception as e:
+            logger.warning(f"Failed to initialize marketplace: {e}")
+            self._marketplace_store = None
+            self._semantic_search = None
+            self._recommendations = None
+
+    def _get_embedding_model(self):
+        """Get embedding model for semantic search."""
+        try:
+            from ..semantic.embeddings import EmbeddingManager
+            return EmbeddingManager.create()
+        except Exception:
+            return None
+
+    def search_marketplace(self, query: str, limit: int = 10, semantic: bool = True) -> List[Dict[str, Any]]:
+        """Search marketplace procedures.
+
+        Args:
+            query: Search query
+            limit: Maximum number of results
+            semantic: Use semantic search (True) or keyword search (False)
+
+        Returns:
+            List of matching procedures
+
+        Example:
+            results = api.search_marketplace("data processing")
+            for proc in results:
+                print(f"{proc['metadata']['name']}: {proc['metadata']['description']}")
+        """
+        self._init_marketplace()
+
+        if self._marketplace_store is None:
+            logger.warning("Marketplace not available")
+            return []
+
+        try:
+            if semantic:
+                results = self._semantic_search.search_by_semantic_similarity(query, limit=limit)
+                return [proc.to_compact_dict() for proc, _ in results]
+            else:
+                procedures = self._marketplace_store.search_procedures(query, limit=limit)
+                return [proc.to_compact_dict() for proc in procedures]
+        except Exception as e:
+            logger.error(f"Failed to search marketplace: {e}")
+            return []
+
+    def get_marketplace_recommendations(
+        self,
+        use_case: str,
+        limit: int = 5,
+        require_stable: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Get procedure recommendations for a use case.
+
+        Args:
+            use_case: Description of use case
+            limit: Maximum number of recommendations
+            require_stable: Only recommend stable/production quality
+
+        Returns:
+            List of recommended procedures
+
+        Example:
+            recs = api.get_marketplace_recommendations("process large CSV files")
+            for proc in recs:
+                print(f"Recommended: {proc['metadata']['name']}")
+        """
+        self._init_marketplace()
+
+        if self._recommendations is None:
+            logger.warning("Recommendations not available")
+            return []
+
+        try:
+            procedures = self._recommendations.recommend_for_use_case(
+                use_case,
+                limit=limit,
+                require_stable=require_stable,
+            )
+            return [proc.to_compact_dict() for proc in procedures]
+        except Exception as e:
+            logger.error(f"Failed to get recommendations: {e}")
+            return []
+
+    def get_trending_procedures(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get trending procedures in marketplace.
+
+        Args:
+            limit: Maximum number of results
+
+        Returns:
+            List of trending procedures
+
+        Example:
+            trending = api.get_trending_procedures(limit=5)
+            for proc in trending:
+                print(f"{proc['metadata']['name']} - {proc['metadata']['version']}")
+        """
+        self._init_marketplace()
+
+        if self._recommendations is None:
+            logger.warning("Recommendations not available")
+            return []
+
+        try:
+            procedures = self._recommendations.get_trending_recommendations(limit=limit)
+            return [proc.to_compact_dict() for proc in procedures]
+        except Exception as e:
+            logger.error(f"Failed to get trending procedures: {e}")
+            return []
+
+    def get_procedure_details(self, procedure_id: str) -> Optional[Dict[str, Any]]:
+        """Get full details for a procedure.
+
+        Args:
+            procedure_id: Procedure ID
+
+        Returns:
+            Full procedure details or None if not found
+
+        Example:
+            details = api.get_procedure_details("proc-123")
+            print(f"Code: {details['code']}")
+            print(f"Reviews: {len(details['reviews'])}")
+        """
+        self._init_marketplace()
+
+        if self._marketplace_store is None:
+            logger.warning("Marketplace not available")
+            return None
+
+        try:
+            procedure = self._marketplace_store.get_procedure(procedure_id)
+            if not procedure:
+                return None
+
+            reviews = self._marketplace_store.get_reviews(procedure_id)
+            rating = self._marketplace_store.get_average_rating(procedure_id)
+            installation_count = self._marketplace_store.get_installation_count(procedure_id)
+
+            return {
+                **procedure.to_dict(),
+                "reviews": [review.to_dict() for review in reviews],
+                "average_rating": rating,
+                "installation_count": installation_count,
+            }
+        except Exception as e:
+            logger.error(f"Failed to get procedure details: {e}")
+            return None
+
+    def record_procedure_execution(
+        self,
+        procedure_id: str,
+        success: bool,
+        execution_time_ms: float,
+    ) -> bool:
+        """Record procedure execution for stats tracking.
+
+        Args:
+            procedure_id: Procedure ID
+            success: Whether execution was successful
+            execution_time_ms: Execution time in milliseconds
+
+        Returns:
+            True if recorded, False otherwise
+
+        Example:
+            success = api.record_procedure_execution("proc-123", success=True, execution_time_ms=245.5)
+        """
+        self._init_marketplace()
+
+        if self._marketplace_store is None:
+            logger.warning("Marketplace not available")
+            return False
+
+        try:
+            return self._marketplace_store.record_execution(procedure_id, success, execution_time_ms)
+        except Exception as e:
+            logger.error(f"Failed to record execution: {e}")
+            return False
+
+    def get_high_quality_procedures(self, limit: int = 10, min_rating: float = 4.0) -> List[Dict[str, Any]]:
+        """Get high-quality, well-reviewed procedures.
+
+        Args:
+            limit: Maximum number of results
+            min_rating: Minimum average rating (0.0-5.0)
+
+        Returns:
+            List of high-quality procedures
+
+        Example:
+            quality_procs = api.get_high_quality_procedures(min_rating=4.5)
+            for proc in quality_procs:
+                print(f"Quality: {proc['metadata']['quality_level']}")
+        """
+        self._init_marketplace()
+
+        if self._recommendations is None:
+            logger.warning("Recommendations not available")
+            return []
+
+        try:
+            procedures = self._recommendations.recommend_high_quality(limit=limit, min_rating=min_rating)
+            return [proc.to_compact_dict() for proc in procedures]
+        except Exception as e:
+            logger.error(f"Failed to get high-quality procedures: {e}")
+            return []
