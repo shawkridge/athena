@@ -16,6 +16,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       # Initialize schema (will be created in scripts/)
       - ./scripts/init_postgres.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./scripts/init_user.sql:/docker-entrypoint-initdb.d/02-init_user.sql
     networks:
       - athena-network
     restart: unless-stopped
@@ -25,34 +26,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # Ollama - Local embeddings and LLM inference (recommended over llama.cpp)
-  ollama:
-    image: ollama/ollama:latest
-    container_name: athena-ollama
-    environment:
-      OLLAMA_HOST: 0.0.0.0:11434
-      OLLAMA_NUM_THREAD: ${OLLAMA_NUM_THREAD:-8}
-    ports:
-      - "${OLLAMA_PORT:-11434}:11434"
-    volumes:
-      # Model storage and cache
-      - ollama_data:/root/.ollama
-      - ~/.athena/models:/root/.ollama/models
-    networks:
-      - athena-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 10s
-      timeout: 10s
-      retries: 30
-      start_period: 60s
     logging:
       driver: "json-file"
       options:
@@ -77,9 +50,9 @@ services:
       ATHENA_POSTGRES_USER: ${POSTGRES_USER:-athena}
       ATHENA_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-athena_dev}
 
-      # Embeddings
-      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-ollama}
-      OLLAMA_HOST: http://ollama:11434
+      # Embeddings (using llama.cpp - running in same container)
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-llamacpp}
+      LLAMACPP_HOST: http://localhost:8001
 
       # Logging
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -95,6 +68,7 @@ services:
       PYTHONDONTWRITEBYTECODE: 1
     ports:
       - "${ATHENA_PORT:-8000}:8000"
+      - "${LLAMACPP_PORT:-8001}:8001"
       - "${ATHENA_METRICS_PORT:-9000}:9000"
     volumes:
       # Data persistence
@@ -166,8 +140,6 @@ services:
 
 volumes:
   postgres_data:
-    driver: local
-  ollama_data:
     driver: local
   redis_data:
     driver: local

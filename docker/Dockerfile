@@ -68,7 +68,12 @@ ENV PYTHONUNBUFFERED=1 \
 COPY src/ src/
 COPY scripts/ scripts/
 COPY monitoring/ monitoring/
+COPY docker/llamacpp_server.py /app/
+COPY docker/start_services.sh /app/
 COPY . .
+
+# Make startup script executable
+RUN chmod +x /app/start_services.sh
 
 # Clean Python cache to avoid bytecode issues
 RUN find /app -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; \
@@ -89,10 +94,13 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Expose ports
-EXPOSE 8000 9000
+# 8000: Athena MCP server
+# 8001: llamacpp embeddings server
+# 9000: Prometheus metrics
+EXPOSE 8000 8001 9000
 
 # Use tini as init process (proper signal handling)
 ENTRYPOINT ["/usr/bin/tini", "--"]
 
-# Start the Athena MCP server
-CMD ["python", "-m", "athena.server"]
+# Start both services using startup script
+CMD ["/app/start_services.sh"]
