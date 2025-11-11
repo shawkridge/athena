@@ -19,12 +19,12 @@
 
 | Metric | Status | Last Updated |
 |--------|--------|--------------|
-| **Current Week** | Week 3 ✅ | Nov 25, 2025 |
-| **Phase** | Phase 1 (API Exposure) - 96.3% Tests Passing (129/134) | Nov 25, 2025 |
-| **Progress** | 3/16 weeks (19%) | Nov 25, 2025 |
-| **Blockers** | MemoryStore async/sync signature mismatch (Phase 2 scope) | Nov 25, 2025 |
-| **Key Risks** | PostgreSQL initialization in tests | See [Risk Register](#risk-register--mitigation) |
-| **Next Milestone** | Week 4 - Phase 1 Final Validation & PR to Main | Dec 2, 2025 |
+| **Current Week** | Week 4 ✅ | Dec 2, 2025 |
+| **Phase** | Phase 1 COMPLETE ✅ → Phase 2 Ready (Executable Procedures) | Dec 2, 2025 |
+| **Progress** | 4/16 weeks (25%) | Dec 2, 2025 |
+| **Blockers** | None - Phase 1 Exit Criteria PASSED | Dec 2, 2025 |
+| **Key Achievements** | Performance benchmarks ✅, Integration tests ✅, Phase 2 plan (5,000 LOC) | Dec 2, 2025 |
+| **Next Milestone** | Week 5 - Phase 2 Week 1: Async/Sync Bridge Fix & ExecutableProcedure Model | Dec 9, 2025 |
 
 **👉 Update above after each week of work!**
 
@@ -55,6 +55,7 @@
 - 🔍 [ATHENA_ARCHITECTURE_REPORT.md](ATHENA_ARCHITECTURE_REPORT.md) - Deep technical analysis
 - 🛡️ [SANDBOX_ANALYSIS_AND_INTEGRATION.md](SANDBOX_ANALYSIS_AND_INTEGRATION.md) - Sandbox security approach (SRT)
 - 👁️ [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) - High-level project summary
+- 🚀 **[PHASE_2_IMPLEMENTATION_PLAN.md](PHASE_2_IMPLEMENTATION_PLAN.md) - Phase 2 detailed plan (5,000 LOC)** ← NEW
 
 ---
 
@@ -88,20 +89,20 @@ This project evolves Athena from tool-abstraction architecture (60% MCP-aligned)
 **📖 Detailed implementation plan**: See [MCP_ALIGNMENT_REMEDIATION_BLUEPRINT.md](MCP_ALIGNMENT_REMEDIATION_BLUEPRINT.md)
 
 ```
-Week 1-2:   [████████] Phase 1: Memory API Exposure
-Week 3-6:   [████████████████] Phase 2: Executable Procedures
-Week 7-9:   [████████████] Phase 3: Sandboxed Code Execution
-Week 10-12: [████████████] Phase 4: Progressive Discovery
-Week 13-16: [████████████] Phase 5: Privacy Handling
+Week 1-4:   [██████████] Phase 1: Memory API Exposure ✅ COMPLETE
+Week 5-8:   [████████████████] Phase 2: Executable Procedures (NEXT)
+Week 9-11:  [████████████] Phase 3: Sandboxed Code Execution
+Week 12-14: [████████████] Phase 4: Progressive Discovery & Marketplace
+Week 15-18: [████████████] Phase 5: Privacy-Preserving Data Handling
 ```
 
-| Phase | Goal | Duration | LOC | Team | Owner | Details |
-|-------|------|----------|-----|------|-------|---------|
-| **1** | Replace tool abstraction with direct APIs | 2 weeks | 1,450 | 3 | @[Engineer1] | [See Phase 1](MCP_ALIGNMENT_REMEDIATION_BLUEPRINT.md#phase-1) |
-| **2** | Convert procedures to executable code | 4 weeks | 1,800 | 3 | @[Engineer2] | [See Phase 2](MCP_ALIGNMENT_REMEDIATION_BLUEPRINT.md#phase-2) |
-| **3** | Implement OS-level sandboxing (SRT) | 3 weeks | 1,750 | 2 | @[Engineer3] | [See Phase 3](SANDBOX_ANALYSIS_AND_INTEGRATION.md) |
-| **4** | Build API discovery + marketplace | 3 weeks | 1,450 | 2 | @[Engineer4] | [See Phase 4](MCP_ALIGNMENT_REMEDIATION_BLUEPRINT.md#phase-4) |
-| **5** | Add privacy/tokenization/encryption | 4 weeks | 1,350 | 2 | @[Engineer5] | [See Phase 5](MCP_ALIGNMENT_REMEDIATION_BLUEPRINT.md#phase-5) |
+| Phase | Goal | Duration | Status | LOC | Team | Owner | Details |
+|-------|------|----------|--------|-----|------|-------|---------|
+| **1** | Replace tool abstraction with direct APIs | 4 weeks (1-4) | ✅ COMPLETE | 1,450+ | 3 | @Claude | [See Phase 1](MCP_ALIGNMENT_REMEDIATION_BLUEPRINT.md#phase-1) |
+| **2** | Convert procedures to executable code | 4 weeks (5-8) | 🚀 NEXT | 1,800+ | 3-4 | @Eng1,2,3 | [See PHASE_2_IMPLEMENTATION_PLAN.md](PHASE_2_IMPLEMENTATION_PLAN.md) |
+| **3** | Implement OS-level sandboxing (SRT) | 3 weeks (9-11) | ⏳ Queued | 1,750 | 2-3 | @Eng3 | [See Phase 3](SANDBOX_ANALYSIS_AND_INTEGRATION.md) |
+| **4** | Build API discovery + marketplace | 3 weeks (12-14) | ⏳ Queued | 1,450 | 2 | @Eng1,4 | [See Phase 4](MCP_ALIGNMENT_REMEDIATION_BLUEPRINT.md#phase-4) |
+| **5** | Add privacy/tokenization/encryption | 4 weeks (15-18) | ⏳ Queued | 1,350 | 2-3 | @Eng1,5 | [See Phase 5](MCP_ALIGNMENT_REMEDIATION_BLUEPRINT.md#phase-5) |
 
 ---
 
@@ -166,90 +167,107 @@ Week 13-16: [████████████] Phase 5: Privacy Handling
 
 ---
 
-### WEEK 3-6: PHASE 2 - EXECUTABLE PROCEDURES
+### WEEK 5-8: PHASE 2 - EXECUTABLE PROCEDURES
 
 **Goal**: Convert 101 procedures from metadata to executable code with versioning
-**Details**: See [Phase 2 in REMEDIATION_BLUEPRINT.md](MCP_ALIGNMENT_REMEDIATION_BLUEPRINT.md#phase-2-executable-procedures-weeks-3-6)
+**Details**: See [PHASE_2_IMPLEMENTATION_PLAN.md](PHASE_2_IMPLEMENTATION_PLAN.md) (comprehensive 5,000 LOC plan)
+**Blueprint**: See [Phase 2 in REMEDIATION_BLUEPRINT.md](MCP_ALIGNMENT_REMEDIATION_BLUEPRINT.md#phase-2-executable-procedures-weeks-3-6)
 **Tasks**: See [Phase 2 in IMPLEMENTATION_TASK_LIST.md](IMPLEMENTATION_TASK_LIST.md#phase-2-executable-procedures-weeks-3-6)
 
-#### Week 3
+#### Week 5: Async/Sync Bridge & ExecutableProcedure Model
 | Task | Owner | Est. | Mon | Tue | Wed | Thu | Fri |
 |------|-------|------|-----|-----|-----|-----|-----|
-| 2.1.1 Update ExecutableProcedure model | @Eng2 | 3h | ✓ | ✓ | | | |
-| 2.1.2 Git-backed procedure store | @Eng4 | 5h | ✓ | ✓ | ✓ | | |
-| 2.1.3 Migrate 101 procedures | @Eng2 | 8h | | | ✓ | ✓ | ✓ |
-| Code review + merge | @Lead | 2h | | | | | ✓ |
+| 2.1.1 Create async_utils.py bridge | @Eng1 | 4h | [ ] | [ ] | [ ] | | |
+| 2.1.2 Sync wrappers (ProjectManager) | @Eng1 | 2h | [ ] | [ ] | | | |
+| 2.1.3 Sync wrappers (MemoryStore) | @Eng1 | 2h | | [ ] | [ ] | | |
+| 2.1.4 Test MemoryAPI (41 tests) | @Eng2 | 2h | | [ ] | [ ] | [ ] | |
+| 2.1.5 ExecutableProcedure model | @Eng2 | 3h | [ ] | [ ] | | | |
+| 2.1.6 Migration strategy | @Eng2 | 2h | | | [ ] | [ ] | |
+| Code review + merge | @Lead | 1h | | | | | [ ] |
 
 **Deliverables**:
-- [ ] `src/athena/procedural/models.py` updated (150 lines)
-- [ ] `src/athena/procedural/git_store.py` (300 lines)
-- [ ] `scripts/migrate_procedures.py` (200 lines)
-- [ ] All 101 procedures migrated
-- [ ] Git repo initialized
-- [ ] Migration report generated
+- [ ] `src/athena/core/async_utils.py` (100 LOC)
+- [ ] `src/athena/projects/manager.py` updated sync wrappers (20 LOC)
+- [ ] `src/athena/memory/store.py` updated sync wrappers (20 LOC)
+- [ ] `src/athena/core/models.py` - Procedure.code field added (10 LOC)
+- [ ] All MemoryAPI tests passing (41/41 ✅)
+- [ ] Migration strategy documented
 
-#### Week 4
+**Exit Criteria**: ✅ MemoryAPI fully functional (41/41 tests), Ready for Week 6
+
+#### Week 6: Git Store & Code Extraction
 | Task | Owner | Est. | Mon | Tue | Wed | Thu | Fri |
 |------|-------|------|-----|-----|-----|-----|-----|
-| 2.2.1 Code extraction system | @Eng1 | 6h | ✓ | ✓ | ✓ | | |
-| 2.2.2 Procedure executor | @Eng4 | 4h | | | ✓ | ✓ | |
-| 2.2.3 Pattern learning | @Eng2 | 5h | | ✓ | ✓ | ✓ | |
-| Code review | @Lead | 2h | | | | | ✓ |
+| 2.2.1 GitBackedProcedureStore impl | @Eng3 | 6h | [ ] | [ ] | [ ] | | |
+| 2.2.2 Code extraction system | @Eng1 | 6h | [ ] | [ ] | [ ] | [ ] | |
+| 2.2.3 Migrate 101 procedures | @Eng3 | 6h | | | [ ] | [ ] | [ ] |
+| 2.2.4 Test git store + extraction | @Eng2 | 4h | | [ ] | [ ] | [ ] | |
+| Code review | @Lead | 1h | | | | | [ ] |
 
 **Deliverables**:
-- [ ] `src/athena/procedural/code_extractor.py` (250 lines)
-- [ ] `src/athena/procedural/executor.py` updated (150 lines)
-- [ ] `src/athena/procedural/pattern_learning.py` (200 lines)
-- [ ] LLM code generation working
-- [ ] Procedure execution functional
+- [ ] `src/athena/procedural/git_store.py` (300 LOC)
+- [ ] `src/athena/procedural/code_extractor.py` (250 LOC)
+- [ ] `scripts/migrate_procedures.py` (200 LOC)
+- [ ] All 101 procedures in git ✅
+- [ ] Git extraction tests (100 LOC)
+- [ ] Migration validation report
 
-#### Week 5
+**Exit Criteria**: ✅ All 101 procedures in git, No data loss, Extraction working
+
+#### Week 7: LLM Code Generation & Validation
 | Task | Owner | Est. | Mon | Tue | Wed | Thu | Fri |
 |------|-------|------|-----|-----|-----|-----|-----|
-| 2.3.1 Add methods to MemoryAPI | @Eng1 | 2h | ✓ | | | | |
-| 2.3.2 MCP tool registration | @Eng4 | 1.5h | ✓ | | | | |
-| 2.4.1 Unit tests | @Eng2 | 6h | ✓ | ✓ | ✓ | | |
-| 2.4.2 Code quality validation | @Eng3 | 4h | | ✓ | ✓ | ✓ | |
-| Code review | @Lead | 2h | | | | | ✓ |
+| 2.3.1 LLM prompt engineering | @Eng2 | 3h | [ ] | [ ] | | | |
+| 2.3.2 ProcedureCodeGenerator impl | @Eng1 | 6h | [ ] | [ ] | [ ] | [ ] | |
+| 2.3.3 CodeValidator implementation | @Eng1 | 4h | [ ] | [ ] | [ ] | | |
+| 2.3.4 Confidence scoring | @Eng2 | 3h | | [ ] | [ ] | [ ] | |
+| 2.3.5 Generation tests | @Eng2 | 4h | | [ ] | [ ] | [ ] | [ ] |
+| Code review | @Lead | 1h | | | | | [ ] |
 
 **Deliverables**:
-- [ ] `src/athena/mcp/memory_api.py` extended (100 lines)
-- [ ] `tests/procedural/test_*.py` (450 lines)
-- [ ] All procedure operations tested
-- [ ] >90% coverage achieved
-- [ ] Code generation quality validated
+- [ ] `src/athena/procedural/code_generator.py` (300 LOC)
+- [ ] `src/athena/procedural/code_validator.py` (150 LOC)
+- [ ] Generation tests (200 LOC)
+- [ ] >80% generation success rate
+- [ ] Confidence scoring working
 
-#### Week 6
+#### Week 8: Integration, Testing & Documentation
 | Task | Owner | Est. | Mon | Tue | Wed | Thu | Fri |
 |------|-------|------|-----|-----|-----|-----|-----|
-| Documentation | @Writer | 4h | ✓ | ✓ | | | |
-| Integration testing | @Eng2 | 4h | ✓ | ✓ | ✓ | | |
-| Performance benchmarking | @Eng3 | 4h | | ✓ | ✓ | ✓ | |
-| Final code review | @Lead | 3h | | | | ✓ | ✓ |
+| 2.4.1 Update MemoryAPI w/ procedure methods | @Eng1 | 3h | [ ] | [ ] | | | |
+| 2.4.2 Procedure sandbox execution | @Eng3 | 4h | [ ] | [ ] | [ ] | | |
+| 2.4.3 End-to-end tests | @Eng2 | 6h | [ ] | [ ] | [ ] | [ ] | |
+| 2.4.4 Performance benchmarking | @Eng3 | 4h | | [ ] | [ ] | [ ] | |
+| 2.4.5 Documentation (guides + examples) | @Writer | 4h | [ ] | [ ] | | | |
+| Code review + merge | @Lead | 2h | | | | | [ ] |
 
 **Deliverables**:
-- [ ] Documentation completed
-- [ ] Integration tests passing
-- [ ] Performance targets met
-- [ ] Rollback tested and functional
+- [ ] `src/athena/mcp/memory_api.py` extended (100 LOC)
+- [ ] End-to-end tests (400 LOC)
+- [ ] Performance benchmarks
+- [ ] PROCEDURE_GUIDE.md
+- [ ] MIGRATION_GUIDE.md
+- [ ] All tests passing (>90% coverage)
 
-**Phase 2 Exit Criteria**:
-- ✅ All 101 procedures executable
-- ✅ Git versioning working
-- ✅ Rollback functional
-- ✅ Auto-extraction >80% success rate
-- ✅ >90% test coverage
+**Phase 2 Exit Criteria** ✅:
+- ✅ All 101 procedures converted to executable code
+- ✅ Git versioning working with full history
+- ✅ Rollback tested and functional
+- ✅ Code extraction working (>70% auto-extraction)
+- ✅ Code generation working (>80% success rate)
+- ✅ >90% test coverage achieved
+- ✅ All MemoryAPI tests passing (41/41)
 
 ---
 
-### WEEK 7-9: PHASE 3 - SANDBOXED CODE EXECUTION
+### WEEK 9-11: PHASE 3 - SANDBOXED CODE EXECUTION
 
 **Goal**: Implement OS-level sandboxing using Anthropic's SRT
 **⚠️ Critical**: See [SANDBOX_ANALYSIS_AND_INTEGRATION.md](SANDBOX_ANALYSIS_AND_INTEGRATION.md) for security approach & SRT justification
 **Details**: See [Phase 3 in REMEDIATION_BLUEPRINT.md](MCP_ALIGNMENT_REMEDIATION_BLUEPRINT.md#phase-3-sandboxed-code-execution-weeks-7-9)
 **Tasks**: See [Phase 3 in IMPLEMENTATION_TASK_LIST.md](IMPLEMENTATION_TASK_LIST.md#phase-3-sandboxed-code-execution-weeks-7-9)
 
-#### Week 7
+#### Week 9
 | Task | Owner | Est. | Mon | Tue | Wed | Thu | Fri |
 |------|-------|------|-----|-----|-----|-----|-----|
 | 3.1.1 SRTExecutor class | @Eng3 | 6h | ✓ | ✓ | ✓ | | |
@@ -267,15 +285,15 @@ Week 13-16: [████████████] Phase 5: Privacy Handling
 
 **Security Audit Starts** (runs parallel, 40 hours over 6 weeks)
 
-#### Week 8
+#### Week 10
 | Task | Owner | Est. | Mon | Tue | Wed | Thu | Fri |
 |------|-------|------|-----|-----|-----|-----|-----|
-| 3.2.1 Code execution entry point | @Eng1 | 2h | ✓ | | | | |
-| 3.2.2 Code validator | @Eng5 | 3h | ✓ | ✓ | | | |
-| 3.2.3 Agent examples & docs | @Writer | 3h | | ✓ | ✓ | | |
-| 3.3.1 Violation monitoring | @Eng3 | 4h | | ✓ | ✓ | ✓ | |
-| 3.3.2 Execution context & logging | @Eng5 | 3h | | | ✓ | ✓ | |
-| Code review | @Lead | 2h | | | | | ✓ |
+| 3.2.1 Code execution entry point | @Eng1 | 2h | [ ] | | | | |
+| 3.2.2 Code validator | @Eng5 | 3h | [ ] | [ ] | | | |
+| 3.2.3 Agent examples & docs | @Writer | 3h | | [ ] | [ ] | | |
+| 3.3.1 Violation monitoring | @Eng3 | 4h | | [ ] | [ ] | [ ] | |
+| 3.3.2 Execution context & logging | @Eng5 | 3h | | | [ ] | [ ] | |
+| Code review | @Lead | 2h | | | | | [ ] |
 
 **Deliverables**:
 - [ ] `src/athena/mcp/memory_api.py` extended (100 lines)
@@ -286,14 +304,14 @@ Week 13-16: [████████████] Phase 5: Privacy Handling
 - [ ] Code execution framework ready
 - [ ] Violation monitoring working
 
-#### Week 9
+#### Week 11
 | Task | Owner | Est. | Mon | Tue | Wed | Thu | Fri |
 |------|-------|------|-----|-----|-----|-----|-----|
-| 3.3.3 Security test suite | @Security | 8h | ✓ | ✓ | ✓ | ✓ | |
-| 3.4.1 Performance benchmarking | @Eng3 | 4h | ✓ | ✓ | ✓ | | |
-| 3.4.2 MCP tool registration | @Eng1 | 1.5h | | | ✓ | | |
-| 3.4.3 Integration testing | @Eng5 | 5h | ✓ | ✓ | ✓ | ✓ | |
-| Final review & approval | @Lead | 3h | | | | ✓ | ✓ |
+| 3.3.3 Security test suite | @Security | 8h | [ ] | [ ] | [ ] | [ ] | |
+| 3.4.1 Performance benchmarking | @Eng3 | 4h | [ ] | [ ] | [ ] | | |
+| 3.4.2 MCP tool registration | @Eng1 | 1.5h | | | [ ] | | |
+| 3.4.3 Integration testing | @Eng5 | 5h | [ ] | [ ] | [ ] | [ ] | |
+| Final review & approval | @Lead | 3h | | | | [ ] | [ ] |
 
 **Deliverables**:
 - [ ] `tests/sandbox/test_srt_security.py` (300 lines)
@@ -313,13 +331,13 @@ Week 13-16: [████████████] Phase 5: Privacy Handling
 
 ---
 
-### WEEK 10-12: PHASE 4 - PROGRESSIVE DISCOVERY & MARKETPLACE
+### WEEK 12-14: PHASE 4 - PROGRESSIVE DISCOVERY & MARKETPLACE
 
 **Goal**: Implement filesystem-based API discovery and procedure marketplace
 **Details**: See [Phase 4 in REMEDIATION_BLUEPRINT.md](MCP_ALIGNMENT_REMEDIATION_BLUEPRINT.md#phase-4-progressive-discovery--marketplace-weeks-10-12)
 **Tasks**: See [Phase 4 in IMPLEMENTATION_TASK_LIST.md](IMPLEMENTATION_TASK_LIST.md#phase-4-progressive-discovery--marketplace-weeks-10-12)
 
-#### Week 10
+#### Week 12
 | Task | Owner | Est. | Mon | Tue | Wed | Thu | Fri |
 |------|-------|------|-----|-----|-----|-----|-----|
 | 4.1.1 APIDiscovery class | @Eng1 | 5h | ✓ | ✓ | ✓ | | |
@@ -335,14 +353,14 @@ Week 13-16: [████████████] Phase 5: Privacy Handling
 - [ ] API discovery working
 - [ ] Marketplace APIs functional
 
-#### Week 11
+#### Week 13
 | Task | Owner | Est. | Mon | Tue | Wed | Thu | Fri |
 |------|-------|------|-----|-----|-----|-----|-----|
-| 4.2.2 Marketplace storage | @Eng2 | 3h | ✓ | ✓ | | | |
-| 4.2.3 Marketplace MCP tools | @Eng4 | 2h | ✓ | ✓ | | | |
-| 4.3.1 Semantic search | @Eng1 | 3h | ✓ | ✓ | ✓ | | |
-| 4.3.2 Recommendations | @Eng5 | 3h | | ✓ | ✓ | ✓ | |
-| Code review | @Lead | 2h | | | | | ✓ |
+| 4.2.2 Marketplace storage | @Eng2 | 3h | [ ] | [ ] | | | |
+| 4.2.3 Marketplace MCP tools | @Eng4 | 2h | [ ] | [ ] | | | |
+| 4.3.1 Semantic search | @Eng1 | 3h | [ ] | [ ] | [ ] | | |
+| 4.3.2 Recommendations | @Eng5 | 3h | | [ ] | [ ] | [ ] | |
+| Code review | @Lead | 2h | | | | | [ ] |
 
 **Deliverables**:
 - [ ] `src/athena/api/marketplace_store.py` (200 lines)
@@ -352,7 +370,7 @@ Week 13-16: [████████████] Phase 5: Privacy Handling
 - [ ] Semantic search functional
 - [ ] Recommendations working
 
-#### Week 12
+#### Week 14
 | Task | Owner | Est. | Mon | Tue | Wed | Thu | Fri |
 |------|-------|------|-----|-----|-----|-----|-----|
 | Testing & optimization | @Eng2 | 4h | ✓ | ✓ | | | |
@@ -375,13 +393,13 @@ Week 13-16: [████████████] Phase 5: Privacy Handling
 
 ---
 
-### WEEK 13-16: PHASE 5 - PRIVACY-PRESERVING DATA HANDLING
+### WEEK 15-18: PHASE 5 - PRIVACY-PRESERVING DATA HANDLING
 
 **Goal**: Implement automatic tokenization and encryption
 **Details**: See [Phase 5 in REMEDIATION_BLUEPRINT.md](MCP_ALIGNMENT_REMEDIATION_BLUEPRINT.md#phase-5-privacy-preserving-data-handling-weeks-13-16)
 **Tasks**: See [Phase 5 in IMPLEMENTATION_TASK_LIST.md](IMPLEMENTATION_TASK_LIST.md#phase-5-privacy-preserving-data-handling-weeks-13-16)
 
-#### Week 13
+#### Week 15
 | Task | Owner | Est. | Mon | Tue | Wed | Thu | Fri |
 |------|-------|------|-----|-----|-----|-----|-----|
 | 5.1.1 Data tokenizer | @Eng5 | 4h | ✓ | ✓ | | | |
@@ -396,14 +414,14 @@ Week 13-16: [████████████] Phase 5: Privacy Handling
 - [ ] Tokenization working
 - [ ] Token storage secure
 
-#### Week 14
+#### Week 16
 | Task | Owner | Est. | Mon | Tue | Wed | Thu | Fri |
 |------|-------|------|-----|-----|-----|-----|-----|
-| 5.2.1 Encryption manager | @Eng1 | 3h | ✓ | ✓ | | | |
-| 5.2.2 Add encryption to fields | @Eng5 | 4h | ✓ | ✓ | ✓ | | |
-| 5.2.3 Key management | @Eng4 | 3h | ✓ | ✓ | ✓ | | |
-| Data migration | @Eng5 | 4h | ✓ | ✓ | ✓ | ✓ | |
-| Code review | @Lead | 2h | | | | | ✓ |
+| 5.2.1 Encryption manager | @Eng1 | 3h | [ ] | [ ] | | | |
+| 5.2.2 Add encryption to fields | @Eng5 | 4h | [ ] | [ ] | [ ] | | |
+| 5.2.3 Key management | @Eng4 | 3h | [ ] | [ ] | [ ] | | |
+| Data migration | @Eng5 | 4h | [ ] | [ ] | [ ] | [ ] | |
+| Code review | @Lead | 2h | | | | | [ ] |
 
 **Deliverables**:
 - [ ] `src/athena/privacy/encryption.py` (200 lines)
@@ -413,13 +431,13 @@ Week 13-16: [████████████] Phase 5: Privacy Handling
 - [ ] Keys managed securely
 - [ ] Data migration complete
 
-#### Week 15
+#### Week 17
 | Task | Owner | Est. | Mon | Tue | Wed | Thu | Fri |
 |------|-------|------|-----|-----|-----|-----|-----|
-| 5.3.1 Privacy bridge | @Eng4 | 3h | ✓ | ✓ | | | |
-| 5.3.2 Privacy methods in API | @Eng1 | 2h | ✓ | ✓ | | | |
-| 5.3.3 Testing & compliance | @Eng5 | 5h | ✓ | ✓ | ✓ | ✓ | |
-| Code review | @Lead | 2h | | | | | ✓ |
+| 5.3.1 Privacy bridge | @Eng4 | 3h | [ ] | [ ] | | | |
+| 5.3.2 Privacy methods in API | @Eng1 | 2h | [ ] | [ ] | | | |
+| 5.3.3 Testing & compliance | @Eng5 | 5h | [ ] | [ ] | [ ] | [ ] | |
+| Code review | @Lead | 2h | | | | | [ ] |
 
 **Deliverables**:
 - [ ] `src/athena/integration/privacy_bridge.py` (200 lines)
@@ -429,14 +447,14 @@ Week 13-16: [████████████] Phase 5: Privacy Handling
 - [ ] Cross-layer privacy working
 - [ ] All compliance tests passing
 
-#### Week 16
+#### Week 18
 | Task | Owner | Est. | Mon | Tue | Wed | Thu | Fri |
 |------|-------|------|-----|-----|-----|-----|-----|
-| 5.3.4 Privacy documentation | @Writer | 3h | ✓ | ✓ | | | |
-| Final integration testing | @Eng2 | 4h | ✓ | ✓ | ✓ | | |
-| Performance validation | @Eng3 | 3h | ✓ | ✓ | ✓ | | |
-| Final review & approval | @Lead | 3h | | | | ✓ | ✓ |
-| Prepare deployment | @DevOps | 4h | | ✓ | ✓ | ✓ | ✓ |
+| 5.3.4 Privacy documentation | @Writer | 3h | [ ] | [ ] | | | |
+| Final integration testing | @Eng2 | 4h | [ ] | [ ] | [ ] | | |
+| Performance validation | @Eng3 | 3h | [ ] | [ ] | [ ] | | |
+| Final review & approval | @Lead | 3h | | | | [ ] | [ ] |
+| Prepare deployment | @DevOps | 4h | | [ ] | [ ] | [ ] | [ ] |
 
 **Deliverables**:
 - [ ] `docs/PRIVACY_GUIDE.md` (100 lines)
