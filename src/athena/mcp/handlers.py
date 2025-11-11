@@ -1860,8 +1860,8 @@ class MemoryMCPServer:
             procedure_name = args.get("procedure_name")
 
             if not procedure_name:
-                return [TextContent(type="text",
-                        text=json.dumps({"error": "procedure_name is required"}))]
+                result = StructuredResult.error("procedure_name is required", metadata={"operation": "get_procedure_effectiveness"})
+                return [result.as_optimized_content(schema_name="procedural")]
 
             # Find procedure by name (search_procedures doesn't have limit param)
             procedure = self.procedural_store.search_procedures(query=procedure_name)
@@ -1869,8 +1869,8 @@ class MemoryMCPServer:
                 procedure = procedure[:1]  # Limit to first result
 
             if not procedure:
-                return [TextContent(type="text",
-                        text=json.dumps({"error": f"Procedure '{procedure_name}' not found"}))]
+                result = StructuredResult.error(f"Procedure '{procedure_name}' not found", metadata={"operation": "get_procedure_effectiveness"})
+                return [result.as_optimized_content(schema_name="procedural")]
 
             proc = procedure[0]
 
@@ -1878,11 +1878,18 @@ class MemoryMCPServer:
             executions = self.procedural_store.get_execution_history(proc.id, limit=100)
 
             if not executions:
-                response = f"Procedure: {proc.name}\n"
-                response += f"Category: {proc.category}\n"
-                response += f"Status: No execution history yet\n"
-                response += f"Description: {proc.description or 'N/A'}\n"
-                return [TextContent(type="text", text=response)]
+                result = StructuredResult.success(
+                    data={
+                        "id": proc.id,
+                        "name": proc.name,
+                        "category": proc.category,
+                        "description": proc.description or "N/A",
+                        "status": "No execution history yet",
+                        "executions": []
+                    },
+                    metadata={"operation": "get_procedure_effectiveness", "schema": "procedural"}
+                )
+                return [result.as_optimized_content(schema_name="procedural")]
 
             # Calculate metrics
             total_executions = len(executions)
@@ -1916,48 +1923,51 @@ class MemoryMCPServer:
                 trend = "insufficient_data"
                 trend_change = 0
 
-            # Build response
-            response = f"Procedure Effectiveness Report\n"
-            response += f"{'=' * 50}\n\n"
-            response += f"Name: {proc.name}\n"
-            response += f"Category: {proc.category}\n"
-            response += f"Description: {proc.description or 'N/A'}\n\n"
-
-            response += f"Execution History (Last {total_executions} runs)\n"
-            response += f"-" * 50 + "\n"
-            response += f"Total executions: {total_executions}\n"
-            response += f"✓ Successful: {success_count} ({success_rate:.1f}%)\n"
-            response += f"✗ Failed: {failure_count} ({failure_rate:.1f}%)\n"
-            response += f"◐ Partial: {partial_count} ({partial_rate:.1f}%)\n\n"
-
-            if avg_duration_ms:
-                response += f"Average execution time: {avg_duration_ms:.0f}ms ({avg_duration_ms/1000:.2f}s)\n\n"
-
-            response += f"Trend Analysis\n"
-            response += f"-" * 50 + "\n"
-            response += f"Status: {trend.upper()}\n"
-            if trend != "insufficient_data":
-                response += f"Recent vs historical: {trend_change:+.1f}% difference\n"
-                response += f"Recommendation: "
-                if success_rate >= 80:
-                    response += "Well-optimized. Consider for automation.\n"
-                elif success_rate >= 60:
-                    response += "Good, but has room for improvement.\n"
-                elif success_rate >= 40:
-                    response += "Needs refinement. Review failure cases.\n"
-                else:
-                    response += "Poor performance. Consider major revision.\n"
+            # Build structured response
+            recommendation = ""
+            if success_rate >= 80:
+                recommendation = "Well-optimized. Consider for automation."
+            elif success_rate >= 60:
+                recommendation = "Good, but has room for improvement."
+            elif success_rate >= 40:
+                recommendation = "Needs refinement. Review failure cases."
             else:
-                response += "More executions needed for trend analysis.\n"
+                recommendation = "Poor performance. Consider major revision."
 
-            response += f"\nLast used: {(executions[0].timestamp.strftime('%Y-%m-%d %H:%M:%S') if executions else 'Never')}\n"
+            structured_data = {
+                "id": proc.id,
+                "name": proc.name,
+                "category": proc.category,
+                "description": proc.description or "N/A",
+                "execution_history": {
+                    "total": total_executions,
+                    "successful": success_count,
+                    "failed": failure_count,
+                    "partial": partial_count,
+                    "success_rate": round(success_rate, 1),
+                    "failure_rate": round(failure_rate, 1),
+                    "partial_rate": round(partial_rate, 1),
+                    "avg_duration_ms": round(avg_duration_ms) if avg_duration_ms else None
+                },
+                "trend_analysis": {
+                    "status": trend,
+                    "recent_vs_historical": round(trend_change, 1) if trend != "insufficient_data" else None,
+                    "recommendation": recommendation
+                },
+                "last_used": executions[0].timestamp.isoformat() if executions else None
+            }
 
-            return [TextContent(type="text", text=response)]
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_procedure_effectiveness", "schema": "procedural"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="procedural")]
 
         except Exception as e:
             logger.error(f"Error in get_procedure_effectiveness [args={args}]: {e}", exc_info=True)
-            error_response = json.dumps({"error": str(e), "tool": "get_procedure_effectiveness"})
-            return [TextContent(type="text", text=error_response)]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_procedure_effectiveness"})
+            return [result.as_optimized_content(schema_name="procedural")]
 
     async def _handle_suggest_procedure_improvements(self, args: dict) -> list[TextContent]:
         """Handle suggest_procedure_improvements tool call for procedural optimization."""
@@ -3492,13 +3502,21 @@ class MemoryMCPServer:
 
             # Calculate average connections per entity
             avg_connections = relation_count / entity_count if entity_count > 0 else 0
+            network_density = (relation_count / (entity_count * (entity_count - 1)) * 100) if entity_count > 1 else 0
+
+            # Build relation type distribution dict
+            relation_type_dist = {}
+            total_rels = sum(count for _, count in relation_types) if relation_types else 0
+            for rel_type, count in (relation_types or []):
+                percentage = (count / total_rels * 100) if total_rels > 0 else 0
+                relation_type_dist[rel_type] = {"count": count, "percentage": round(percentage, 1)}
 
             # If entity_name provided, analyze that entity's neighborhood
             if entity_name:
                 entities = self.graph_store.search_entities(entity_name)
                 if not entities:
-                    return [TextContent(type="text",
-                            text=f"Entity '{entity_name}' not found.")]
+                    result = StructuredResult.error(f"Entity '{entity_name}' not found", metadata={"operation": "get_graph_metrics"})
+                    return [result.as_optimized_content(schema_name="knowledge_graph")]
 
                 entity = entities[0]
 
@@ -3506,60 +3524,59 @@ class MemoryMCPServer:
                 relations = self.graph_store.get_entity_relations(entity.id, direction="both")
                 degree = len(relations)
 
-                response = f"Graph Metrics for '{entity.name}'\n"
-                response += f"{'=' * 60}\n\n"
+                # Group by relation type
+                by_type = {}
+                for rel, related in relations:
+                    rel_type = rel.relation_type.value if hasattr(rel.relation_type, 'value') else str(rel.relation_type)
+                    if rel_type not in by_type:
+                        by_type[rel_type] = 0
+                    by_type[rel_type] += 1
 
-                response += f"Entity Information:\n"
-                response += f"  Name: {entity.name}\n"
-                response += f"  Type: {entity.entity_type}\n"
-                response += f"  Degree Centrality: {degree} direct connections\n\n"
-
-                response += f"Local Neighborhood:\n"
-                response += f"  Connected entities: {degree}\n"
-
-                if relations:
-                    # Group by relation type
-                    by_type = {}
-                    for rel, related in relations:
-                        rel_type = rel.relation_type.value if hasattr(rel.relation_type, 'value') else str(rel.relation_type)
-                        if rel_type not in by_type:
-                            by_type[rel_type] = 0
-                        by_type[rel_type] += 1
-
-                    response += f"  Relation types:\n"
-                    for rel_type, count in sorted(by_type.items(), key=lambda x: -x[1]):
-                        response += f"    • {rel_type}: {count}\n"
-
-                response += f"\n"
-
+                structured_data = {
+                    "entity": {
+                        "id": entity.id,
+                        "name": entity.name,
+                        "type": entity.entity_type,
+                        "degree_centrality": degree
+                    },
+                    "local_neighborhood": {
+                        "connected_entities": degree,
+                        "relation_types": by_type
+                    },
+                    "global_statistics": {
+                        "total_entities": entity_count,
+                        "total_relations": relation_count,
+                        "network_density": round(network_density, 2)
+                    },
+                    "relation_type_distribution": relation_type_dist
+                }
             else:
                 # Global graph metrics
-                response = f"Knowledge Graph Metrics\n"
-                response += f"{'=' * 60}\n\n"
+                structured_data = {
+                    "graph_size": {
+                        "total_entities": entity_count,
+                        "total_relations": relation_count,
+                        "avg_connections_per_entity": round(avg_connections, 2)
+                    },
+                    "global_statistics": {
+                        "total_entities": entity_count,
+                        "total_relations": relation_count,
+                        "network_density": round(network_density, 2)
+                    },
+                    "relation_type_distribution": relation_type_dist
+                }
 
-                response += f"Graph Size:\n"
-                response += f"  Total entities: {entity_count}\n"
-                response += f"  Total relations: {relation_count}\n"
-                response += f"  Average connections per entity: {avg_connections:.2f}\n\n"
-
-            response += f"Global Statistics:\n"
-            response += f"  Total entities: {entity_count}\n"
-            response += f"  Total relations: {relation_count}\n"
-            response += f"  Network density: {(relation_count / (entity_count * (entity_count - 1)) * 100) if entity_count > 1 else 0:.2f}%\n\n"
-
-            if relation_types:
-                response += f"Relation Type Distribution:\n"
-                total_rels = sum(count for _, count in relation_types)
-                for rel_type, count in relation_types:
-                    percentage = (count / total_rels * 100) if total_rels > 0 else 0
-                    response += f"  • {rel_type}: {count} ({percentage:.1f}%)\n"
-
-            return [TextContent(type="text", text=response)]
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_graph_metrics", "schema": "knowledge_graph"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="knowledge_graph")]
 
         except Exception as e:
             logger.error(f"Error in get_graph_metrics [args={args}]: {e}", exc_info=True)
-            error_response = json.dumps({"error": str(e), "tool": "get_graph_metrics"})
-            return [TextContent(type="text", text=error_response)]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_graph_metrics"})
+            return [result.as_optimized_content(schema_name="knowledge_graph")]
 
     # Meta-memory handlers
     async def _handle_analyze_coverage(self, args: dict) -> list[TextContent]:
@@ -4602,20 +4619,36 @@ class MemoryMCPServer:
     # Phase 2: Attention System handlers
     async def _handle_get_attention_state(self, args: dict) -> list[TextContent]:
         """Handle get_attention_state tool call."""
-        project_id = args["project_id"]
-
         try:
+            project_id = args["project_id"]
             focus = self.attention_focus.get_focus(project_id)
-            response = "✓ Current attention state:\n"
-            if focus:
-                response += f"  Focus: {focus.focus_type} on memory {focus.memory_id} ({focus.memory_layer})\n"
-                response += f"  Focused at: {focus.focused_at}\n"
-            else:
-                response += "  No current focus\n"
 
-            return [TextContent(type="text", text=response)]
+            if focus:
+                structured_data = {
+                    "focus_type": focus.focus_type,
+                    "memory_id": focus.memory_id,
+                    "memory_layer": focus.memory_layer,
+                    "focused_at": focus.focused_at.isoformat() if focus.focused_at else None
+                }
+            else:
+                structured_data = {
+                    "focus_type": None,
+                    "memory_id": None,
+                    "memory_layer": None,
+                    "focused_at": None,
+                    "status": "No current focus"
+                }
+
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_attention_state", "schema": "meta"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="meta")]
         except Exception as e:
-            return [TextContent(type="text", text=f"Error: {str(e)}")]
+            logger.error(f"Error in get_attention_state [args={args}]: {e}", exc_info=True)
+            result = StructuredResult.error(str(e), metadata={"operation": "get_attention_state"})
+            return [result.as_optimized_content(schema_name="meta")]
 
     async def _handle_set_attention_focus(self, args: dict) -> list[TextContent]:
         """Handle set_attention_focus tool call."""
@@ -4696,28 +4729,47 @@ class MemoryMCPServer:
 
     async def _handle_get_learning_rates(self, args: dict) -> list[TextContent]:
         """Handle get_learning_rates tool call."""
-        project_id = args.get("project_id")
-        if not project_id:
-            project = self.project_manager.get_or_create_project()
-            project_id = project.id
+        try:
+            project_id = args.get("project_id")
+            if not project_id:
+                project = self.project_manager.get_or_create_project()
+                project_id = project.id
 
-        report = self.learning_adjuster.get_learning_rate_report(project_id)
+            report = self.learning_adjuster.get_learning_rate_report(project_id)
 
-        response = f"✓ Learning Rate Report - Project {project_id}\n\n"
-        response += report.get('summary', 'No learning rate data available') + "\n\n"
+            strategies = report.get('strategy_rankings', [])
+            formatted_strategies = [
+                {
+                    "rank": i,
+                    "strategy": s['strategy'],
+                    "success_rate": round(s.get('success_rate', 0) * 100, 1)
+                }
+                for i, s in enumerate(strategies, 1)
+            ]
 
-        strategies = report.get('strategy_rankings', [])
-        if strategies:
-            response += "Strategy Rankings:\n"
-            for i, strategy in enumerate(strategies, 1):
-                response += f"  {i}. {strategy['strategy']}: {strategy['success_rate']:.1%} effectiveness\n"
+            recommendations = report.get('recommended_changes', [])
+            formatted_recommendations = [
+                {"action": r['action'], "reason": r['reason']}
+                for r in recommendations[:3]
+            ]
 
-        if report.get('recommended_changes'):
-            response += "\nRecommended Changes:\n"
-            for rec in report['recommended_changes'][:3]:  # Show top 3
-                response += f"  - {rec['action']}: {rec['reason']}\n"
+            structured_data = {
+                "project_id": project_id,
+                "summary": report.get('summary', 'No learning rate data available'),
+                "strategy_rankings": formatted_strategies,
+                "recommended_changes": formatted_recommendations
+            }
 
-        return [TextContent(type="text", text=response)]
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_learning_rates", "schema": "meta"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="meta")]
+        except Exception as e:
+            logger.error(f"Error in get_learning_rates [args={args}]: {e}", exc_info=True)
+            result = StructuredResult.error(str(e), metadata={"operation": "get_learning_rates"})
+            return [result.as_optimized_content(schema_name="meta")]
 
     async def _handle_detect_knowledge_gaps(self, args: dict) -> list[TextContent]:
         """Handle detect_knowledge_gaps tool call."""
@@ -4749,26 +4801,42 @@ class MemoryMCPServer:
 
     async def _handle_get_self_reflection(self, args: dict) -> list[TextContent]:
         """Handle get_self_reflection tool call."""
-        project_id = args.get("project_id")
-        if not project_id:
-            project = self.project_manager.get_or_create_project()
-            project_id = project.id
+        try:
+            project_id = args.get("project_id")
+            if not project_id:
+                project = self.project_manager.get_or_create_project()
+                project_id = project.id
 
-        report = self.reflection_system.generate_self_report(project_id)
+            report = self.reflection_system.generate_self_report(project_id)
 
-        response = report.get('summary', f'Self-Assessment Report - Project {project_id}') + "\n\n"
+            calibration = report.get('calibration', {})
+            quality = report.get('reasoning_quality', {})
 
-        calibration = report.get('calibration', {})
-        response += f"Calibration Status: {calibration.get('calibration_status', 'unknown').upper()}\n"
-        response += f"  Reported Confidence: {calibration.get('mean_reported', 0.0):.2%}\n"
-        response += f"  Actual Accuracy: {calibration.get('mean_actual', 0.0):.2%}\n\n"
+            structured_data = {
+                "project_id": project_id,
+                "summary": report.get('summary', f'Self-Assessment Report - Project {project_id}'),
+                "calibration": {
+                    "status": calibration.get('calibration_status', 'unknown'),
+                    "reported_confidence": round(calibration.get('mean_reported', 0.0) * 100, 1),
+                    "actual_accuracy": round(calibration.get('mean_actual', 0.0) * 100, 1)
+                },
+                "reasoning_quality": {
+                    "assessment": quality.get('assessment', 'unknown'),
+                    "quality_score": round(quality.get('quality_score', 0.0) * 100, 1),
+                    "accuracy": round(quality.get('accuracy', 0.0) * 100, 1)
+                }
+            }
 
-        quality = report.get('reasoning_quality', {})
-        response += f"Reasoning Quality: {quality.get('assessment', 'unknown').upper()}\n"
-        response += f"  Quality Score: {quality.get('quality_score', 0.0):.2%}\n"
-        response += f"  Accuracy: {quality.get('accuracy', 0.0):.2%}\n"
-
-        return [TextContent(type="text", text=response)]
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_self_reflection", "schema": "meta"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="meta")]
+        except Exception as e:
+            logger.error(f"Error in get_self_reflection [args={args}]: {e}", exc_info=True)
+            result = StructuredResult.error(str(e), metadata={"operation": "get_self_reflection"})
+            return [result.as_optimized_content(schema_name="meta")]
 
     async def _handle_check_cognitive_load(self, args: dict) -> list[TextContent]:
         """Handle check_cognitive_load tool call."""
@@ -4800,38 +4868,47 @@ class MemoryMCPServer:
 
     async def _handle_get_metacognition_insights(self, args: dict) -> list[TextContent]:
         """Handle get_metacognition_insights tool call."""
-        project_id = args.get("project_id")
-        if not project_id:
-            project = self.project_manager.get_or_create_project()
-            project_id = project.id
+        try:
+            project_id = args.get("project_id")
+            if not project_id:
+                project = self.project_manager.get_or_create_project()
+                project_id = project.id
 
-        # Collect insights from all metacognition components
-        response = f"✓ Comprehensive Metacognition Insights - Project {project_id}\n\n"
+            # Collect insights from all metacognition components
+            quality_report = self.quality_monitor.get_quality_report(project_id)
+            learning_report = self.learning_adjuster.get_learning_rate_report(project_id)
+            gap_report = self.gap_detector.get_gap_report(project_id)
+            reflection = self.reflection_system.generate_self_report(project_id)
+            load_report = self.load_monitor.get_cognitive_load_report(project_id)
 
-        # Quality insights
-        quality_report = self.quality_monitor.get_quality_report(project_id)
-        response += f"Memory Quality: {quality_report.get('overall_quality_score', 0.0):.1%}\n"
+            top_strategy = learning_report.get('top_performer', {})
+            quality = reflection.get('reasoning_quality', {})
 
-        # Learning insights
-        learning_report = self.learning_adjuster.get_learning_rate_report(project_id)
-        top_strategy = learning_report.get('top_performer', {})
-        if top_strategy:
-            response += f"Best Strategy: {top_strategy.get('strategy')} ({top_strategy.get('effectiveness_score', 0.0):.1%})\n"
+            structured_data = {
+                "project_id": project_id,
+                "memory_quality": round(quality_report.get('overall_quality_score', 0.0) * 100, 1),
+                "best_strategy": {
+                    "name": top_strategy.get('strategy') if top_strategy else None,
+                    "effectiveness": round(top_strategy.get('effectiveness_score', 0.0) * 100, 1) if top_strategy else None
+                },
+                "knowledge_gaps": {
+                    "unresolved": gap_report.get('unresolved_gaps', 0),
+                    "total": gap_report.get('total_gaps', 0)
+                },
+                "reasoning_quality": quality.get('assessment', 'unknown'),
+                "cognitive_load": load_report.get('saturation_risk', 'UNKNOWN')
+            }
 
-        # Gap insights
-        gap_report = self.gap_detector.get_gap_report(project_id)
-        response += f"Knowledge Gaps: {gap_report.get('unresolved_gaps', 0)} unresolved\n"
-
-        # Reflection insights
-        reflection = self.reflection_system.generate_self_report(project_id)
-        quality = reflection.get('reasoning_quality', {})
-        response += f"Reasoning Quality: {quality.get('assessment', 'unknown').upper()}\n"
-
-        # Load insights
-        load_report = self.load_monitor.get_cognitive_load_report(project_id)
-        response += f"Cognitive Load: {load_report.get('saturation_risk', 'UNKNOWN')}\n"
-
-        return [TextContent(type="text", text=response)]
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_metacognition_insights", "schema": "meta"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="meta")]
+        except Exception as e:
+            logger.error(f"Error in get_metacognition_insights [args={args}]: {e}", exc_info=True)
+            result = StructuredResult.error(str(e), metadata={"operation": "get_metacognition_insights"})
+            return [result.as_optimized_content(schema_name="meta")]
 
     # Phase 3.4: Advanced Planning Tool Handlers
 
@@ -5053,60 +5130,73 @@ class MemoryMCPServer:
 
     async def _handle_get_project_status(self, args: dict) -> list[TextContent]:
         """Handle get_project_status tool call."""
-        project_id = args.get("project_id")
-
-        if not project_id:
-            return [TextContent(type="text", text="✗ Error: project_id required")]
-
         try:
+            project_id = args.get("project_id")
+
+            if not project_id:
+                result = StructuredResult.error("project_id required", metadata={"operation": "get_project_status"})
+                return [result.as_optimized_content(schema_name="prospective")]
+
             # Get project from database
             cursor = self.store.db.conn.cursor()
             cursor.execute("SELECT id, name FROM projects WHERE id = ?", (project_id,))
             row = cursor.fetchone()
 
             if not row:
-                return [TextContent(type="text", text=f"✗ Error: Project {project_id} not found")]
+                result = StructuredResult.error(f"Project {project_id} not found", metadata={"operation": "get_project_status"})
+                return [result.as_optimized_content(schema_name="prospective")]
 
             project_name = row[1]
-            response = f"✓ Project Status - {project_name}\n\n"
 
             # Get phase info (count distinct phases in tasks)
             cursor = self.project_manager.store.db.conn.cursor()
             cursor.execute(
                 "SELECT COUNT(DISTINCT phase) as cnt FROM prospective_tasks WHERE project_id = ?", (project_id,)
             )
-            phase_count = cursor.fetchone()[0]
+            phase_count = cursor.fetchone()[0] or 0
 
             # Get task info
             cursor.execute(
                 "SELECT COUNT(*) as cnt FROM prospective_tasks WHERE project_id = ? AND status = ?",
                 (project_id, "completed"),
             )
-            completed_tasks = cursor.fetchone()[0]
+            completed_tasks = cursor.fetchone()[0] or 0
 
             cursor.execute(
                 "SELECT COUNT(*) as cnt FROM prospective_tasks WHERE project_id = ?", (project_id,)
             )
-            total_tasks = cursor.fetchone()[0]
+            total_tasks = cursor.fetchone()[0] or 0
 
             # Calculate progress
             progress_pct = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
 
-            response += f"Progress: {progress_pct:.0f}% ({completed_tasks}/{total_tasks} tasks completed)\n"
-            response += f"Phases: {phase_count}\n"
-            response += f"Total Tasks: {total_tasks}\n"
-            response += f"Completed: {completed_tasks}\n"
-            response += f"Remaining: {total_tasks - completed_tasks}\n\n"
+            structured_data = {
+                "project_id": project_id,
+                "project_name": project_name,
+                "progress": {
+                    "percentage": round(progress_pct, 1),
+                    "completed": completed_tasks,
+                    "total": total_tasks,
+                    "remaining": total_tasks - completed_tasks
+                },
+                "phases": phase_count,
+                "quality_metrics": {
+                    "overall_quality": "Good",
+                    "schedule_variance": "On Track",
+                    "risk_level": "Medium"
+                }
+            }
 
-            # Quality and risk summary
-            response += "Quality Metrics:\n"
-            response += f"- Overall Quality: Good (estimated)\n"
-            response += f"- Schedule Variance: On Track\n"
-            response += f"- Risk Level: Medium\n"
-
-            return [TextContent(type="text", text=response)]
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_project_status", "schema": "prospective"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="prospective")]
         except Exception as e:
-            return [TextContent(type="text", text=f"✗ Status error: {str(e)}")]
+            logger.error(f"Error in get_project_status [args={args}]: {e}", exc_info=True)
+            result = StructuredResult.error(str(e), metadata={"operation": "get_project_status"})
+            return [result.as_optimized_content(schema_name="prospective")]
 
     async def _handle_recommend_orchestration(self, args: dict) -> list[TextContent]:
         """Handle recommend_orchestration tool call with pattern-based recommendations."""
@@ -5992,20 +6082,33 @@ class MemoryMCPServer:
             health = await self.task_monitor.get_task_health(task_id)
 
             if health is None:
-                return [TextContent(type="text", text=f"Task {task_id} not found")]
+                result = StructuredResult.error(f"Task {task_id} not found", metadata={"operation": "get_task_health"})
+                return [result.as_optimized_content(schema_name="prospective")]
 
-            response = f"Task Health Report (Task {task_id})\n"
-            response += f"Status: {health.health_status}\n"
-            response += f"Progress: {health.progress_percent}%\n"
-            response += f"Health Score: {health.health_score:.2f}\n"
-            response += f"Phase: {health.phase}\n"
-            response += f"Duration Variance: {health.duration_variance:.2f}\n"
-            response += f"Blockers: {health.blockers} | Errors: {health.errors} | Warnings: {health.warnings}\n"
+            structured_data = {
+                "task_id": task_id,
+                "status": health.health_status,
+                "progress": health.progress_percent,
+                "health_score": round(health.health_score, 2),
+                "phase": health.phase,
+                "duration_variance": round(health.duration_variance, 2),
+                "issues": {
+                    "blockers": health.blockers,
+                    "errors": health.errors,
+                    "warnings": health.warnings
+                }
+            }
 
-            return [TextContent(type="text", text=response)]
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_task_health", "schema": "prospective"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="prospective")]
         except Exception as e:
             logger.error(f"Error in get_task_health: {e}", exc_info=True)
-            return [TextContent(type="text", text=f"Error: {str(e)}")]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_task_health"})
+            return [result.as_optimized_content(schema_name="prospective")]
 
     async def _handle_get_project_dashboard(self, args: dict) -> list[TextContent]:
         """Handle get_project_dashboard tool call."""
@@ -6013,18 +6116,26 @@ class MemoryMCPServer:
             project_id = args.get("project_id")
             dashboard = await self.task_monitor.get_project_dashboard(project_id)
 
-            response = f"Project Dashboard (Project {project_id})\n"
-            response += f"Total Tasks: {dashboard['summary']['total_tasks']}\n"
-            response += f"Completed: {dashboard['summary']['completed']}\n"
-            response += f"In Progress: {dashboard['summary']['in_progress']}\n"
-            response += f"Health Overview:\n"
-            for status, count in dashboard['health'].items():
-                response += f"  {status}: {count}\n"
+            structured_data = {
+                "project_id": project_id,
+                "summary": {
+                    "total_tasks": dashboard.get('summary', {}).get('total_tasks', 0),
+                    "completed": dashboard.get('summary', {}).get('completed', 0),
+                    "in_progress": dashboard.get('summary', {}).get('in_progress', 0)
+                },
+                "health_overview": dashboard.get('health', {})
+            }
 
-            return [TextContent(type="text", text=response)]
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_project_dashboard", "schema": "prospective"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="prospective")]
         except Exception as e:
             logger.error(f"Error in get_project_dashboard: {e}", exc_info=True)
-            return [TextContent(type="text", text=f"Error: {str(e)}")]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_project_dashboard"})
+            return [result.as_optimized_content(schema_name="prospective")]
 
     async def _handle_analyze_estimation_accuracy(self, args: dict) -> list[TextContent]:
         """Handle analyze_estimation_accuracy tool call.
@@ -6877,25 +6988,40 @@ class MemoryMCPServer:
             include_warnings = args.get("include_warnings", True)
 
             if not task_id or not project_id:
-                return [TextContent(type="text", text="Missing task_id or project_id")]
+                result = StructuredResult.error("Missing task_id or project_id", metadata={"operation": "get_suggestions"})
+                return [result.as_optimized_content(schema_name="validation")]
 
             # Validate task to get violations
             validation = self.rules_engine.validate_task(task_id, project_id)
 
             if not validation.violations and not validation.suggestions:
-                return [TextContent(type="text", text="✓ No violations detected")]
+                result = StructuredResult.success(
+                    data={"violations": [], "suggestions": [], "status": "No violations detected"},
+                    metadata={"operation": "get_suggestions", "schema": "validation"},
+                    pagination=PaginationMetadata(returned=0)
+                )
+                return [result.as_optimized_content(schema_name="validation")]
 
             # Get suggestions for violations
             suggestions = self.suggestions_engine.suggest_fixes(validation.violations)
 
-            output = "Suggestions to fix violations:\n"
-            for i, suggestion in enumerate(suggestions, 1):
-                output += f"{i}. {suggestion}\n"
+            structured_data = {
+                "task_id": task_id,
+                "project_id": project_id,
+                "violations": [str(v) for v in validation.violations],
+                "suggestions": [str(s) for s in suggestions]
+            }
 
-            return [TextContent(type="text", text=output)]
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_suggestions", "schema": "validation"},
+                pagination=PaginationMetadata(returned=len(suggestions))
+            )
+            return [result.as_optimized_content(schema_name="validation")]
         except Exception as e:
             logger.error(f"Error in get_suggestions: {e}", exc_info=True)
-            return [TextContent(type="text", text=f"Error: {str(e)}")]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_suggestions"})
+            return [result.as_optimized_content(schema_name="validation")]
 
     async def _handle_override_rule(self, args: dict) -> list[TextContent]:
         """Handle override_rule tool call."""
@@ -6989,37 +7115,41 @@ class MemoryMCPServer:
             summary = self.semantic_quality_analyzer.get_quality_summary(project_id)
 
             if not summary:
-                return [TextContent(type="text", text=f"Could not generate quality summary for project {project_id}")]
+                result = StructuredResult.error(f"Could not generate quality summary for project {project_id}", metadata={"operation": "get_memory_quality_summary"})
+                return [result.as_optimized_content(schema_name="semantic")]
 
-            response = f"Memory Quality Summary (Project {project_id})\n"
-            response += "=" * 50 + "\n"
-
-            response += f"\nOverall Quality: {summary.get('avg_quality', 0):.1%}\n"
-            response += f"Total Memories: {summary.get('total_memories', 0)}\n"
-
-            # Distribution
+            # Build quality distribution
             dist = summary.get("quality_distribution", {})
-            response += f"\nQuality Distribution:\n"
+            total_memories = summary.get("total_memories", 0)
+            quality_dist = {}
             for tier in ["excellent", "good", "fair", "poor"]:
                 count = dist.get(tier, 0)
-                pct = (count / summary.get("total_memories", 1) * 100) if summary.get("total_memories") else 0
-                response += f"  {tier.capitalize()}: {count} ({pct:.0f}%)\n"
-
-            # Low quality count
-            low_quality = summary.get("low_quality_count", 0)
-            response += f"\nLow Quality Memories (<40%): {low_quality}\n"
+                pct = (count / total_memories * 100) if total_memories else 0
+                quality_dist[tier] = {"count": count, "percentage": round(pct, 1)}
 
             # Top recommendations
             recs = summary.get("recommendations", [])
-            if recs:
-                response += f"\nTop Improvement Opportunities:\n"
-                for i, rec in enumerate(recs, 1):
-                    response += f"  {i}. {rec['action']} (found in {rec['frequency']} memories)\n"
+            formatted_recs = [{"action": r['action'], "frequency": r['frequency']} for r in recs[:5]]
 
-            return [TextContent(type="text", text=response)]
+            structured_data = {
+                "project_id": project_id,
+                "overall_quality": round(summary.get('avg_quality', 0) * 100, 1),
+                "total_memories": total_memories,
+                "quality_distribution": quality_dist,
+                "low_quality_count": summary.get("low_quality_count", 0),
+                "improvement_opportunities": formatted_recs
+            }
+
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_memory_quality_summary", "schema": "semantic"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="semantic")]
         except Exception as e:
             logger.error(f"Error in get_memory_quality_summary: {e}", exc_info=True)
-            return [TextContent(type="text", text=f"Error: {str(e)}")]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_memory_quality_summary"})
+            return [result.as_optimized_content(schema_name="semantic")]
 
     async def _handle_validate_plan_with_reasoning(self, args: dict) -> list[TextContent]:
         """Handle validate_plan_with_reasoning tool call.
@@ -7259,7 +7389,8 @@ Explanation:
             context_events = args.get("context_events")
 
             if not all([memory_ids, layer, project_id]):
-                return [TextContent(type="text", text="Missing required args: memory_ids, layer, project_id")]
+                result = StructuredResult.error("Missing required args: memory_ids, layer, project_id", metadata={"operation": "get_saliency_batch"})
+                return [result.as_optimized_content(schema_name="meta")]
 
             if not isinstance(memory_ids, list):
                 memory_ids = [memory_ids]
@@ -7272,28 +7403,42 @@ Explanation:
                 context_events=context_events,
             )
 
-            response = f"**Batch Saliency Scores** ({len(results)} memories)\n\n"
-            response += "| Memory ID | Saliency | Focus Type | Recommendation |\n"
-            response += "|-----------|----------|------------|----------------|\n"
-
-            for result in results:
-                mem_id = result['memory_id']
-                salience = result['saliency']
-                focus = result['focus_type']
-                rec = result['recommendation'].split(':')[0]  # Just the type
-                response += f"| {mem_id} | {salience:.1%} | {focus} | {rec} |\n"
-
             # Summary statistics
             saliencies = [r['saliency'] for r in results]
-            response += f"\n**Summary**\n"
-            response += f"Average Saliency: {sum(saliencies)/len(saliencies):.1%}\n"
-            response += f"Max Saliency: {max(saliencies):.1%}\n"
-            response += f"Min Saliency: {min(saliencies):.1%}\n"
+            avg_saliency = sum(saliencies)/len(saliencies) if saliencies else 0
 
-            return [TextContent(type="text", text=response)]
+            formatted_results = [
+                {
+                    "memory_id": r['memory_id'],
+                    "saliency": round(r['saliency'] * 100, 1),
+                    "focus_type": r['focus_type'],
+                    "recommendation": r['recommendation'].split(':')[0]
+                }
+                for r in results
+            ]
+
+            structured_data = {
+                "total_memories": len(results),
+                "layer": layer,
+                "project_id": project_id,
+                "scores": formatted_results,
+                "summary": {
+                    "average_saliency": round(avg_saliency * 100, 1),
+                    "max_saliency": round(max(saliencies) * 100, 1) if saliencies else 0,
+                    "min_saliency": round(min(saliencies) * 100, 1) if saliencies else 0
+                }
+            }
+
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_saliency_batch", "schema": "meta"},
+                pagination=PaginationMetadata(returned=len(results))
+            )
+            return [result.as_optimized_content(schema_name="meta")]
         except Exception as e:
             logger.error(f"Error in get_saliency_batch: {e}", exc_info=True)
-            return [TextContent(type="text", text=f"Error: {str(e)}")]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_saliency_batch"})
+            return [result.as_optimized_content(schema_name="meta")]
 
     async def _handle_get_saliency_recommendation(self, args: dict) -> list[TextContent]:
         """Handle get_saliency_recommendation tool call.
@@ -9211,7 +9356,8 @@ Anomalies:
             project_id = args.get("project_id", 1)
 
             if not memory_id:
-                return [TextContent(type="text", text="Error: memory_id is required")]
+                result = StructuredResult.error("memory_id is required", metadata={"operation": "get_causal_context"})
+                return [result.as_optimized_content(schema_name="semantic")]
 
             # Get causal context via RAG manager
             if self.unified_manager.rag_manager:
@@ -9220,48 +9366,58 @@ Anomalies:
                 context = None
 
             if not context:
-                return [TextContent(type="text", text="Causal context not available for this memory. This may indicate: 1) Memory not found, 2) No causal relations in knowledge graph, or 3) Temporal enrichment features loading")]
-
-            # Format response
-            response_lines = [
-                f"**Causal Context for Memory #{memory_id}**\n",
-                f"Total Relations: {context['total_relations']}",
-                f"Critical Relations: {context['critical_relations']}\n",
-            ]
+                result = StructuredResult.error("Causal context not available - may indicate memory not found or no causal relations", metadata={"operation": "get_causal_context"})
+                return [result.as_optimized_content(schema_name="semantic")]
 
             causes = context.get("causes", [])
             effects = context.get("effects", [])
 
-            if causes:
-                response_lines.append("**What Caused This:**")
-                for relation in causes[:5]:
-                    response_lines.append(
-                        f"  - Event #{relation.source_memory_id}: {relation.relation_type} "
-                        f"(causality: {relation.causality_score:.2%})"
-                    )
-                if len(causes) > 5:
-                    response_lines.append(f"  ... and {len(causes) - 5} more causes")
-            else:
-                response_lines.append("**What Caused This:** No causal predecessors found")
+            formatted_causes = [
+                {
+                    "source_id": r.source_memory_id,
+                    "type": r.relation_type,
+                    "causality_score": round(r.causality_score * 100, 2)
+                }
+                for r in causes[:5]
+            ]
 
-            if effects:
-                response_lines.append("\n**What This Caused:**")
-                for relation in effects[:5]:
-                    response_lines.append(
-                        f"  - Event #{relation.target_memory_id}: {relation.relation_type} "
-                        f"(causality: {relation.causality_score:.2%})"
-                    )
-                if len(effects) > 5:
-                    response_lines.append(f"  ... and {len(effects) - 5} more effects")
-            else:
-                response_lines.append("**What This Caused:** No causal consequences found")
+            formatted_effects = [
+                {
+                    "target_id": r.target_memory_id,
+                    "type": r.relation_type,
+                    "causality_score": round(r.causality_score * 100, 2)
+                }
+                for r in effects[:5]
+            ]
 
-            response = "\n".join(response_lines)
-            return [TextContent(type="text", text=response)]
+            structured_data = {
+                "memory_id": memory_id,
+                "project_id": project_id,
+                "total_relations": context.get('total_relations', 0),
+                "critical_relations": context.get('critical_relations', 0),
+                "causes": {
+                    "relations": formatted_causes,
+                    "total": len(causes),
+                    "shown": len(formatted_causes)
+                },
+                "effects": {
+                    "relations": formatted_effects,
+                    "total": len(effects),
+                    "shown": len(formatted_effects)
+                }
+            }
+
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_causal_context", "schema": "semantic"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="semantic")]
 
         except Exception as e:
             logger.error(f"Error in get_causal_context: {e}", exc_info=True)
-            return [TextContent(type="text", text=f"Error: {str(e)}")]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_causal_context"})
+            return [result.as_optimized_content(schema_name="semantic")]
 
     # ========================================================================
     # Code-Aware Event Tools
@@ -9882,12 +10038,25 @@ Anomalies:
         """Handle get_file_history tool."""
         try:
             git_handlers = GitMCPHandlers(self.store.db)
-            result = await git_handlers.get_file_history(args)
-            return [TextContent(type="text", text=result)]
+            result_text = await git_handlers.get_file_history(args)
+
+            # Parse the result text and wrap in StructuredResult
+            structured_data = {
+                "file_path": args.get("file_path"),
+                "result": result_text,
+                "operation_timestamp": datetime.utcnow().isoformat()
+            }
+
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_file_history", "schema": "git"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="git")]
         except Exception as e:
             logger.error(f"Error in get_file_history [args={args}]: {e}", exc_info=True)
-            error_response = json.dumps({"error": str(e), "tool": "get_file_history"})
-            return [TextContent(type="text", text=error_response)]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_file_history"})
+            return [result.as_optimized_content(schema_name="git")]
 
     async def _handle_get_commits_by_author(self, args: dict) -> list[TextContent]:
         """Handle get_commits_by_author tool."""
