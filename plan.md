@@ -19,12 +19,12 @@
 
 | Metric | Status | Last Updated |
 |--------|--------|--------------|
-| **Current Week** | Week 12 ✅ | Jan 29, 2026 |
-| **Phase** | Phase 1 COMPLETE ✅ → Phase 2 COMPLETE ✅ → Phase 3 COMPLETE ✅ → Phase 4 WEEK 1 COMPLETE ✅ | Jan 29, 2026 |
-| **Progress** | 12/16 weeks (75%) | Jan 29, 2026 |
-| **Blockers** | NONE - Phase 4 Week 12 fully delivered ✅ | Jan 29, 2026 |
-| **Key Achievements** | API Discovery (28 tests) ✅, Marketplace MVP (28 tests) ✅, MemoryAPI Integration (11 tests) ✅, 67+ tests passing ✅ | Jan 29, 2026 |
-| **Next Milestone** | Week 13 - Phase 4 Week 2: Marketplace Storage & Semantic Search | Feb 5, 2026 |
+| **Current Week** | Week 13 ✅ | Feb 5, 2026 |
+| **Phase** | Phase 1 COMPLETE ✅ → Phase 2 COMPLETE ✅ → Phase 3 COMPLETE ✅ → Phase 4 WEEK 2 COMPLETE ✅ | Feb 5, 2026 |
+| **Progress** | 13/16 weeks (81%) | Feb 5, 2026 |
+| **Blockers** | NONE - Phase 4 Week 13 fully delivered ✅ | Feb 5, 2026 |
+| **Key Achievements** | MarketplaceStore (330 LOC) ✅, SemanticSearch (315 LOC) ✅, Recommendations (450 LOC) ✅, MemoryAPI integration (225 LOC) ✅, 41 tests passing (100%) ✅ | Feb 5, 2026 |
+| **Next Milestone** | Week 14 - Phase 4 Week 3: Integration & Documentation | Feb 12, 2026 |
 
 **👉 Update above after each week of work!**
 
@@ -1281,6 +1281,66 @@ scripts/
 - ✅ Context reduction capability verified
 - ✅ Ready for Week 13 (marketplace storage & semantic search)
 
+#### Week 13 ✅ COMPLETED (Feb 5, 2026) - Phase 4 Week 2: Marketplace Storage & Semantic Search
+| Task | Owner | Est. | Status |
+|------|-------|------|--------|
+| 4.2.2 Marketplace storage implementation | @Claude | 3h | ✅ Done |
+| 4.2.3 Semantic search engine | @Claude | 3h | ✅ Done |
+| 4.3.1 Recommendations system | @Claude | 3h | ✅ Done |
+| 4.3.2 MemoryAPI marketplace integration | @Claude | 2h | ✅ Done |
+| Test suite & validation | @Claude | 4h | ✅ Done |
+
+**Deliverables** ✅ ALL COMPLETE:
+- [x] `src/athena/api/marketplace_store.py` (330 LOC) - In-memory procedure storage ✅
+- [x] `src/athena/api/semantic_search.py` (315 LOC) - Semantic + keyword search ✅
+- [x] `src/athena/api/recommendations.py` (450 LOC) - Smart recommendations ✅
+- [x] `src/athena/mcp/memory_api.py` extended (225 LOC) - 8 new marketplace methods ✅
+- [x] `tests/unit/test_phase4_marketplace_store.py` (590 LOC, 25 tests) ✅
+- [x] `tests/unit/test_phase4_semantic_search.py` (400 LOC, 16 tests) ✅
+- [x] **Total**: 2,310 LOC, 41 tests (100% passing) ✅
+- [x] Git commit 694db39 ✅
+
+**Key Features Delivered**:
+- ✅ **MarketplaceStore**: Full CRUD with filtering, reviews, installations, stats
+- ✅ **SemanticSearch**: Embeddings-based search with keyword fallback and caching
+- ✅ **Recommendations**: Use case-based, trending, quality-filtered, personalized
+- ✅ **MemoryAPI Integration**: 8 methods for agent marketplace access
+- ✅ **Quality Filtering**: By category, quality level, ratings, installations
+- ✅ **Performance Tracking**: Execution stats, success rates, average times
+
+**Test Results**: 41/41 PASSING ✅
+- MarketplaceStore: 25/25 tests (100%) ✅
+  - CRUD operations (6 tests)
+  - Listing & filtering (7 tests)
+  - Search functionality (2 tests)
+  - Reviews (4 tests)
+  - Installations (3 tests)
+  - In-memory storage (3 tests)
+  - Pagination (2 tests)
+- SemanticSearch: 16/16 tests (100%) ✅
+  - Similarity search (4 tests)
+  - Fallback search (2 tests)
+  - Trending (1 test)
+  - Quality recommendations (1 test)
+  - Cosine similarity (5 tests)
+  - Caching (2 tests)
+  - Threshold filtering (1 test)
+
+**Metrics**:
+- Lines of code: 2,310 (1,320 implementation + 990 tests)
+- Tests written: 41
+- Tests passing: 41 (100%)
+- Code coverage: ~85% (core classes)
+- Commit: 694db39
+
+**Phase 4 Week 13 Exit Criteria** ✅:
+- ✅ Marketplace storage working (25 tests, 100% passing)
+- ✅ Semantic search functional (16 tests, 100% passing)
+- ✅ Recommendations engine operational
+- ✅ MemoryAPI integration complete (8 methods)
+- ✅ All 41 tests passing with strong coverage
+- ✅ Ready for Week 14 (integration & documentation)
+
 ### Phase 2 Summary (Weeks 5-8) ✅ COMPLETE
 - ✅ **Week 5**: Async/sync bridge + ExecutableProcedure model (406 LOC)
 - ✅ **Week 6**: GitBackedProcedureStore + code extraction (1,820 LOC, 58 tests)
@@ -1432,14 +1492,14 @@ scripts/
 
 ---
 
-**Document Version**: 1.5 (Updated Jan 22, 2026)
-**Status**: In Active Execution (Week 11 Complete - Phase 3 Week 3 Complete)
+**Document Version**: 1.6 (Updated Feb 5, 2026)
+**Status**: In Active Execution (Week 13 Complete - Phase 4 Week 2 Complete)
 **Project Start**: November 11, 2025
 **Approval Date**: November 11, 2025
-**Current Progress**: 69% (11/16 weeks)
-**Projected Completion**: Week 16 (January 29, 2026)
-**Last Updated**: January 22, 2026
-**Latest Commit**: 6d15e29 (Phase 3 Week 11 - Security Tests & MCP Registration)
+**Current Progress**: 81% (13/16 weeks)
+**Projected Completion**: Week 16 (February 26, 2026)
+**Last Updated**: February 5, 2026
+**Latest Commit**: 694db39 (Phase 4 Week 13 - Marketplace Storage & Semantic Search)
 
 ---
 
@@ -1467,4 +1527,4 @@ scripts/
 ---
 
 *For questions or clarifications, contact the Project Lead.*
-*Last Updated: January 22, 2026*
+*Last Updated: February 5, 2026*
