@@ -38,6 +38,9 @@ from ..episodic.store import EpisodicStore
 from ..memory.store import MemoryStore
 from ..procedural.models import Procedure, ProcedureCategory
 from ..procedural.store import ProceduralStore
+from ..procedural.code_generator import ProcedureCodeGenerator, ConfidenceScorer
+from ..procedural.code_validator import CodeValidator
+from ..procedural.git_store import GitBackedProcedureStore
 from ..prospective.models import ProspectiveTask, TaskStatus, TaskPriority, TaskPhase
 from ..prospective.store import ProspectiveStore
 from ..graph.models import Entity, Relation, EntityType, RelationType
@@ -118,10 +121,16 @@ class MemoryAPI:
         self.meta = manager.meta
         self.consolidation = manager.consolidation
 
+        # Phase 2 Week 8: Initialize code generation and validation components
+        self.code_generator = ProcedureCodeGenerator()
+        self.code_validator = CodeValidator()
+        self.confidence_scorer = ConfidenceScorer()
+        self.git_store: Optional[GitBackedProcedureStore] = None  # Lazy-initialized
+
         # Default project ID (lazy-initialized on first use)
         self._default_project_id: Optional[int] = None
 
-        logger.info("MemoryAPI initialized with all memory layers")
+        logger.info("MemoryAPI initialized with all memory layers and code generation")
 
     def _ensure_default_project(self) -> int:
         """Ensure a default project exists for memory operations.
@@ -540,6 +549,426 @@ class MemoryAPI:
         except Exception as e:
             logger.error(f"Failed to recall procedures: {e}")
             raise
+
+    # ===== PHASE 2 WEEK 8: CODE GENERATION & VALIDATION =====
+
+    def generate_procedure_code(
+        self,
+        procedure_id: int,
+        use_llm: bool = True,
+        refine_on_low_confidence: bool = True,
+    ) -> Dict[str, Any]:
+        """Generate executable Python code for a procedure using LLM.
+
+        Args:
+            procedure_id: ID of procedure to generate code for
+            use_llm: Whether to use LLM (vs heuristic fallback)
+            refine_on_low_confidence: Auto-refine if confidence <0.7
+
+        Returns:
+            Dictionary with generated code, confidence score, and validation results
+
+        Example:
+            result = api.generate_procedure_code(
+                procedure_id=42,
+                use_llm=True,
+                refine_on_low_confidence=True
+            )
+            if result["success"]:
+                print(f"Code: {result['code']}")
+                print(f"Confidence: {result['confidence']}")
+        """
+        try:
+            start_time = datetime.now()
+            project = self.project_manager.get_or_create_project()
+            if not project or not project.id:
+                raise RuntimeError("Failed to get/create project")
+
+            # Retrieve procedure
+            procedure = self.procedural.get_procedure(procedure_id)
+            if not procedure:
+                raise ValueError(f"Procedure not found: {procedure_id}")
+
+            # Generate code using LLM
+            result = self.code_generator.generate(
+                procedure=procedure,
+                use_llm=use_llm,
+                refine_on_low_confidence=refine_on_low_confidence,
+            )
+
+            duration = (datetime.now() - start_time).total_seconds()
+
+            return {
+                "success": True,
+                "procedure_id": procedure_id,
+                "code": result.get("code"),
+                "confidence": result.get("confidence", 0.0),
+                "validation": result.get("validation", {}),
+                "issues": result.get("issues", []),
+                "duration_seconds": duration,
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to generate code for procedure {procedure_id}: {e}")
+            return {
+                "success": False,
+                "procedure_id": procedure_id,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat(),
+            }
+
+    def validate_procedure_code(
+        self,
+        code: str,
+        procedure_id: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """Validate procedure code for syntax, security, and quality.
+
+        Args:
+            code: Python code to validate
+            procedure_id: Optional procedure ID for context
+
+        Returns:
+            Dictionary with validation results and quality metrics
+
+        Example:
+            result = api.validate_procedure_code(
+                code="def my_proc():\n    return 42",
+                procedure_id=42
+            )
+            print(f"Quality score: {result['quality_score']}")
+        """
+        try:
+            start_time = datetime.now()
+
+            # Validate code comprehensively
+            validation_result = self.code_validator.validate(code)
+
+            # Convert ValidationResult object to dict
+            if hasattr(validation_result, "to_dict"):
+                result_dict = validation_result.to_dict()
+            else:
+                result_dict = validation_result
+
+            duration = (datetime.now() - start_time).total_seconds()
+
+            return {
+                "success": True,
+                "procedure_id": procedure_id,
+                "quality_score": result_dict.get("quality_score", 0.0),
+                "issues": result_dict.get("issues", []),
+                "checks": {
+                    "syntax": result_dict.get("is_valid", False),
+                    "security": result_dict.get("is_valid", False),
+                    "docstring": result_dict.get("has_docstring", False),
+                    "error_handling": result_dict.get("has_error_handling", False),
+                    "type_hints": result_dict.get("type_hints_coverage", 0.0),
+                },
+                "duration_seconds": duration,
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to validate code: {e}")
+            return {
+                "success": False,
+                "procedure_id": procedure_id,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat(),
+            }
+
+    def get_procedure_versions(
+        self,
+        procedure_id: int,
+        limit: int = 10,
+    ) -> Dict[str, Any]:
+        """Get version history for a procedure from git store.
+
+        Args:
+            procedure_id: ID of procedure
+            limit: Maximum versions to return
+
+        Returns:
+            Dictionary with version history
+
+        Example:
+            versions = api.get_procedure_versions(42, limit=10)
+            for v in versions["versions"]:
+                print(f"Version {v['version']}: {v['message']}")
+        """
+        try:
+            project = self.project_manager.get_or_create_project()
+            if not project or not project.id:
+                raise RuntimeError("Failed to get/create project")
+
+            # Lazy-initialize git store if needed
+            if self.git_store is None:
+                self.git_store = GitBackedProcedureStore(
+                    repo_path=f"/tmp/athena_procedures_{project.id}"
+                )
+
+            # Get version history
+            versions = self.git_store.get_procedure_history(procedure_id)
+
+            return {
+                "success": True,
+                "procedure_id": procedure_id,
+                "versions": versions or [],
+                "count": len(versions) if versions else 0,
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get procedure versions: {e}")
+            return {
+                "success": False,
+                "procedure_id": procedure_id,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat(),
+            }
+
+    def rollback_procedure_code(
+        self,
+        procedure_id: int,
+        target_version: str,
+        reason: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Rollback procedure code to a previous version.
+
+        Args:
+            procedure_id: ID of procedure
+            target_version: Target version/commit hash to rollback to
+            reason: Optional reason for rollback
+
+        Returns:
+            Dictionary with rollback result
+
+        Example:
+            result = api.rollback_procedure_code(
+                procedure_id=42,
+                target_version="abc123def456",
+                reason="Previous version had better performance"
+            )
+        """
+        try:
+            project = self.project_manager.get_or_create_project()
+            if not project or not project.id:
+                raise RuntimeError("Failed to get/create project")
+
+            # Lazy-initialize git store if needed
+            if self.git_store is None:
+                self.git_store = GitBackedProcedureStore(
+                    repo_path=f"/tmp/athena_procedures_{project.id}"
+                )
+
+            # Rollback to version
+            procedure = self.git_store.rollback_procedure(
+                procedure_id=procedure_id,
+                target_version=target_version,
+                reason=reason or "Rollback via API",
+            )
+
+            return {
+                "success": True,
+                "procedure_id": procedure_id,
+                "target_version": target_version,
+                "procedure": {
+                    "name": procedure.name if hasattr(procedure, "name") else "unknown",
+                    "code_version": procedure.code_version if hasattr(procedure, "code_version") else "1.0",
+                },
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to rollback procedure: {e}")
+            return {
+                "success": False,
+                "procedure_id": procedure_id,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat(),
+            }
+
+    def execute_procedure(
+        self,
+        procedure_id: int,
+        parameters: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Execute a procedure and record execution metrics.
+
+        Args:
+            procedure_id: ID of procedure to execute
+            parameters: Optional parameters for procedure execution
+
+        Returns:
+            Dictionary with execution result and metrics
+
+        Example:
+            result = api.execute_procedure(
+                procedure_id=42,
+                parameters={"target_file": "src/main.py"}
+            )
+            print(f"Outcome: {result['outcome']}")
+        """
+        try:
+            start_time = datetime.now()
+            project = self.project_manager.get_or_create_project()
+            if not project or not project.id:
+                raise RuntimeError("Failed to get/create project")
+
+            # Get procedure
+            procedure = self.procedural.get_procedure(procedure_id)
+            if not procedure:
+                raise ValueError(f"Procedure not found: {procedure_id}")
+
+            # Record execution attempt
+            outcome = "unknown"
+            error = None
+
+            try:
+                # Execute procedure code if available
+                if procedure.code:
+                    # Create execution context with parameters
+                    exec_globals = {
+                        "parameters": parameters or {},
+                        "api": self,
+                    }
+                    exec(procedure.code, exec_globals)
+                    outcome = "success"
+                else:
+                    outcome = "skipped"
+                    error = "No executable code available"
+
+            except Exception as exec_error:
+                outcome = "failure"
+                error = str(exec_error)
+                logger.error(f"Procedure execution failed: {error}")
+
+            duration = (datetime.now() - start_time).total_seconds()
+
+            # Update procedure stats
+            self.procedural.record_execution(
+                procedure_id=procedure_id,
+                project_id=project.id,
+                outcome=outcome,
+                duration_ms=int(duration * 1000),
+                variables=parameters or {},
+            )
+
+            return {
+                "success": outcome == "success",
+                "procedure_id": procedure_id,
+                "outcome": outcome,
+                "duration_seconds": duration,
+                "error": error,
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to execute procedure: {e}")
+            return {
+                "success": False,
+                "procedure_id": procedure_id,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat(),
+            }
+
+    def get_procedure_stats(
+        self,
+        procedure_id: int,
+    ) -> Dict[str, Any]:
+        """Get execution statistics for a procedure.
+
+        Args:
+            procedure_id: ID of procedure
+
+        Returns:
+            Dictionary with execution stats and metrics
+
+        Example:
+            stats = api.get_procedure_stats(42)
+            print(f"Success rate: {stats['success_rate']:.1%}")
+        """
+        try:
+            procedure = self.procedural.get_procedure(procedure_id)
+            if not procedure:
+                raise ValueError(f"Procedure not found: {procedure_id}")
+
+            # Get execution stats
+            stats = self.procedural.get_execution_stats(procedure_id)
+
+            return {
+                "success": True,
+                "procedure_id": procedure_id,
+                "name": procedure.name,
+                "usage_count": procedure.usage_count,
+                "success_rate": procedure.success_rate,
+                "avg_completion_time_ms": procedure.avg_completion_time_ms,
+                "code_confidence": procedure.code_confidence if hasattr(procedure, "code_confidence") else 0.0,
+                "execution_stats": stats or {},
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to get procedure stats: {e}")
+            return {
+                "success": False,
+                "procedure_id": procedure_id,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat(),
+            }
+
+    def search_procedures_by_confidence(
+        self,
+        min_confidence: float = 0.7,
+        limit: int = 10,
+    ) -> Dict[str, Any]:
+        """Search for procedures with code confidence above threshold.
+
+        Args:
+            min_confidence: Minimum confidence score (0.0-1.0)
+            limit: Maximum results
+
+        Returns:
+            Dictionary with filtered procedures
+
+        Example:
+            high_confidence = api.search_procedures_by_confidence(
+                min_confidence=0.8,
+                limit=10
+            )
+        """
+        try:
+            project = self.project_manager.get_or_create_project()
+            if not project or not project.id:
+                return {
+                    "success": False,
+                    "procedures": [],
+                    "error": "Failed to get/create project",
+                }
+
+            # List all procedures and filter by confidence
+            procedures = self.procedural.list_procedures(project.id, limit=1000)
+            filtered = [
+                p for p in procedures
+                if hasattr(p, "code_confidence") and p.code_confidence >= min_confidence
+            ][:limit]
+
+            return {
+                "success": True,
+                "min_confidence": min_confidence,
+                "procedures": filtered,
+                "count": len(filtered),
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to search procedures by confidence: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat(),
+            }
 
     # ===== PROSPECTIVE MEMORY OPERATIONS =====
 
