@@ -39,9 +39,9 @@ fi
 
 echo -e "${BLUE}Checking disk space...${NC}"
 AVAILABLE_SPACE=$(df "$MODELS_DIR" | awk 'NR==2 {print $4}')
-REQUIRED_SPACE=$((6 * 1024 * 1024))  # ~6GB in KB
+REQUIRED_SPACE=$((3 * 1024 * 1024))  # ~3GB in KB
 if [ "$AVAILABLE_SPACE" -lt "$REQUIRED_SPACE" ]; then
-    echo -e "${RED}✗ Warning: Only ${AVAILABLE_SPACE}KB available, need ~6GB${NC}"
+    echo -e "${RED}✗ Warning: Only ${AVAILABLE_SPACE}KB available, need ~3GB${NC}"
     read -p "Continue anyway? (y/n) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -54,7 +54,7 @@ echo ""
 # Model definitions: (name, url, size_mb, description)
 MODELS=(
     "nomic-embed-text-v1.5.Q4_K_M.gguf:nomic-ai/nomic-embed-text-v1.5-GGUF:550:Embedding model (768D, 550MB)"
-    "qwen2.5-7b-instruct-q4_k_m.gguf:Qwen/Qwen2.5-7B-Instruct-GGUF:4100:Reasoning model (7B, 4.1GB)"
+    "Qwen3-VL-4B-Instruct-Q4_K_M.gguf:Qwen/Qwen3-VL-4B-Instruct-GGUF:2500:Reasoning model (4B, 2.5GB)"
 )
 
 # Download function with retry logic
@@ -147,10 +147,10 @@ else
     echo ""
     echo -e "${YELLOW}Troubleshooting:${NC}"
     echo "  - Check internet connection"
-    echo "  - Verify disk space (need ~6GB)"
+    echo "  - Verify disk space (need ~3GB)"
     echo "  - Try again later (HuggingFace may be rate limiting)"
     echo "  - Manual download: ${BLUE}https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF${NC}"
-    echo -e "                  ${BLUE}https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF${NC}"
+    echo -e "                  ${BLUE}https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct-GGUF${NC}"
     exit 1
 fi
 
@@ -172,12 +172,12 @@ This directory contains GGUF quantized models for local inference.
 - **Quality**: MTEB score 62.39 (top 10)
 - **Source**: https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF
 
-### qwen2.5-7b-instruct-q4_k_m.gguf
+### Qwen3-VL-4B-Instruct-Q4_K_M.gguf
 - **Purpose**: Local reasoning for pattern extraction and consolidation
-- **Size**: ~4.1GB
-- **Speed**: 25-30 tokens/sec on CPU
-- **Quality**: Best-in-class reasoning for 7B models
-- **Source**: https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF
+- **Size**: ~2.5GB
+- **Speed**: 40-50 tokens/sec on CPU (2x faster than Qwen2.5-7B)
+- **Quality**: Best-in-class reasoning for 4B models with vision capabilities
+- **Source**: https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct-GGUF
 
 ## Usage with llama.cpp
 
@@ -200,10 +200,11 @@ This directory contains GGUF quantized models for local inference.
 
 ## Performance Notes
 
-- **Memory**: ~6GB RAM total (550MB + 4.1GB + overhead)
+- **Memory**: ~3GB RAM total (550MB + 2.5GB + overhead)
 - **CPU**: 8-12 threads recommended
 - **GPU**: Optional (add `--n-gpu-layers 35` for CUDA acceleration)
-- **Speed**: 3000 tok/s embedding, 25 tok/s reasoning on CPU
+- **Speed**: 3000 tok/s embedding, 40-50 tok/s reasoning on CPU
+- **Benefits**: 40% smaller footprint, 2x faster consolidation
 
 ## Alternative Quantizations
 

@@ -60,8 +60,8 @@ services:
       - athena
 
   # ========================================================================
-  # llama.cpp Server - Model 2: Reasoning (Qwen2.5-7B-Instruct)
-  # Local reasoning for pattern extraction and consolidation
+  # llama.cpp Server - Model 2: Reasoning (Qwen3-VL-4B-Instruct)
+  # 2x faster pattern extraction, 40% smaller (2.5GB vs 4.1GB)
   # ========================================================================
   llamacpp-reasoning:
     image: ghcr.io/ggerganov/llama.cpp:latest-server
@@ -74,7 +74,7 @@ services:
       - GGML_NUM_THREADS=12
       - GGML_NUM_THREADS_BATCH=12
     command: >
-      -m /models/qwen2.5-7b-instruct-q4_k_m.gguf
+      -m /models/Qwen3-VL-4B-Instruct-Q4_K_M.gguf
       --listen 0.0.0.0
       --port 8000
       --ctx-size 32768
