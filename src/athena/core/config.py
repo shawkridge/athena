@@ -28,18 +28,19 @@ OLLAMA_LLM_MODEL = os.environ.get("OLLAMA_LLM_MODEL", "qwen3-vl:2b-instruct-q4_K
 # Use 768D embedding model (nomic-embed-text) for consistency with database schema
 OLLAMA_EMBEDDING_MODEL = os.environ.get("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
 
-# llama.cpp Configuration (Recommended for CPU)
-LLAMACPP_MODELS_DIR = Path(os.environ.get("LLAMACPP_MODELS_DIR", str(Path.home() / ".athena" / "models")))
-LLAMACPP_EMBEDDING_MODEL_PATH = Path(os.environ.get(
-    "LLAMACPP_EMBEDDING_MODEL_PATH",
-    str(LLAMACPP_MODELS_DIR / "nomic-embed-text-v2-moe.Q6_K.gguf")
-))
-LLAMACPP_LLM_MODEL_PATH = Path(os.environ.get(
-    "LLAMACPP_LLM_MODEL_PATH",
-    str(LLAMACPP_MODELS_DIR / "DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf")
-))
+# llama.cpp Configuration (HTTP Server)
+# Embedding server: nomic-embed-text-v1.5 (768D embeddings)
+LLAMACPP_EMBEDDINGS_URL = os.environ.get(
+    "LLAMACPP_EMBEDDINGS_URL", "http://localhost:8001"
+)
+# Reasoning server: Qwen2.5-7B-Instruct (pattern extraction, consolidation)
+LLAMACPP_REASONING_URL = os.environ.get(
+    "LLAMACPP_REASONING_URL", "http://localhost:8002"
+)
 LLAMACPP_EMBEDDING_DIM = int(os.environ.get("LLAMACPP_EMBEDDING_DIM", "768"))
-LLAMACPP_N_THREADS = int(os.environ.get("LLAMACPP_N_THREADS", "0"))  # 0 = auto-detect
+LLAMACPP_N_THREADS = int(
+    os.environ.get("LLAMACPP_N_THREADS", "8")
+)  # Optimal: (CPU cores × 1.5)
 
 # Claude API Configuration
 CLAUDE_API_KEY = os.environ.get("ANTHROPIC_API_KEY", None)
