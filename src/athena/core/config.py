@@ -186,6 +186,50 @@ TOON_MIN_TOKEN_SAVINGS = float(os.environ.get("TOON_MIN_TOKEN_SAVINGS", "15.0"))
 
 
 # ============================================================================
+# Prompt Optimization Configuration (Compression & Caching)
+# ============================================================================
+
+# Enable prompt compression (LLMLingua-2)
+COMPRESSION_ENABLED = os.environ.get("COMPRESSION_ENABLED", "true").lower() == "true"
+
+# Target compression ratio (0.35 = 35% of original tokens)
+COMPRESSION_RATIO_TARGET = float(os.environ.get("COMPRESSION_RATIO_TARGET", "0.35"))
+
+# Minimum compression ratio to accept (discard if below this)
+COMPRESSION_MIN_RATIO = float(os.environ.get("COMPRESSION_MIN_RATIO", "0.60"))
+
+# Minimum semantic preservation score (0-1)
+COMPRESSION_MIN_PRESERVATION = float(os.environ.get("COMPRESSION_MIN_PRESERVATION", "0.95"))
+
+# Compression latency budget (milliseconds)
+COMPRESSION_LATENCY_BUDGET_MS = int(os.environ.get("COMPRESSION_LATENCY_BUDGET_MS", "300"))
+
+# Enable Claude prompt caching
+PROMPT_CACHING_ENABLED = os.environ.get("PROMPT_CACHING_ENABLED", "true").lower() == "true"
+
+# Cache TTL (seconds, default 5 minutes)
+PROMPT_CACHE_TTL_SECONDS = int(os.environ.get("PROMPT_CACHE_TTL_SECONDS", "300"))
+
+# Maximum cache size (number of cached prompts)
+PROMPT_CACHE_MAX_SIZE = int(os.environ.get("PROMPT_CACHE_MAX_SIZE", "100"))
+
+# Cache block types to enable
+PROMPT_CACHE_BLOCK_TYPES = os.environ.get(
+    "PROMPT_CACHE_BLOCK_TYPES",
+    "system_instructions,context_block,retrieved_memories"
+).split(",")
+
+# Cost per 1K input tokens (USD) for Claude
+CLAUDE_COST_PER_1K_INPUT = float(os.environ.get("CLAUDE_COST_PER_1K_INPUT", "0.003"))
+
+# Cost per 1K cached input tokens (USD, 90% discount on base cost)
+CLAUDE_COST_PER_1K_CACHED_INPUT = float(os.environ.get("CLAUDE_COST_PER_1K_CACHED_INPUT", "0.0003"))
+
+# Cost per 1K output tokens (USD)
+CLAUDE_COST_PER_1K_OUTPUT = float(os.environ.get("CLAUDE_COST_PER_1K_OUTPUT", "0.015"))
+
+
+# ============================================================================
 # Logging Configuration
 # ============================================================================
 

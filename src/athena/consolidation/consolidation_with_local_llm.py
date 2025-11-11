@@ -42,19 +42,30 @@ from .pipeline import (
     _calculate_memory_quality,
 )
 from ..core.llm_client import LocalLLMClient
+from ..core.config import (
+    COMPRESSION_ENABLED,
+    PROMPT_CACHING_ENABLED,
+    CLAUDE_COST_PER_1K_INPUT,
+    CLAUDE_COST_PER_1K_CACHED_INPUT,
+    CLAUDE_COST_PER_1K_OUTPUT,
+)
 from ..episodic.models import EpisodicEvent
 from ..episodic.store import EpisodicStore
 from ..memory.store import MemoryStore
 from ..graph.store import GraphStore
 from ..monitoring.model_metrics import get_monitor
 from ..temporal.kg_synthesis import TemporalKGSynthesis
+from ..evaluation.token_tracking import (
+    ConsolidationTokenMetrics,
+    TokenMetricsAggregator,
+)
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class EnhancedConsolidationReport(ConsolidationReport):
-    """Consolidation report with local reasoning metrics."""
+    """Consolidation report with local reasoning and token optimization metrics."""
 
     # Local reasoning metrics
     used_local_reasoning: bool = False
@@ -67,19 +78,30 @@ class EnhancedConsolidationReport(ConsolidationReport):
     used_claude_validation: bool = False
     claude_validations: int = 0
 
-    # Cost analysis
+    # Token metrics (Phase 4)
+    token_metrics: Optional[ConsolidationTokenMetrics] = None
+
+    # Cost analysis (legacy, computed from token_metrics if available)
     estimated_claude_tokens_saved: int = 0
     cost_savings_percent: float = 0.0
 
     def __str__(self) -> str:
         base = super().__str__()
         if self.used_local_reasoning:
-            return (
-                f"{base} | "
-                f"local={self.local_patterns_extracted}, "
+            parts = [
+                f"{base} | local={self.local_patterns_extracted}, "
                 f"confidence={self.dual_process_confidence:.2%}, "
                 f"saved={self.compression_tokens_saved} tokens"
-            )
+            ]
+
+            # Add token metrics if available
+            if self.token_metrics:
+                parts.append(f" | tokens: {self.token_metrics.compression_percentage:.1f}% compression")
+                if self.token_metrics.cache_result:
+                    cache_str = "HIT" if self.token_metrics.cache_result.cache_hit else "MISS"
+                    parts.append(f", cache {cache_str}")
+
+            return "".join(parts)
         return base
 
 
