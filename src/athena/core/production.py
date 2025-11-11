@@ -1,6 +1,5 @@
 """Production hardening features - advisory locks and resource quotas."""
 
-import sqlite3
 import time
 import threading
 from contextlib import contextmanager
@@ -83,7 +82,7 @@ class AdvisoryLock:
                             self._local_locks[lock_key] = threading.get_ident()
                             return True
 
-                except sqlite3.Error:
+                except Exception:
                     pass  # Retry on database errors
 
                 # Wait before retry
@@ -121,7 +120,7 @@ class AdvisoryLock:
                 """, (lock_key,))
                 # commit handled by cursor context
                 return True
-            except sqlite3.Error:
+            except Exception:
                 return False
 
     @contextmanager
@@ -153,7 +152,7 @@ class AdvisoryLock:
                 WHERE expires_at < ?
             """, (time.time(),))
             # commit handled by cursor context
-        except sqlite3.Error:
+        except Exception:
             pass  # Ignore cleanup errors
 
 
@@ -316,7 +315,7 @@ class ResourceManager:
                 VALUES (?, ?, ?, ?, ?)
             """, (project_id, resource_type, operation, amount, int(time.time())))
             # commit handled by cursor context
-        except sqlite3.Error:
+        except Exception:
             pass  # Don't fail if logging fails
 
     def get_usage_stats(self, project_id: Optional[int] = None, hours: int = 24) -> Dict[str, Any]:

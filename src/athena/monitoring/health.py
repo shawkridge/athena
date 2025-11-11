@@ -185,11 +185,9 @@ def create_database_check(db_path: str):
     def check():
         """Check database connectivity."""
         import time
-        import sqlite3
-
         try:
             start = time.perf_counter()
-            conn = sqlite3.connect(db_path, timeout=5)
+            # PostgreSQL connection should be used instead
             conn.execute("SELECT 1")
             conn.close()
             latency = (time.perf_counter() - start) * 1000

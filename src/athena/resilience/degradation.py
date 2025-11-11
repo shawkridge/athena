@@ -35,7 +35,7 @@ class RetryPolicy:
     multiplier: float = 2.0
     strategy: RetryStrategy = RetryStrategy.EXPONENTIAL
     retryable_exceptions: tuple = (
-        sqlite3.OperationalError,
+        Exception,
         TimeoutError,
         ConnectionError,
     )

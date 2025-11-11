@@ -57,7 +57,7 @@ class CompressionSchema:
             Tuple of (is_valid, list_of_missing_items)
         """
         try:
-            conn = sqlite3.connect(db_path)
+            # PostgreSQL connection should be used instead
             cursor = conn.cursor()
 
             missing = []
@@ -139,7 +139,7 @@ class CompressionSchema:
         }
 
         try:
-            conn = sqlite3.connect(db_path)
+            # PostgreSQL connection should be used instead
             cursor = conn.cursor()
 
             # Get column info

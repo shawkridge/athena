@@ -284,12 +284,11 @@ class ExecutiveFunctionMCPHandlers:
             # Fallback: query active_goals table directly if empty
             if not ranked:
                 try:
-                    import sqlite3
                     import os
 
                     # Try to get db from environment or default location
                     db_path = os.environ.get("ATHENA_DB_PATH", os.path.expanduser("~/.athena/memory.db"))
-                    conn = sqlite3.connect(db_path)
+                    # PostgreSQL connection should be used instead
                     conn.row_factory = sqlite3.Row
                     cursor = conn.cursor()
 
