@@ -4,7 +4,6 @@ This module validates that the database has all required compression columns
 and provides utilities for schema verification.
 """
 
-import sqlite3
 from typing import Dict, List, Tuple
 
 

@@ -1,6 +1,5 @@
 """Executive function metrics and efficiency tracking."""
 
-import sqlite3
 from datetime import datetime, timedelta, date
 from typing import Optional, Dict, List
 from dataclasses import dataclass

@@ -10,7 +10,6 @@ Author: Claude Code
 Date: 2025-10-31
 """
 
-import sqlite3
 from typing import Optional, List, Dict, Any
 from dataclasses import asdict
 from pathlib import Path
@@ -148,7 +147,7 @@ class SymbolStore:
             Symbol with populated id field
 
         Raises:
-            sqlite3.IntegrityError: If full_qualified_name already exists
+            Exception: If full_qualified_name already exists
         """
         import time
         now = int(time.time())
@@ -215,9 +214,9 @@ class SymbolStore:
             symbol.id = symbol_id
             return symbol
 
-        except sqlite3.IntegrityError as e:
+        except Exception as e:
             self.conn.rollback()
-            raise sqlite3.IntegrityError(
+            raise Exception(
                 f"Symbol {symbol.full_qualified_name} already exists: {e}"
             )
 
@@ -360,9 +359,9 @@ class SymbolStore:
 
             self.conn.commit()
 
-        except sqlite3.IntegrityError as e:
+        except Exception as e:
             self.conn.rollback()
-            raise sqlite3.IntegrityError(f"Relationship creation failed: {e}")
+            raise Exception(f"Relationship creation failed: {e}")
 
     def get_relationships(
         self,

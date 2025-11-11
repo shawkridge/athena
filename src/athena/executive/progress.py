@@ -1,6 +1,5 @@
 """Progress monitoring with adaptive milestones, blocker detection, and completion forecasting."""
 
-import sqlite3
 from datetime import datetime, timedelta
 from typing import Optional, List, Tuple
 from dataclasses import dataclass

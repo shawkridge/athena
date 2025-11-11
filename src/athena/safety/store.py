@@ -1,7 +1,6 @@
 """Safety policy and audit trail storage operations."""
 
 import json
-import sqlite3
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 

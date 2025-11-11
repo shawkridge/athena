@@ -1,6 +1,5 @@
 """Strategy selection with ML-based recommendations and outcome tracking."""
 
-import sqlite3
 from datetime import datetime
 from typing import Optional, List, Dict, Tuple
 from dataclasses import dataclass

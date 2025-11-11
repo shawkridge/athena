@@ -1,7 +1,6 @@
 """Episodic memory storage and query operations."""
 
 import json
-import sqlite3
 import time
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any

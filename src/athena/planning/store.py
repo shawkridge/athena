@@ -1,7 +1,6 @@
 """Planning memory storage and query operations."""
 
 import json
-import sqlite3
 from datetime import datetime
 from typing import Any, List, Optional, Tuple
 

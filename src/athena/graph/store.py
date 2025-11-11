@@ -1,7 +1,6 @@
 """Knowledge graph storage and query operations."""
 
 import json
-import sqlite3
 import time
 from datetime import datetime
 from typing import Optional, Dict, Any
@@ -178,7 +177,7 @@ class GraphStore(BaseStore[Entity]):
             self.commit()
             result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
             return result[0] if result else None
-        except sqlite3.IntegrityError:
+        except Exception:
             # Entity already exists, return its ID
             row = self.execute(
                 """
