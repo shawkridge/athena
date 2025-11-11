@@ -57,7 +57,8 @@
 - 👁️ [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) - High-level project summary
 - 🚀 [PHASE_2_IMPLEMENTATION_PLAN.md](PHASE_2_IMPLEMENTATION_PLAN.md) - Phase 2 detailed plan (5,000 LOC)
 - 🔄 [PHASE_2_WEEK5_MIGRATION_STRATEGY.md](PHASE_2_WEEK5_MIGRATION_STRATEGY.md) - Week 5 completion & Week 6-8 migration strategy
-- 📖 **[PROCEDURE_GUIDE.md](PROCEDURE_GUIDE.md) - Working with executable procedures (code generation, validation, execution)** ← NEW
+- 📖 [PROCEDURE_GUIDE.md](PROCEDURE_GUIDE.md) - Working with executable procedures (code generation, validation, execution)
+- 🔒 **[SANDBOX_SETUP.md](SANDBOX_SETUP.md) - Sandbox setup, configuration, and usage guide** ← NEW (Phase 3 Week 9)
 
 ---
 
@@ -1266,6 +1267,7 @@ scripts/
 | **REMEDIATION_BLUEPRINT.md** | 5-phase implementation architecture | Building features, understanding design | [View →](MCP_ALIGNMENT_REMEDIATION_BLUEPRINT.md) |
 | **IMPLEMENTATION_TASK_LIST.md** | 60+ detailed tasks with estimates | Assigning work, tracking progress | [View →](IMPLEMENTATION_TASK_LIST.md) |
 | **PROCEDURE_GUIDE.md** | Working with executable procedures | Using MemoryAPI for procedures | [View →](PROCEDURE_GUIDE.md) |
+| **SANDBOX_SETUP.md** | Sandbox setup, config, and usage | Setting up or using sandboxing | [View →](../docs/SANDBOX_SETUP.md) |
 | **ARCHITECTURE_REPORT.md** | Deep technical analysis of Athena | Understanding current architecture | [View →](ATHENA_ARCHITECTURE_REPORT.md) |
 | **ARCHITECTURE_SUMMARY.txt** | Executive summary & key findings | Briefing stakeholders, high-level overview | [View →](ARCHITECTURE_ANALYSIS_SUMMARY.txt) |
 | **SANDBOX_ANALYSIS.md** | SRT vs RestrictedPython comparison | Understanding sandbox security approach | [View →](SANDBOX_ANALYSIS_AND_INTEGRATION.md) |
@@ -1287,13 +1289,14 @@ scripts/
 
 ---
 
-**Document Version**: 1.2 (Updated Dec 30, 2025)
-**Status**: In Active Execution (Week 8 Complete - Phase 2 Complete)
+**Document Version**: 1.3 (Updated Dec 30, 2025)
+**Status**: In Active Execution (Week 9 Complete - Phase 3 Week 1 Complete)
 **Project Start**: November 11, 2025
 **Approval Date**: November 11, 2025
-**Current Progress**: 50% (8/16 weeks)
-**Projected Completion**: Week 16 (January 20, 2026)
+**Current Progress**: 56% (9/16 weeks)
+**Projected Completion**: Week 16 (January 27, 2026)
 **Last Updated**: December 30, 2025
+**Latest Commit**: f594c7e (Phase 3 Week 9 - SRT Executor & Configuration)
 
 ---
 
