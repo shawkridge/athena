@@ -9961,34 +9961,70 @@ Anomalies:
         """Handle when_was_introduced tool."""
         try:
             git_handlers = GitMCPHandlers(self.store.db)
-            result = await git_handlers.when_was_introduced(args)
-            return [TextContent(type="text", text=result)]
+            result_text = await git_handlers.when_was_introduced(args)
+
+            structured_data = {
+                "entity": args.get("entity"),
+                "introduction_info": result_text,
+                "operation_timestamp": datetime.utcnow().isoformat()
+            }
+
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "when_was_introduced", "schema": "git"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="git")]
         except Exception as e:
             logger.error(f"Error in when_was_introduced [args={args}]: {e}", exc_info=True)
-            error_response = json.dumps({"error": str(e), "tool": "when_was_introduced"})
-            return [TextContent(type="text", text=error_response)]
+            result = StructuredResult.error(str(e), metadata={"operation": "when_was_introduced"})
+            return [result.as_optimized_content(schema_name="git")]
 
     async def _handle_who_introduced_regression(self, args: dict) -> list[TextContent]:
         """Handle who_introduced_regression tool."""
         try:
             git_handlers = GitMCPHandlers(self.store.db)
-            result = await git_handlers.who_introduced_regression(args)
-            return [TextContent(type="text", text=result)]
+            result_text = await git_handlers.who_introduced_regression(args)
+
+            structured_data = {
+                "regression": args.get("regression"),
+                "culprit_info": result_text,
+                "operation_timestamp": datetime.utcnow().isoformat()
+            }
+
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "who_introduced_regression", "schema": "git"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="git")]
         except Exception as e:
             logger.error(f"Error in who_introduced_regression [args={args}]: {e}", exc_info=True)
-            error_response = json.dumps({"error": str(e), "tool": "who_introduced_regression"})
-            return [TextContent(type="text", text=error_response)]
+            result = StructuredResult.error(str(e), metadata={"operation": "who_introduced_regression"})
+            return [result.as_optimized_content(schema_name="git")]
 
     async def _handle_what_changed_since(self, args: dict) -> list[TextContent]:
         """Handle what_changed_since tool."""
         try:
             git_handlers = GitMCPHandlers(self.store.db)
-            result = await git_handlers.what_changed_since(args)
-            return [TextContent(type="text", text=result)]
+            result_text = await git_handlers.what_changed_since(args)
+
+            structured_data = {
+                "reference": args.get("reference"),
+                "changes": result_text,
+                "operation_timestamp": datetime.utcnow().isoformat()
+            }
+
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "what_changed_since", "schema": "git"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="git")]
         except Exception as e:
             logger.error(f"Error in what_changed_since [args={args}]: {e}", exc_info=True)
-            error_response = json.dumps({"error": str(e), "tool": "what_changed_since"})
-            return [TextContent(type="text", text=error_response)]
+            result = StructuredResult.error(str(e), metadata={"operation": "what_changed_since"})
+            return [result.as_optimized_content(schema_name="git")]
 
     async def _handle_trace_regression_timeline(self, args: dict) -> list[TextContent]:
         """Handle trace_regression_timeline tool."""
@@ -10157,34 +10193,70 @@ Anomalies:
         """Handle extract_refactoring_patterns tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.extract_refactoring_patterns(args)
-            return [TextContent(type="text", text=result)]
+            result_text = await pattern_handlers.extract_refactoring_patterns(args)
+
+            structured_data = {
+                "commit_range": args.get("commit_range"),
+                "patterns": result_text,
+                "operation_timestamp": datetime.utcnow().isoformat()
+            }
+
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "extract_refactoring_patterns", "schema": "code_analysis"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="code_analysis")]
         except Exception as e:
             logger.error(f"Error in extract_refactoring_patterns [args={args}]: {e}", exc_info=True)
-            error_response = json.dumps({"error": str(e), "tool": "extract_refactoring_patterns"})
-            return [TextContent(type="text", text=error_response)]
+            result = StructuredResult.error(str(e), metadata={"operation": "extract_refactoring_patterns"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
 
     async def _handle_extract_bug_fix_patterns(self, args: dict) -> list[TextContent]:
         """Handle extract_bug_fix_patterns tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.extract_bug_fix_patterns(args)
-            return [TextContent(type="text", text=result)]
+            result_text = await pattern_handlers.extract_bug_fix_patterns(args)
+
+            structured_data = {
+                "commit_range": args.get("commit_range"),
+                "patterns": result_text,
+                "operation_timestamp": datetime.utcnow().isoformat()
+            }
+
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "extract_bug_fix_patterns", "schema": "code_analysis"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="code_analysis")]
         except Exception as e:
             logger.error(f"Error in extract_bug_fix_patterns [args={args}]: {e}", exc_info=True)
-            error_response = json.dumps({"error": str(e), "tool": "extract_bug_fix_patterns"})
-            return [TextContent(type="text", text=error_response)]
+            result = StructuredResult.error(str(e), metadata={"operation": "extract_bug_fix_patterns"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
 
     async def _handle_suggest_refactorings(self, args: dict) -> list[TextContent]:
         """Handle suggest_refactorings tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.suggest_refactorings(args)
-            return [TextContent(type="text", text=result)]
+            result_text = await pattern_handlers.suggest_refactorings(args)
+
+            structured_data = {
+                "code": args.get("code", "")[:100],
+                "suggestions": result_text,
+                "operation_timestamp": datetime.utcnow().isoformat()
+            }
+
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "suggest_refactorings", "schema": "code_analysis"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="code_analysis")]
         except Exception as e:
             logger.error(f"Error in suggest_refactorings [args={args}]: {e}", exc_info=True)
-            error_response = json.dumps({"error": str(e), "tool": "suggest_refactorings"})
-            return [TextContent(type="text", text=error_response)]
+            result = StructuredResult.error(str(e), metadata={"operation": "suggest_refactorings"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
 
     async def _handle_suggest_bug_fixes(self, args: dict) -> list[TextContent]:
         """Handle suggest_bug_fixes tool."""
@@ -10281,34 +10353,70 @@ Anomalies:
         """Handle get_pattern_statistics tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.get_pattern_statistics(args)
-            return [TextContent(type="text", text=result)]
+            result_text = await pattern_handlers.get_pattern_statistics(args)
+
+            structured_data = {
+                "pattern_type": args.get("pattern_type"),
+                "statistics": result_text,
+                "operation_timestamp": datetime.utcnow().isoformat()
+            }
+
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_pattern_statistics", "schema": "code_analysis"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="code_analysis")]
         except Exception as e:
             logger.error(f"Error in get_pattern_statistics [args={args}]: {e}", exc_info=True)
-            error_response = json.dumps({"error": str(e), "tool": "get_pattern_statistics"})
-            return [TextContent(type="text", text=error_response)]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_pattern_statistics"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
 
     async def _handle_get_pattern_effectiveness(self, args: dict) -> list[TextContent]:
         """Handle get_pattern_effectiveness tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.get_pattern_effectiveness(args)
-            return [TextContent(type="text", text=result)]
+            result_text = await pattern_handlers.get_pattern_effectiveness(args)
+
+            structured_data = {
+                "pattern_type": args.get("pattern_type"),
+                "effectiveness": result_text,
+                "operation_timestamp": datetime.utcnow().isoformat()
+            }
+
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_pattern_effectiveness", "schema": "code_analysis"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="code_analysis")]
         except Exception as e:
             logger.error(f"Error in get_pattern_effectiveness [args={args}]: {e}", exc_info=True)
-            error_response = json.dumps({"error": str(e), "tool": "get_pattern_effectiveness"})
-            return [TextContent(type="text", text=error_response)]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_pattern_effectiveness"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
 
     async def _handle_get_file_recommendations(self, args: dict) -> list[TextContent]:
         """Handle get_file_recommendations tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.get_file_recommendations(args)
-            return [TextContent(type="text", text=result)]
+            result_text = await pattern_handlers.get_file_recommendations(args)
+
+            structured_data = {
+                "file_path": args.get("file_path"),
+                "recommendations": result_text,
+                "operation_timestamp": datetime.utcnow().isoformat()
+            }
+
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_file_recommendations", "schema": "code_analysis"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="code_analysis")]
         except Exception as e:
             logger.error(f"Error in get_file_recommendations [args={args}]: {e}", exc_info=True)
-            error_response = json.dumps({"error": str(e), "tool": "get_file_recommendations"})
-            return [TextContent(type="text", text=error_response)]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_file_recommendations"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
 
     async def _handle_get_pattern_library(self, args: dict) -> list[TextContent]:
         """Handle get_pattern_library tool."""
