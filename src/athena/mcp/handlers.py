@@ -10331,23 +10331,47 @@ Anomalies:
         """Handle apply_suggestion tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.apply_suggestion(args)
-            return [TextContent(type="text", text=result)]
+            result_text = await pattern_handlers.apply_suggestion(args)
+
+            structured_data = {
+                "suggestion_id": args.get("suggestion_id"),
+                "result": result_text,
+                "operation_timestamp": datetime.utcnow().isoformat()
+            }
+
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "apply_suggestion", "schema": "code_analysis"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="code_analysis")]
         except Exception as e:
             logger.error(f"Error in apply_suggestion [args={args}]: {e}", exc_info=True)
-            error_response = json.dumps({"error": str(e), "tool": "apply_suggestion"})
-            return [TextContent(type="text", text=error_response)]
+            result = StructuredResult.error(str(e), metadata={"operation": "apply_suggestion"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
 
     async def _handle_dismiss_suggestion(self, args: dict) -> list[TextContent]:
         """Handle dismiss_suggestion tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.dismiss_suggestion(args)
-            return [TextContent(type="text", text=result)]
+            result_text = await pattern_handlers.dismiss_suggestion(args)
+
+            structured_data = {
+                "suggestion_id": args.get("suggestion_id"),
+                "result": result_text,
+                "operation_timestamp": datetime.utcnow().isoformat()
+            }
+
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "dismiss_suggestion", "schema": "code_analysis"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="code_analysis")]
         except Exception as e:
             logger.error(f"Error in dismiss_suggestion [args={args}]: {e}", exc_info=True)
-            error_response = json.dumps({"error": str(e), "tool": "dismiss_suggestion"})
-            return [TextContent(type="text", text=error_response)]
+            result = StructuredResult.error(str(e), metadata={"operation": "dismiss_suggestion"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
 
     async def _handle_get_pattern_statistics(self, args: dict) -> list[TextContent]:
         """Handle get_pattern_statistics tool."""
@@ -10422,12 +10446,24 @@ Anomalies:
         """Handle get_pattern_library tool."""
         try:
             pattern_handlers = PatternMCPHandlers(self.store.db)
-            result = await pattern_handlers.get_pattern_library(args)
-            return [TextContent(type="text", text=result)]
+            result_text = await pattern_handlers.get_pattern_library(args)
+
+            structured_data = {
+                "pattern_type": args.get("pattern_type"),
+                "library": result_text,
+                "operation_timestamp": datetime.utcnow().isoformat()
+            }
+
+            result = StructuredResult.success(
+                data=structured_data,
+                metadata={"operation": "get_pattern_library", "schema": "code_analysis"},
+                pagination=PaginationMetadata(returned=1)
+            )
+            return [result.as_optimized_content(schema_name="code_analysis")]
         except Exception as e:
             logger.error(f"Error in get_pattern_library [args={args}]: {e}", exc_info=True)
-            error_response = json.dumps({"error": str(e), "tool": "get_pattern_library"})
-            return [TextContent(type="text", text=error_response)]
+            result = StructuredResult.error(str(e), metadata={"operation": "get_pattern_library"})
+            return [result.as_optimized_content(schema_name="code_analysis")]
 
     # Phase 5B: Utility Tools for Layer Health and Coordination
     async def _handle_get_layer_health(self, args: dict) -> list[TextContent]:
