@@ -1,4 +1,8 @@
-"""Agent invocation for autonomous orchestration."""
+"""Agent invocation for autonomous orchestration.
+
+Now uses direct Python API (local-first) instead of HTTP.
+Agents invoke memory operations directly without network calls.
+"""
 
 from typing import List, Dict, Optional, Any
 import logging
@@ -9,18 +13,40 @@ import sys
 logger = logging.getLogger(__name__)
 
 
+def get_athena_client():
+    """Get Athena client instance (direct Python API).
+
+    Returns:
+        AthenaDirectClient instance, or None if initialization fails
+    """
+    try:
+        # Use absolute import to support being called from hook context
+        from athena_direct_client import AthenaDirectClient
+        client = AthenaDirectClient()
+        if client._ensure_initialized():
+            return client
+        return None
+    except ImportError as e:
+        logger.error(f"Failed to import AthenaDirectClient: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Failed to initialize Athena client: {e}")
+        return None
+
+
 class AgentInvoker:
     """Manage autonomous agent invocation based on hook triggers."""
 
     # Agent registry with trigger conditions
-    # Maps agent names to their slash command equivalents where applicable
+    # Maps agent names to their invocation method (direct Python API)
     AGENT_REGISTRY = {
         # SessionStart agents
         "session-initializer": {
             "trigger": "session_start",
             "description": "Load context at session start",
             "priority": 100,
-            "slash_command": "/critical:session-start",
+            "api_method": "recall",
+            "api_args": {"query": "recent context and goals", "k": 10},
         },
         # UserPromptSubmit agents
         # Context injection (runs FIRST - highest priority)
@@ -28,97 +54,97 @@ class AgentInvoker:
             "trigger": "user_prompt_submit",
             "description": "Search memory and inject relevant context",
             "priority": 100,  # HIGHEST - must run before other analysis
-            "http_endpoint": "/api/memory/recall",
-            "http_method": "GET",
+            "api_method": "recall",
+            "api_args": {"query": "context from query", "k": 5},
         },
         "research-coordinator": {
             "trigger": "user_prompt_submit",
             "description": "Multi-source research and synthesis",
             "priority": 99,
-            "http_endpoint": "/api/memory/recall",
-            "http_method": "GET",
+            "api_method": "recall",
+            "api_args": {"query": "research and findings", "k": 10},
         },
         # Gap detection and suggestion (after context loaded)
         "gap-detector": {
             "trigger": "user_prompt_submit",
             "description": "Detect knowledge gaps and contradictions",
             "priority": 90,
-            "http_endpoint": "/api/memory/health",
-            "http_method": "GET",
+            "api_method": "get_memory_health",
+            "api_args": {},
         },
         "attention-manager": {
             "trigger": "user_prompt_submit",
             "description": "Manage cognitive load",
             "priority": 85,
-            "http_endpoint": "/api/memory/health",
-            "http_method": "GET",
+            "api_method": "check_cognitive_load",
+            "api_args": {},
         },
         "procedure-suggester": {
             "trigger": "user_prompt_submit",
             "description": "Suggest applicable procedures",
             "priority": 80,
-            "http_endpoint": "/api/memory/recall",
-            "http_method": "GET",
+            "api_method": "recall",
+            "api_args": {"query": "applicable procedures", "k": 5},
         },
         # PostToolUse agents (every 10 operations)
         "attention-optimizer": {
             "trigger": "post_tool_use_batch",
             "description": "Optimize attention and consolidate if needed",
             "priority": 70,
-            "http_endpoint": "/api/memory/health",
-            "http_method": "GET",
+            "api_method": "check_cognitive_load",
+            "api_args": {},
         },
         # PreExecution agents
         "plan-validator": {
             "trigger": "pre_execution",
             "description": "Validate plans before execution",
             "priority": 95,
-            "http_endpoint": "/api/memory/health",
-            "http_method": "GET",
+            "api_method": "get_memory_health",
+            "api_args": {},
         },
         "goal-orchestrator": {
             "trigger": "pre_execution",
             "description": "Check goal conflicts and state",
             "priority": 90,
-            "http_endpoint": "/api/memory/health",
-            "http_method": "GET",
+            "api_method": "get_memory_health",
+            "api_args": {},
         },
         "strategy-selector": {
             "trigger": "pre_execution",
             "description": "Confirm optimal strategy",
             "priority": 80,
-            "http_endpoint": "/api/memory/health",
-            "http_method": "GET",
+            "api_method": "get_memory_health",
+            "api_args": {},
         },
         # SessionEnd agents
         "consolidation-engine": {
             "trigger": "session_end",
             "description": "Extract patterns via dual-process reasoning",
             "priority": 100,
-            "http_endpoint": "/api/consolidation/run",
-            "http_method": "POST",
+            "api_method": "run_consolidation",
+            "api_args": {"strategy": "balanced"},
         },
         "workflow-learner": {
             "trigger": "session_end",
             "description": "Extract reusable procedures",
             "priority": 95,
-            "http_endpoint": "/api/memory/health",
-            "http_method": "GET",
+            "api_method": "get_memory_health",
+            "api_args": {},
         },
         "quality-auditor": {
             "trigger": "session_end",
             "description": "Assess memory quality",
             "priority": 90,
-            "http_endpoint": "/api/memory/health",
-            "http_method": "GET",
+            "api_method": "get_memory_quality_summary",
+            "api_args": {},
         },
         # PostTaskCompletion agents
         "execution-monitor": {
             "trigger": "post_task_completion",
             "description": "Record task completion",
             "priority": 95,
-            "http_endpoint": "/api/memory/health",
-            "http_method": "GET",
+            "api_method": "get_memory_health",
+            "api_args": {},
         },
     }
 
@@ -154,7 +180,7 @@ class AgentInvoker:
         agent_name: str,
         context: Optional[Dict[str, Any]] = None,
     ) -> bool:
-        """Invoke an agent asynchronously.
+        """Invoke an agent using direct Python API.
 
         Args:
             agent_name: Name of agent to invoke
@@ -173,39 +199,20 @@ class AgentInvoker:
             logger.info(f"Invoking agent: {agent_name}")
             logger.info(f"  Description: {agent_info['description']}")
 
-            # Try to invoke via HTTP endpoint first (working method)
-            if "http_endpoint" in agent_info:
-                return self._invoke_via_http_endpoint(agent_name, agent_info, context)
-
-            # Fall back to slash command
-            elif "slash_command" in agent_info:
-                return self._invoke_via_slash_command(agent_name, agent_info, context)
-
-            # Fall back to MCP tool invocation
-            elif "mcp_tool" in agent_info:
-                return self._invoke_via_mcp_tool(agent_name, agent_info, context)
-
-            # No invocation method available
-            else:
-                logger.warning(f"No invocation method for agent: {agent_name}")
-                self.invoked_agents.append(agent_name)
-                self.agent_results[agent_name] = {
-                    "status": "registered",
-                    "context": context,
-                }
-                return False
+            # Use direct Python API (local-first)
+            return self._invoke_via_direct_api(agent_name, agent_info, context)
 
         except Exception as e:
             logger.error(f"Failed to invoke agent {agent_name}: {e}")
             return False
 
-    def _invoke_via_http_endpoint(
+    def _invoke_via_direct_api(
         self,
         agent_name: str,
         agent_info: Dict[str, Any],
         context: Optional[Dict[str, Any]] = None,
     ) -> bool:
-        """Invoke agent via HTTP endpoint call to Docker Athena API.
+        """Invoke agent via direct Python API (local-first, no HTTP).
 
         Args:
             agent_name: Agent name
@@ -215,51 +222,66 @@ class AgentInvoker:
         Returns:
             True if successfully invoked
         """
-        from .athena_http_client import get_client
-
-        endpoint = agent_info["http_endpoint"]
-        method = agent_info.get("http_method", "GET")
-        logger.info(f"  Method: HTTP → {method} {endpoint}")
+        api_method = agent_info.get("api_method")
+        api_args = agent_info.get("api_args", {})
+        logger.info(f"  Method: Direct API → {api_method}")
 
         try:
-            client = get_client()
-
-            if not client.health_check():
-                logger.warning(f"Athena HTTP service not healthy, skipping agent {agent_name}")
+            # Get Athena client
+            client = get_athena_client()
+            if client is None:
+                logger.warning(f"Athena client not available, skipping agent {agent_name}")
                 return False
 
-            # Call the HTTP endpoint
-            if method == "GET":
-                if endpoint == "/api/memory/recall" and context and "query" in context:
-                    result = client.recall_memories(context["query"], context.get("k", 5))
-                elif endpoint == "/api/memory/health":
-                    result = client.get_memory_health()
-                else:
-                    result = {"status": "ok"}  # Generic success
+            # Check health
+            health = client.health()
+            if health.get("status") != "healthy":
+                logger.warning(f"Athena not healthy ({health.get('status')}), skipping agent {agent_name}")
+                return False
 
-            elif method == "POST":
-                if endpoint == "/api/consolidation/run":
-                    strategy = context.get("strategy", "balanced") if context else "balanced"
-                    result = client.run_consolidation(strategy=strategy)
-                else:
-                    result = {"status": "ok"}
+            # Merge context into API arguments
+            merged_args = {**api_args}
+            if context:
+                # Filter context to only include parameters supported by the API method
+                # This prevents passing session metadata as API parameters
+                api_param_whitelist = {
+                    "recall": {"query", "k", "memory_type", "limit"},
+                    "remember": {"content", "memory_type", "tags", "importance"},
+                    "record_event": {"event_type", "content", "context", "importance"},
+                    "forget": {"memory_id"},
+                    "get_memory_quality_summary": set(),
+                    "run_consolidation": {"strategy", "dry_run"},
+                    "check_cognitive_load": set(),
+                    "get_memory_health": set(),
+                }
 
+                if api_method in api_param_whitelist:
+                    allowed_params = api_param_whitelist[api_method]
+                    filtered_context = {
+                        k: v for k, v in context.items()
+                        if k in allowed_params
+                    }
+                    merged_args.update(filtered_context)
+
+            # Call the API method
+            result = None
+            if hasattr(client, api_method):
+                api_func = getattr(client, api_method)
+                result = api_func(**merged_args)
+                logger.info(f"  Result: {api_method}() → {type(result).__name__}")
             else:
-                logger.warning(f"Unsupported HTTP method: {method}")
+                logger.warning(f"API method not available: {api_method}")
                 return False
 
             # Record the invocation
             invocation_result = {
                 "agent": agent_name,
-                "method": "http_endpoint",
-                "endpoint": endpoint,
-                "http_method": method,
-                "context": context,
+                "method": "direct_api",
+                "api_method": api_method,
+                "api_args": merged_args,
                 "result": result,
                 "status": "invoked",
             }
-
-            logger.info(f"  Result: HTTP {endpoint} → {type(result).__name__}")
 
             self.invoked_agents.append(agent_name)
             self.agent_results[agent_name] = invocation_result
@@ -267,7 +289,7 @@ class AgentInvoker:
             return True
 
         except Exception as e:
-            logger.error(f"Failed to invoke via HTTP endpoint: {e}")
+            logger.error(f"Failed to invoke via direct API: {e}")
             return False
 
     def _invoke_via_slash_command(
