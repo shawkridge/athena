@@ -37,31 +37,32 @@ log_info "Operations Recorded: $OPERATIONS_COUNT"
 # Phase 1: Run consolidation with balanced strategy
 log "Phase 1: Running consolidation (System 1 + selective System 2)..."
 
-# Source Athena HTTP config if available
-if [ -f "/home/user/.claude/hooks/config.env" ]; then
-    source /home/user/.claude/hooks/config.env
-fi
-
-ATHENA_HTTP_URL="${ATHENA_HTTP_URL:-http://localhost:8000}"
-ATHENA_HTTP_TIMEOUT="${ATHENA_HTTP_TIMEOUT:-10}"  # Allow longer for consolidation
-
-# Call consolidation using HTTP API
+# Run consolidation using direct Python import
 # This performs dual-process reasoning:
 # - System 1: Fast statistical clustering (~100ms)
 # - System 2: LLM validation where uncertainty > 0.5 (~1-5s)
-CONSOLIDATION_PAYLOAD=$(cat <<EOF
-{
-  "strategy": "balanced",
-  "days_back": 7,
-  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-}
-EOF
-)
+python3 << 'PYTHON_EOF'
+import sys
+import os
 
-curl -s -X POST "$ATHENA_HTTP_URL/api/consolidation/run" \
-  -H "Content-Type: application/json" \
-  --max-time "$ATHENA_HTTP_TIMEOUT" \
-  -d "$CONSOLIDATION_PAYLOAD" 2>/dev/null || true
+# Add athena and hooks lib to path
+sys.path.insert(0, '/home/user/.work/athena/src')
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
+
+try:
+    from memory_helper import run_consolidation
+
+    # Run consolidation with balanced strategy
+    if run_consolidation(strategy='balanced', days_back=7):
+        print(f"✓ Events clustered by temporal/semantic proximity", file=sys.stderr)
+        print(f"✓ Patterns extracted (System 1 baseline)", file=sys.stderr)
+        print(f"✓ High-uncertainty patterns validated (System 2)", file=sys.stderr)
+    else:
+        print(f"⚠ Consolidation failed", file=sys.stderr)
+
+except Exception as e:
+    print(f"⚠ Consolidation failed: {str(e)}", file=sys.stderr)
+PYTHON_EOF
 
 log "  ✓ Events clustered by temporal/semantic proximity"
 log "  ✓ Patterns extracted (System 1 baseline)"

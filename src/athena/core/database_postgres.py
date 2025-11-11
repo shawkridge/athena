@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 try:
     import psycopg
     from psycopg_pool import AsyncConnectionPool
+    from psycopg import sql
     PSYCOPG_AVAILABLE = True
 except ImportError:
     PSYCOPG_AVAILABLE = False
@@ -39,6 +40,14 @@ else:
 
 from .models import Memory, MemoryType, Project
 from . import config
+
+
+# Helper function to convert embedding list to pgvector string format
+def embed_to_vector_str(embedding: List[float]) -> str:
+    """Convert Python list to pgvector format: '[0.1, 0.2, ...]'"""
+    if not embedding:
+        return "[]"
+    return "[" + ",".join(f"{float(x):.6f}" for x in embedding) + "]"
 
 
 class PostgresDatabase:
@@ -214,8 +223,12 @@ class PostgresDatabase:
     async def _create_tables(self, conn: AsyncConnection):
         """Create all 10 core tables."""
 
+        # Get embedding dimension from config
+        from . import config
+        embedding_dim = config.LLAMACPP_EMBEDDING_DIM
+
         # 1. Projects table
-        await conn.execute("""
+        await conn.execute(f"""
             CREATE TABLE IF NOT EXISTS projects (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) UNIQUE NOT NULL,
@@ -229,23 +242,23 @@ class PostgresDatabase:
                 memory_count INT DEFAULT 0,
                 total_events INT DEFAULT 0,
                 task_count INT DEFAULT 0,
-                embedding_dim INT DEFAULT 768,
+                embedding_dim INT DEFAULT {embedding_dim},
                 consolidation_interval INT DEFAULT 3600
             )
         """)
 
         # 2. Memory vectors table (unified)
-        await conn.execute("""
+        await conn.execute(f"""
             CREATE TABLE IF NOT EXISTS memory_vectors (
                 id BIGSERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
                 content TEXT NOT NULL,
                 content_type VARCHAR(50),
-                embedding vector(768) NOT NULL,
+                embedding vector({embedding_dim}) NOT NULL,
                 content_tsvector tsvector GENERATED ALWAYS AS (to_tsvector('english', content)) STORED,
                 memory_type VARCHAR(50) NOT NULL,
                 domain VARCHAR(100),
-                tags TEXT[] DEFAULT '{}',
+                tags TEXT[] DEFAULT '{{}}',
                 created_at TIMESTAMP DEFAULT NOW(),
                 updated_at TIMESTAMP DEFAULT NOW(),
                 last_accessed TIMESTAMP DEFAULT NOW(),
@@ -840,24 +853,40 @@ class PostgresDatabase:
             List of memory dicts with scores
         """
         async with self.get_connection() as conn:
-            # Build WHERE clause
+            # Convert embedding to pgvector format string
+            embedding_str = embed_to_vector_str(embedding)
+
+            # Build WHERE clause parts (will be inserted later in correct position)
             where_parts = [
                 "m.project_id = %s",
                 "m.consolidation_state = %s",
             ]
-            params = [project_id, consolidation_state]
+            where_params = [project_id, consolidation_state]
 
             if memory_types:
                 where_parts.append("m.memory_type = ANY(%s)")
-                params.append(memory_types)
+                where_params.append(memory_types)
 
             where_clause = " AND ".join(where_parts)
 
-            # Hybrid search query
-            params.extend([embedding, query_text, limit, semantic_weight, keyword_weight])
+            # Build SELECT clause parameters (these come first in the SQL)
+            select_params = [
+                query_text,          # Line 16: plainto_tsquery(%s) for keyword_rank
+                semantic_weight,     # Line 17: %s * (semantic component)
+                keyword_weight,      # Line 18: %s * COALESCE (keyword component)
+                query_text,          # Line 18: plainto_tsquery(%s) in hybrid score
+            ]
 
-            row = await conn.execute(
-                f"""
+            # Combine parameters in the order they appear in SQL:
+            # SELECT clause params first, then WHERE clause params, then remaining
+            params = select_params + where_params + [
+                query_text,          # Line 25: plainto_tsquery(%s) in threshold check
+                limit,               # Line 29: LIMIT %s
+            ]
+
+            # Build SQL query - embedding is pre-converted to string, not a placeholder
+            # This avoids type casting issues with psycopg
+            sql_query = f"""
                 SELECT
                     m.id,
                     m.project_id,
@@ -871,27 +900,27 @@ class PostgresDatabase:
                     m.access_count,
 
                     -- Scoring
-                    (1 - (m.embedding <=> %s::vector)) as semantic_similarity,
+                    (1 - (m.embedding <=> '{embedding_str}'::vector)) as semantic_similarity,
                     ts_rank(m.content_tsvector, plainto_tsquery(%s)) as keyword_rank,
-                    (%s * (1 - (m.embedding <=> %s::vector)) +
+                    (%s * (1 - (m.embedding <=> '{embedding_str}'::vector)) +
                      %s * COALESCE(ts_rank(m.content_tsvector, plainto_tsquery(%s)), 0))
                      as hybrid_score
 
                 FROM memory_vectors m
                 WHERE {where_clause}
                     AND (
-                        (1 - (m.embedding <=> %s::vector)) > 0.3
+                        (1 - (m.embedding <=> '{embedding_str}'::vector)) > 0.3
                         OR ts_rank(m.content_tsvector, plainto_tsquery(%s)) > 0
                     )
 
                 ORDER BY hybrid_score DESC
                 LIMIT %s
-                """,
-                params,
-            )
+                """
+
+            cursor = await conn.execute(sql_query, params)
 
             results = []
-            async for row_data in await row:
+            async for row_data in cursor:
                 results.append({
                     "id": row_data[0],
                     "project_id": row_data[1],

@@ -1,12 +1,10 @@
-"""Semantic search implementation using PostgreSQL hybrid, Qdrant, or sqlite-vec fallback."""
+"""Semantic search implementation using PostgreSQL hybrid or Qdrant (with PostgreSQL fallback)."""
 
 import asyncio
-import json
 import time
 import logging
-from typing import Optional, TYPE_CHECKING, Union
+from typing import Optional, TYPE_CHECKING
 
-from ..core.database import Database
 from ..core.embeddings import EmbeddingModel
 from ..core.models import Memory, MemorySearchResult, MemoryType
 from ..core.config import (
@@ -24,18 +22,18 @@ logger = logging.getLogger(__name__)
 
 
 class SemanticSearch:
-    """Semantic search over memory vectors with PostgreSQL hybrid, Qdrant, or sqlite-vec."""
+    """Semantic search over memory vectors with PostgreSQL hybrid or Qdrant."""
 
     def __init__(
         self,
-        db: Union[Database, "PostgresDatabase"],
+        db: "PostgresDatabase",
         embedder: EmbeddingModel,
         qdrant: Optional["QdrantAdapter"] = None
     ):
         """Initialize semantic search.
 
         Args:
-            db: Database instance (SQLite Database or PostgresDatabase)
+            db: PostgresDatabase instance (required)
             embedder: Embedding model
             qdrant: Optional Qdrant adapter for vector search
         """
@@ -43,8 +41,13 @@ class SemanticSearch:
         self.embedder = embedder
         self.qdrant = qdrant
 
-        # Detect database backend
+        # Ensure PostgreSQL backend is available
         self._is_postgres = self._check_postgres()
+        if not self._is_postgres:
+            raise ValueError(
+                "SemanticSearch requires PostgreSQL database. "
+                "SQLite fallback has been removed."
+            )
 
         # Initialize query expander (optional, graceful degradation)
         self._query_expander = None
@@ -80,12 +83,7 @@ class SemanticSearch:
             except ImportError as e:
                 logger.warning(f"Query expansion unavailable (missing dependencies): {e}")
 
-        if self._is_postgres:
-            logger.info("SemanticSearch initialized with PostgreSQL hybrid backend")
-        elif qdrant:
-            logger.info("SemanticSearch initialized with Qdrant backend")
-        else:
-            logger.info("SemanticSearch initialized with sqlite-vec backend")
+        logger.info("SemanticSearch initialized with PostgreSQL hybrid backend")
 
     def _check_postgres(self) -> bool:
         """Check if database is PostgresDatabase.
@@ -116,7 +114,7 @@ class SemanticSearch:
         4. Rerank merged results by similarity
         5. Return top-k results
 
-        Uses PostgreSQL hybrid search (best), Qdrant (if available), or sqlite-vec (fallback).
+        Uses PostgreSQL hybrid search with optional Qdrant fallback.
 
         Args:
             query: Search query
@@ -152,8 +150,8 @@ class SemanticSearch:
                     # Generate embedding for variant
                     query_embedding = self.embedder.embed(variant_query)
 
-                    # Execute search based on backend
-                    if self._is_postgres:
+                    # Execute search - try PostgreSQL first, then Qdrant
+                    try:
                         variant_results = self._recall_postgres(
                             query_embedding,
                             project_id,
@@ -162,22 +160,18 @@ class SemanticSearch:
                             memory_types,
                             min_similarity,
                         )
-                    elif self.qdrant:
-                        variant_results = self._recall_qdrant(
-                            query_embedding,
-                            project_id,
-                            results_per_variant,
-                            memory_types,
-                            min_similarity,
-                        )
-                    else:
-                        variant_results = self._recall_sqlite(
-                            query_embedding,
-                            project_id,
-                            results_per_variant,
-                            memory_types,
-                            min_similarity,
-                        )
+                    except Exception as e:
+                        logger.warning(f"PostgreSQL search failed for variant, trying Qdrant: {e}")
+                        if self.qdrant:
+                            variant_results = self._recall_qdrant(
+                                query_embedding,
+                                project_id,
+                                results_per_variant,
+                                memory_types,
+                                min_similarity,
+                            )
+                        else:
+                            raise
 
                     all_results.extend(variant_results)
 
@@ -204,21 +198,19 @@ class SemanticSearch:
         # Single query (no expansion or expansion failed)
         query_embedding = self.embedder.embed(query)
 
-        # Use PostgreSQL hybrid search if available (best performance + quality)
-        if self._is_postgres:
+        # Use PostgreSQL hybrid search (primary)
+        try:
             return self._recall_postgres(
                 query_embedding, project_id, query, k, memory_types, min_similarity
             )
-        # Use Qdrant if available
-        elif self.qdrant:
-            return self._recall_qdrant(
-                query_embedding, project_id, k, memory_types, min_similarity
-            )
-        # Fall back to sqlite-vec
-        else:
-            return self._recall_sqlite(
-                query_embedding, project_id, k, memory_types, min_similarity
-            )
+        except Exception as e:
+            logger.warning(f"PostgreSQL search failed, trying Qdrant: {e}")
+            if self.qdrant:
+                return self._recall_qdrant(
+                    query_embedding, project_id, k, memory_types, min_similarity
+                )
+            else:
+                raise
 
     def _recall_postgres(
         self,
@@ -255,15 +247,15 @@ class SemanticSearch:
             logger.debug(f"PostgreSQL hybrid search returned {len(results)} results")
             return results
         except Exception as e:
-            logger.error(f"PostgreSQL search failed: {e}. Falling back to Qdrant/SQLite.")
-            # Fall back to other backends
+            logger.error(f"PostgreSQL search failed: {e}. Falling back to Qdrant if available.")
+            # Fall back to Qdrant if available, otherwise fail
             if self.qdrant:
                 return self._recall_qdrant(
                     query_embedding, project_id, k, memory_types, min_similarity
                 )
             else:
-                return self._recall_sqlite(
-                    query_embedding, project_id, k, memory_types, min_similarity
+                raise ValueError(
+                    f"PostgreSQL search failed and no Qdrant fallback available: {e}"
                 )
 
     async def _recall_postgres_async(
@@ -297,7 +289,7 @@ class SemanticSearch:
         # The hybrid_search method combines:
         # - Semantic similarity (vector cosine similarity)
         # - Full-text search (BM25-like scoring via PostgreSQL tsvector)
-        # - Recency boost (exponential decay over time)
+        # - Relational filtering (project, type, consolidation state)
         pg_db = self.db  # Type: PostgresDatabase
         search_results = await pg_db.hybrid_search(
             project_id=project_id,
@@ -305,7 +297,9 @@ class SemanticSearch:
             query_text=query_text,
             memory_types=type_filter,
             limit=k,
-            min_similarity=min_similarity,
+            semantic_weight=0.7,
+            keyword_weight=0.3,
+            consolidation_state="consolidated",
         )
 
         # Convert database results to MemorySearchResult objects
@@ -388,81 +382,6 @@ class SemanticSearch:
         logger.debug(f"Qdrant search returned {len(results)} results")
         return results
 
-    def _recall_sqlite(
-        self,
-        query_embedding: list[float],
-        project_id: int,
-        k: int,
-        memory_types: Optional[list[MemoryType]],
-        min_similarity: float,
-    ) -> list[MemorySearchResult]:
-        """Fallback search using sqlite-vec.
-
-        Args:
-            query_embedding: Query embedding vector
-            project_id: Project ID
-            k: Number of results
-            memory_types: Optional memory type filter
-            min_similarity: Minimum similarity threshold
-
-        Returns:
-            List of search results
-        """
-        query_embedding_json = json.dumps(query_embedding)
-        cursor = self.db.get_cursor()
-
-        if memory_types:
-            type_values = [mt.value for mt in memory_types]
-            placeholders = ",".join("?" * len(type_values))
-
-            # Use vec_distance_cosine for similarity calculation
-            # Note: sqlite-vec returns distance (0 = identical, 2 = opposite)
-            # Convert to similarity: similarity = 1 - (distance / 2)
-            query = f"""
-                SELECT
-                    m.id,
-                    (1 - vec_distance_cosine(v.embedding, ?1) / 2.0) as similarity
-                FROM memories m
-                JOIN memory_vectors v ON m.id = v.rowid
-                WHERE m.project_id = ?2
-                AND m.memory_type IN ({placeholders})
-                AND (1 - vec_distance_cosine(v.embedding, ?1) / 2.0) >= ?{3 + len(type_values)}
-                ORDER BY similarity DESC
-                LIMIT ?{4 + len(type_values)}
-            """
-            params = [query_embedding_json, project_id] + type_values + [min_similarity, k]
-        else:
-            query = """
-                SELECT
-                    m.id,
-                    (1 - vec_distance_cosine(v.embedding, ?1) / 2.0) as similarity
-                FROM memories m
-                JOIN memory_vectors v ON m.id = v.rowid
-                WHERE m.project_id = ?2
-                AND (1 - vec_distance_cosine(v.embedding, ?1) / 2.0) >= ?3
-                ORDER BY similarity DESC
-                LIMIT ?4
-            """
-            params = [query_embedding_json, project_id, min_similarity, k]
-
-        cursor.execute(query, params)
-        results = []
-
-        for rank, row in enumerate(cursor.fetchall(), 1):
-            memory_id = row[0]
-            similarity = row[1]
-
-            memory = self.db.get_memory_sync(memory_id)
-            if memory:
-                # Update access stats
-                self.db.update_access_stats(memory_id)
-
-                results.append(
-                    MemorySearchResult(memory=memory, similarity=similarity, rank=rank)
-                )
-
-        logger.debug(f"SQLite search returned {len(results)} results")
-        return results
 
     def _merge_results(
         self, all_results: list[MemorySearchResult], k: int
@@ -532,7 +451,7 @@ class SemanticSearch:
     ) -> list[MemorySearchResult]:
         """Search with composite scoring (similarity + recency + usefulness).
 
-        Uses sqlite-vec for initial retrieval, then reranks with additional factors.
+        Uses PostgreSQL for initial retrieval, then reranks with additional factors.
 
         Args:
             query: Search query
@@ -562,7 +481,7 @@ class SemanticSearch:
         for result in results:
             memory = result.memory
 
-            # Similarity score (already 0-1 from sqlite-vec)
+            # Similarity score (already 0-1 from PostgreSQL hybrid search)
             sim_score = result.similarity
 
             # Recency score (decay over 90 days)
@@ -600,7 +519,7 @@ class SemanticSearch:
     ) -> list[MemorySearchResult]:
         """Search across all projects.
 
-        Uses PostgreSQL (if available) or sqlite-vec fallback.
+        Uses PostgreSQL hybrid search (primary) with Qdrant fallback.
 
         Args:
             query: Search query
@@ -612,16 +531,10 @@ class SemanticSearch:
         """
         query_embedding = self.embedder.embed(query)
 
-        # Use PostgreSQL if available
-        if self._is_postgres:
-            return self._search_across_projects_postgres(
-                query_embedding, query, exclude_project_id, k
-            )
-        # Fall back to sqlite-vec
-        else:
-            return self._search_across_projects_sqlite(
-                query_embedding, exclude_project_id, k
-            )
+        # Use PostgreSQL (always available per __init__)
+        return self._search_across_projects_postgres(
+            query_embedding, query, exclude_project_id, k
+        )
 
     def _search_across_projects_postgres(
         self,
@@ -650,9 +563,13 @@ class SemanticSearch:
             return results
         except Exception as e:
             logger.error(f"PostgreSQL cross-project search failed: {e}")
-            return self._search_across_projects_sqlite(
-                query_embedding, exclude_project_id, k
-            )
+            if self.qdrant:
+                logger.info("Falling back to Qdrant for cross-project search")
+                # Qdrant doesn't have built-in cross-project filtering, so return empty
+                logger.warning("Qdrant fallback does not support cross-project search")
+                return []
+            else:
+                raise
 
     async def _search_across_projects_postgres_async(
         self,
@@ -721,67 +638,6 @@ class SemanticSearch:
 
         return results
 
-    def _search_across_projects_sqlite(
-        self,
-        query_embedding: list[float],
-        exclude_project_id: Optional[int],
-        k: int,
-    ) -> list[MemorySearchResult]:
-        """Search across projects using sqlite-vec.
-
-        Args:
-            query_embedding: Query embedding vector
-            exclude_project_id: Project ID to exclude
-            k: Number of results
-
-        Returns:
-            Search results from all projects
-        """
-        query_embedding_json = json.dumps(query_embedding)
-
-        cursor = self.db.get_cursor()
-
-        if exclude_project_id:
-            cursor.execute(
-                """
-                SELECT
-                    m.id,
-                    (1 - vec_distance_cosine(v.embedding, ?) / 2.0) as similarity
-                FROM memories m
-                JOIN memory_vectors v ON m.id = v.rowid
-                WHERE m.project_id != ?
-                ORDER BY similarity DESC
-                LIMIT ?
-            """,
-                (query_embedding_json, exclude_project_id, k),
-            )
-        else:
-            cursor.execute(
-                """
-                SELECT
-                    m.id,
-                    (1 - vec_distance_cosine(v.embedding, ?) / 2.0) as similarity
-                FROM memories m
-                JOIN memory_vectors v ON m.id = v.rowid
-                ORDER BY similarity DESC
-                LIMIT ?
-            """,
-                (query_embedding_json, k),
-            )
-
-        # Build results
-        results = []
-        for rank, row in enumerate(cursor.fetchall(), 1):
-            memory_id = row[0]
-            similarity = row[1]
-
-            memory = self.db.get_memory_sync(memory_id)
-            if memory:
-                results.append(
-                    MemorySearchResult(memory=memory, similarity=similarity, rank=rank)
-                )
-
-        return results
 
 
 def diversify_by_type(results: list[MemorySearchResult], k: int) -> list[MemorySearchResult]:

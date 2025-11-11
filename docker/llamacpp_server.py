@@ -21,7 +21,7 @@ try:
     LLAMA_INSTANCE = None
 
     # Try to load model if it exists
-    model_path = os.environ.get('MODEL_PATH', '/home/athena/.athena/models/nomic-embed-text-v1.5.Q4_K_M.gguf')
+    model_path = os.environ.get('MODEL_PATH', os.path.expanduser('~/.athena/models/nomic-embed-text-v1.5.Q4_K_M.gguf'))
     if os.path.exists(model_path):
         try:
             print(f"Loading model from {model_path}...", file=sys.stderr)
@@ -52,6 +52,7 @@ except ImportError:
 class EmbeddingRequest(BaseModel):
     text: Optional[str] = None
     input: Optional[str] = None  # Alternative field name
+    content: Optional[str] = None  # Alternative field name for Athena compatibility
 
 
 class EmbeddingResponse(BaseModel):
@@ -72,7 +73,7 @@ async def health_check():
 @app.post("/embeddings", response_model=EmbeddingResponse)
 async def generate_embeddings(request: EmbeddingRequest):
     """Generate embeddings for text."""
-    text = request.text or request.input
+    text = request.text or request.input or request.content
     if not text:
         raise HTTPException(status_code=400, detail="No text provided")
 
@@ -87,6 +88,12 @@ async def generate_embeddings(request: EmbeddingRequest):
         # 384-dimensional embedding filled with mock data
         embedding = [0.1 * (i % 10) for i in range(384)]
         return EmbeddingResponse(embedding=embedding)
+
+
+@app.post("/embedding", response_model=EmbeddingResponse)
+async def generate_embedding(request: EmbeddingRequest):
+    """Generate embedding for text (alias for /embeddings)."""
+    return await generate_embeddings(request)
 
 
 if __name__ == "__main__":

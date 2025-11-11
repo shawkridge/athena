@@ -64,8 +64,10 @@ class EmbeddingModel:
             )
         except Exception as e:
             logger.error(f"Failed to connect to llama.cpp server at {model_path}: {e}")
+            # Ensure model_path is a string (in case it got set to something else)
+            url_str = str(model_path) if model_path else "http://localhost:8001"
             raise RuntimeError(
-                f"Embedding backend unavailable. Ensure llama.cpp server is running at {model_path}\n"
+                f"Embedding backend unavailable. Ensure llama.cpp server is running at {url_str}\n"
                 f"Start with: ./llama-server -m nomic-embed-text-v1.5.Q4_K_M.gguf --embedding --port 8001"
             )
 

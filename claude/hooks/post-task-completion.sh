@@ -56,32 +56,45 @@ invoker.invoke_agent("goal-orchestrator", {
 })
 PYTHON_EOF
 
-# Source Athena HTTP config if available
-if [ -f "/home/user/.claude/hooks/config.env" ]; then
-    source /home/user/.claude/hooks/config.env
-fi
+# Record task progress via direct Python import
+python3 << 'PYTHON_EOF'
+import sys
+import os
+import json
+from datetime import datetime
 
-ATHENA_HTTP_URL="${ATHENA_HTTP_URL:-http://localhost:8000}"
-ATHENA_HTTP_TIMEOUT="${ATHENA_HTTP_TIMEOUT:-5}"
+# Add athena and hooks lib to path
+sys.path.insert(0, '/home/user/.work/athena/src')
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
 
-# Record task progress via HTTP API
-TASK_PAYLOAD=$(cat <<EOF
-{
-  "task_id": "$TASK_ID",
-  "task_name": "$TASK_NAME",
-  "status": "$TASK_STATUS",
-  "quality_score": $QUALITY_SCORE,
-  "estimated_time_minutes": $ESTIMATED_TIME,
-  "actual_time_minutes": $ACTUAL_TIME,
-  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-}
-EOF
-)
+try:
+    from memory_helper import record_episodic_event
 
-curl -s -X POST "$ATHENA_HTTP_URL/api/task/record" \
-  -H "Content-Type: application/json" \
-  --max-time "$ATHENA_HTTP_TIMEOUT" \
-  -d "$TASK_PAYLOAD" 2>/dev/null || true
+    # Record the task completion event
+    task_data = {
+        "task_id": os.environ.get('TASK_ID', 'unknown'),
+        "task_name": os.environ.get('TASK_NAME', 'Unnamed Task'),
+        "status": os.environ.get('TASK_STATUS', 'unknown'),
+        "quality_score": float(os.environ.get('QUALITY_SCORE', '0.75')),
+        "estimated_time_minutes": int(os.environ.get('ESTIMATED_TIME', '0')),
+        "actual_time_minutes": int(os.environ.get('ACTUAL_TIME', '0')),
+        "timestamp": datetime.utcnow().isoformat() + 'Z'
+    }
+
+    event_id = record_episodic_event(
+        event_type="task_completion",
+        content=json.dumps(task_data),
+        metadata=task_data
+    )
+
+    if event_id:
+        print(f"✓ Task progress recorded (ID: {event_id})", file=sys.stderr)
+    else:
+        print(f"⚠ Task recording failed", file=sys.stderr)
+
+except Exception as e:
+    print(f"⚠ Task recording failed: {str(e)}", file=sys.stderr)
+PYTHON_EOF
 
 log_info "✓ Task progress recorded"
 log "  ✓ Execution status: $TASK_STATUS"

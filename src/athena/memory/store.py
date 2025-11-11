@@ -15,12 +15,8 @@ from ..core.async_utils import run_async
 from .optimize import MemoryOptimizer
 from .search import SemanticSearch
 
-# Import QdrantAdapter with graceful fallback
-try:
-    from ..rag.qdrant_adapter import QdrantAdapter
-    QDRANT_AVAILABLE = True
-except ImportError:
-    QDRANT_AVAILABLE = False
+# Qdrant support is deprecated - we use PostgreSQL + pgvector instead
+# QdrantAdapter import removed as part of host-based refactor
 
 logger = logging.getLogger(__name__)
 
@@ -35,54 +31,36 @@ class MemoryStore(BaseStore):
         self,
         db_path: Optional[str | Path] = None,
         embedding_model: Optional[str] = None,
-        use_qdrant: bool = True,
+        use_qdrant: bool = False,
         backend: Optional[str] = None,
     ):
-        """Initialize memory store.
+        """Initialize memory store with PostgreSQL + pgvector.
 
-        Supports both SQLite (default, local) and PostgreSQL (unified multi-domain).
-        Auto-detects backend from environment variables or uses provided backend.
+        Uses PostgreSQL exclusively for both storage and vector operations.
+        For host-based development, uses PostgreSQL with pgvector extension.
 
         Args:
-            db_path: Path to SQLite database (optional, used for SQLite backend)
+            db_path: Ignored (kept for backwards compatibility)
             embedding_model: Model name/path for embeddings (default: from config/provider)
-            use_qdrant: If True, use Qdrant for vector storage (default: True)
-            backend: Database backend ('sqlite', 'postgres', None for auto-detect)
+            use_qdrant: Deprecated - always disabled. Use PostgreSQL + pgvector instead.
+            backend: Force backend ('postgres' recommended, 'sqlite' discouraged)
         """
-        # Initialize database - auto-detects backend from environment or uses provided backend
-        # If PostgreSQL env vars are set, uses PostgreSQL; otherwise uses SQLite with db_path
-        if backend == 'postgres' or (backend is None and self._should_use_postgres()):
-            logger.info("Initializing MemoryStore with PostgreSQL backend")
-            self.db = get_database(backend='postgres')
-            # For PostgreSQL, we don't use db_path
-        else:
-            # Use SQLite (default/fallback)
-            if db_path is None:
-                db_path = config.DATABASE_PATH
-            logger.info(f"Initializing MemoryStore with SQLite backend: {db_path}")
-            self.db = Database(db_path)
+        # Force PostgreSQL for host-based development
+        # We use PostgreSQL + pgvector exclusively, not Qdrant or SQLite
+        logger.info("Initializing MemoryStore with PostgreSQL + pgvector backend")
+        self.db = get_database(backend='postgres')
 
         super().__init__(self.db)
-        # EmbeddingModel will use config provider and defaults
+        # EmbeddingModel will use config provider (llamacpp at localhost:8001)
         self.embedder = EmbeddingModel(embedding_model)
 
-        # Initialize Qdrant adapter if available and enabled
+        # Qdrant is deprecated - we use PostgreSQL pgvector instead
         self.qdrant = None
-        if use_qdrant and QDRANT_AVAILABLE:
-            try:
-                self.qdrant = QdrantAdapter(
-                    url=config.QDRANT_URL,
-                    collection_name=config.QDRANT_COLLECTION,
-                    embedding_dim=config.QDRANT_EMBEDDING_DIM,
-                )
-                logger.info(f"Qdrant enabled: {config.QDRANT_URL}")
-            except Exception as e:
-                logger.warning(f"Failed to initialize Qdrant, falling back to SQLite: {e}")
-                self.qdrant = None
-        elif use_qdrant and not QDRANT_AVAILABLE:
-            logger.warning("Qdrant requested but not available (qdrant-client not installed)")
+        if use_qdrant:
+            logger.warning("Qdrant support is deprecated. Using PostgreSQL + pgvector instead.")
 
-        self.search = SemanticSearch(self.db, self.embedder, qdrant=self.qdrant)
+        # SemanticSearch will use PostgreSQL pgvector for vector operations
+        self.search = SemanticSearch(self.db, self.embedder, qdrant=None)
         self.optimizer = MemoryOptimizer(self.db)
 
     @staticmethod

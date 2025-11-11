@@ -76,29 +76,49 @@ class DatabaseFactory:
 
     @classmethod
     def _create_postgres(cls, **kwargs) -> PostgresDatabase:
-        """Create PostgreSQL database instance with hardcoded Docker defaults.
+        """Create PostgreSQL database instance.
 
-        Docker configuration (no fallback):
-        - host: postgres (Docker service name)
-        - port: 5432
-        - dbname: athena
-        - user: athena
-        - password: athena_password
+        Configuration priority:
+        1. Explicit kwargs (passed to method)
+        2. Environment variables (for host-based development)
+        3. Docker defaults (fallback)
+
+        Environment variables:
+        - ATHENA_POSTGRES_HOST: PostgreSQL host (default: "postgres" for Docker)
+        - ATHENA_POSTGRES_PORT: PostgreSQL port (default: 5432)
+        - ATHENA_POSTGRES_DB: Database name (default: athena)
+        - ATHENA_POSTGRES_USER: Database user (default: athena)
+        - ATHENA_POSTGRES_PASSWORD: Database password (default: athena_password)
 
         Args:
-            **kwargs: PostgreSQL-specific config (only used if passed explicitly)
+            **kwargs: PostgreSQL-specific config (overrides environment/defaults)
 
         Returns:
             PostgresDatabase instance
         """
 
-        # Hardcoded Docker defaults - no environment variable fallback
+        # Configuration with proper priority: kwargs > env > defaults
         config = {
-            'host': kwargs.get('host', 'postgres'),
-            'port': int(kwargs.get('port', '5432')),
-            'dbname': kwargs.get('dbname', 'athena'),
-            'user': kwargs.get('user', 'athena'),
-            'password': kwargs.get('password', 'athena_password'),
+            'host': kwargs.get(
+                'host',
+                os.environ.get('ATHENA_POSTGRES_HOST', 'postgres')
+            ),
+            'port': int(kwargs.get(
+                'port',
+                os.environ.get('ATHENA_POSTGRES_PORT', '5432')
+            )),
+            'dbname': kwargs.get(
+                'dbname',
+                os.environ.get('ATHENA_POSTGRES_DB', 'athena')
+            ),
+            'user': kwargs.get(
+                'user',
+                os.environ.get('ATHENA_POSTGRES_USER', 'athena')
+            ),
+            'password': kwargs.get(
+                'password',
+                os.environ.get('ATHENA_POSTGRES_PASSWORD', 'athena_password')
+            ),
             'min_size': int(kwargs.get('min_size', '2')),
             'max_size': int(kwargs.get('max_size', '10')),
         }

@@ -40,43 +40,46 @@ else
 fi
 echo "$COUNTER" > "$OPERATIONS_COUNTER_FILE"
 
-# Record episodic event to memory via HTTP
+# Record episodic event to memory via direct Python import
 log "Recording episodic event: $TOOL_NAME ($TOOL_STATUS)"
 
-# Source Athena HTTP config if available
-if [ -f "/home/user/.claude/hooks/config.env" ]; then
-    source /home/user/.claude/hooks/config.env
-fi
-
-# Default to localhost if not set
-ATHENA_HTTP_URL="${ATHENA_HTTP_URL:-http://localhost:8000}"
-ATHENA_HTTP_TIMEOUT="${ATHENA_HTTP_TIMEOUT:-5}"
-
-# Build JSON payload for episodic event
-EVENT_PAYLOAD=$(cat <<EOF
-{
-  "event_type": "tool_execution",
-  "tool_name": "$TOOL_NAME",
-  "status": "$TOOL_STATUS",
-  "duration_ms": $EXECUTION_TIME_MS,
-  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-}
-EOF
-)
-
-# Call HTTP API to record episodic event
+# Call Python directly to record episodic event
 # This stores tool execution details in episodic memory for later consolidation
-HTTP_RESPONSE=$(curl -s -X POST "$ATHENA_HTTP_URL/api/memory/remember" \
-  -H "Content-Type: application/json" \
-  --max-time "$ATHENA_HTTP_TIMEOUT" \
-  -d "$EVENT_PAYLOAD" 2>/dev/null || echo "{}")
+python3 << 'PYTHON_EOF'
+import sys
+import os
+import json
+from datetime import datetime
 
-# Check if recording was successful
-if echo "$HTTP_RESPONSE" | grep -q '"success":\s*true'; then
-    log "✓ Episodic event recorded"
-else
-    log_warn "Event recording returned: $HTTP_RESPONSE"
-fi
+# Add athena and hooks lib to path
+sys.path.insert(0, '/home/user/.work/athena/src')
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
+
+try:
+    from memory_helper import record_episodic_event
+
+    # Record the episodic event
+    event_data = {
+        "tool_name": os.environ.get('TOOL_NAME', 'unknown'),
+        "status": os.environ.get('TOOL_STATUS', 'unknown'),
+        "duration_ms": int(os.environ.get('EXECUTION_TIME_MS', '0')),
+        "timestamp": datetime.utcnow().isoformat() + 'Z'
+    }
+
+    event_id = record_episodic_event(
+        event_type="tool_execution",
+        content=json.dumps(event_data),
+        metadata=event_data
+    )
+
+    if event_id:
+        print(f"✓ Episodic event recorded (ID: {event_id})", file=sys.stderr)
+    else:
+        print(f"⚠ Event recording failed", file=sys.stderr)
+
+except Exception as e:
+    print(f"⚠ Event recording failed: {str(e)}", file=sys.stderr)
+PYTHON_EOF
 
 # Check for anomalies/errors
 if [ "$TOOL_STATUS" != "success" ]; then
