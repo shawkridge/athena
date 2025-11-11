@@ -1344,24 +1344,55 @@ class MemoryMCPServer:
 
     async def _handle_list_memories(self, args: dict) -> list[TextContent]:
         """Handle list_memories tool call."""
-        project = await self.project_manager.require_project()
+        try:
+            project = await self.project_manager.require_project()
+            limit = args.get("limit", 20)
+            sort_by = args.get("sort_by", "useful")
 
-        memories = self.store.list_memories(
-            project_id=project.id, limit=args.get("limit", 20), sort_by=args.get("sort_by", "useful")
-        )
+            memories = self.store.list_memories(
+                project_id=project.id, limit=limit, sort_by=sort_by
+            )
 
-        if not memories:
-            return [TextContent(type="text", text="No memories found.")]
+            if not memories:
+                result = StructuredResult.success(
+                    data=[],
+                    metadata={
+                        "operation": "list_memories",
+                        "schema": "memory",
+                        "sort_by": sort_by,
+                    }
+                )
+            else:
+                # Format memories for structured response
+                formatted_memories = []
+                for memory in memories:
+                    memory_type = memory.memory_type if isinstance(memory.memory_type, str) else memory.memory_type.value
+                    formatted_memories.append({
+                        "id": memory.id,
+                        "type": memory_type,
+                        "content": memory.content[:100],
+                        "usefulness_score": round(memory.usefulness_score, 2),
+                        "tags": memory.tags or [],
+                    })
 
-        response = f"Memories for project '{project.name}' ({len(memories)} total):\n\n"
-        for memory in memories:
-            # memory_type is already a string due to use_enum_values = True
-            memory_type = memory.memory_type if isinstance(memory.memory_type, str) else memory.memory_type.value
-            response += f"ID: {memory.id} | [{memory_type.upper()}] "
-            response += f"(score: {memory.usefulness_score:.2f}) "
-            response += f"{memory.content[:80]}{'...' if len(memory.content) > 80 else ''}\n"
+                result = StructuredResult.success(
+                    data=formatted_memories,
+                    metadata={
+                        "operation": "list_memories",
+                        "schema": "memory",
+                        "project": project.name,
+                        "sort_by": sort_by,
+                        "count": len(formatted_memories),
+                    },
+                    pagination=PaginationMetadata(
+                        returned=len(formatted_memories),
+                        limit=limit,
+                    )
+                )
+        except Exception as e:
+            result = StructuredResult.error(str(e), metadata={"operation": "list_memories"})
 
-        return [TextContent(type="text", text=response)]
+        return [result.as_optimized_content(schema_name="memory")]
 
     async def _handle_optimize(self, args: dict) -> list[TextContent]:
         """Handle optimize tool call."""
@@ -2096,24 +2127,54 @@ class MemoryMCPServer:
 
     async def _handle_find_procedures(self, args: dict) -> list[TextContent]:
         """Handle find_procedures tool call."""
-        context_tags = []
-        if "category" in args:
-            context_tags.append(args["category"])
+        try:
+            context_tags = []
+            if "category" in args:
+                context_tags.append(args["category"])
 
-        procedures = self.procedural_store.search_procedures(args["query"], context=context_tags)
+            procedures = self.procedural_store.search_procedures(args["query"], context=context_tags)
+            limit = args.get("limit", 5)
 
-        if not procedures:
-            return [TextContent(type="text", text="No matching procedures found.")]
+            if not procedures:
+                result = StructuredResult.success(
+                    data=[],
+                    metadata={
+                        "operation": "find_procedures",
+                        "schema": "procedural",
+                        "query": args["query"],
+                    }
+                )
+            else:
+                # Format procedures for structured response
+                formatted_procs = []
+                for proc in procedures[:limit]:
+                    formatted_procs.append({
+                        "id": proc.id,
+                        "name": proc.name,
+                        "category": proc.category.value if hasattr(proc.category, 'value') else str(proc.category),
+                        "description": proc.description,
+                        "success_rate": round(proc.success_rate, 2),
+                        "usage_count": proc.usage_count,
+                        "template": proc.template[:100],
+                    })
 
-        response = f"Found {len(procedures[:args.get('limit', 5)])} procedures:\n\n"
-        for proc in procedures[:args.get("limit", 5)]:
-            response += f"**{proc.name}** ({proc.category})\n"
-            if proc.description:
-                response += f"  {proc.description}\n"
-            response += f"  Success rate: {proc.success_rate:.1%} ({proc.usage_count} uses)\n"
-            response += f"  Template: {proc.template[:80]}{'...' if len(proc.template) > 80 else ''}\n\n"
+                result = StructuredResult.success(
+                    data=formatted_procs,
+                    metadata={
+                        "operation": "find_procedures",
+                        "schema": "procedural",
+                        "query": args["query"],
+                        "count": len(formatted_procs),
+                    },
+                    pagination=PaginationMetadata(
+                        returned=len(formatted_procs),
+                        limit=limit,
+                    )
+                )
+        except Exception as e:
+            result = StructuredResult.error(str(e), metadata={"operation": "find_procedures"})
 
-        return [TextContent(type="text", text=response)]
+        return [result.as_optimized_content(schema_name="procedural")]
 
     async def _handle_record_execution(self, args: dict) -> list[TextContent]:
         """Handle record_execution tool call.
@@ -2427,32 +2488,61 @@ class MemoryMCPServer:
 
     async def _handle_list_tasks(self, args: dict) -> list[TextContent]:
         """Handle list_tasks tool call."""
-        project = await self.project_manager.require_project()
+        try:
+            project = await self.project_manager.require_project()
 
-        status_filter = TaskStatus(args["status"]) if "status" in args else None
-        priority_filter = TaskPriority(args["priority"]) if "priority" in args else None
+            status_filter = TaskStatus(args["status"]) if "status" in args else None
+            priority_filter = TaskPriority(args["priority"]) if "priority" in args else None
+            limit = args.get("limit", 20)
 
-        tasks = self.prospective_store.list_tasks(
-            project.id,
-            status=status_filter,
-            limit=args.get("limit", 20)
-        )
+            tasks = self.prospective_store.list_tasks(
+                project.id,
+                status=status_filter,
+                limit=limit
+            )
 
-        if not tasks:
-            return [TextContent(type="text", text="No tasks found.")]
+            if not tasks:
+                result = StructuredResult.success(
+                    data=[],
+                    metadata={
+                        "operation": "list_tasks",
+                        "schema": "prospective",
+                        "status_filter": str(status_filter) if status_filter else None,
+                        "priority_filter": str(priority_filter) if priority_filter else None,
+                    }
+                )
+            else:
+                # Format tasks for structured response
+                formatted_tasks = []
+                for task in tasks:
+                    formatted_tasks.append({
+                        "id": task.id,
+                        "content": task.content,
+                        "status": task.status.value if hasattr(task.status, 'value') else str(task.status),
+                        "priority": task.priority.value if hasattr(task.priority, 'value') else str(task.priority),
+                        "due_at": task.due_at.isoformat() if task.due_at else None,
+                        "created_at": task.created_at.isoformat() if task.created_at else None,
+                    })
 
-        response = f"Tasks ({len(tasks)} total):\n\n"
-        for task in tasks:
-            status_icon = {"pending": "⏳", "in_progress": "🔄", "completed": "✅", "blocked": "🚫"}.get(task.status, "")
-            priority_icon = {"low": "🔽", "medium": "▪️", "high": "🔼", "critical": "🔴"}.get(task.priority, "")
+                result = StructuredResult.success(
+                    data=formatted_tasks,
+                    metadata={
+                        "operation": "list_tasks",
+                        "schema": "prospective",
+                        "project": project.name,
+                        "status_filter": str(status_filter) if status_filter else None,
+                        "priority_filter": str(priority_filter) if priority_filter else None,
+                        "count": len(formatted_tasks),
+                    },
+                    pagination=PaginationMetadata(
+                        returned=len(formatted_tasks),
+                        limit=limit,
+                    )
+                )
+        except Exception as e:
+            result = StructuredResult.error(str(e), metadata={"operation": "list_tasks"})
 
-            response += f"{status_icon} {priority_icon} [ID: {task.id}] {task.content}\n"
-            response += f"   Status: {task.status} | Priority: {task.priority}\n"
-            if task.due_at:
-                response += f"   Due: {task.due_at}\n"
-            response += "\n"
-
-        return [TextContent(type="text", text=response)]
+        return [result.as_optimized_content(schema_name="prospective")]
 
     async def _handle_update_task_status(self, args: dict) -> list[TextContent]:
         """Handle update_task_status tool call.
