@@ -6,12 +6,8 @@ from pathlib import Path
 # ============================================================================
 # Database Configuration
 # ============================================================================
-
-# Default database path
-DEFAULT_DB_PATH = Path.home() / ".athena" / "memory.db"
-
-# Database path (can be overridden via environment variable)
-ATHENA_DB_PATH = os.environ.get("ATHENA_DB_PATH", str(DEFAULT_DB_PATH))
+# System uses PostgreSQL exclusively with pgvector for all operations.
+# SQLite and Qdrant backends have been removed.
 
 
 # ============================================================================
