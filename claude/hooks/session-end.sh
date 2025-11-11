@@ -37,13 +37,31 @@ log_info "Operations Recorded: $OPERATIONS_COUNT"
 # Phase 1: Run consolidation with balanced strategy
 log "Phase 1: Running consolidation (System 1 + selective System 2)..."
 
-# Call consolidation using MCP tool
+# Source Athena HTTP config if available
+if [ -f "/home/user/.claude/hooks/config.env" ]; then
+    source /home/user/.claude/hooks/config.env
+fi
+
+ATHENA_HTTP_URL="${ATHENA_HTTP_URL:-http://localhost:8000}"
+ATHENA_HTTP_TIMEOUT="${ATHENA_HTTP_TIMEOUT:-10}"  # Allow longer for consolidation
+
+# Call consolidation using HTTP API
 # This performs dual-process reasoning:
 # - System 1: Fast statistical clustering (~100ms)
 # - System 2: LLM validation where uncertainty > 0.5 (~1-5s)
-mcp__athena__consolidation_tools run_consolidation \
-  --strategy "balanced" \
-  --days-back 7 2>/dev/null || true
+CONSOLIDATION_PAYLOAD=$(cat <<EOF
+{
+  "strategy": "balanced",
+  "days_back": 7,
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+}
+EOF
+)
+
+curl -s -X POST "$ATHENA_HTTP_URL/api/consolidation/run" \
+  -H "Content-Type: application/json" \
+  --max-time "$ATHENA_HTTP_TIMEOUT" \
+  -d "$CONSOLIDATION_PAYLOAD" 2>/dev/null || true
 
 log "  ✓ Events clustered by temporal/semantic proximity"
 log "  ✓ Patterns extracted (System 1 baseline)"

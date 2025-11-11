@@ -40,29 +40,43 @@ else
 fi
 echo "$COUNTER" > "$OPERATIONS_COUNTER_FILE"
 
-# Record episodic event to memory
+# Record episodic event to memory via HTTP
 log "Recording episodic event: $TOOL_NAME ($TOOL_STATUS)"
 
+# Source Athena HTTP config if available
+if [ -f "/home/user/.claude/hooks/config.env" ]; then
+    source /home/user/.claude/hooks/config.env
+fi
+
+# Default to localhost if not set
+ATHENA_HTTP_URL="${ATHENA_HTTP_URL:-http://localhost:8000}"
+ATHENA_HTTP_TIMEOUT="${ATHENA_HTTP_TIMEOUT:-5}"
+
 # Build JSON payload for episodic event
-EVENT_PAYLOAD=$(cat <<'EOF'
+EVENT_PAYLOAD=$(cat <<EOF
 {
   "event_type": "tool_execution",
-  "tool_name": "'$TOOL_NAME'",
-  "status": "'$TOOL_STATUS'",
-  "duration_ms": '$EXECUTION_TIME_MS',
-  "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+  "tool_name": "$TOOL_NAME",
+  "status": "$TOOL_STATUS",
+  "duration_ms": $EXECUTION_TIME_MS,
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 EOF
 )
 
-# Call MCP tool to record episodic event
+# Call HTTP API to record episodic event
 # This stores tool execution details in episodic memory for later consolidation
-mcp__athena__episodic_tools record_event \
-  --event-type "tool_execution" \
-  --content "$EVENT_PAYLOAD" \
-  --outcome "$TOOL_STATUS" 2>/dev/null || true
+HTTP_RESPONSE=$(curl -s -X POST "$ATHENA_HTTP_URL/api/memory/remember" \
+  -H "Content-Type: application/json" \
+  --max-time "$ATHENA_HTTP_TIMEOUT" \
+  -d "$EVENT_PAYLOAD" 2>/dev/null || echo "{}")
 
-log "✓ Episodic event recorded"
+# Check if recording was successful
+if echo "$HTTP_RESPONSE" | grep -q '"success":\s*true'; then
+    log "✓ Episodic event recorded"
+else
+    log_warn "Event recording returned: $HTTP_RESPONSE"
+fi
 
 # Check for anomalies/errors
 if [ "$TOOL_STATUS" != "success" ]; then

@@ -56,10 +56,32 @@ invoker.invoke_agent("goal-orchestrator", {
 })
 PYTHON_EOF
 
-# Record task progress in task management system
-mcp__athena__task_management_tools record_execution_progress \
-  --task-id "$TASK_ID" \
-  --content "Task $TASK_NAME completed with status $TASK_STATUS" 2>/dev/null || true
+# Source Athena HTTP config if available
+if [ -f "/home/user/.claude/hooks/config.env" ]; then
+    source /home/user/.claude/hooks/config.env
+fi
+
+ATHENA_HTTP_URL="${ATHENA_HTTP_URL:-http://localhost:8000}"
+ATHENA_HTTP_TIMEOUT="${ATHENA_HTTP_TIMEOUT:-5}"
+
+# Record task progress via HTTP API
+TASK_PAYLOAD=$(cat <<EOF
+{
+  "task_id": "$TASK_ID",
+  "task_name": "$TASK_NAME",
+  "status": "$TASK_STATUS",
+  "quality_score": $QUALITY_SCORE,
+  "estimated_time_minutes": $ESTIMATED_TIME,
+  "actual_time_minutes": $ACTUAL_TIME,
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+}
+EOF
+)
+
+curl -s -X POST "$ATHENA_HTTP_URL/api/task/record" \
+  -H "Content-Type: application/json" \
+  --max-time "$ATHENA_HTTP_TIMEOUT" \
+  -d "$TASK_PAYLOAD" 2>/dev/null || true
 
 log_info "✓ Task progress recorded"
 log "  ✓ Execution status: $TASK_STATUS"
