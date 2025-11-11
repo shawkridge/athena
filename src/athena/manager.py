@@ -126,6 +126,7 @@ class UnifiedMemoryManager:
         query: str,
         context: Optional[dict] = None,
         k: int = 5,
+        fields: Optional[list[str]] = None,
         conversation_history: Optional[list[dict]] = None,
         include_confidence_scores: bool = True,
         explain_reasoning: bool = False
@@ -135,7 +136,8 @@ class UnifiedMemoryManager:
         Args:
             query: Search query
             context: Optional context (cwd, files, recent actions, etc.)
-            k: Number of results to return
+            k: Number of results to return (pagination)
+            fields: Optional field projection - if specified, only return these fields from each result
             conversation_history: Recent conversation messages for context-aware queries
             include_confidence_scores: If True, add confidence scores to results
             explain_reasoning: If True, include query routing explanation
@@ -189,6 +191,10 @@ class UnifiedMemoryManager:
         # Add reasoning explanation if requested
         if explain_reasoning:
             results["_explanation"] = self._explain_query_routing(query, query_type, results)
+
+        # Apply field projection if requested (for response optimization)
+        if fields:
+            results = self._project_fields(results, fields)
 
         return results
 
@@ -722,3 +728,54 @@ class UnifiedMemoryManager:
             "layers_searched": searched_layers,
             "result_count": sum(len(r) if isinstance(r, list) else 1 for r in results.values() if r != "_explanation"),
         }
+
+    def _project_fields(self, results: dict, fields: list[str]) -> dict:
+        """Project results to include only specified fields (for response optimization).
+
+        Args:
+            results: Dictionary of results from various memory layers
+            fields: List of field names to project (include in output)
+
+        Returns:
+            Dictionary with same structure but only specified fields
+        """
+        projected = {}
+
+        for layer, layer_results in results.items():
+            if layer.startswith("_"):
+                # Preserve metadata fields (like _explanation)
+                projected[layer] = layer_results
+                continue
+
+            if isinstance(layer_results, list):
+                # Project each result in the list
+                projected[layer] = [self._project_record(record, fields) for record in layer_results]
+            elif isinstance(layer_results, dict):
+                # Project dictionary result
+                projected[layer] = self._project_record(layer_results, fields)
+            else:
+                # Keep as-is if not list/dict
+                projected[layer] = layer_results
+
+        return projected
+
+    def _project_record(self, record: Any, fields: list[str]) -> Any:
+        """Project a single record to include only specified fields.
+
+        Args:
+            record: Record to project (dict, object, or primitive)
+            fields: List of field names to include
+
+        Returns:
+            Projected record with only specified fields
+        """
+        if isinstance(record, dict):
+            # Dictionary projection
+            return {k: v for k, v in record.items() if k in fields}
+        elif hasattr(record, "__dict__"):
+            # Object projection - convert to dict first
+            record_dict = record.__dict__ if hasattr(record, "__dict__") else {}
+            return {k: v for k, v in record_dict.items() if k in fields}
+        else:
+            # Primitive value - return as-is
+            return record
