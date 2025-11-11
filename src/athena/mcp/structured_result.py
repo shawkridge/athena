@@ -1,12 +1,15 @@
-"""Unified result format for MCP tool responses."""
+"""Unified result format for MCP tool responses with TOON support."""
 
 import json
+import logging
 from dataclasses import dataclass, asdict, field
 from enum import Enum
 from typing import Any, Dict, Optional, List
 from datetime import datetime
 
 from mcp.types import TextContent
+
+logger = logging.getLogger(__name__)
 
 
 class ResultStatus(str, Enum):
@@ -76,6 +79,61 @@ class StructuredResult:
         return TextContent(
             type="text",
             text=self.as_json(indent=indent)
+        )
+
+    def as_toon_content(
+        self,
+        schema_name: Optional[str] = None,
+        fallback_to_json: bool = True,
+    ) -> TextContent:
+        """Convert to TextContent using TOON format (if available).
+
+        Attempts to encode response using TOON format for token efficiency.
+        Automatically falls back to compact JSON if TOON is unavailable.
+
+        Args:
+            schema_name: TOON schema name (e.g., 'semantic_search_results')
+            fallback_to_json: If True, fall back to compact JSON on TOON failure
+
+        Returns:
+            TextContent with TOON or JSON-encoded data
+        """
+        try:
+            from athena.serialization.integration import TOONIntegrator
+
+            # Try to use TOON if enabled
+            result_dict = self.as_dict()
+            serialized = TOONIntegrator.serialize(
+                result_dict,
+                schema_name=schema_name or self.metadata.get("operation"),
+                use_toon=None,  # Let TOONIntegrator decide
+            )
+            return TextContent(type="text", text=serialized)
+        except Exception as e:
+            logger.debug(f"TOON encoding failed ({e}), falling back to JSON")
+            if fallback_to_json:
+                return self.as_text_content(indent=None)
+            else:
+                raise
+
+    def as_optimized_content(
+        self,
+        schema_name: Optional[str] = None,
+    ) -> TextContent:
+        """Convert to TextContent with automatic format optimization.
+
+        Tries TOON first (for 40-60% token savings), falls back to compact JSON.
+        Recommended for handlers with large result sets.
+
+        Args:
+            schema_name: TOON schema name for format hints
+
+        Returns:
+            TextContent with optimized encoding (TOON or JSON)
+        """
+        return self.as_toon_content(
+            schema_name=schema_name,
+            fallback_to_json=True,
         )
 
     @classmethod

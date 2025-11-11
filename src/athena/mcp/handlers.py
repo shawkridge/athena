@@ -1293,6 +1293,7 @@ class MemoryMCPServer:
                     "operation": "recall",
                     "query": args["query"],
                     "project_id": project.id,
+                    "schema": "semantic_search",  # TOON hint
                 },
                 pagination=PaginationMetadata(
                     returned=len(formatted_results),
@@ -1303,7 +1304,8 @@ class MemoryMCPServer:
         except Exception as e:
             result = StructuredResult.error(str(e), metadata={"operation": "recall"})
 
-        return [result.as_text_content()]
+        # Use TOON optimization for recall results (40-60% token savings)
+        return [result.as_optimized_content(schema_name="semantic_search")]
 
     async def _handle_forget(self, args: dict) -> list[TextContent]:
         """Handle forget tool call."""
