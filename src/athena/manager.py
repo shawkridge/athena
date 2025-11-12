@@ -19,6 +19,7 @@ from .procedural.store import ProceduralStore
 from .projects.manager import ProjectManager
 from .prospective.models import ProspectiveTask
 from .prospective.store import ProspectiveStore
+from .session.context_manager import SessionContextManager
 from .temporal.kg_synthesis import TemporalKGSynthesis
 
 # Import RAG components (optional - graceful degradation if not available)
@@ -59,6 +60,7 @@ class UnifiedMemoryManager:
         project_manager: ProjectManager,
         rag_manager: Optional["RAGManager"] = None,
         enable_advanced_rag: bool = False,
+        session_manager: Optional[SessionContextManager] = None,
     ):
         """Initialize unified memory manager.
 
@@ -73,6 +75,7 @@ class UnifiedMemoryManager:
             project_manager: Project manager
             rag_manager: Optional RAG manager for advanced retrieval
             enable_advanced_rag: If True, attempt to initialize RAG manager with default config
+            session_manager: Optional session context manager for query-aware retrieval
         """
         self.semantic = semantic
         self.episodic = episodic
@@ -82,6 +85,7 @@ class UnifiedMemoryManager:
         self.meta = meta
         self.consolidation = consolidation
         self.project_manager = project_manager
+        self.session_manager = session_manager
         self.db = semantic.db  # Reference to database from semantic store
 
         # Initialize confidence scorer for result quality assessment
@@ -146,6 +150,21 @@ class UnifiedMemoryManager:
             Dictionary with results from relevant layers, optionally with confidence scores and explanation
         """
         context = context or {}
+
+        # Load session context if available
+        if self.session_manager:
+            try:
+                session_context = self.session_manager.get_current_session()
+                if session_context:
+                    # Merge session context into query context
+                    context.update({
+                        "session_id": session_context.session_id,
+                        "task": session_context.current_task,
+                        "phase": session_context.current_phase,
+                        "recent_events": session_context.recent_events,
+                    })
+            except Exception as e:
+                logger.warning(f"Failed to load session context: {e}")
 
         # Classify query type
         query_type = self._classify_query(query)
@@ -728,6 +747,279 @@ class UnifiedMemoryManager:
             "layers_searched": searched_layers,
             "result_count": sum(len(r) if isinstance(r, list) else 1 for r in results.values() if r != "_explanation"),
         }
+
+    def recall(
+        self,
+        query: str,
+        context: Optional[dict] = None,
+        k: int = 5,
+        cascade_depth: int = 3,
+        include_scores: bool = True,
+        explain_reasoning: bool = False,
+    ) -> dict:
+        """Cascading recall with multi-tier search across memory layers.
+
+        Implements a sophisticated multi-tier recall strategy:
+        1. **Tier 1** (Exact): Fast layer-specific searches (episodic, semantic, etc.)
+        2. **Tier 2** (Enriched): Cross-layer context from session and recent events
+        3. **Tier 3** (Synthesized): LLM-enhanced synthesis from multiple layers
+
+        Uses session context to bias retrieval and cascade through layers
+        with decreasing specificity.
+
+        Args:
+            query: Recall query (e.g., "What was the failing test?")
+            context: Optional context (task, phase, recent_events, etc.)
+            k: Number of results per tier
+            cascade_depth: How many tiers to search (1-3)
+            include_scores: Include confidence scores in results
+            explain_reasoning: Include tier information and reasoning
+
+        Returns:
+            Dictionary with cascading recall results:
+            - "tier_1": Fast layer-specific results
+            - "tier_2": Enriched cross-layer results (if depth >= 2)
+            - "tier_3": LLM-synthesized results (if depth >= 3)
+            - "_cascade_explanation": Reasoning (if explain_reasoning=True)
+
+        Example:
+            # Basic recall
+            results = manager.recall("What was the failing test?", k=3)
+
+            # With session context
+            results = manager.recall(
+                "What were we working on?",
+                context={"phase": "debugging"},
+                cascade_depth=2
+            )
+
+            # With full reasoning
+            results = manager.recall(
+                query,
+                cascade_depth=3,
+                explain_reasoning=True
+            )
+        """
+        context = context or {}
+
+        # Load session context if available
+        if self.session_manager:
+            try:
+                session_context = self.session_manager.get_current_session()
+                if session_context:
+                    context.update({
+                        "session_id": session_context.session_id,
+                        "task": session_context.current_task,
+                        "phase": session_context.current_phase,
+                        "recent_events": session_context.recent_events,
+                    })
+            except Exception as e:
+                logger.warning(f"Failed to load session context in recall: {e}")
+
+        cascade_depth = min(max(1, cascade_depth), 3)  # Clamp to 1-3
+        results = {"_cascade_depth": cascade_depth}
+
+        try:
+            # Tier 1: Fast layer-specific searches
+            tier_1_results = self._recall_tier_1(query, context, k)
+            results["tier_1"] = tier_1_results
+
+            # Tier 2: Enriched cross-layer context (if requested)
+            if cascade_depth >= 2:
+                tier_2_results = self._recall_tier_2(
+                    query, context, tier_1_results, k
+                )
+                results["tier_2"] = tier_2_results
+
+            # Tier 3: LLM-synthesized results (if requested and RAG available)
+            if cascade_depth >= 3 and self.rag_manager:
+                tier_3_results = self._recall_tier_3(
+                    query, context, tier_1_results, k
+                )
+                results["tier_3"] = tier_3_results
+
+            # Apply confidence scores if requested
+            if include_scores:
+                results = self._score_cascade_results(results)
+
+            # Include reasoning if requested
+            if explain_reasoning:
+                results["_cascade_explanation"] = {
+                    "query": query,
+                    "context_keys": list(context.keys()),
+                    "depth": cascade_depth,
+                    "tiers_used": [
+                        "tier_1",
+                        "tier_2" if cascade_depth >= 2 else None,
+                        "tier_3" if cascade_depth >= 3 and self.rag_manager else None,
+                    ],
+                    "filters": "session_context" if "session_id" in context else "none",
+                }
+
+        except Exception as e:
+            logger.error(f"Error in cascading recall: {e}")
+            results["_error"] = str(e)
+
+        return results
+
+    def _recall_tier_1(self, query: str, context: dict, k: int) -> dict:
+        """Tier 1: Fast layer-specific searches.
+
+        Queries each memory layer independently for quick retrieval.
+
+        Args:
+            query: Search query
+            context: Query context
+            k: Number of results per layer
+
+        Returns:
+            Dictionary with results from each layer
+        """
+        tier_1 = {}
+
+        try:
+            # Episodic: Temporal queries, recent events
+            if context.get("phase") == "debugging" or any(
+                word in query.lower()
+                for word in ["when", "last", "recent", "error", "failed"]
+            ):
+                tier_1["episodic"] = self._query_episodic(query, context, k)
+
+            # Semantic: Factual queries
+            tier_1["semantic"] = self._query_semantic(query, context, k)
+
+            # Procedural: How-to, workflow queries
+            if any(word in query.lower() for word in ["how", "do", "build", "implement"]):
+                tier_1["procedural"] = self._query_procedural(query, context, k)
+
+            # Prospective: Task and goal queries
+            if any(word in query.lower() for word in ["task", "goal", "todo", "should"]):
+                tier_1["prospective"] = self._query_prospective(query, context, k)
+
+            # Graph: Relationship queries
+            if any(word in query.lower() for word in ["relates", "depends", "connected"]):
+                tier_1["graph"] = self._query_graph(query, context, k)
+
+        except Exception as e:
+            logger.error(f"Error in tier 1 recall: {e}")
+
+        return tier_1
+
+    def _recall_tier_2(
+        self, query: str, context: dict, tier_1_results: dict, k: int
+    ) -> dict:
+        """Tier 2: Enriched cross-layer context.
+
+        Uses results from tier 1 to inform cross-layer queries
+        and enriches results with session context.
+
+        Args:
+            query: Search query
+            context: Query context (includes session context)
+            tier_1_results: Results from tier 1
+            k: Number of results to add
+
+        Returns:
+            Dictionary with enriched cross-layer results
+        """
+        tier_2 = {}
+
+        try:
+            # Hybrid search across multiple layers
+            if tier_1_results:
+                tier_2["hybrid"] = self._hybrid_search(
+                    query, context, k, conversation_history=None
+                )
+
+            # Meta queries: What do we know about the situation?
+            if context.get("phase"):
+                tier_2["meta"] = self._query_meta(
+                    f"What do we know about {context.get('phase')} phase?", context
+                )
+
+            # Session-aware enrichment
+            if context.get("recent_events"):
+                tier_2["session_context"] = {
+                    "recent_events": context["recent_events"][:k],
+                    "task": context.get("task"),
+                    "phase": context.get("phase"),
+                }
+
+        except Exception as e:
+            logger.error(f"Error in tier 2 recall: {e}")
+
+        return tier_2
+
+    def _recall_tier_3(
+        self, query: str, context: dict, tier_1_results: dict, k: int
+    ) -> dict:
+        """Tier 3: LLM-synthesized results.
+
+        Uses RAG to synthesize insights from tier 1 results
+        with LLM enhancement for complex reasoning.
+
+        Args:
+            query: Search query
+            context: Query context
+            tier_1_results: Results from tier 1
+            k: Number of results to synthesize
+
+        Returns:
+            Dictionary with LLM-enhanced results
+        """
+        tier_3 = {}
+
+        try:
+            if not self.rag_manager:
+                logger.debug("RAG manager not available for tier 3")
+                return tier_3
+
+            # Use RAG for advanced synthesis
+            rag_results = self.rag_manager.retrieve(
+                query,
+                context=context,
+                k=k,
+            )
+
+            tier_3["synthesized"] = rag_results.get("results", [])
+
+            # Planning synthesis for complex queries
+            if context.get("phase") in ["planning", "refactoring"]:
+                planning_results = self._query_planning(query, context, k)
+                tier_3["planning"] = planning_results
+
+        except Exception as e:
+            logger.debug(f"Tier 3 recall failed (expected if RAG unavailable): {e}")
+
+        return tier_3
+
+    def _score_cascade_results(self, results: dict) -> dict:
+        """Apply confidence scores to cascade results.
+
+        Uses the existing confidence scoring mechanism
+        across all tiers.
+
+        Args:
+            results: Cascade results from all tiers
+
+        Returns:
+            Results with confidence scores applied
+        """
+        try:
+            # Score tier 1 results using standard confidence scorer
+            if "tier_1" in results and results["tier_1"]:
+                results["tier_1"] = self.apply_confidence_scores(results["tier_1"])
+
+            # Score tier 2 results
+            if "tier_2" in results and results["tier_2"]:
+                results["tier_2"] = self.apply_confidence_scores(results["tier_2"])
+
+            # Tier 3 already includes scores from RAG/planning
+
+        except Exception as e:
+            logger.debug(f"Confidence scoring failed: {e}")
+
+        return results
 
     def _project_fields(self, results: dict, fields: list[str]) -> dict:
         """Project results to include only specified fields (for response optimization).
