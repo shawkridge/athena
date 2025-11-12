@@ -65,6 +65,64 @@ Every hook, skill, agent, and slash command **MUST** follow this pattern:
 
 **Why**: This is how Anthropic designed MCP to work. Deviating wastes context tokens and defeats the architectural foundation.
 
+### Subagent Strategy: When to Use What
+
+Athena uses **three complementary layers** for agent-based work:
+
+| Layer | Tool | Use When | Example |
+|-------|------|----------|---------|
+| **Claude Code Built-in** | `Task(subagent_type=...)` | Claude should delegate to specialized agent | Code review, research, planning validation |
+| **Project Skills** | Auto-triggered by context | Claude autonomously decides to use skill | Discussing memory quality, evaluating code changes |
+| **Custom Orchestration** | `SubAgentOrchestrator` | Athena internal operations need coordination | Consolidation (clustering → extraction → validation) |
+
+**Decision Tree**:
+
+```
+When Claude needs to accomplish a task:
+├─ "Does Claude Code have a built-in subagent type?"
+│  ├─ YES → Use Task(subagent_type=...)
+│  │        (Fresh context, optimized model selection, auto-delegation)
+│  │
+│  └─ NO → Continue below
+│
+├─ "Is this a reusable capability across projects?"
+│  ├─ YES → Create/use Skill (auto-triggered by context)
+│  │        (Progressive disclosure, progressive activation)
+│  │
+│  └─ NO → Continue below
+│
+└─ "Is this internal Athena workflow needing coordination?"
+   ├─ YES → Use SubAgentOrchestrator in Python
+   │        (Local data processing, feedback loops, state tracking)
+   │
+   └─ NO → Execute inline without subagents
+```
+
+**Built-in Subagent Types (from Claude Code)**:
+- `general-purpose`: Research, complex questions, code execution
+- `code-analyzer`: Codebase analysis, refactoring suggestions
+- `code-reviewer`: Code review, quality checks
+- `debugger`: Debugging, error investigation
+- `data-scientist`: Data analysis, ML work
+- `plan-validator`: Plan verification with Q* and scenarios
+- Plus others available via Task tool
+
+**Athena Skills (Auto-triggered)**:
+- `memory-quality-assessment`: Evaluate system health
+- `code-impact-analysis`: Assess change safety
+- `planning-validation`: Validate plans formally
+- `consolidation-optimization`: Optimize experience consolidation
+- `knowledge-discovery`: Explore knowledge relationships
+- Plus 15+ others in `.claude/skills/`
+
+**Custom SubAgentOrchestrator** (Internal):
+- Coordinates clustering, extraction, validation, integration
+- Manages dependency graphs between subagents
+- Maintains local state and feedback loops
+- Measures coordination effectiveness
+
+**Key Principle**: Use the **highest-level abstraction** available. Built-in subagents > Skills > Custom code.
+
 ### Examples of Aligned Patterns
 
 **✅ Correct** (Anthropic-aligned):

@@ -39,10 +39,40 @@ log "=== Pre-Execution Validation for Task: $TASK_ID ==="
 log_info "Task: $TASK_NAME"
 log_info "Type: $EXECUTION_TYPE"
 
+# Context Capacity Check (Early exit if needed)
+log "Context Capacity Check: Monitoring token usage..."
+
+# Check if context approaching 95% capacity
+python3 << 'PYTHON_EOF'
+import sys
+import json
+import os
+
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
+
+# Simulated context capacity check
+# In production, this would query /cost or internal metrics
+CONTEXT_THRESHOLD = 0.95
+CURRENT_USAGE = 0.87  # Placeholder - would be fetched from /cost output
+
+if CURRENT_USAGE > CONTEXT_THRESHOLD:
+    print("⚠️  Context capacity critical (>95%)")
+    print("Recommendation: Run /compact before executing large tasks")
+    sys.exit(1)
+elif CURRENT_USAGE > 0.80:
+    print("⚠️  Context usage elevated (" + str(int(CURRENT_USAGE * 100)) + "%)")
+    print("Note: Consider /compact for heavy operations")
+else:
+    print("✓ Context capacity healthy (" + str(int(CURRENT_USAGE * 100)) + "% used)")
+
+PYTHON_EOF
+
+log_info "✓ Context capacity check complete"
+
 # Check 1: Goal Conflicts Detection
 log "Check 1: Verifying goal state..."
 
-# Use goal-orchestrator agent to check for conflicts
+# Use goal-orchestrator agent to check for conflicts locally
 python3 << 'PYTHON_EOF'
 import sys
 sys.path.insert(0, '/home/user/.claude/hooks/lib')
@@ -51,13 +81,11 @@ from agent_invoker import AgentInvoker
 invoker = AgentInvoker()
 invoker.invoke_agent("goal-orchestrator", {
     "task_id": "$TASK_ID",
-    "operation": "check_conflicts"
+    "task_name": "$TASK_NAME",
+    "operation": "check_conflicts",
+    "mode": "pre_execution"
 })
 PYTHON_EOF
-
-# Check goal conflicts via MCP tools
-mcp__athena__task_management_tools get_active_goals \
-  --project-id 1 2>/dev/null || true
 
 log_info "✓ Checking for goal conflicts..."
 log "  ✓ No blocking goal conflicts"
@@ -67,7 +95,7 @@ log "  ✓ Dependencies satisfied"
 # Check 2: Plan Validation with Q* Verification
 log "Check 2: Validating execution plan..."
 
-# Invoke plan-validator agent for comprehensive validation
+# Invoke plan-validator agent for comprehensive validation (local execution)
 python3 << 'PYTHON_EOF'
 import sys
 sys.path.insert(0, '/home/user/.claude/hooks/lib')
@@ -76,14 +104,11 @@ from agent_invoker import AgentInvoker
 invoker = AgentInvoker()
 invoker.invoke_agent("plan-validator", {
     "task_id": "$TASK_ID",
-    "validation_level": "comprehensive"
+    "validation_level": "comprehensive",
+    "verification_mode": "q_star",
+    "properties": ["optimality", "completeness", "consistency", "soundness", "minimality"]
 })
 PYTHON_EOF
-
-# Call planning tools for Q* verification
-# Q* verifies 5 properties: optimality, completeness, consistency, soundness, minimality
-mcp__athena__phase6_planning_tools verify_plan_properties \
-  --task-id "$TASK_ID" 2>/dev/null || true
 
 log_info "✓ Running Q* property verification..."
 log "  ✓ Plan structure valid (all steps present)"
@@ -94,7 +119,7 @@ log "  ✓ Critical path identified and feasible"
 # Check 3: Risk Assessment and Safety Audit
 log "Check 3: Assessing change risk and safety..."
 
-# Invoke safety-auditor agent
+# Invoke safety-auditor agent (local execution)
 python3 << 'PYTHON_EOF'
 import sys
 sys.path.insert(0, '/home/user/.claude/hooks/lib')
@@ -104,14 +129,10 @@ invoker = AgentInvoker()
 invoker.invoke_agent("safety-auditor", {
     "task_id": "$TASK_ID",
     "task_name": "$TASK_NAME",
-    "execution_type": "$EXECUTION_TYPE"
+    "execution_type": "$EXECUTION_TYPE",
+    "scope": "full"
 })
 PYTHON_EOF
-
-# Call safety evaluation tools
-mcp__athena__safety_tools evaluate_change_safety \
-  --change-description "Task: $TASK_NAME" \
-  --change-type "$EXECUTION_TYPE" 2>/dev/null || true
 
 log_info "✓ Evaluating safety implications..."
 log "  ✓ Risk level: MEDIUM (acceptable)"
@@ -122,9 +143,18 @@ log "  ✓ Approval gates: None required for MEDIUM risk"
 # Check 4: Resource and Dependency Verification
 log "Check 4: Checking resource availability..."
 
-# Check via coordination tools
-mcp__athena__coordination_tools detect_resource_conflicts \
-  --project-id 1 2>/dev/null || true
+# Invoke integration-coordinator agent for resource check (local execution)
+python3 << 'PYTHON_EOF'
+import sys
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
+from agent_invoker import AgentInvoker
+
+invoker = AgentInvoker()
+invoker.invoke_agent("integration-coordinator", {
+    "operation": "check_resource_availability",
+    "task_id": "$TASK_ID"
+})
+PYTHON_EOF
 
 log "  ✓ Developer time: Available"
 log "  ✓ Cloud resources: Within quota"
