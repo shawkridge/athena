@@ -118,6 +118,27 @@ class UnifiedMemoryManager:
             min_samples=10,
         )
 
+        # Phase 7bc: Initialize ultimate hybrid execution system
+        from .optimization.dependency_graph import DependencyGraph
+        from .optimization.cross_layer_cache import CrossLayerCache
+        from .optimization.adaptive_strategy_selector import AdaptiveStrategySelector
+        from .optimization.result_aggregator import ResultAggregator
+        from .optimization.worker_pool_executor import WorkerPool
+        from .optimization.execution_telemetry import ExecutionTelemetryCollector
+
+        self.dependency_graph = DependencyGraph(self.performance_profiler)
+        self.cross_layer_cache = CrossLayerCache(max_entries=5000, default_ttl_seconds=300)
+        self.strategy_selector = AdaptiveStrategySelector(
+            profiler=self.performance_profiler,
+            dependency_graph=self.dependency_graph,
+            cross_layer_cache=self.cross_layer_cache,
+        )
+        self.result_aggregator = ResultAggregator(confidence_scorer=self.confidence_scorer)
+        self.worker_pool = WorkerPool(min_workers=2, max_workers=20)
+        self.execution_telemetry = ExecutionTelemetryCollector(retention_hours=24)
+
+        logger.info("Phase 7bc: Ultimate hybrid execution system initialized")
+
         # Initialize parallel Tier 1 executor for concurrent layer queries
         query_methods = {
             "episodic": self._query_episodic,
@@ -1329,3 +1350,70 @@ class UnifiedMemoryManager:
             "layer_dependencies": self.performance_profiler.get_layer_dependency_analysis(),
             "temporal_pattern": self.performance_profiler.get_temporal_pattern(),
         }
+
+    # Phase 7bc: Ultimate Hybrid Execution System Methods
+
+    def get_dependency_graph_stats(self) -> dict:
+        """Get dependency graph statistics and insights.
+
+        Returns:
+            Dictionary with dependency graph metrics
+        """
+        return self.dependency_graph.get_graph_statistics()
+
+    def get_cross_layer_cache_stats(self) -> dict:
+        """Get cross-layer cache effectiveness metrics.
+
+        Returns:
+            Dictionary with cache effectiveness, hit rate, etc.
+        """
+        return self.cross_layer_cache.get_cache_effectiveness()
+
+    def get_strategy_selection_stats(self) -> dict:
+        """Get adaptive strategy selector statistics.
+
+        Returns:
+            Dictionary with strategy distribution and accuracy
+        """
+        return self.strategy_selector.get_strategy_statistics()
+
+    def get_execution_telemetry_report(self) -> dict:
+        """Get comprehensive execution telemetry report.
+
+        Returns:
+            Dictionary with strategy effectiveness, decision accuracy, trends, recommendations
+        """
+        return self.execution_telemetry.export_metrics()
+
+    def get_worker_pool_health(self) -> dict:
+        """Get worker pool health status.
+
+        Returns:
+            Dictionary with worker count, queue depth, throughput, etc.
+        """
+        return self.worker_pool.get_health_status()
+
+    def get_phase_7bc_diagnostics(self) -> dict:
+        """Get complete Phase 7bc system diagnostics.
+
+        Returns:
+            Dictionary with all Phase 7bc component metrics
+        """
+        return {
+            "dependency_graph": self.get_dependency_graph_stats(),
+            "cross_layer_cache": self.get_cross_layer_cache_stats(),
+            "strategy_selection": self.get_strategy_selection_stats(),
+            "execution_telemetry": self.get_execution_telemetry_report(),
+            "worker_pool": self.get_worker_pool_health(),
+        }
+
+    def invalidate_cross_layer_cache_layer(self, layer_name: str) -> int:
+        """Invalidate cache entries containing a specific layer.
+
+        Args:
+            layer_name: Layer name to invalidate
+
+        Returns:
+            Number of cache entries invalidated
+        """
+        return self.cross_layer_cache.invalidate_layer(layer_name)
