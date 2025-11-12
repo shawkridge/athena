@@ -18,7 +18,7 @@ from athena.optimization.adaptive_strategy_selector import (
     ExecutionStrategy,
 )
 from athena.optimization.result_aggregator import ResultAggregator
-from athena.optimization.worker_pool_executor import WorkerPoolExecutor
+from athena.optimization.worker_pool_executor import WorkerPool
 from athena.optimization.execution_telemetry import ExecutionTelemetryCollector
 from athena.optimization.performance_profiler import PerformanceProfiler, QueryMetrics
 
@@ -60,7 +60,7 @@ def result_aggregator():
 @pytest.fixture
 def worker_pool():
     """Create a fresh worker pool."""
-    return WorkerPoolExecutor(min_workers=2, max_workers=8)
+    return WorkerPool(min_workers=2, max_workers=8)
 
 
 @pytest.fixture

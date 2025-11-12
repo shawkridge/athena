@@ -13,7 +13,7 @@ Tests distributed execution including:
 import pytest
 import time
 from athena.optimization.worker_pool_executor import (
-    WorkerPoolExecutor,
+    WorkerPool,
     WorkerTask,
     WorkerTaskResult,
     LoadBalancer,
@@ -30,7 +30,7 @@ def load_balancer():
 @pytest.fixture
 def worker_pool():
     """Create a fresh worker pool executor."""
-    return WorkerPoolExecutor(min_workers=2, max_workers=8)
+    return WorkerPool(min_workers=2, max_workers=8)
 
 
 @pytest.fixture
@@ -193,7 +193,7 @@ def test_worker_pool_initialization(worker_pool):
 
 def test_worker_pool_custom_bounds():
     """Test worker pool with custom bounds."""
-    pool = WorkerPoolExecutor(min_workers=4, max_workers=16)
+    pool = WorkerPool(min_workers=4, max_workers=16)
     assert pool.min_workers == 4
     assert pool.max_workers == 16
 
@@ -275,7 +275,7 @@ def test_worker_pool_shutdown(worker_pool):
 
 def test_task_execution_timeout():
     """Test that tasks timeout appropriately."""
-    pool = WorkerPoolExecutor()
+    pool = WorkerPool()
     task = WorkerTask(
         "timeout_task",
         "episodic",
@@ -438,7 +438,7 @@ def test_worker_pool_timeout_handling(worker_pool):
 
 def test_worker_pool_with_min_equals_max(worker_pool):
     """Test worker pool when min equals max."""
-    fixed_pool = WorkerPoolExecutor(min_workers=4, max_workers=4)
+    fixed_pool = WorkerPool(min_workers=4, max_workers=4)
     assert fixed_pool.num_workers == 4
 
     # Submit tasks
@@ -452,7 +452,7 @@ def test_worker_pool_with_min_equals_max(worker_pool):
 
 def test_worker_pool_single_worker():
     """Test worker pool with single worker."""
-    pool = WorkerPoolExecutor(min_workers=1, max_workers=1)
+    pool = WorkerPool(min_workers=1, max_workers=1)
     assert pool.num_workers == 1
 
     task = WorkerTask("task", "episodic", "query")

@@ -76,3 +76,34 @@ disallow_untyped_defs = false
 disallow_incomplete_defs = false
 check_untyped_defs = false
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--disable-warnings",
+    "--tb=short",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+timeout = 30
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
+
+markers = [
+    "unit: unit tests (fast, isolated)",
+    "integration: integration tests (slower, cross-layer)",
+    "benchmark: performance benchmark tests (very slow)",
+    "slow: slow tests to skip in CI",
+    "llm: tests requiring LLM services",
+    "smoke: smoke tests for quick validation",
+    "regression: regression test suite",
+    "phase7bc: Phase 7bc specific tests",
+    "phase7: Phase 7 related tests",
+]

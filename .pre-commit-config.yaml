@@ -1,0 +1,118 @@
+# Pre-commit hooks configuration for Athena project
+# Install: pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Code formatting with Black
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        name: Black code formatter
+        language_version: python3.13
+        args: [--line-length=100]
+
+  # Linting with Ruff
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.11
+    hooks:
+      - id: ruff
+        name: Ruff linter
+        args: [--fix]
+      - id: ruff-format
+        name: Ruff formatter
+        args: [--line-length=100]
+
+  # Type checking with mypy (local)
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy type checker
+        entry: mypy src/athena
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [commit]
+        verbose: false
+
+  # Unit tests (local)
+  - repo: local
+    hooks:
+      - id: pytest-unit
+        name: pytest unit tests
+        entry: pytest tests/unit/ -v --tb=short -m "not benchmark" --timeout=30
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [commit]
+        verbose: true
+
+  # YAML validation
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        name: YAML linter
+        args: [--strict]
+
+  # JSON validation
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-json
+        name: Check JSON files
+      - id: check-yaml
+        name: Check YAML files
+      - id: check-toml
+        name: Check TOML files
+      - id: end-of-file-fixer
+        name: Fix end of files
+      - id: trailing-whitespace
+        name: Trim trailing whitespace
+        args: [--markdown-args=--ignore-all]
+      - id: debug-statements
+        name: Check for debug statements
+      - id: mixed-line-ending
+        name: Fix mixed line endings
+
+  # Security checks
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        name: Bandit security check
+        args: [-ll, -r, src/athena]
+        pass_filenames: false
+
+  # Docstring coverage
+  - repo: https://github.com/econchick/interrogate
+    rev: 1.5.0
+    hooks:
+      - id: interrogate
+        name: Check docstring coverage
+        args: [src/athena, -vv, -f 60]
+        pass_filenames: false
+
+# Configuration options
+default_language_version:
+  python: python3.13
+
+# Skip CI/CD builds and major refactors
+exclude: |
+  (?x)^(
+    .git/|
+    .github/|
+    __pycache__/|
+    \.pytest_cache/|
+    \.venv/|
+    venv/|
+    build/|
+    dist/|
+    \.egg-info/|
+    htmlcov/|
+    \.mypy_cache/|
+    \.ruff_cache/
+  )
+
+# Minimum Python version
+minimum_pre_commit_version: 2.15.0
