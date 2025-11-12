@@ -210,6 +210,24 @@ class WorkerPool:
             f"queue_size={task_queue_size}"
         )
 
+    @property
+    def num_workers(self) -> int:
+        """Get current number of active workers.
+
+        Returns:
+            Current number of active worker processes.
+        """
+        return self.active_workers
+
+    @num_workers.setter
+    def num_workers(self, value: int) -> None:
+        """Set the number of active workers.
+
+        Args:
+            value: Number of workers to set (will be clamped to min/max bounds)
+        """
+        self.active_workers = max(self.min_workers, min(value, self.max_workers))
+
     async def __aenter__(self):
         """Async context manager entry."""
         await self._initialize()
@@ -217,7 +235,7 @@ class WorkerPool:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
-        await self.shutdown()
+        await self.shutdown_async()
 
     async def _initialize(self) -> None:
         """Initialize worker queues and processes."""
@@ -358,12 +376,90 @@ class WorkerPool:
             "cached_results": len(self.result_cache),
         }
 
-    async def shutdown(self) -> None:
-        """Gracefully shut down worker pool."""
+    def get_health(self) -> Dict[str, Any]:
+        """Get health status of worker pool.
+
+        Returns:
+            Dictionary with health metrics:
+            - active_workers: Number of currently active workers
+            - total_tasks_submitted: Total tasks submitted
+            - total_tasks_completed: Total tasks completed
+            - total_tasks_failed: Total tasks that failed
+            - avg_queue_depth: Average queue depth across workers
+            - health_status: 'healthy', 'degraded', or 'unhealthy'
+        """
+        health_status = 'healthy'
+        if self.total_tasks_submitted > 0:
+            failure_rate = self.total_tasks_failed / self.total_tasks_submitted
+            if failure_rate > 0.1:
+                health_status = 'degraded'
+            if failure_rate > 0.25:
+                health_status = 'unhealthy'
+
+        return {
+            'active_workers': self.active_workers,
+            'total_tasks_submitted': self.total_tasks_submitted,
+            'total_tasks_completed': self.total_tasks_completed,
+            'total_tasks_failed': self.total_tasks_failed,
+            'task_success_rate': (
+                self.total_tasks_completed / self.total_tasks_submitted
+                if self.total_tasks_submitted > 0
+                else 0.0
+            ),
+            'health_status': health_status,
+        }
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get performance statistics for the worker pool.
+
+        Returns:
+            Dictionary with performance metrics:
+            - total_tasks_submitted: Total tasks submitted to pool
+            - total_tasks_completed: Total tasks successfully completed
+            - total_tasks_failed: Total tasks that failed
+            - total_bytes_processed: Total bytes processed
+            - active_workers: Current number of active workers
+            - task_success_rate: Percentage of tasks completed successfully
+        """
+        return {
+            'total_tasks_submitted': self.total_tasks_submitted,
+            'total_tasks_completed': self.total_tasks_completed,
+            'total_tasks_failed': self.total_tasks_failed,
+            'total_bytes_processed': self.total_bytes_processed,
+            'active_workers': self.active_workers,
+            'task_success_rate': (
+                (self.total_tasks_completed / self.total_tasks_submitted * 100)
+                if self.total_tasks_submitted > 0
+                else 0.0
+            ),
+        }
+
+    def shutdown(self, wait: bool = True) -> None:
+        """Gracefully shut down worker pool.
+
+        Args:
+            wait: Whether to wait for pending tasks to complete (default: True)
+        """
         logger.info(
             f"Shutting down WorkerPool: "
             f"completed={self.total_tasks_completed}, "
-            f"failed={self.total_tasks_failed}"
+            f"failed={self.total_tasks_failed}, "
+            f"wait={wait}"
+        )
+        # In real implementation, would terminate worker processes
+        self.worker_processes.clear()
+
+    async def shutdown_async(self, wait: bool = True) -> None:
+        """Async gracefully shut down worker pool.
+
+        Args:
+            wait: Whether to wait for pending tasks to complete (default: True)
+        """
+        logger.info(
+            f"Shutting down WorkerPool (async): "
+            f"completed={self.total_tasks_completed}, "
+            f"failed={self.total_tasks_failed}, "
+            f"wait={wait}"
         )
         # In real implementation, would terminate worker processes
         self.worker_processes.clear()

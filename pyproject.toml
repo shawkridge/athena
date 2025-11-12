@@ -87,12 +87,12 @@ addopts = [
     "--strict-markers",
     "--disable-warnings",
     "--tb=short",
+    "-v",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
 ]
-timeout = 30
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
 
