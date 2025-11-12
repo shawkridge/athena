@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Optional
 
-from athena.core.database import Database
+from athena.core.database import Database, get_database
 
 from .manager import CodeArtifactManager
 from .models import CodeEntity, EntityType
@@ -12,18 +12,19 @@ from .models import CodeEntity, EntityType
 class CodeArtifactAPI:
     """High-level public API for code artifact analysis."""
 
-    def __init__(self, db_path: Optional[str] = None):
+    def __init__(self, db: Optional[Database] = None):
         """Initialize API with database.
 
         Args:
-            db_path: Path to memory database (default: ~/.athena/memory.db)
+            db: Database instance (default: uses global singleton from get_database())
+
+        Migration Note (Nov 12, 2025):
+            Changed from db_path parameter to db parameter for consistency with
+            centralized database access pattern. The singleton ensures all
+            components share a single connection pool.
         """
-        if db_path is None:
-            import os
-
-            db_path = os.path.expanduser("~/.athena/memory.db")
-
-        self.db = Database(db_path)
+        # Use singleton if not provided (centralized database access)
+        self.db = db or get_database()
         self.manager = CodeArtifactManager(self.db)
 
     # High-level convenience methods

@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from athena.core.database import Database
+from athena.core.database import Database, get_database
 
 from .manager import IDEContextManager
 from .models import FileOpenMode
@@ -11,19 +11,20 @@ from .models import FileOpenMode
 class IDEContextAPI:
     """Public API for IDE context access."""
 
-    def __init__(self, db_path: Optional[str] = None, repo_path: str = "."):
+    def __init__(self, db: Optional[Database] = None, repo_path: str = "."):
         """Initialize IDE context API.
 
         Args:
-            db_path: Path to memory database
+            db: Database instance (default: uses global singleton from get_database())
             repo_path: Path to project/repository root
+
+        Migration Note (Nov 12, 2025):
+            Changed from db_path parameter to db parameter for consistency with
+            centralized database access pattern. The singleton ensures all
+            components share a single connection pool.
         """
-        if db_path is None:
-            import os
-
-            db_path = os.path.expanduser("~/.athena/memory.db")
-
-        self.db = Database(db_path)
+        # Use singleton if not provided (centralized database access)
+        self.db = db or get_database()
         self.manager = IDEContextManager(self.db, repo_path)
 
     # File management convenience methods

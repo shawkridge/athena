@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Type, TypeVar, Generic
 import json
 from datetime import datetime
 
-from .database import Database
+from .database import Database, get_database
 from .error_handling import safe_dict_get, safe_json_loads
 
 T = TypeVar('T')  # Model type
@@ -36,13 +36,23 @@ class BaseStore(ABC, Generic[T]):
     table_name: str = None
     model_class: Type[T] = None
 
-    def __init__(self, db: Database):
+    def __init__(self, db: Optional[Database] = None):
         """Initialize store with database.
 
         Args:
-            db: Database instance
+            db: Database instance (default: uses global singleton from get_database())
+
+        Benefits of default singleton:
+            - All stores share a single connection pool (not multiple pools)
+            - Easy to change configuration in one place (database.py)
+            - Reduces memory overhead significantly
+            - Enables future improvements like caching and fallbacks
+
+        If you need a custom database instance (e.g., for testing), pass it explicitly:
+            store = MyStore(db=custom_db)
         """
-        self.db = db
+        # Use singleton if not provided (centralized database access)
+        self.db = db or get_database()
         if not self.table_name:
             raise ValueError(f"{self.__class__.__name__} must set table_name")
         if not self.model_class:
