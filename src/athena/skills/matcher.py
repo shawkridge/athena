@@ -23,7 +23,7 @@ class SkillMatcher:
         """
         self.library = library
 
-    def find_skills(
+    async def find_skills(
         self,
         task_description: str,
         domain: Optional[SkillDomain] = None,
@@ -43,9 +43,9 @@ class SkillMatcher:
         """
         # Get candidate skills from library
         if domain:
-            candidates = self.library.list_all(domain=domain, limit=100)
+            candidates = await self.library.list_all(domain=domain, limit=100)
         else:
-            candidates = self.library.list_all(limit=100)
+            candidates = await self.library.list_all(limit=100)
 
         # Score each skill
         matches = []

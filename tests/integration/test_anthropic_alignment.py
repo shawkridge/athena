@@ -3,11 +3,9 @@
 Tests the three systems working together:
 1. PII Sanitization in episodic pipeline
 2. Tools filesystem discovery
-3. Skills persistence and matching
+3. Skills persistence and matching with PostgreSQL
 
 Demonstrates 98.7% context reduction and privacy-preserving execution.
-
-NOTE: Skills tests require PostgreSQL. Skip if not available.
 """
 
 import pytest
@@ -19,11 +17,39 @@ pytest.importorskip("psycopg")
 
 from athena.pii import PIIDetector, PIITokenizer, FieldPolicy
 from athena.tools_discovery import ToolsGenerator, register_core_tools
-from athena.skills.models import Skill, SkillMetadata, SkillDomain
+from athena.skills.models import Skill, SkillMetadata, SkillDomain, SkillParameter
 from athena.skills.library import SkillLibrary
 from athena.skills.matcher import SkillMatcher
 from athena.skills.executor import SkillExecutor
 from athena.core.database_postgres import PostgresDatabase
+
+
+@pytest.fixture
+def postgres_db():
+    """Create PostgreSQL database connection for testing.
+
+    Uses local PostgreSQL with test credentials.
+    Note: Async tests will initialize connection in test via await db.initialize()
+    """
+    db = PostgresDatabase(
+        host="localhost",
+        port=5432,
+        dbname="athena",
+        user="athena",
+        password="athena_password",
+    )
+    yield db
+    # Cleanup: close connection pool if exists
+    if db._pool:
+        try:
+            import asyncio
+            loop = asyncio.get_event_loop()
+            # Give pool time to close gracefully without running new operations
+            loop.run_until_complete(asyncio.sleep(0.1))
+            # Close pool without waiting for pending operations
+            db._pool = None
+        except Exception:
+            pass
 
 
 class TestPIIIntegration:
@@ -159,24 +185,12 @@ class TestToolsDiscoveryIntegration:
 
 
 class TestSkillsIntegration:
-    """Test skills system.
+    """Test skills system with PostgreSQL."""
 
-    Requires PostgreSQL to be running.
-    """
-
-    @pytest.fixture
-    def postgres_db(self) -> PostgresDatabase:
-        """Create PostgreSQL database instance."""
-        return PostgresDatabase(
-            host="localhost",
-            port=5432,
-            dbname="athena",
-            user="athena",
-            password="athena_dev",
-        )
-
-    def test_skill_creation_and_persistence(self, postgres_db):
+    @pytest.mark.asyncio
+    async def test_skill_creation_and_persistence(self, postgres_db):
         """Test creating and storing a skill."""
+        await postgres_db.initialize()
         with tempfile.TemporaryDirectory() as tmpdir:
             library = SkillLibrary(postgres_db, storage_dir=tmpdir)
 
@@ -186,8 +200,8 @@ class TestSkillsIntegration:
                 description="Authenticate user against database",
                 domain=SkillDomain.MEMORY,
                 parameters=[
-                    {'name': 'username', 'type': 'str', 'description': 'Username'},
-                    {'name': 'password', 'type': 'str', 'description': 'Password'},
+                    SkillParameter(name='username', type='str', description='Username'),
+                    SkillParameter(name='password', type='str', description='Password'),
                 ],
                 return_type="bool",
                 examples=["authenticate('alice', 'secret')"],
@@ -201,38 +215,40 @@ class TestSkillsIntegration:
             )
 
             # Store
-            assert library.save(skill)
+            assert await library.save(skill)
 
             # Retrieve
-            retrieved = library.get("authenticate")
+            retrieved = await library.get("authenticate")
             assert retrieved is not None
             assert retrieved.metadata.quality_score == 0.95
 
-    def test_skill_matching_and_execution(self, postgres_db):
+    @pytest.mark.asyncio
+    async def test_skill_matching_and_execution(self, postgres_db):
         """Test matching skills to tasks and executing them."""
+        await postgres_db.initialize()
         with tempfile.TemporaryDirectory() as tmpdir:
             library = SkillLibrary(postgres_db, storage_dir=tmpdir)
 
             # Create several skills
-            for name, desc, code in [
-                ('validate_email', 'Validate email format', 'def validate_email(email):\n    return "@" in email'),
-                ('hash_password', 'Hash password securely', 'def hash_password(pwd):\n    return "hashed_" + pwd'),
-                ('log_event', 'Log an event', 'def log_event(msg):\n    return f"Logged: {msg}"'),
+            for name, desc, param_name, code in [
+                ('validate_email', 'Validate email format', 'email', 'def validate_email(email):\n    return "@" in email'),
+                ('hash_password', 'Hash password securely', 'pwd', 'def hash_password(pwd):\n    return "hashed_" + pwd'),
+                ('log_event', 'Log an event', 'msg', 'def log_event(msg):\n    return f"Logged: {msg}"'),
             ]:
                 metadata = SkillMetadata(
                     name=name,
                     description=desc,
                     domain=SkillDomain.MEMORY,
-                    parameters=[{'name': 'x', 'type': 'str', 'description': 'Input'}],
+                    parameters=[SkillParameter(name=param_name, type='str', description='Input')],
                     return_type="str",
                     examples=[f"{name}('test')"],
                 )
                 skill = Skill(metadata=metadata, code=code, entry_point=name)
-                library.save(skill)
+                await library.save(skill)
 
             # Match skills to task
             matcher = SkillMatcher(library)
-            matches = matcher.find_skills("How do I validate email addresses?")
+            matches = await matcher.find_skills("How do I validate email addresses?")
 
             assert len(matches) > 0
             assert matches[0].skill.metadata.name == "validate_email"
@@ -240,9 +256,11 @@ class TestSkillsIntegration:
 
             # Execute matching skill
             executor = SkillExecutor(library)
-            result = executor.execute(
+            # Get the correct parameter name from the skill's metadata
+            param_name = matches[0].skill.metadata.parameters[0].name
+            result = await executor.execute(
                 matches[0].skill,
-                parameters={'x': 'test@example.com'}
+                parameters={param_name: 'test@example.com'}
             )
 
             assert result['success']
@@ -252,8 +270,10 @@ class TestSkillsIntegration:
 class TestEndToEndAlignment:
     """Test all three systems working together."""
 
-    def test_privacy_and_efficiency_together(self):
+    @pytest.mark.asyncio
+    async def test_privacy_and_efficiency_together(self, postgres_db):
         """Test that PII protection + tools discovery + skills work together."""
+        await postgres_db.initialize()
         # This represents the complete Anthropic MCP alignment
 
         # 1. PII PROTECTION: Event data is sanitized
@@ -285,8 +305,7 @@ class TestEndToEndAlignment:
 
         # 3. REUSABILITY: Skills improve with use
         with tempfile.TemporaryDirectory() as tmpdir:
-            db = Database(f"{tmpdir}/skills.db")
-            lib = SkillLibrary(db)
+            lib = SkillLibrary(postgres_db)
 
             metadata = SkillMetadata(
                 name="process_event",
@@ -302,21 +321,23 @@ class TestEndToEndAlignment:
                 code="def process_event():\n    return 'processed'",
                 entry_point="process_event"
             )
-            lib.save(skill)
+            await lib.save(skill)
 
             executor = SkillExecutor(lib)
 
             # First execution
-            result = executor.execute(skill)
+            result = await executor.execute(skill)
             assert result['success']
 
             # Skill improves
-            retrieved = lib.get("process_event")
+            retrieved = await lib.get("process_event")
             assert retrieved.metadata.times_used >= 1
             assert retrieved.metadata.success_rate >= 0.9
 
-    def test_complete_workflow(self):
+    @pytest.mark.asyncio
+    async def test_complete_workflow(self, postgres_db):
         """Test complete workflow: Sanitize → Discover Tools → Execute Skills."""
+        await postgres_db.initialize()
         with tempfile.TemporaryDirectory() as tmpdir:
             # 1. Sanitize event
             event_with_pii = {
@@ -347,8 +368,7 @@ class TestEndToEndAlignment:
             assert len(available_tools) > 0
 
             # 3. Use skills for processing
-            db = Database(f"{tmpdir}/skills.db")
-            lib = SkillLibrary(db)
+            lib = SkillLibrary(postgres_db)
 
             # Create a skill
             metadata = SkillMetadata(
@@ -364,15 +384,15 @@ class TestEndToEndAlignment:
                 code="def process_logged_event():\n    return 'Successfully processed'",
                 entry_point="process_logged_event"
             )
-            lib.save(skill)
+            await lib.save(skill)
 
             # Execute skill
             executor = SkillExecutor(lib)
-            result = executor.execute(skill)
+            result = await executor.execute(skill)
 
             assert result['success']
             assert 'Successfully processed' in result['result']
 
             # Verify skill improved
-            final_skill = lib.get("process_logged_event")
+            final_skill = await lib.get("process_logged_event")
             assert final_skill.metadata.times_used > 0

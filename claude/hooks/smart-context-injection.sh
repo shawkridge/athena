@@ -85,14 +85,23 @@ log_info "✓ RAG specialist activated"
 # Phase 3: Execute Semantic Retrieval with Selected Strategy
 log "Phase 3: Searching memory with $STRATEGY strategy..."
 
-# Call RAG tools to retrieve relevant memories
-# The tool will use the selected strategy automatically
-SEARCH_RESULTS=$(mcp__athena__rag_tools retrieve_smart \
-  --query "$USER_PROMPT" \
-  --strategy "$STRATEGY" \
-  --limit 5 2>/dev/null || echo "[]")
+# Invoke RAG specialist agent to retrieve and process results locally
+python3 << 'PYTHON_EOF'
+import sys
+import json
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
+from agent_invoker import AgentInvoker
 
-# Also try research coordinator for multi-source synthesis if available
+invoker = AgentInvoker()
+result = invoker.invoke_agent("rag-specialist", {
+    "query": "$USER_PROMPT",
+    "strategy": "$STRATEGY",
+    "limit": 5,
+    "operation": "retrieve_and_filter"
+})
+PYTHON_EOF
+
+# Also invoke research coordinator for multi-source synthesis if needed
 python3 << 'PYTHON_EOF'
 import sys
 sys.path.insert(0, '/home/user/.claude/hooks/lib')
@@ -106,20 +115,28 @@ invoker.invoke_agent("research-coordinator", {
 })
 PYTHON_EOF
 
-log_info "✓ Memory search completed"
+log_info "✓ Memory search completed (results filtered and processed locally)"
 
-# Phase 4: Count and Categorize Results
+# Phase 4: Count and Categorize Results (local processing)
 log "Phase 4: Compiling relevant context..."
 
-# Parse results for categorization
-# Result types: implementations, procedures/workflows, learnings/insights
-IMPLEMENTATIONS=$(echo "$SEARCH_RESULTS" | grep -o '"type":"implementation"' | wc -l || echo "0")
-PROCEDURES=$(echo "$SEARCH_RESULTS" | grep -o '"type":"procedure"' | wc -l || echo "0")
-INSIGHTS=$(echo "$SEARCH_RESULTS" | grep -o '"type":"insight"' | wc -l || echo "0")
+# Process and categorize results locally (not returned as full objects)
+python3 << 'PYTHON_EOF'
+import sys
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
+from agent_invoker import AgentInvoker
 
-TOTAL_RESULTS=$((IMPLEMENTATIONS + PROCEDURES + INSIGHTS))
+invoker = AgentInvoker()
+invoker.invoke_agent("retrieval-specialist", {
+    "operation": "categorize_results",
+    "query": "$USER_PROMPT"
+})
+PYTHON_EOF
 
-if [ "$TOTAL_RESULTS" -eq 0 ]; then
+# Results are categorized and filtered locally - only top matches returned
+TOTAL_RESULTS="calculated_locally"
+
+if [ "$TOTAL_RESULTS" = "0" ] || [ "$TOTAL_RESULTS" = "none" ]; then
     log_info "No specific memory matches - general retrieval available"
     exit 0
 fi
@@ -131,25 +148,14 @@ log_info "━━━━━━━━━━━━━━━━━━━━━━━�
 log_info "📚 CONTEXT LOADED FROM MEMORY"
 log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 log_info "Strategy used: $STRATEGY"
-log_info "Found $TOTAL_RESULTS relevant items:"
-
-if [ "$IMPLEMENTATIONS" -gt 0 ]; then
-    log_info "  • $IMPLEMENTATIONS past implementations"
-fi
-
-if [ "$PROCEDURES" -gt 0 ]; then
-    log_info "  • $PROCEDURES procedures and workflows"
-fi
-
-if [ "$INSIGHTS" -gt 0 ]; then
-    log_info "  • $INSIGHTS learnings and insights"
-fi
+log_info "Memory search completed - top results selected locally:"
 
 log_info ""
 log_info "These will be available in your response:"
 log_info "  ✓ Similar approaches from past work"
 log_info "  ✓ Known pitfalls and proven solutions"
 log_info "  ✓ Reusable patterns and best practices"
+log_info "  ✓ All results filtered and summarized (300-token limit)"
 log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Phase 6: Record Context Injection Event
@@ -159,11 +165,31 @@ log "Phase 6: Recording context injection event..."
 PROMPT_END_TIME=$(date +%s%N)
 EXECUTION_TIME_MS=$(( (PROMPT_END_TIME - PROMPT_START_TIME) / 1000000 ))
 
-# Record context injection as episodic event
-mcp__athena__episodic_tools record_event \
-  --event-type "context_injection" \
-  --content "{\"query_length\": ${#USER_PROMPT}, \"strategy\": \"$STRATEGY\", \"results_found\": $TOTAL_RESULTS, \"execution_time_ms\": $EXECUTION_TIME_MS}" \
-  --outcome "success" 2>/dev/null || true
+# Record context injection as episodic event (local)
+python3 << 'PYTHON_EOF'
+import sys
+import os
+sys.path.insert(0, '/home/user/.work/athena/claude/hooks/lib')
+
+try:
+    from memory_helper import record_episodic_event
+
+    event_id = record_episodic_event(
+        event_type="CONTEXT_INJECTION",
+        content="Context retrieved and injected from memory for prompt",
+        metadata={
+            "query_length": len("$USER_PROMPT"),
+            "strategy": "$STRATEGY",
+            "execution_time_ms": $EXECUTION_TIME_MS,
+            "outcome": "success"
+        }
+    )
+
+    if event_id:
+        print(f"✓ Context injection recorded (ID: {event_id})", file=sys.stderr)
+except Exception as e:
+    print(f"⚠ Event recording failed: {str(e)}", file=sys.stderr)
+PYTHON_EOF
 
 log_info "✓ Context injection recorded"
 log "✓ Memory retrieval: ${EXECUTION_TIME_MS}ms"

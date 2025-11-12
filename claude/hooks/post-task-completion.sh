@@ -141,11 +141,7 @@ log "  ✓ Time estimation accuracy: $ACCURACY% (planned ${ESTIMATED_TIME}min, a
 log "  ✓ Quality score: $QUALITY_SCORE/1.0"
 log "  ✓ Task health: GOOD"
 
-# Record execution metrics as episodic event
-mcp__athena__episodic_tools record_event \
-  --event-type "task_completion" \
-  --content "{\"task_id\": \"$TASK_ID\", \"status\": \"$TASK_STATUS\", \"estimated_time\": $ESTIMATED_TIME, \"actual_time\": $ACTUAL_TIME, \"quality\": $QUALITY_SCORE}" \
-  --outcome "$TASK_STATUS" 2>/dev/null || true
+# Record execution metrics as episodic event (handled by memory_helper above)
 
 # Phase 3: Extract learnings and procedures
 log "Phase 3: Extracting learnings and procedures..."
@@ -153,7 +149,7 @@ log "Phase 3: Extracting learnings and procedures..."
 if [ "$TASK_STATUS" = "success" ] || [ "$TASK_STATUS" = "SUCCESS" ]; then
     log_info "✓ Task successful - extracting procedure for reuse"
 
-    # Invoke workflow-learner agent
+    # Invoke workflow-learner agent (local execution)
     python3 << 'PYTHON_EOF'
 import sys
 sys.path.insert(0, '/home/user/.claude/hooks/lib')
@@ -164,14 +160,10 @@ invoker.invoke_agent("workflow-learner", {
     "task_id": "$TASK_ID",
     "task_name": "$TASK_NAME",
     "source": "completed_task",
-    "quality_score": $QUALITY_SCORE
+    "quality_score": $QUALITY_SCORE,
+    "create_procedure": True
 })
 PYTHON_EOF
-
-    # Extract procedures via procedural tools
-    mcp__athena__procedural_tools create_procedure \
-      --category "extracted" \
-      --name "procedure-from-${TASK_ID}" 2>/dev/null || true
 
     log "  ✓ Workflow extracted as procedure"
     log "  ✓ Estimated reusability: 0.85 (highly applicable)"
@@ -204,16 +196,21 @@ fi
 # Phase 4: Update memory associations
 log "Phase 4: Updating memory associations..."
 
-# Strengthen associations related to this task in knowledge graph
-mcp__athena__graph_tools create_relation \
-  --from-entity "$TASK_ID" \
-  --to-entity "$TASK_NAME" \
-  --relation-type "relates_to" 2>/dev/null || true
+# Invoke knowledge-architect agent to update associations locally
+python3 << 'PYTHON_EOF'
+import sys
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
+from agent_invoker import AgentInvoker
 
-# Add observations about task completion
-mcp__athena__graph_tools add_observation \
-  --entity-name "$TASK_ID" \
-  --observation "Task completed with $TASK_STATUS status, quality: $QUALITY_SCORE" 2>/dev/null || true
+invoker = AgentInvoker()
+invoker.invoke_agent("knowledge-architect", {
+    "operation": "update_task_associations",
+    "task_id": "$TASK_ID",
+    "task_name": "$TASK_NAME",
+    "status": "$TASK_STATUS",
+    "quality_score": $QUALITY_SCORE
+})
+PYTHON_EOF
 
 log_info "✓ Memory associations updated"
 log "  ✓ Task linked to related concepts"
