@@ -107,7 +107,7 @@ class StrategySelector:
         """Initialize strategy selector."""
         self.db_path = db_path
 
-    def recommend_strategies(
+    async def recommend_strategies(
         self, goal_id: int, top_k: int = 3
     ) -> List[StrategyRecommendation]:
         """
@@ -120,64 +120,63 @@ class StrategySelector:
         """
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
-
-            await cursor.execute(
-                """
-                SELECT id, project_id, goal_text, priority, estimated_hours,
-                       deadline, created_at, parent_goal_id, progress, status
-                FROM executive_goals
-                WHERE id = ?
-                """,
-                (goal_id,),
-            )
-            row = await cursor.fetchone()
-            if not row:
-                return []
-
-            goal_data = {
-                "id": row[0],
-                "project_id": row[1],
-                "goal_text": row[2],
-                "priority": row[3],
-                "estimated_hours": row[4],
-                "deadline": row[5],
-                "created_at": row[6],
-                "parent_goal_id": row[7],
-                "progress": row[8],
-                "status": row[9],
-            }
-
-            # Extract features
-            features = self._extract_features(goal_id, goal_data, cursor)
-
-            # Score strategies
-            scores = self._score_strategies(features)
-
-            # Get stored historical success rates
-            self._update_scores_with_history(goal_id, scores, cursor)
-
-            # Sort by confidence and return top-K
-            recommendations = []
-            for strategy, confidence in sorted(scores.items(), key=lambda x: x[1], reverse=True)[
-                :top_k
-            ]:
-                reasoning = self._generate_reasoning(strategy, features)
-                rec = StrategyRecommendation(
-                    strategy_type=strategy, confidence=confidence, reasoning=reasoning
-                )
-                recommendations.append(rec)
-
-                # Store recommendation in DB
                 await cursor.execute(
                     """
-                    INSERT INTO strategy_recommendations
-                    (goal_id, strategy_name, confidence, recommended_at, model_version)
-                    VALUES (%s, %s, %s, %s, %s)
+                    SELECT id, project_id, goal_text, priority, estimated_hours,
+                           deadline, created_at, parent_goal_id, progress, status
+                    FROM executive_goals
+                    WHERE id = ?
                     """,
-                    (goal_id, strategy.value, confidence, datetime.now().isoformat(), "v1.0"),
+                    (goal_id,),
                 )
+                row = await cursor.fetchone()
+                if not row:
+                    return []
 
-            conn.commit()
+                goal_data = {
+                    "id": row[0],
+                    "project_id": row[1],
+                    "goal_text": row[2],
+                    "priority": row[3],
+                    "estimated_hours": row[4],
+                    "deadline": row[5],
+                    "created_at": row[6],
+                    "parent_goal_id": row[7],
+                    "progress": row[8],
+                    "status": row[9],
+                }
+
+                # Extract features
+                features = await self._extract_features(goal_id, goal_data, cursor)
+
+                # Score strategies
+                scores = self._score_strategies(features)
+
+                # Get stored historical success rates
+                await self._update_scores_with_history(goal_id, scores, cursor)
+
+                # Sort by confidence and return top-K
+                recommendations = []
+                for strategy, confidence in sorted(scores.items(), key=lambda x: x[1], reverse=True)[
+                    :top_k
+                ]:
+                    reasoning = self._generate_reasoning(strategy, features)
+                    rec = StrategyRecommendation(
+                        strategy_type=strategy, confidence=confidence, reasoning=reasoning
+                    )
+                    recommendations.append(rec)
+
+                    # Store recommendation in DB
+                    await cursor.execute(
+                        """
+                        INSERT INTO strategy_recommendations
+                        (goal_id, strategy_name, confidence, recommended_at, model_version)
+                        VALUES (%s, %s, %s, %s, %s)
+                        """,
+                        (goal_id, strategy.value, confidence, datetime.now().isoformat(), "v1.0"),
+                    )
+
+                conn.commit()
 
         return recommendations
 
@@ -187,52 +186,50 @@ class StrategySelector:
         """Record outcome of a strategy recommendation."""
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    UPDATE strategy_recommendations
+                    SET outcome = ?
+                    WHERE id = ?
+                    """,
+                    (outcome, recommendation_id),
+                )
 
-            await cursor.execute(
-                """
-                UPDATE strategy_recommendations
-                SET outcome = ?
-                WHERE id = ?
-                """,
-                (outcome, recommendation_id),
-            )
+                conn.commit()
 
-            conn.commit()
-
-        return cursor.rowcount > 0
+                return cursor.rowcount > 0
 
     async def get_strategy_success_rate(self, strategy_name: str, project_id: Optional[int] = None) -> float:
         """Get success rate for a strategy."""
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
+                if project_id:
+                    query = """
+                        SELECT COUNT(*) as total,
+                               SUM(CASE WHEN outcome = 'success' THEN 1 ELSE 0 END) as successes
+                        FROM strategy_recommendations sr
+                        JOIN executive_goals eg ON sr.goal_id = eg.id
+                        WHERE sr.strategy_name = ? AND eg.project_id = ?
+                        AND sr.outcome IS NOT NULL
+                    """
+                    await cursor.execute(query, (strategy_name, project_id))
+                else:
+                    query = """
+                        SELECT COUNT(*) as total,
+                               SUM(CASE WHEN outcome = 'success' THEN 1 ELSE 0 END) as successes
+                        FROM strategy_recommendations
+                        WHERE strategy_name = ? AND outcome IS NOT NULL
+                    """
+                    await cursor.execute(query, (strategy_name,))
 
-            if project_id:
-                query = """
-                    SELECT COUNT(*) as total,
-                           SUM(CASE WHEN outcome = 'success' THEN 1 ELSE 0 END) as successes
-                    FROM strategy_recommendations sr
-                    JOIN executive_goals eg ON sr.goal_id = eg.id
-                    WHERE sr.strategy_name = ? AND eg.project_id = ?
-                    AND sr.outcome IS NOT NULL
-                """
-                await cursor.execute(query, (strategy_name, project_id))
-            else:
-                query = """
-                    SELECT COUNT(*) as total,
-                           SUM(CASE WHEN outcome = 'success' THEN 1 ELSE 0 END) as successes
-                    FROM strategy_recommendations
-                    WHERE strategy_name = ? AND outcome IS NOT NULL
-                """
-                await cursor.execute(query, (strategy_name,))
+                row = await cursor.fetchone()
+                if not row or row[0] == 0:
+                    return 0.5  # Default neutral confidence
 
-            row = await cursor.fetchone()
-            if not row or row[0] == 0:
-                return 0.5  # Default neutral confidence
+                total, successes = row
+                return successes / total if total > 0 else 0.5
 
-            total, successes = row
-            return successes / total if total > 0 else 0.5
-
-    def ab_test_compare(self, strategy_a: StrategyType, strategy_b: StrategyType) -> Dict:
+    async def ab_test_compare(self, strategy_a: StrategyType, strategy_b: StrategyType) -> Dict:
         """
         Compare two strategies using historical data.
 
@@ -245,79 +242,77 @@ class StrategySelector:
         """
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
+                async def get_stats(strategy_name):
+                    await cursor.execute(
+                        """
+                        SELECT COUNT(*) as total,
+                               SUM(CASE WHEN outcome = 'success' THEN 1 ELSE 0 END) as successes,
+                               AVG(CAST(hours_actual AS FLOAT)) as avg_hours
+                        FROM strategy_recommendations
+                        WHERE strategy_name = ? AND outcome IS NOT NULL
+                        """,
+                        (strategy_name,),
+                    )
+                    row = await cursor.fetchone()
+                    if not row or row[0] == 0:
+                        return {"success_rate": 0.5, "count": 0, "avg_hours": None}
 
-            async def get_stats(strategy_name):
-                await cursor.execute(
-                    """
-                    SELECT COUNT(*) as total,
-                           SUM(CASE WHEN outcome = 'success' THEN 1 ELSE 0 END) as successes,
-                           AVG(CAST(hours_actual AS FLOAT)) as avg_hours
-                    FROM strategy_recommendations
-                    WHERE strategy_name = ? AND outcome IS NOT NULL
-                    """,
-                    (strategy_name,),
-                )
-                row = await cursor.fetchone()
-                if not row or row[0] == 0:
-                    return {"success_rate": 0.5, "count": 0, "avg_hours": None}
+                    total, successes, avg_hours = row
+                    return {
+                        "success_rate": successes / total if total > 0 else 0.5,
+                        "count": total,
+                        "avg_hours": avg_hours,
+                    }
 
-                total, successes, avg_hours = row
+                stats_a = await get_stats(strategy_a.value)
+                stats_b = await get_stats(strategy_b.value)
+
+                # Determine winner
+                if stats_a["count"] < 5 or stats_b["count"] < 5:
+                    confidence = 0.3  # Low confidence with small sample size
+                    winner = None
+                else:
+                    diff = abs(stats_a["success_rate"] - stats_b["success_rate"])
+                    confidence = min(1.0, diff * 2)  # Higher difference = higher confidence
+                    winner = strategy_a if stats_a["success_rate"] > stats_b["success_rate"] else strategy_b
+
                 return {
-                    "success_rate": successes / total if total > 0 else 0.5,
-                    "count": total,
-                    "avg_hours": avg_hours,
+                    "strategy_a": stats_a,
+                    "strategy_b": stats_b,
+                    "winner": winner,
+                    "confidence": confidence,
                 }
-
-            stats_a = get_stats(strategy_a.value)
-            stats_b = get_stats(strategy_b.value)
-
-            # Determine winner
-            if stats_a["count"] < 5 or stats_b["count"] < 5:
-                confidence = 0.3  # Low confidence with small sample size
-                winner = None
-            else:
-                diff = abs(stats_a["success_rate"] - stats_b["success_rate"])
-                confidence = min(1.0, diff * 2)  # Higher difference = higher confidence
-                winner = strategy_a if stats_a["success_rate"] > stats_b["success_rate"] else strategy_b
-
-            return {
-                "strategy_a": stats_a,
-                "strategy_b": stats_b,
-                "winner": winner,
-                "confidence": confidence,
-            }
 
     async def get_recommendation_by_id(self, recommendation_id: int) -> Optional[Dict]:
         """Get a recommendation by ID."""
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    SELECT id, goal_id, strategy_name, confidence, recommended_at, outcome, model_version
+                    FROM strategy_recommendations
+                    WHERE id = ?
+                    """,
+                    (recommendation_id,),
+                )
+                row = await cursor.fetchone()
 
-            await cursor.execute(
-                """
-                SELECT id, goal_id, strategy_name, confidence, recommended_at, outcome, model_version
-                FROM strategy_recommendations
-                WHERE id = ?
-                """,
-                (recommendation_id,),
-            )
-            row = await cursor.fetchone()
+                if not row:
+                    return None
 
-            if not row:
-                return None
-
-            return {
-                "id": row[0],
-                "goal_id": row[1],
-                "strategy_name": row[2],
-                "confidence": row[3],
-                "recommended_at": row[4],
-                "outcome": row[5],
-                "model_version": row[6],
-            }
+                return {
+                    "id": row[0],
+                    "goal_id": row[1],
+                    "strategy_name": row[2],
+                    "confidence": row[3],
+                    "recommended_at": row[4],
+                    "outcome": row[5],
+                    "model_version": row[6],
+                }
 
     # Private helper methods
 
-    def _extract_features(self, goal_id: int, goal_data: Dict, cursor) -> Dict:
+    async def _extract_features(self, goal_id: int, goal_data: Dict, cursor) -> Dict:
         """Extract 15 features from goal context."""
         now = datetime.now()
         created_at = datetime.fromisoformat(goal_data["created_at"])
@@ -421,10 +416,10 @@ class StrategySelector:
 
         return scores
 
-    def _update_scores_with_history(self, goal_id: int, scores: Dict, cursor) -> None:
+    async def _update_scores_with_history(self, goal_id: int, scores: Dict, cursor) -> None:
         """Update scores based on historical success rates."""
         for strategy in scores:
-            success_rate = self.get_strategy_success_rate(strategy.value)
+            success_rate = await self.get_strategy_success_rate(strategy.value)
             # Blend historical success rate with model score
             scores[strategy] = 0.7 * scores[strategy] + 0.3 * success_rate
 

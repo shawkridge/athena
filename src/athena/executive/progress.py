@@ -39,7 +39,7 @@ class ProgressMonitor:
         """Initialize progress monitor."""
         self.db_path = db_path
 
-    def generate_milestones(
+    async def generate_milestones(
         self, goal_id: int, goal_text: str, estimated_hours: Optional[float]
     ) -> List[ProgressMilestone]:
         """
@@ -59,51 +59,51 @@ class ProgressMonitor:
 
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
-            await cursor.execute(
-                "SELECT created_at FROM executive_goals WHERE id = ?", (goal_id,)
-            )
-            row = await cursor.fetchone()
-            if not row:
-                return []
-
-            created_at = datetime.fromisoformat(row[0])
-
-            for i, progress in enumerate(progress_increments):
-                milestone_text = self._milestone_text_for_progress(progress, complexity)
-                target_date = None
-
-                if estimated_hours:
-                    hours_to_milestone = estimated_hours * progress
-                    target_date = created_at + timedelta(hours=hours_to_milestone)
-
-                milestone = ProgressMilestone(
-                    id=0,  # Will be assigned by DB
-                    goal_id=goal_id,
-                    milestone_text=milestone_text,
-                    expected_progress=progress,
-                    actual_progress=0.0,
-                    target_date=target_date,
-                    completed_at=None,
-                )
-
                 await cursor.execute(
-                    """
-                    INSERT INTO progress_milestones
-                    (goal_id, milestone_text, expected_progress, actual_progress, target_date)
-                    VALUES (%s, %s, %s, %s, %s)
-                    """,
-                    (
-                        goal_id,
-                        milestone_text,
-                        progress,
-                        0.0,
-                        target_date.isoformat() if target_date else None,
-                    ),
+                    "SELECT created_at FROM executive_goals WHERE id = ?", (goal_id,)
                 )
-                milestone.id = cursor.lastrowid
-                milestones.append(milestone)
+                row = await cursor.fetchone()
+                if not row:
+                    return []
 
-            conn.commit()
+                created_at = datetime.fromisoformat(row[0])
+
+                for i, progress in enumerate(progress_increments):
+                    milestone_text = self._milestone_text_for_progress(progress, complexity)
+                    target_date = None
+
+                    if estimated_hours:
+                        hours_to_milestone = estimated_hours * progress
+                        target_date = created_at + timedelta(hours=hours_to_milestone)
+
+                    milestone = ProgressMilestone(
+                        id=0,  # Will be assigned by DB
+                        goal_id=goal_id,
+                        milestone_text=milestone_text,
+                        expected_progress=progress,
+                        actual_progress=0.0,
+                        target_date=target_date,
+                        completed_at=None,
+                    )
+
+                    await cursor.execute(
+                        """
+                        INSERT INTO progress_milestones
+                        (goal_id, milestone_text, expected_progress, actual_progress, target_date)
+                        VALUES (%s, %s, %s, %s, %s)
+                        """,
+                        (
+                            goal_id,
+                            milestone_text,
+                            progress,
+                            0.0,
+                            target_date.isoformat() if target_date else None,
+                        ),
+                    )
+                    milestone.id = cursor.lastrowid
+                    milestones.append(milestone)
+
+                conn.commit()
 
         return milestones
 
@@ -113,28 +113,28 @@ class ProgressMonitor:
 
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
-            await cursor.execute(
-                """
-                SELECT id, goal_id, milestone_text, expected_progress, actual_progress,
-                       target_date, completed_at
-                FROM progress_milestones
+                await cursor.execute(
+                    """
+                    SELECT id, goal_id, milestone_text, expected_progress, actual_progress,
+                           target_date, completed_at
+                    FROM progress_milestones
                 WHERE goal_id = ?
                 ORDER BY expected_progress
                 """,
-                (goal_id,),
-            )
-
-            for row in await cursor.fetchall():
-                milestone = ProgressMilestone(
-                    id=row[0],
-                    goal_id=row[1],
-                    milestone_text=row[2],
-                    expected_progress=row[3],
-                    actual_progress=row[4],
-                    target_date=datetime.fromisoformat(row[5]) if row[5] else None,
-                    completed_at=datetime.fromisoformat(row[6]) if row[6] else None,
+                    (goal_id,),
                 )
-                milestones.append(milestone)
+
+                for row in await cursor.fetchall():
+                    milestone = ProgressMilestone(
+                        id=row[0],
+                        goal_id=row[1],
+                        milestone_text=row[2],
+                        expected_progress=row[3],
+                        actual_progress=row[4],
+                        target_date=datetime.fromisoformat(row[5]) if row[5] else None,
+                        completed_at=datetime.fromisoformat(row[6]) if row[6] else None,
+                    )
+                    milestones.append(milestone)
 
         return milestones
 
@@ -144,31 +144,30 @@ class ProgressMonitor:
         """Update milestone progress."""
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
+                completed_at = None
+                if actual_progress >= 1.0:
+                    completed_at = datetime.now().isoformat()
 
-            completed_at = None
-            if actual_progress >= 1.0:
-                completed_at = datetime.now().isoformat()
+                await cursor.execute(
+                    """
+                    UPDATE progress_milestones
+                    SET actual_progress = %s, completed_at = ?
+                    WHERE id = ?
+                    """,
+                    (actual_progress, completed_at, milestone_id),
+                )
 
-            await cursor.execute(
-                """
-                UPDATE progress_milestones
-                SET actual_progress = %s, completed_at = ?
-                WHERE id = ?
-                """,
-                (actual_progress, completed_at, milestone_id),
-            )
-
-            await cursor.execute(
-                """
-                SELECT id, goal_id, milestone_text, expected_progress, actual_progress,
-                       target_date, completed_at
-                FROM progress_milestones
-                WHERE id = ?
-                """,
-                (milestone_id,),
-            )
-            row = await cursor.fetchone()
-            conn.commit()
+                await cursor.execute(
+                    """
+                    SELECT id, goal_id, milestone_text, expected_progress, actual_progress,
+                           target_date, completed_at
+                    FROM progress_milestones
+                    WHERE id = ?
+                    """,
+                    (milestone_id,),
+                )
+                row = await cursor.fetchone()
+                conn.commit()
 
         milestone = ProgressMilestone(
             id=row[0],
@@ -182,7 +181,7 @@ class ProgressMonitor:
 
         return milestone
 
-    def detect_blockers(self, goal_id: int) -> List[Blocker]:
+    async def detect_blockers(self, goal_id: int) -> List[Blocker]:
         """
         Detect blockers on a goal based on lack of progress over time.
 
@@ -194,50 +193,49 @@ class ProgressMonitor:
 
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
+                # Get goal info
+                await cursor.execute(
+                    "SELECT id, progress FROM executive_goals WHERE id = ?", (goal_id,)
+                )
+                row = await cursor.fetchone()
+                if not row:
+                    return []
 
-            # Get goal info
-            await cursor.execute(
-                "SELECT id, progress FROM executive_goals WHERE id = ?", (goal_id,)
-            )
-            row = await cursor.fetchone()
-            if not row:
-                return []
+                current_progress = row[1]
 
-            current_progress = row[1]
+                # Check if we have progress history
+                await cursor.execute(
+                    """
+                    SELECT progress, updated_at FROM goal_progress_history
+                    WHERE goal_id = ?
+                    ORDER BY updated_at DESC
+                    LIMIT 1
+                    """,
+                    (goal_id,),
+                )
+                history_row = await cursor.fetchone()
 
-            # Check if we have progress history
-            await cursor.execute(
-                """
-                SELECT progress, updated_at FROM goal_progress_history
-                WHERE goal_id = ?
-                ORDER BY updated_at DESC
-                LIMIT 1
-                """,
-                (goal_id,),
-            )
-            history_row = await cursor.fetchone()
+                if history_row:
+                    previous_progress = history_row[0]
+                    last_update = datetime.fromisoformat(history_row[1])
+                    time_elapsed = datetime.now() - last_update
 
-            if history_row:
-                previous_progress = history_row[0]
-                last_update = datetime.fromisoformat(history_row[1])
-                time_elapsed = datetime.now() - last_update
-
-                # Check for stale progress
-                if (
-                    current_progress == previous_progress
-                    and time_elapsed > timedelta(minutes=self.BLOCKER_THRESHOLD_MINUTES)
-                ):
-                    blocker = Blocker(
-                        goal_id=goal_id,
-                        blocker_text=f"No progress for {time_elapsed.total_seconds() / 60:.0f} minutes",
-                        detected_at=datetime.now(),
-                        severity="high",
-                    )
-                    blockers.append(blocker)
+                    # Check for stale progress
+                    if (
+                        current_progress == previous_progress
+                        and time_elapsed > timedelta(minutes=self.BLOCKER_THRESHOLD_MINUTES)
+                    ):
+                        blocker = Blocker(
+                            goal_id=goal_id,
+                            blocker_text=f"No progress for {time_elapsed.total_seconds() / 60:.0f} minutes",
+                            detected_at=datetime.now(),
+                            severity="high",
+                        )
+                        blockers.append(blocker)
 
         return blockers
 
-    def calculate_burndown(self, goal_id: int) -> Optional[Burndown]:
+    async def calculate_burndown(self, goal_id: int) -> Optional[Burndown]:
         """
         Calculate burndown metrics.
 
@@ -245,47 +243,46 @@ class ProgressMonitor:
         """
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    SELECT id, progress, created_at, estimated_hours, actual_hours
+                    FROM executive_goals
+                    WHERE id = ?
+                    """,
+                    (goal_id,),
+                )
+                row = await cursor.fetchone()
+                if not row:
+                    return None
 
-            await cursor.execute(
-                """
-                SELECT id, progress, created_at, estimated_hours, actual_hours
-                FROM executive_goals
-                WHERE id = ?
-                """,
-                (goal_id,),
-            )
-            row = await cursor.fetchone()
-            if not row:
-                return None
+                goal_id, current_progress, created_at, estimated_hours, actual_hours = row
 
-            goal_id, current_progress, created_at, estimated_hours, actual_hours = row
+                created_at = datetime.fromisoformat(created_at)
+                days_elapsed = (datetime.now() - created_at).total_seconds() / (24 * 3600)
 
-            created_at = datetime.fromisoformat(created_at)
-            days_elapsed = (datetime.now() - created_at).total_seconds() / (24 * 3600)
+                # Calculate expected progress
+                if estimated_hours and estimated_hours > 0:
+                    hours_elapsed = days_elapsed * 24
+                    expected_progress = min(1.0, hours_elapsed / estimated_hours)
+                else:
+                    expected_progress = current_progress  # No estimate, use actual
 
-            # Calculate expected progress
-            if estimated_hours and estimated_hours > 0:
-                hours_elapsed = days_elapsed * 24
-                expected_progress = min(1.0, hours_elapsed / estimated_hours)
-            else:
-                expected_progress = current_progress  # No estimate, use actual
+                # Determine trend
+                trend = self._determine_trend(goal_id, current_progress, expected_progress)
 
-            # Determine trend
-            trend = self._determine_trend(goal_id, current_progress, expected_progress)
+                # Determine if on track (with 20% buffer)
+                on_track = current_progress >= expected_progress * 0.8
 
-            # Determine if on track (with 20% buffer)
-            on_track = current_progress >= expected_progress * 0.8
+                return Burndown(
+                    goal_id=goal_id,
+                    expected_progress=expected_progress,
+                    actual_progress=current_progress,
+                    days_elapsed=days_elapsed,
+                    on_track=on_track,
+                    trend=trend,
+                )
 
-            return Burndown(
-                goal_id=goal_id,
-                expected_progress=expected_progress,
-                actual_progress=current_progress,
-                days_elapsed=days_elapsed,
-                on_track=on_track,
-                trend=trend,
-            )
-
-    def forecast_completion(self, goal_id: int) -> Optional[Tuple[datetime, float]]:
+    async def forecast_completion(self, goal_id: int) -> Optional[Tuple[datetime, float]]:
         """
         Forecast completion time and confidence.
 
@@ -293,49 +290,48 @@ class ProgressMonitor:
         """
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    SELECT progress, created_at, estimated_hours, deadline
+                    FROM executive_goals
+                    WHERE id = ?
+                    """,
+                    (goal_id,),
+                )
+                row = await cursor.fetchone()
+                if not row:
+                    return None
 
-            await cursor.execute(
-                """
-                SELECT progress, created_at, estimated_hours, deadline
-                FROM executive_goals
-                WHERE id = ?
-                """,
-                (goal_id,),
-            )
-            row = await cursor.fetchone()
-            if not row:
-                return None
+                progress, created_at, estimated_hours, deadline = row
 
-            progress, created_at, estimated_hours, deadline = row
+                if progress == 0:
+                    return None  # Can't forecast with zero progress
 
-            if progress == 0:
-                return None  # Can't forecast with zero progress
+                created_at = datetime.fromisoformat(created_at)
+                deadline_dt = datetime.fromisoformat(deadline) if deadline else None
 
-            created_at = datetime.fromisoformat(created_at)
-            deadline_dt = datetime.fromisoformat(deadline) if deadline else None
+                # Calculate velocity (progress per hour)
+                hours_elapsed = (datetime.now() - created_at).total_seconds() / 3600
+                if hours_elapsed == 0:
+                    return None
 
-            # Calculate velocity (progress per hour)
-            hours_elapsed = (datetime.now() - created_at).total_seconds() / 3600
-            if hours_elapsed == 0:
-                return None
+                velocity = progress / hours_elapsed
 
-            velocity = progress / hours_elapsed
+                # Estimate remaining hours
+                remaining_progress = 1.0 - progress
+                estimated_remaining_hours = remaining_progress / velocity if velocity > 0 else float("inf")
 
-            # Estimate remaining hours
-            remaining_progress = 1.0 - progress
-            estimated_remaining_hours = remaining_progress / velocity if velocity > 0 else float("inf")
+                # Forecast completion
+                estimated_completion = datetime.now() + timedelta(hours=estimated_remaining_hours)
 
-            # Forecast completion
-            estimated_completion = datetime.now() + timedelta(hours=estimated_remaining_hours)
+                # Calculate confidence based on alignment with estimated hours
+                confidence = 1.0
+                if estimated_hours:
+                    ratio = estimated_remaining_hours / (estimated_hours - hours_elapsed)
+                    if ratio > 2.0 or ratio < 0.5:
+                        confidence = 0.5  # Low confidence if way off
 
-            # Calculate confidence based on alignment with estimated hours
-            confidence = 1.0
-            if estimated_hours:
-                ratio = estimated_remaining_hours / (estimated_hours - hours_elapsed)
-                if ratio > 2.0 or ratio < 0.5:
-                    confidence = 0.5  # Low confidence if way off
-
-            return (estimated_completion, confidence)
+                return (estimated_completion, confidence)
 
     async def get_next_milestone(self, goal_id: int) -> Optional[ProgressMilestone]:
         """Get the next incomplete milestone for a goal."""
@@ -351,42 +347,41 @@ class ProgressMonitor:
         """Get detailed status of a milestone."""
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    SELECT id, goal_id, milestone_text, expected_progress, actual_progress,
+                           target_date, completed_at
+                    FROM progress_milestones
+                    WHERE id = ?
+                    """,
+                    (milestone_id,),
+                )
+                row = await cursor.fetchone()
+                if not row:
+                    return None
 
-            await cursor.execute(
-                """
-                SELECT id, goal_id, milestone_text, expected_progress, actual_progress,
-                       target_date, completed_at
-                FROM progress_milestones
-                WHERE id = ?
-                """,
-                (milestone_id,),
-            )
-            row = await cursor.fetchone()
-            if not row:
-                return None
+                milestone = ProgressMilestone(
+                    id=row[0],
+                    goal_id=row[1],
+                    milestone_text=row[2],
+                    expected_progress=row[3],
+                    actual_progress=row[4],
+                    target_date=datetime.fromisoformat(row[5]) if row[5] else None,
+                    completed_at=datetime.fromisoformat(row[6]) if row[6] else None,
+                )
 
-            milestone = ProgressMilestone(
-                id=row[0],
-                goal_id=row[1],
-                milestone_text=row[2],
-                expected_progress=row[3],
-                actual_progress=row[4],
-                target_date=datetime.fromisoformat(row[5]) if row[5] else None,
-                completed_at=datetime.fromisoformat(row[6]) if row[6] else None,
-            )
+                is_completed = milestone.completed_at is not None
+                is_on_track = milestone.is_on_track()
 
-            is_completed = milestone.completed_at is not None
-            is_on_track = milestone.is_on_track()
-
-            return {
-                "milestone": milestone,
-                "completed": is_completed,
-                "on_track": is_on_track,
-                "progress": milestone.actual_progress,
-                "days_to_target": (milestone.target_date.date() - datetime.now().date()).days
-                if milestone.target_date
-                else None,
-            }
+                return {
+                    "milestone": milestone,
+                    "completed": is_completed,
+                    "on_track": is_on_track,
+                    "progress": milestone.actual_progress,
+                    "days_to_target": (milestone.target_date.date() - datetime.now().date()).days
+                    if milestone.target_date
+                    else None,
+                }
 
     # Private helper methods
 

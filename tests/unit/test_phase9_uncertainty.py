@@ -2,9 +2,10 @@
 
 import pytest
 
+pytest.importorskip("psycopg")
+
 from athena.core.database import Database
 from athena.phase9.uncertainty import (
-pytest.importorskip("psycopg")
     ConfidenceLevel,
     ConfidenceScore,
     ConfidenceScorer,

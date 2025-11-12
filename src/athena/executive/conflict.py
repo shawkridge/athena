@@ -39,7 +39,7 @@ class ConflictResolver:
         """Initialize conflict resolver."""
         self.db_path = db_path
 
-    def resolve_priority(self, competing_goal_ids: List[int]) -> Dict:
+    async def resolve_priority(self, competing_goal_ids: List[int]) -> Dict:
         """
         Resolve priority between competing goals.
 
@@ -55,119 +55,116 @@ class ConflictResolver:
 
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
+                # Get goal data
+                goals = {}
+                for goal_id in competing_goal_ids:
+                    await cursor.execute(
+                        """
+                        SELECT id, project_id, goal_text, priority, deadline, created_at, progress
+                        FROM executive_goals
+                        WHERE id = ?
+                        """,
+                        (goal_id,),
+                    )
+                    row = await cursor.fetchone()
+                    if row:
+                        goals[goal_id] = {
+                            "id": row[0],
+                            "project_id": row[1],
+                            "text": row[2],
+                            "priority": row[3],
+                            "deadline": row[4],
+                            "created_at": row[5],
+                            "progress": row[6],
+                        }
 
-            # Get goal data
-            goals = {}
-            for goal_id in competing_goal_ids:
+                # Calculate scores
+                scores = {}
+                for goal_id, goal_data in goals.items():
+                    score = await self._calculate_priority_score(goal_data, cursor)
+                    scores[goal_id] = score
+
+                # Determine primary goal (highest score)
+                primary_goal_id = max(scores, key=scores.get)
+
+                # Calculate resource allocation
+                allocation = self._calculate_resource_allocation(scores)
+
+                # Generate reasoning
+                reasoning = self._generate_reasoning(primary_goal_id, scores, goals)
+
+                # Log resolution
+                project_id = goals[primary_goal_id]["project_id"]
                 await cursor.execute(
                     """
-                    SELECT id, project_id, goal_text, priority, deadline, created_at, progress
-                    FROM executive_goals
+                    INSERT INTO conflict_resolutions
+                    (project_id, primary_goal_id, competing_goals, resolution_timestamp, reasoning)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    (
+                        project_id,
+                        primary_goal_id,
+                        ",".join(str(g) for g in competing_goal_ids),
+                        datetime.now().isoformat(),
+                        reasoning,
+                    ),
+                )
+                await conn.commit()
+
+                return {
+                    "primary_goal_id": primary_goal_id,
+                    "resolution_scores": scores,
+                    "resource_allocation": allocation,
+                    "reasoning": reasoning,
+                }
+
+    async def suspend_goal(self, goal_id: int, reason: str = "conflict_resolution") -> bool:
+        """Suspend a goal (pause work on it)."""
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    UPDATE executive_goals
+                    SET status = 'suspended'
                     WHERE id = ?
                     """,
                     (goal_id,),
                 )
-                row = await cursor.fetchone()
-                if row:
-                    goals[goal_id] = {
-                        "id": row[0],
-                        "project_id": row[1],
-                        "text": row[2],
-                        "priority": row[3],
-                        "deadline": row[4],
-                        "created_at": row[5],
-                        "progress": row[6],
-                    }
 
-            # Calculate scores
-            scores = {}
-            for goal_id, goal_data in goals.items():
-                score = self._calculate_priority_score(goal_data, cursor)
-                scores[goal_id] = score
+                await cursor.execute(
+                    """
+                    INSERT INTO goal_suspension_log (goal_id, reason, suspended_at)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (goal_id, reason, datetime.now().isoformat()),
+                )
 
-            # Determine primary goal (highest score)
-            primary_goal_id = max(scores, key=scores.get)
+                await conn.commit()
+                return cursor.rowcount > 0
 
-            # Calculate resource allocation
-            allocation = self._calculate_resource_allocation(scores)
-
-            # Generate reasoning
-            reasoning = self._generate_reasoning(primary_goal_id, scores, goals)
-
-            # Log resolution
-            project_id = goals[primary_goal_id]["project_id"]
-            await cursor.execute(
-                """
-                INSERT INTO conflict_resolutions
-                (project_id, primary_goal_id, competing_goals, resolution_timestamp, reasoning)
-                VALUES (%s, %s, %s, %s, %s)
-                """,
-                (
-                    project_id,
-                    primary_goal_id,
-                    ",".join(str(g) for g in competing_goal_ids),
-                    datetime.now().isoformat(),
-                    reasoning,
-                ),
-            )
-            conn.commit()
-
-            return {
-                "primary_goal_id": primary_goal_id,
-                "resolution_scores": scores,
-                "resource_allocation": allocation,
-                "reasoning": reasoning,
-            }
-
-    def suspend_goal(self, goal_id: int, reason: str = "conflict_resolution") -> bool:
-        """Suspend a goal (pause work on it)."""
-        async with AsyncConnection.connect(self.postgres_url) as conn:
-            async with conn.cursor() as cursor:
-
-            await cursor.execute(
-                """
-                UPDATE executive_goals
-                SET status = 'suspended'
-                WHERE id = ?
-                """,
-                (goal_id,),
-            )
-
-            await cursor.execute(
-                """
-                INSERT INTO goal_suspension_log (goal_id, reason, suspended_at)
-                VALUES (%s, %s, %s)
-                """,
-                (goal_id, reason, datetime.now().isoformat()),
-            )
-
-            conn.commit()
-            return cursor.rowcount > 0
-
-    def resume_goal(self, goal_id: int) -> bool:
+    async def resume_goal(self, goal_id: int) -> bool:
         """Resume a suspended goal."""
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    UPDATE executive_goals
+                    SET status = 'active'
+                    WHERE id = ? AND status = 'suspended'
+                    """,
+                    (goal_id,),
+                )
 
-            await cursor.execute(
-                """
-                UPDATE executive_goals
-                SET status = 'active'
-                WHERE id = ? AND status = 'suspended'
-                """,
-                (goal_id,),
-            )
+                await cursor.execute(
+                    """
+                    INSERT INTO goal_suspension_log (goal_id, reason, resumed_at)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (goal_id, "conflict_resolved", datetime.now().isoformat()),
+                )
 
-            await cursor.execute(
-                """
-                INSERT INTO goal_suspension_log (goal_id, reason, resumed_at)
-                VALUES (%s, %s, %s)
-                """,
-                (goal_id, "conflict_resolved", datetime.now().isoformat()),
-            )
-
-            conn.commit()
-            return cursor.rowcount > 0
+                await conn.commit()
+                return cursor.rowcount > 0
 
     async def get_conflict_resolution_log(self, project_id: int, limit: int = 10) -> List[Dict]:
         """Get conflict resolution history."""
@@ -175,31 +172,30 @@ class ConflictResolver:
 
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
+                await cursor.execute(
+                    """
+                    SELECT id, primary_goal_id, competing_goals, resolution_timestamp, reasoning
+                    FROM conflict_resolutions
+                    WHERE project_id = ?
+                    ORDER BY resolution_timestamp DESC
+                    LIMIT ?
+                    """,
+                    (project_id, limit),
+                )
 
-            await cursor.execute(
-                """
-                SELECT id, primary_goal_id, competing_goals, resolution_timestamp, reasoning
-                FROM conflict_resolutions
-                WHERE project_id = ?
-                ORDER BY resolution_timestamp DESC
-                LIMIT ?
-                """,
-                (project_id, limit),
-            )
-
-            for row in await cursor.fetchall():
-                resolution = {
-                    "id": row[0],
-                    "primary_goal_id": row[1],
-                    "competing_goals": [int(g) for g in row[2].split(",") if g],
-                    "resolution_timestamp": row[3],
-                    "reasoning": row[4],
-                }
-                resolutions.append(resolution)
+                for row in await cursor.fetchall():
+                    resolution = {
+                        "id": row[0],
+                        "primary_goal_id": row[1],
+                        "competing_goals": [int(g) for g in row[2].split(",") if g],
+                        "resolution_timestamp": row[3],
+                        "reasoning": row[4],
+                    }
+                    resolutions.append(resolution)
 
         return resolutions
 
-    def allocate_working_memory_fair(
+    async def allocate_working_memory_fair(
         self, active_goal_ids: List[int]
     ) -> Dict[int, float]:
         """
@@ -213,41 +209,40 @@ class ConflictResolver:
 
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
+                # Get goal scores
+                scores = {}
+                for goal_id in active_goal_ids:
+                    await cursor.execute(
+                        """
+                        SELECT priority, deadline, created_at, progress
+                        FROM executive_goals
+                        WHERE id = ?
+                        """,
+                        (goal_id,),
+                    )
+                    row = await cursor.fetchone()
+                    if row:
+                        goal_data = {
+                            "priority": row[0],
+                            "deadline": row[1],
+                            "created_at": row[2],
+                            "progress": row[3],
+                        }
+                        scores[goal_id] = await self._calculate_priority_score(goal_data, cursor)
 
-            # Get goal scores
-            scores = {}
-            for goal_id in active_goal_ids:
-                await cursor.execute(
-                    """
-                    SELECT priority, deadline, created_at, progress
-                    FROM executive_goals
-                    WHERE id = ?
-                    """,
-                    (goal_id,),
-                )
-                row = await cursor.fetchone()
-                if row:
-                    goal_data = {
-                        "priority": row[0],
-                        "deadline": row[1],
-                        "created_at": row[2],
-                        "progress": row[3],
-                    }
-                    scores[goal_id] = self._calculate_priority_score(goal_data, cursor)
+                # Allocate slots (7 total, distributed by score)
+                total_score = sum(scores.values())
+                allocation = {}
 
-            # Allocate slots (7 total, distributed by score)
-            total_score = sum(scores.values())
-            allocation = {}
+                for goal_id, score in scores.items():
+                    if total_score > 0:
+                        allocation[goal_id] = 7.0 * (score / total_score)
+                    else:
+                        allocation[goal_id] = 7.0 / len(active_goal_ids)
 
-            for goal_id, score in scores.items():
-                if total_score > 0:
-                    allocation[goal_id] = 7.0 * (score / total_score)
-                else:
-                    allocation[goal_id] = 7.0 / len(active_goal_ids)
+                return allocation
 
-            return allocation
-
-    def resolve_multiple_conflicts(self, project_id: int) -> Optional[Dict]:
+    async def resolve_multiple_conflicts(self, project_id: int) -> Optional[Dict]:
         """
         Resolve conflicts among all active goals in a project.
 
@@ -255,40 +250,39 @@ class ConflictResolver:
         """
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
+                # Get all active goals
+                await cursor.execute(
+                    """
+                    SELECT id FROM executive_goals
+                    WHERE project_id = ? AND status = 'active'
+                    ORDER BY priority DESC
+                    """,
+                    (project_id,),
+                )
 
-            # Get all active goals
-            await cursor.execute(
-                """
-                SELECT id FROM executive_goals
-                WHERE project_id = ? AND status = 'active'
-                ORDER BY priority DESC
-                """,
-                (project_id,),
-            )
+                active_goals = [row[0] for row in await cursor.fetchall()]
 
-            active_goals = [row[0] for row in await cursor.fetchall()]
+                if len(active_goals) <= 1:
+                    return None  # No conflict
 
-            if len(active_goals) <= 1:
-                return None  # No conflict
+                # Resolve conflicts
+                resolution = await self.resolve_priority(active_goals)
 
-            # Resolve conflicts
-            resolution = self.resolve_priority(active_goals)
+                # Suspend lower-priority goals if needed
+                primary_goal = resolution["primary_goal_id"]
+                for goal_id in active_goals:
+                    if goal_id != primary_goal:
+                        # Check if goal should be suspended
+                        should_suspend = resolution["resource_allocation"].get(goal_id, 0) < 0.5
 
-            # Suspend lower-priority goals if needed
-            primary_goal = resolution["primary_goal_id"]
-            for goal_id in active_goals:
-                if goal_id != primary_goal:
-                    # Check if goal should be suspended
-                    should_suspend = resolution["resource_allocation"].get(goal_id, 0) < 0.5
+                        if should_suspend:
+                            await self.suspend_goal(goal_id, "conflict_resolution_lower_priority")
 
-                    if should_suspend:
-                        self.suspend_goal(goal_id, "conflict_resolution_lower_priority")
-
-            return resolution
+                return resolution
 
     # Private helper methods
 
-    def _calculate_priority_score(self, goal_data: Dict, cursor) -> float:
+    async def _calculate_priority_score(self, goal_data: Dict, cursor) -> float:
         """Calculate priority score using weighted algorithm."""
         now = datetime.now()
 
@@ -322,7 +316,7 @@ class ConflictResolver:
                 """,
                 (goal_id,),
             )
-            dependent_count = await cursor.fetchone()[0]
+            dependent_count = (await cursor.fetchone())[0]
             dependency_factor = min(1.0, dependent_count / 3.0)
 
         # Factor 4: Progress toward completion (favor goals near completion)

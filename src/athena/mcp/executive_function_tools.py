@@ -289,7 +289,7 @@ class ExecutiveFunctionMCPHandlers:
                     # Try to get db from environment or default location
                     db_path = os.environ.get("ATHENA_DB_PATH", os.path.expanduser("~/.athena/memory.db"))
                     # PostgreSQL connection should be used instead
-                    conn.row_factory = psycopg Record
+                    conn.row_factory = psycopg.Record
                     cursor = conn.cursor()
 
                     cursor.execute(
