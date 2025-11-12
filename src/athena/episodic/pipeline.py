@@ -37,9 +37,9 @@ Usage Example:
     >>> from athena.episodic.store import EpisodicStore
     >>> from athena.episodic.hashing import EventHasher
     >>> from athena.core.embeddings import EmbeddingModel
-    >>> from athena.core.database import Database
+    >>> from athena.core.database_factory import DatabaseFactory
     >>>
-    >>> db = Database("memory.db")
+    >>> db = DatabaseFactory.create()  # PostgreSQL connection
     >>> store = EpisodicStore(db)
     >>> hasher = EventHasher()
     >>> embedder = EmbeddingModel()
