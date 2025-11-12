@@ -255,7 +255,7 @@ class MemoryAPI:
         try:
             context = context or {}
             tags = tags or []
-            project_id = getattr(self, '_default_project_id', 1)
+            project_id = self._ensure_default_project()
 
             # Map common memory type names to valid MemoryType enums
             memory_type_map = {
