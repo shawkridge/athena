@@ -29,7 +29,8 @@ Typical usage:
     return results
 """
 
-from .parallel_executor import ParallelLayerExecutor, ParallelTier1Executor, QueryTask
+from .parallel_executor import ParallelLayerExecutor, QueryTask
+from .parallel_tier1 import ParallelTier1Executor
 from .query_cache import QueryCache, SessionContextCache
 from .tier_selection import TierSelector
 
