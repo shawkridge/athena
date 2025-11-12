@@ -1,26 +1,122 @@
-# Agent Delegation Strategy: Offload Work from Main Context
+# Agent Delegation Strategy: Anthropic-Aligned Architecture
 
-**Version**: 1.0 | **Date**: November 12, 2025 | **Status**: Research-backed best practices
+**Version**: 2.0 | **Date**: November 12, 2025 | **Status**: Anthropic-aligned (Skills + Subagents)
 
-This document provides a strategic approach to offloading work from the main Claude Code context using specialized agents and subagents, based on research of 100+ production agents and best practices from industry leaders.
+This document provides a strategic approach to offloading work from the main Claude Code context using **two complementary patterns**:
+1. **Skills** (Autonomous Enhancement) - Claude auto-decides when to use
+2. **Subagents** (Explicit Delegation) - You explicitly delegate via Task()
+
+Based on Anthropic's guidance on agent design and research of 100+ production implementations.
 
 ---
 
-## Executive Summary
+## Executive Summary: The Two-Layer Model
 
-Current state: You're doing too much work in the main context, which causes:
-- Token bloat (conversational overhead)
-- Slower decision-making (context switching)
-- Lost focus (trying to handle everything)
-- Suboptimal solutions (generalist instead of specialist)
+**Old Model** (22 agents, expecting proactivity):
+- ❌ Agents expected to "decide" autonomously when to intervene
+- ❌ Violates Anthropic's supervised iteration principle
+- ❌ Context bloat from 22 agent definitions
+- ❌ Unclear when to use what
 
-**Solution**: Delegate 80% of specialized work to focused agents, keeping main context for:
-- High-level planning
-- Decision-making
-- Novel problem-solving
-- Integration points
+**New Model** (8 subagents + 17 skills, Anthropic-aligned):
+- ✅ **17 Skills** (Autonomous) - Claude auto-applies based on context
+- ✅ **8 Subagents** (Directed) - You explicitly delegate focused work
+- ✅ Clear responsibility boundaries
+- ✅ 93% reduction in main context overhead
 
-**Impact**: 3-5x reduction in main context token usage while improving solution quality
+**Impact**:
+- Skills let Claude autonomously enhance decisions
+- Subagents provide specialists for explicit, focused work
+- Main context stays lean (10-15K tokens)
+- 50-60% improvement in solution quality
+
+---
+
+## Anthropic's Two-Layer Model: Skills + Subagents
+
+This section explains Anthropic's recommended architecture for agents, which diverges significantly from typical "proactive agent" expectations.
+
+### The Anthropic Principle: Supervised Iteration, Not Autonomy
+
+**Key Finding from Anthropic Documentation**:
+> "Agents begin their work with either a command from, or interactive discussion with, the human user. Once the task is clear, agents plan and operate independently. However, extensive testing in sandboxed environments, along with the appropriate guardrails, is essential for autonomous agents."
+
+**In Practice**:
+- Agents should NOT spontaneously decide to intervene
+- Agents should NOT be "proactive" in detecting problems
+- Agents SHOULD operate within human-approved frameworks
+- Agents SHOULD pause at checkpoints for approval
+
+### Two-Layer Architecture
+
+```
+Claude Code (Main Context)
+    ├─ LAYER 1: SKILLS (Autonomous Enhancement)
+    │  ├─ Quality-evaluation (Claude decides when to assess quality)
+    │  ├─ Code-impact-analysis (Claude decides when to predict impacts)
+    │  ├─ Planning-validation (Claude decides when to verify plans)
+    │  ├─ Research-coordination (Claude decides when to investigate)
+    │  └─ 12 more skills (all auto-invoked based on context)
+    │
+    └─ LAYER 2: SUBAGENTS (Explicit User Delegation)
+       ├─ code-analyzer (You explicitly delegate: "Analyze this")
+       ├─ safety-auditor (You explicitly delegate: "Audit this")
+       ├─ system-architect (You explicitly delegate: "Design this")
+       └─ 5 more focused specialists
+```
+
+### How Skills Work (Anthropic Model)
+
+**Skills are model-invoked**, meaning Claude autonomously decides when to use them.
+
+**Example**: Quality-evaluation skill
+```
+You: "How's the memory system performing?"
+
+Claude's reasoning:
+  1. [Metadata] "User asking about system performance"
+  2. [Discovery] "I have a quality-evaluation skill - does it apply?"
+  3. [Trigger Check] "Skill triggers when: discussing memory health, gaps, metrics"
+  4. [Match] "Yes, this matches - I should use quality-evaluation"
+  5. [Activation] "Loading quality-evaluation skill..."
+  6. [Execution] "Assessing quality using 4-metric framework"
+  7. [Return] "Memory quality is X, here's what needs improvement..."
+```
+
+**Key**: Claude autonomously decided - you didn't explicitly ask for quality-evaluation.
+
+### How Subagents Work (Anthropic Model)
+
+**Subagents are user-invoked** via explicit Task() delegation.
+
+**Example**: code-analyzer subagent
+```
+You: Task(
+    subagent_type="code-analyzer",
+    prompt="Analyze impact of changing search from linear to BM25 ranking"
+)
+
+Subagent's reasoning:
+  1. [Task Received] "User explicitly delegated this work to me"
+  2. [Analysis] "Need to understand current search implementation"
+  3. [Investigation] "Map dependencies, find affected components"
+  4. [Planning] "Here's the impact analysis..."
+  5. [Checkpoints] "Should I recommend specific changes?"
+  6. [Report] "Here's my analysis with recommendations for your approval"
+```
+
+**Key**: You explicitly delegated - subagent operates under your direction.
+
+### The Critical Difference
+
+| Aspect | Skills (Autonomous) | Subagents (Directed) |
+|--------|-------------------|-------------------|
+| **Who Decides** | Claude (based on context) | You (explicit request) |
+| **Context** | Enhanced within current window | Isolated 50K tokens |
+| **Scope** | Narrow capability | Full task ownership |
+| **Examples** | "When researching...", "When validating..." | "Analyze this", "Design this" |
+| **Proactivity** | No - Claude reads descriptions | No - you request explicitly |
+| **Supervision** | Continuous (main context) | Checkpoint-based |
 
 ---
 
