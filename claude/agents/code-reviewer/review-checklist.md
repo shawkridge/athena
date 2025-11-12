@@ -1,3 +1,8 @@
+---
+name: review-checklist
+description: Code review checklist for Athena memory system project - guides comprehensive review across architecture, standards, and layer operations
+---
+
 # Code Review Checklist - Athena Project
 
 Use this checklist when reviewing code for the Athena memory system project.
