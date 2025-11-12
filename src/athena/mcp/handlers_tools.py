@@ -193,7 +193,10 @@ async def handle_register_hook(server: Any, args: dict) -> List[TextContent]:
         # Lazy initialize HookDispatcher
         if not hasattr(server, '_hook_dispatcher'):
             from ..hooks.dispatcher import HookDispatcher
-            server._hook_dispatcher = HookDispatcher(server.store.db, project_id=1)
+            session_manager = getattr(server, 'session_manager', None)
+            server._hook_dispatcher = HookDispatcher(
+                server.store.db, project_id=1, session_manager=session_manager
+            )
 
         # Register hook
         try:
@@ -234,7 +237,10 @@ async def handle_trigger_hook(server: Any, args: dict) -> List[TextContent]:
         # Lazy initialize HookDispatcher
         if not hasattr(server, '_hook_dispatcher'):
             from ..hooks.dispatcher import HookDispatcher
-            server._hook_dispatcher = HookDispatcher(server.store.db, project_id=1)
+            session_manager = getattr(server, 'session_manager', None)
+            server._hook_dispatcher = HookDispatcher(
+                server.store.db, project_id=1, session_manager=session_manager
+            )
 
         # Trigger hook
         try:
@@ -311,7 +317,10 @@ async def handle_list_hooks(server: Any, args: dict) -> List[TextContent]:
         # Lazy initialize HookDispatcher
         if not hasattr(server, '_hook_dispatcher'):
             from ..hooks.dispatcher import HookDispatcher
-            server._hook_dispatcher = HookDispatcher(server.store.db, project_id=1)
+            session_manager = getattr(server, 'session_manager', None)
+            server._hook_dispatcher = HookDispatcher(
+                server.store.db, project_id=1, session_manager=session_manager
+            )
 
         # Get hook registry
         try:

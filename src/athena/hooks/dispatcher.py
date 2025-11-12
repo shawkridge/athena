@@ -1,7 +1,7 @@
 """Hook dispatcher for automatic conversation and session management."""
 
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 from uuid import uuid4
 
 from ..conversation.auto_recovery import AutoContextRecovery
@@ -15,6 +15,9 @@ from .lib.cascade_monitor import CascadeMonitor
 from .lib.idempotency_tracker import IdempotencyTracker
 from .lib.rate_limiter import RateLimiter
 
+if TYPE_CHECKING:
+    from ..session.context_manager import SessionContextManager
+
 
 class HookDispatcher:
     """Dispatches hooks for automatic context and conversation management.
@@ -27,13 +30,20 @@ class HookDispatcher:
     - Hook cycle detection via CascadeMonitor
     """
 
-    def __init__(self, db: Database, project_id: int = 1, enable_safety: bool = True):
+    def __init__(
+        self,
+        db: Database,
+        project_id: int = 1,
+        enable_safety: bool = True,
+        session_manager: Optional["SessionContextManager"] = None,
+    ):
         """Initialize hook dispatcher.
 
         Args:
             db: Database instance
             project_id: Project ID for memory isolation
             enable_safety: Enable safety utilities (idempotency, rate limiting, cascade detection)
+            session_manager: Optional SessionContextManager for session context tracking
         """
         self.db = db
         self.project_id = project_id
@@ -42,6 +52,7 @@ class HookDispatcher:
         self.context_snapshot = ContextSnapshot(db, project_id)
         self.auto_recovery = AutoContextRecovery(db, project_id)
         self.enable_safety = enable_safety
+        self.session_manager = session_manager
 
         # Active session tracking
         self._active_session_id: Optional[str] = None
@@ -152,10 +163,23 @@ class HookDispatcher:
             if not session_id:
                 session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid4().hex[:8]}"
 
-            # Create session
+            # Create session in conversation store
             self.conversation_store.create_session(session_id, self.project_id)
             self._active_session_id = session_id
             self._turn_count = 0
+
+            # Auto-start session context if available
+            if self.session_manager:
+                try:
+                    task = context.get("task") if context else None
+                    phase = context.get("phase") if context else None
+                    self.session_manager.start_session(
+                        session_id=session_id, project_id=self.project_id, task=task, phase=phase
+                    )
+                except Exception as e:
+                    # Gracefully degrade if session_manager fails
+                    # Don't let session manager errors break the hook
+                    self._hook_registry["session_start"]["last_error"] = f"session_manager: {str(e)}"
 
             # Record episodic event
             context_obj = EventContext()
@@ -200,7 +224,15 @@ class HookDispatcher:
             if not end_session_id:
                 return False
 
-            # End session
+            # End session in session manager if available
+            if self.session_manager:
+                try:
+                    self.session_manager.end_session(end_session_id)
+                except Exception as e:
+                    # Gracefully degrade if session_manager fails
+                    self._hook_registry["session_end"]["last_error"] = f"session_manager: {str(e)}"
+
+            # End session in conversation store
             self.conversation_store.end_session(end_session_id)
 
             # Record episodic event
@@ -282,6 +314,26 @@ class HookDispatcher:
                 asst_msg,
                 duration_ms=duration_ms,
             )
+
+            # Record conversation turn to session context if available
+            if self.session_manager:
+                try:
+                    event_data = {
+                        "turn_number": self._turn_count,
+                        "user_tokens": user_tokens,
+                        "assistant_tokens": assistant_tokens,
+                        "duration_ms": duration_ms,
+                        "task": task,
+                        "phase": phase,
+                    }
+                    self.session_manager.record_event(
+                        session_id=self._active_session_id,
+                        event_type="conversation_turn",
+                        event_data=event_data,
+                    )
+                except Exception as e:
+                    # Gracefully degrade if session_manager fails
+                    self._hook_registry["conversation_turn"]["last_error"] = f"session_manager: {str(e)}"
 
             # Record episodic event (conversation exchange)
             context_obj = EventContext(task=task, phase=phase)
@@ -690,6 +742,19 @@ class HookDispatcher:
         def _execute():
             if not self._active_session_id:
                 self.fire_session_start()
+
+            # Record consolidation to session manager if available
+            if self.session_manager:
+                try:
+                    self.session_manager.record_consolidation(
+                        project_id=self.project_id,
+                        consolidation_type="SEMANTIC_SYNTHESIS",
+                        wm_size=patterns_found,
+                        trigger_type="PERIODIC",
+                    )
+                except Exception as e:
+                    # Gracefully degrade if session_manager fails
+                    self._hook_registry["consolidation_complete"]["last_error"] = f"session_manager: {str(e)}"
 
             event = EpisodicEvent(
                 project_id=self.project_id,

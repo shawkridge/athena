@@ -320,6 +320,10 @@ class MemoryMCPServer:
         # Phase 47: ATHENA analyzer handlers
         self.athena_analyzer_handlers = ATHENAAnalyzerMCPHandlers()
 
+        # Phase 3: Initialize SessionContextManager for session-aware queries
+        from ..session.context_manager import SessionContextManager
+        self.session_manager = SessionContextManager(self.store.db)
+
         # Initialize unified memory manager with all stores
         self.unified_manager = UnifiedMemoryManager(
             semantic=self.store,
@@ -331,6 +335,7 @@ class MemoryMCPServer:
             consolidation=self.consolidation_system,
             project_manager=self.project_manager,
             enable_advanced_rag=enable_advanced_rag,
+            session_manager=self.session_manager,
         )
 
         self.server = Server("athena")
