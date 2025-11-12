@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import re
+import time
 from datetime import datetime
 from typing import Any, Optional
 
@@ -15,7 +16,9 @@ from .graph.models import Entity, Observation, Relation
 from .graph.store import GraphStore
 from .memory.store import MemoryStore
 from .meta.store import MetaMemoryStore
+from .optimization.auto_tuner import AutoTuner, TuningStrategy
 from .optimization.parallel_tier1 import ParallelTier1Executor
+from .optimization.performance_profiler import PerformanceProfiler, QueryMetrics
 from .optimization.query_cache import QueryCache, SessionContextCache
 from .optimization.tier_selection import TierSelector
 from .procedural.models import Procedure
@@ -99,6 +102,21 @@ class UnifiedMemoryManager:
         self.tier_selector = TierSelector()
         self.query_cache = QueryCache(max_entries=1000, default_ttl_seconds=300)
         self.session_context_cache = SessionContextCache(ttl_seconds=60)
+
+        # Initialize performance profiler for tracking query metrics
+        self.performance_profiler = PerformanceProfiler(
+            window_hours=24,
+            max_metrics=10000,
+            temporal_bins=24,
+        )
+
+        # Initialize auto-tuner for dynamic parameter optimization
+        self.auto_tuner = AutoTuner(
+            profiler=self.performance_profiler,
+            strategy=TuningStrategy.BALANCED,
+            adjustment_interval=100,
+            min_samples=10,
+        )
 
         # Initialize parallel Tier 1 executor for concurrent layer queries
         query_methods = {
@@ -998,6 +1016,17 @@ class UnifiedMemoryManager:
         Returns:
             Dictionary with results from each layer
         """
+        start_time = time.time()
+
+        # Get optimized config from auto-tuner
+        query_type = self._classify_query(query)
+        optimized_config = self.auto_tuner.get_optimized_config(query_type)
+
+        # Update executor with optimized parameters
+        self.parallel_tier1_executor.executor.max_concurrent = optimized_config.max_concurrent
+        self.parallel_tier1_executor.executor.timeout_seconds = optimized_config.timeout_seconds
+        self.parallel_tier1_executor.enable_parallel = optimized_config.enable_parallel
+
         try:
             # Try to execute in parallel using async
             loop = asyncio.new_event_loop()
@@ -1008,9 +1037,32 @@ class UnifiedMemoryManager:
                         query=query,
                         context=context,
                         k=k,
-                        use_parallel=True,
+                        use_parallel=optimized_config.enable_parallel,
                     )
                 )
+
+                # Record metrics for auto-tuning
+                elapsed_ms = (time.time() - start_time) * 1000
+                layers = list(self.parallel_tier1_executor.LAYER_KEYWORDS.keys())
+                layer_latencies = self.parallel_tier1_executor.executor.latest_layer_latencies or {}
+                result_count = sum(
+                    len(v) if isinstance(v, list) else (1 if v else 0)
+                    for k, v in tier_1_results.items()
+                    if not k.startswith("_")
+                )
+
+                self._record_query_metrics(
+                    query=query,
+                    query_type=query_type,
+                    layers_queried=layers,
+                    layer_latencies=layer_latencies,
+                    total_latency_ms=elapsed_ms,
+                    result_count=result_count,
+                    success=True,
+                    cache_hit=False,
+                    parallel=optimized_config.enable_parallel,
+                )
+
                 return tier_1_results
             finally:
                 loop.close()
@@ -1018,6 +1070,19 @@ class UnifiedMemoryManager:
             logger.warning(
                 f"Parallel Tier 1 execution failed ({e}), falling back to sequential"
             )
+            # Record failed attempt
+            elapsed_ms = (time.time() - start_time) * 1000
+            self._record_query_metrics(
+                query=query,
+                query_type=query_type,
+                layers_queried=[],
+                layer_latencies={},
+                total_latency_ms=elapsed_ms,
+                result_count=0,
+                success=False,
+                parallel=True,
+            )
+
             # Fall back to sequential execution
             return self._recall_tier_1(query, context, k)
 
@@ -1187,3 +1252,80 @@ class UnifiedMemoryManager:
         else:
             # Primitive value - return as-is
             return record
+
+    def _record_query_metrics(
+        self,
+        query: str,
+        query_type: str,
+        layers_queried: list,
+        layer_latencies: dict,
+        total_latency_ms: float,
+        result_count: int,
+        success: bool,
+        cache_hit: bool = False,
+        parallel: bool = False,
+    ) -> None:
+        """Record query execution metrics for auto-tuning.
+
+        Args:
+            query: Query text
+            query_type: Classified query type
+            layers_queried: List of layers that were queried
+            layer_latencies: Dict of layer_name -> latency_ms
+            total_latency_ms: Total execution time in milliseconds
+            result_count: Number of results returned
+            success: Whether query succeeded
+            cache_hit: Whether result came from cache
+            parallel: Whether parallel execution was used
+        """
+        metrics = QueryMetrics(
+            query_id=f"q_{int(time.time() * 1000)}",
+            query_text=query,
+            query_type=query_type,
+            timestamp=time.time(),
+            latency_ms=total_latency_ms,
+            memory_mb=0.0,  # TODO: Track memory usage
+            cache_hit=cache_hit,
+            result_count=result_count,
+            layers_queried=layers_queried,
+            layer_latencies=layer_latencies,
+            success=success,
+            parallel_execution=parallel,
+            concurrency_level=self.parallel_tier1_executor.executor.max_concurrent if parallel else 1,
+            accuracy_score=1.0 if success else 0.8,
+        )
+
+        self.performance_profiler.record_query(metrics)
+
+    def update_tuning_strategy(self, strategy: TuningStrategy) -> None:
+        """Update the auto-tuning strategy.
+
+        Args:
+            strategy: New tuning strategy (LATENCY, THROUGHPUT, COST, BALANCED)
+        """
+        self.auto_tuner.update_strategy(strategy)
+        logger.info(f"Updated tuning strategy to {strategy.value}")
+
+    def get_tuning_report(self) -> dict:
+        """Get auto-tuning diagnostics and recommendations.
+
+        Returns:
+            Dictionary with tuning metrics, current config, and recommendations
+        """
+        return self.auto_tuner.get_tuning_report()
+
+    def get_performance_statistics(self) -> dict:
+        """Get comprehensive performance statistics.
+
+        Returns:
+            Dictionary with cache effectiveness, concurrency effectiveness,
+            slow queries, layer metrics, and temporal patterns
+        """
+        return {
+            "cache_effectiveness": self.performance_profiler.get_cache_effectiveness(),
+            "concurrency_effectiveness": self.performance_profiler.get_concurrency_effectiveness(),
+            "slow_queries": self.performance_profiler.get_slow_queries(limit=5),
+            "trending_queries": self.performance_profiler.get_trending_queries(limit=5),
+            "layer_dependencies": self.performance_profiler.get_layer_dependency_analysis(),
+            "temporal_pattern": self.performance_profiler.get_temporal_pattern(),
+        }

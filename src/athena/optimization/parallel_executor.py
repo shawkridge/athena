@@ -72,6 +72,7 @@ class ParallelLayerExecutor:
         self.total_sequential_queries = 0
         self.parallel_speedup_times = []
         self.failed_tasks = 0
+        self.latest_layer_latencies = {}  # Track per-layer latencies for profiling
 
     async def execute_parallel(
         self, tasks: List[QueryTask]
@@ -105,6 +106,12 @@ class ParallelLayerExecutor:
 
             # Map results by layer name
             results = {result.layer_name: result for result in results_list}
+
+            # Track per-layer latencies for profiling
+            self.latest_layer_latencies = {
+                result.layer_name: result.elapsed_ms for result in results_list
+            }
+
             return results
 
         except Exception as e:
