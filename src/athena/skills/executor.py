@@ -30,7 +30,7 @@ class SkillExecutor:
         self.library = library
         self.sandbox = sandbox
 
-    def execute(
+    async def execute(
         self,
         skill: Skill,
         parameters: Optional[Dict[str, Any]] = None,
@@ -70,7 +70,7 @@ class SkillExecutor:
             result = entry_func(**bound_params)
 
             # Update library
-            self.library.update_usage(skill.id, success=True)
+            await self.library.update_usage(skill.id, success=True)
 
             return {
                 'success': True,
@@ -80,7 +80,7 @@ class SkillExecutor:
 
         except Exception as e:
             # Update library
-            self.library.update_usage(skill.id, success=False)
+            await self.library.update_usage(skill.id, success=False)
 
             logger.error(f"Skill execution failed: {skill.id}: {e}")
             return {
@@ -165,7 +165,7 @@ class SkillExecutor:
             'skill_id': skill.id,
         }
 
-    def test(
+    async def test(
         self,
         skill: Skill,
         test_parameters: Optional[Dict[str, Any]] = None
@@ -186,7 +186,7 @@ class SkillExecutor:
             logger.info(f"Using example parameters from skill definition")
             # TODO: Extract parameters from examples
 
-        return self.execute(skill, params)
+        return await self.execute(skill, params)
 
     def dry_run(self, skill: Skill) -> Dict[str, Any]:
         """Check if skill can be executed without actually running it.
