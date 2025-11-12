@@ -34,6 +34,7 @@ from typing import Any, Optional, List, Dict
 
 from ..core.database import Database
 from ..core.database_factory import get_database
+from ..core.async_utils import run_async
 from ..core.models import MemoryType
 from ..episodic.models import EpisodicEvent, EventType, EventContext, EventOutcome
 from ..episodic.store import EpisodicStore
@@ -53,35 +54,6 @@ from ..manager import UnifiedMemoryManager
 from ..projects.manager import ProjectManager
 
 logger = logging.getLogger(__name__)
-
-
-def _run_async(coro):
-    """Run an async coroutine synchronously.
-
-    Helper to bridge async project manager with sync API.
-    """
-    import inspect
-
-    # If not a coroutine, return as-is
-    if not inspect.iscoroutine(coro):
-        return coro
-
-    try:
-        # Try to get existing event loop
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # If already in async context, we can't use asyncio.run
-            # This shouldn't happen in unit tests, but just in case
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                future = loop.run_in_executor(pool, asyncio.run, coro)
-                return future.result()  # Wait for result
-        else:
-            # Event loop exists but not running
-            return loop.run_until_complete(coro)
-    except RuntimeError:
-        # No event loop exists, create a new one and run the coroutine
-        return asyncio.run(coro)
 
 
 class MemoryAPI:
@@ -280,7 +252,7 @@ class MemoryAPI:
                     tags=tags,
                 )
             else:
-                memory_id = _run_async(
+                memory_id = run_async(
                     self.semantic.remember(
                         content=content,
                         memory_type=mapped_type,
@@ -390,7 +362,7 @@ class MemoryAPI:
             context = context or {}
             # Use async/sync bridge for async method
             project_coro = self.project_manager.get_or_create_project()
-            project = _run_async(project_coro)
+            project = run_async(project_coro)
 
             if not project or not project.id:
                 raise RuntimeError("Failed to get/create project")

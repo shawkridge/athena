@@ -95,22 +95,13 @@ class SyncCursor:
         return await self.db._pool.getconn()
 
     def _run_async(self, coro):
-        """Run async coroutine in sync context."""
-        import asyncio
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # Already in async context - use thread pool
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor() as pool:
-                    future = loop.run_in_executor(pool, asyncio.run, coro)
-                    return future.result()
-            else:
-                # No running loop - safe to use run()
-                return loop.run_until_complete(coro)
-        except RuntimeError:
-            # No event loop - create one
-            return asyncio.run(coro)
+        """Run async coroutine in sync context.
+
+        This is deprecated - use run_async() from async_utils instead.
+        Keeping for backward compatibility.
+        """
+        from .async_utils import run_async
+        return run_async(coro)
 
     async def _get_conn_async(self):
         """Get connection from pool."""
