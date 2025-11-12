@@ -34,25 +34,28 @@ class SkillLibrary:
 
     def _init_schema(self) -> None:
         """Create skills table if needed."""
-        cursor = self.db.conn.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS skills (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                description TEXT,
-                domain TEXT,
-                code TEXT,
-                entry_point TEXT,
-                metadata_json TEXT,
-                quality_score REAL,
-                times_used INTEGER DEFAULT 0,
-                success_rate REAL DEFAULT 1.0,
-                tags TEXT,
-                created_at TEXT,
-                updated_at TEXT
-            )
-        """)
-        self.db.conn.commit()
+        cursor = self.db.get_cursor()
+        try:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS skills (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    domain TEXT,
+                    code TEXT,
+                    entry_point TEXT,
+                    metadata_json TEXT,
+                    quality_score REAL,
+                    times_used INTEGER DEFAULT 0,
+                    success_rate REAL DEFAULT 1.0,
+                    tags TEXT,
+                    created_at TEXT,
+                    updated_at TEXT
+                )
+            """)
+            self.db.commit()
+        except Exception as e:
+            logger.debug(f"Schema initialization note: {e}")
 
     def save(self, skill: Skill) -> bool:
         """Save a skill to library.
@@ -66,7 +69,7 @@ class SkillLibrary:
         try:
             metadata_json = skill.metadata.to_json()
 
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute("""
                 INSERT OR REPLACE INTO skills
                 (id, name, description, domain, code, entry_point, metadata_json,
@@ -87,7 +90,7 @@ class SkillLibrary:
                 skill.metadata.created_at.isoformat(),
                 skill.metadata.updated_at.isoformat(),
             ))
-            self.db.conn.commit()
+            self.db.commit()
 
             # Optionally save code to filesystem
             if self.storage_dir:
@@ -109,7 +112,7 @@ class SkillLibrary:
         Returns:
             Skill instance or None if not found
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("SELECT * FROM skills WHERE id = ?", (skill_id,))
         row = cursor.fetchone()
 
@@ -129,13 +132,13 @@ class SkillLibrary:
             List of skills
         """
         if domain:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 "SELECT * FROM skills WHERE domain = ? ORDER BY quality_score DESC LIMIT ?",
                 (domain.value, limit)
             )
         else:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute(
                 "SELECT * FROM skills ORDER BY quality_score DESC LIMIT ?",
                 (limit,)
@@ -156,7 +159,7 @@ class SkillLibrary:
         """
         query_pattern = f"%{query.lower()}%"
 
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
         cursor.execute("""
             SELECT * FROM skills
             WHERE
@@ -180,9 +183,9 @@ class SkillLibrary:
             True if deleted
         """
         try:
-            cursor = self.db.conn.cursor()
+            cursor = self.db.get_cursor()
             cursor.execute("DELETE FROM skills WHERE id = ?", (skill_id,))
-            self.db.conn.commit()
+            self.db.commit()
 
             # Delete code file if exists
             if self.storage_dir:
@@ -220,7 +223,7 @@ class SkillLibrary:
         Returns:
             Dictionary with statistics
         """
-        cursor = self.db.conn.cursor()
+        cursor = self.db.get_cursor()
 
         cursor.execute("SELECT COUNT(*) FROM skills")
         total_skills = cursor.fetchone()[0]
