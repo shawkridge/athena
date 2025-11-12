@@ -17,6 +17,7 @@ from athena.manager import UnifiedMemoryManager
 from athena.session.context_manager import SessionContextManager
 
 
+pytest.importorskip("psycopg")
 @pytest.fixture
 def db(tmp_path: Path) -> Database:
     """Create test database."""

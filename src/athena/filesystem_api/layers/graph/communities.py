@@ -6,11 +6,19 @@ Returns community metrics, not full membership lists.
 """
 
 from typing import Dict, Any, Optional, List
-import sqlite3
+try:
+    import psycopg
+    from psycopg import AsyncConnection
+except ImportError:
+    raise ImportError("PostgreSQL required: pip install psycopg[binary]")
 
 
 def detect_communities(
-    db_path: str,
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     min_size: int = 2,
     resolution: float = 1.0
 ) -> Dict[str, Any]:
@@ -33,18 +41,18 @@ def detect_communities(
         - entity_distribution: How entities spread across communities
     """
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = await AsyncConnection.connect(db_path)
+        # PostgreSQL returns dicts
         cursor = conn.cursor()
 
         # Get all entities and relations
-        cursor.execute("SELECT id, type FROM graph_entities")
-        entities = [dict(row) for row in cursor.fetchall()]
+        await cursor.execute("SELECT id, type FROM graph_entities")
+        entities = [dict(row) for row in await cursor.fetchall()]
 
-        cursor.execute("SELECT source_id, target_id FROM graph_relations")
-        relations = [dict(row) for row in cursor.fetchall()]
+        await cursor.execute("SELECT source_id, target_id FROM graph_relations")
+        relations = [dict(row) for row in await cursor.fetchall()]
 
-        conn.close()
+        await conn.close()
 
         if not entities or not relations:
             return {
@@ -81,8 +89,12 @@ def detect_communities(
         }
 
 
-def get_community_info(
-    db_path: str,
+async def get_community_info(
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     community_id: int
 ) -> Dict[str, Any]:
     """
@@ -91,17 +103,17 @@ def get_community_info(
     Returns entity counts and relation counts, not members.
     """
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = await AsyncConnection.connect(db_path)
+        # PostgreSQL returns dicts
         cursor = conn.cursor()
 
         # Get community members (from some membership table)
-        cursor.execute(
+        await cursor.execute(
             "SELECT entity_id FROM community_members WHERE community_id = ?",
             (community_id,)
         )
 
-        member_ids = [row["entity_id"] for row in cursor.fetchall()]
+        member_ids = [row["entity_id"] for row in await cursor.fetchall()]
 
         if not member_ids:
             return {
@@ -112,15 +124,15 @@ def get_community_info(
 
         # Count entity types in community
         placeholders = ",".join("?" * len(member_ids))
-        cursor.execute(
+        await cursor.execute(
             f"SELECT type, COUNT(*) as count FROM graph_entities WHERE id IN ({placeholders}) GROUP BY type",
             member_ids
         )
 
-        type_dist = {row["type"]: row["count"] for row in cursor.fetchall()}
+        type_dist = {row["type"]: row["count"] for row in await cursor.fetchall()}
 
         # Count internal relations
-        cursor.execute(
+        await cursor.execute(
             f"""
             SELECT COUNT(*) as count FROM graph_relations
             WHERE source_id IN ({placeholders}) AND target_id IN ({placeholders})
@@ -128,10 +140,10 @@ def get_community_info(
             member_ids + member_ids
         )
 
-        internal_relations = cursor.fetchone()["count"]
+        internal_relations = await cursor.fetchone()["count"]
 
         # Count external relations
-        cursor.execute(
+        await cursor.execute(
             f"""
             SELECT COUNT(*) as count FROM graph_relations
             WHERE (source_id IN ({placeholders}) AND target_id NOT IN ({placeholders}))
@@ -140,9 +152,9 @@ def get_community_info(
             member_ids + member_ids + member_ids + member_ids
         )
 
-        external_relations = cursor.fetchone()["count"]
+        external_relations = await cursor.fetchone()["count"]
 
-        conn.close()
+        await conn.close()
 
         return {
             "community_id": community_id,

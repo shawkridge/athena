@@ -6,11 +6,19 @@ Never returns full procedure code.
 """
 
 from typing import Dict, Any, Optional, List
-import sqlite3
+try:
+    import psycopg
+    from psycopg import AsyncConnection
+except ImportError:
+    raise ImportError("PostgreSQL required: pip install psycopg[binary]")
 
 
-def find_procedures(
-    db_path: str,
+async def find_procedures(
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     query: str,
     limit: int = 10,
     effectiveness_threshold: float = 0.5
@@ -24,23 +32,23 @@ def find_procedures(
     Token cost: ~200 tokens vs 5,000 for full procedures.
     """
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = await AsyncConnection.connect(db_path)
+        # PostgreSQL returns dicts
         cursor = conn.cursor()
 
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT id, name, effectiveness_score, success_count, execution_count
             FROM procedures
-            WHERE name LIKE ? OR description LIKE ?
+            WHERE name ILIKE ? OR description ILIKE ?
             AND effectiveness_score >= ?
             LIMIT ?
             """,
             (f"%{query}%", f"%{query}%", effectiveness_threshold, limit)
         )
 
-        procedures = [dict(row) for row in cursor.fetchall()]
-        conn.close()
+        procedures = [dict(row) for row in await cursor.fetchall()]
+        await conn.close()
 
         if not procedures:
             return {
@@ -65,17 +73,21 @@ def find_procedures(
         return {"error": str(e), "error_type": type(e).__name__}
 
 
-def get_procedure_summary(
-    db_path: str,
+async def get_procedure_summary(
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     procedure_id: str
 ) -> Dict[str, Any]:
     """Get procedure summary (not full code)."""
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = await AsyncConnection.connect(db_path)
+        # PostgreSQL returns dicts
         cursor = conn.cursor()
 
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT id, name, description, effectiveness_score,
                    execution_count, success_count, last_used
@@ -85,8 +97,8 @@ def get_procedure_summary(
             (procedure_id,)
         )
 
-        result = dict(cursor.fetchone() or {})
-        conn.close()
+        result = dict(await cursor.fetchone() or {})
+        await conn.close()
 
         return result if result else {"error": f"Procedure not found: {procedure_id}"}
 

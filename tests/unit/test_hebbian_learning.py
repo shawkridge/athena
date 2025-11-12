@@ -9,6 +9,7 @@ from athena.associations.network import AssociationNetwork
 from athena.core.database import Database
 
 
+pytest.importorskip("psycopg")
 @pytest.fixture
 def db(tmp_path):
     """Create test database."""

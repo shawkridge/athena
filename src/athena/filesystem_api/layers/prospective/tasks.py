@@ -6,11 +6,19 @@ Never returns full task data.
 """
 
 from typing import Dict, Any, Optional, List
-import sqlite3
+try:
+    import psycopg
+    from psycopg import AsyncConnection
+except ImportError:
+    raise ImportError("PostgreSQL required: pip install psycopg[binary]")
 
 
-def list_tasks(
-    db_path: str,
+async def list_tasks(
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     status_filter: Optional[str] = None,
     priority_filter: Optional[str] = None,
     limit: int = 100
@@ -24,8 +32,8 @@ def list_tasks(
     Token cost: ~200 tokens vs 12,000 for full tasks.
     """
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = await AsyncConnection.connect(db_path)
+        # PostgreSQL returns dicts
         cursor = conn.cursor()
 
         where_clauses = []
@@ -41,7 +49,7 @@ def list_tasks(
 
         where_clause = " AND ".join(where_clauses) if where_clauses else "1=1"
 
-        cursor.execute(
+        await cursor.execute(
             f"""
             SELECT id, status, priority, estimated_effort
             FROM tasks
@@ -51,8 +59,8 @@ def list_tasks(
             params + [limit]
         )
 
-        tasks = [dict(row) for row in cursor.fetchall()]
-        conn.close()
+        tasks = [dict(row) for row in await cursor.fetchall()]
+        await conn.close()
 
         if not tasks:
             return {
@@ -87,14 +95,18 @@ def list_tasks(
         return {"error": str(e), "error_type": type(e).__name__}
 
 
-def get_task_summary(db_path: str, task_id: str) -> Dict[str, Any]:
+async def get_task_summary(host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str, task_id: str) -> Dict[str, Any]:
     """Get task summary (not full data)."""
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = await AsyncConnection.connect(db_path)
+        # PostgreSQL returns dicts
         cursor = conn.cursor()
 
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT id, title, status, priority, estimated_effort, deadline
             FROM tasks
@@ -103,8 +115,8 @@ def get_task_summary(db_path: str, task_id: str) -> Dict[str, Any]:
             (task_id,)
         )
 
-        result = dict(cursor.fetchone() or {})
-        conn.close()
+        result = dict(await cursor.fetchone() or {})
+        await conn.close()
 
         return result if result else {"error": f"Task not found: {task_id}"}
 

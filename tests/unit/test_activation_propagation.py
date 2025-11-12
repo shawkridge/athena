@@ -8,6 +8,7 @@ from athena.associations.models import LinkType
 from athena.core.database import Database
 
 
+pytest.importorskip("psycopg")
 @pytest.fixture
 def db(tmp_path):
     """Create test database."""

@@ -18,6 +18,7 @@ from athena.research.circuit_breaker import CircuitBreakerManager
 from athena.core.database import Database
 
 
+pytest.importorskip("psycopg")
 class TestExecutorRateLimitingEnforcement:
     """Test that rate limiting is enforced during agent execution."""
 

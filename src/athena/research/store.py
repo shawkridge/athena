@@ -31,12 +31,12 @@ class ResearchStore(BaseStore):
         """Convert database row to ResearchTask model.
 
         Args:
-            row: Database row (sqlite3.Row or dict)
+            row: Database row (psycopg Record or dict)
 
         Returns:
             ResearchTask instance
         """
-        # Convert Row to dict if needed (sqlite3.Row is dict-like but needs explicit conversion)
+        # Convert Row to dict if needed (psycopg Record is dict-like but needs explicit conversion)
         row_dict = dict(row) if hasattr(row, 'keys') else row
 
         agent_results = {}

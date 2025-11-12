@@ -5,11 +5,16 @@ Tests the complete git integration including:
 - Regression analysis and tracking
 - Author metrics collection
 - Temporal linking between commits
+
+NOTE: Requires PostgreSQL backend.
 """
 
 import pytest
 from datetime import datetime, timedelta
 from pathlib import Path
+
+# Skip all tests if PostgreSQL not available
+pytest.importorskip("psycopg")
 
 from athena.core.database import Database
 from athena.temporal.git_store import GitStore

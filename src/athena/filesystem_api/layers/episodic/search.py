@@ -15,12 +15,20 @@ Usage:
 
 from typing import Dict, Any, Optional
 from datetime import datetime
-import sqlite3
+try:
+    import psycopg
+    from psycopg import AsyncConnection
+except ImportError:
+    raise ImportError("PostgreSQL required: pip install psycopg[binary]")
 import json
 
 
-def search_events(
-    db_path: str,
+async def search_events(
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     query: str,
     limit: int = 100,
     confidence_threshold: float = 0.7,
@@ -53,23 +61,23 @@ def search_events(
         - event_types: Distribution of event types
     """
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = await AsyncConnection.connect(db_path)
+        # PostgreSQL returns dicts
         cursor = conn.cursor()
 
         # Search for events matching query
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT id, timestamp, event_type, outcome, confidence
             FROM episodic_events
-            WHERE content LIKE ? OR context LIKE ?
+            WHERE content ILIKE ? OR context ILIKE ?
             LIMIT ?
             """,
             (f"%{query}%", f"%{query}%", limit)
         )
 
-        all_events = [dict(row) for row in cursor.fetchall()]
-        conn.close()
+        all_events = [dict(row) for row in await cursor.fetchall()]
+        await conn.close()
 
         if not all_events:
             return {
@@ -132,8 +140,12 @@ def search_events(
         }
 
 
-def retrieve_event_details(
-    db_path: str,
+async def retrieve_event_details(
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     event_id: str
 ) -> Dict[str, Any]:
     """
@@ -150,17 +162,17 @@ def retrieve_event_details(
         Full event object (use sparingly!)
     """
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = await AsyncConnection.connect(db_path)
+        # PostgreSQL returns dicts
         cursor = conn.cursor()
 
-        cursor.execute(
+        await cursor.execute(
             "SELECT * FROM episodic_events WHERE id = ?",
             (event_id,)
         )
 
-        row = cursor.fetchone()
-        conn.close()
+        row = await cursor.fetchone()
+        await conn.close()
 
         if not row:
             return {"error": f"Event not found: {event_id}"}

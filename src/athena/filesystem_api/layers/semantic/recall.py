@@ -4,9 +4,15 @@ Recall semantic memories with local filtering and summarization.
 Provides filesystem API for semantic memory retrieval.
 Filters locally, returns only summaries (not full memory objects).
 
+Uses PostgreSQL backend only.
+
 Usage:
-    result = search_memories(
-        db_path="~/.athena/memory.db",
+    result = await search_memories(
+        host="localhost",
+        port=5432,
+        dbname="athena",
+        user="athena",
+        password="athena_dev",
         query="authentication",
         limit=100,
         confidence_threshold=0.7
@@ -14,12 +20,22 @@ Usage:
 """
 
 from typing import Dict, Any, Optional, List
-import sqlite3
+import asyncio
 import json
 
+try:
+    import psycopg
+    from psycopg import AsyncConnection
+except ImportError:
+    raise ImportError("PostgreSQL required: pip install psycopg[binary]")
 
-def search_memories(
-    db_path: str,
+
+async def search_memories(
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     query: str,
     limit: int = 100,
     confidence_threshold: float = 0.7,
@@ -33,7 +49,11 @@ def search_memories(
     Token cost: ~200 tokens vs 15,000 for full objects.
 
     Args:
-        db_path: Path to memory database
+        host: PostgreSQL host
+        port: PostgreSQL port
+        dbname: Database name
+        user: Database user
+        password: Database password
         query: Search query
         limit: Max results
         confidence_threshold: Filter by confidence >= this
@@ -49,41 +69,47 @@ def search_memories(
         - top_5_ids: Best matching memory IDs
     """
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        conn = await AsyncConnection.connect(
+            host=host,
+            port=port,
+            dbname=dbname,
+            user=user,
+            password=password
+        )
 
         # Build query
         where_clauses = ["1=1"]
         params = []
 
         # Search in content (would use FTS in production)
-        where_clauses.append("(content LIKE ? OR tags LIKE ?)")
+        where_clauses.append("(content ILIKE %s OR tags ILIKE %s)")
         params.extend([f"%{query}%", f"%{query}%"])
 
         if domain_filter:
-            where_clauses.append("domain = ?")
+            where_clauses.append("domain = %s")
             params.append(domain_filter)
 
         if memory_type_filter:
-            where_clauses.append("type = ?")
+            where_clauses.append("type = %s")
             params.append(memory_type_filter)
 
         where_clause = " AND ".join(where_clauses)
 
         # Get all matches (will filter locally)
-        cursor.execute(
-            f"""
-            SELECT id, type, domain, confidence, usefulness_score
-            FROM semantic_memories
-            WHERE {where_clause}
-            LIMIT ?
-            """,
-            params + [limit]
-        )
+        async with conn.cursor() as cursor:
+            await cursor.execute(
+                f"""
+                SELECT id, type, domain, confidence, usefulness_score
+                FROM semantic_memories
+                WHERE {where_clause}
+                LIMIT %s
+                """,
+                params + [limit]
+            )
 
-        all_memories = [dict(row) for row in cursor.fetchall()]
-        conn.close()
+            all_memories = [dict(row) for row in await cursor.fetchall()]
+
+        await conn.close()
 
         if not all_memories:
             return {

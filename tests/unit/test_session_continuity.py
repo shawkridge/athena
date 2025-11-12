@@ -23,6 +23,7 @@ from athena.ai_coordination.session_continuity_store import SessionContinuitySto
 from athena.core.database import Database
 
 
+pytest.importorskip("psycopg")
 class TestSessionContinuityModels:
     """Test SessionContinuity data models."""
 

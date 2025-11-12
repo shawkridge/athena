@@ -387,7 +387,7 @@ class TaskQueue:
         """Convert database row to Task object.
 
         Args:
-            row: Database row (sqlite3.Row)
+            row: Database row (psycopg Record)
 
         Returns:
             Task instance

@@ -8,11 +8,19 @@ Token cost: ~400 tokens vs 45,000 for separate searches.
 """
 
 from typing import Dict, Any, Optional, List
-import sqlite3
+try:
+    import psycopg
+    from psycopg import AsyncConnection
+except ImportError:
+    raise ImportError("PostgreSQL required: pip install psycopg[binary]")
 
 
-def search_all_layers(
-    db_path: str,
+async def search_all_layers(
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     query: str,
     limit_per_layer: int = 10,
     confidence_threshold: float = 0.7
@@ -39,8 +47,8 @@ def search_all_layers(
         Aggregated summary across all layers
     """
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = await AsyncConnection.connect(db_path)
+        # PostgreSQL returns dicts
         cursor = conn.cursor()
 
         results = {
@@ -52,15 +60,15 @@ def search_all_layers(
         }
 
         # Search episodic
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT COUNT(*) as count, AVG(confidence) as avg_conf
             FROM episodic_events
-            WHERE content LIKE ? AND confidence >= ?
+            WHERE content ILIKE ? AND confidence >= ?
             """,
             (f"%{query}%", confidence_threshold)
         )
-        epi_row = cursor.fetchone()
+        epi_row = await cursor.fetchone()
         if epi_row and epi_row["count"] > 0:
             results["summary"]["episodic"] = {
                 "match_count": epi_row["count"],
@@ -70,15 +78,15 @@ def search_all_layers(
             results["total_matches"] += epi_row["count"]
 
         # Search semantic
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT COUNT(*) as count, AVG(confidence) as avg_conf
             FROM semantic_memories
-            WHERE content LIKE ? AND confidence >= ?
+            WHERE content ILIKE ? AND confidence >= ?
             """,
             (f"%{query}%", confidence_threshold)
         )
-        sem_row = cursor.fetchone()
+        sem_row = await cursor.fetchone()
         if sem_row and sem_row["count"] > 0:
             results["summary"]["semantic"] = {
                 "match_count": sem_row["count"],
@@ -88,15 +96,15 @@ def search_all_layers(
             results["total_matches"] += sem_row["count"]
 
         # Search graph
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT COUNT(*) as count, AVG(confidence) as avg_conf
             FROM graph_entities
-            WHERE name LIKE ? AND confidence >= ?
+            WHERE name ILIKE ? AND confidence >= ?
             """,
             (f"%{query}%", confidence_threshold)
         )
-        graph_row = cursor.fetchone()
+        graph_row = await cursor.fetchone()
         if graph_row and graph_row["count"] > 0:
             results["summary"]["graph"] = {
                 "match_count": graph_row["count"],
@@ -106,15 +114,15 @@ def search_all_layers(
             results["total_matches"] += graph_row["count"]
 
         # Search procedures
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT COUNT(*) as count, AVG(effectiveness_score) as avg_eff
             FROM procedures
-            WHERE name LIKE ? OR description LIKE ?
+            WHERE name ILIKE ? OR description ILIKE ?
             """,
             (f"%{query}%", f"%{query}%")
         )
-        proc_row = cursor.fetchone()
+        proc_row = await cursor.fetchone()
         if proc_row and proc_row["count"] > 0:
             results["summary"]["procedural"] = {
                 "match_count": proc_row["count"],
@@ -124,15 +132,15 @@ def search_all_layers(
             results["total_matches"] += proc_row["count"]
 
         # Search tasks
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT COUNT(*) as count, COUNT(CASE WHEN status='completed' THEN 1 END) as completed
             FROM tasks
-            WHERE title LIKE ? OR description LIKE ?
+            WHERE title ILIKE ? OR description ILIKE ?
             """,
             (f"%{query}%", f"%{query}%")
         )
-        task_row = cursor.fetchone()
+        task_row = await cursor.fetchone()
         if task_row and task_row["count"] > 0:
             results["summary"]["prospective"] = {
                 "match_count": task_row["count"],
@@ -141,7 +149,7 @@ def search_all_layers(
             results["layers_searched"] += 1
             results["total_matches"] += task_row["count"]
 
-        conn.close()
+        await conn.close()
 
         if results["total_matches"] == 0:
             results["empty"] = True

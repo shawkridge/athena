@@ -51,8 +51,8 @@ class ExecutiveMetrics:
         Returns:
             MetricsSnapshot with current metrics
         """
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
             # Count goals by status
             status_query = "SELECT status, COUNT(*) FROM executive_goals WHERE project_id = ?"
@@ -64,8 +64,8 @@ class ExecutiveMetrics:
 
             status_query += " GROUP BY status"
 
-            cursor.execute(status_query, status_params)
-            status_counts = {row[0]: row[1] for row in cursor.fetchall()}
+            await cursor.execute(status_query, status_params)
+            status_counts = {row[0]: row[1] for row in await cursor.fetchall()}
 
             completed = status_counts.get("completed", 0)
             abandoned = status_counts.get("abandoned", 0)
@@ -89,13 +89,13 @@ class ExecutiveMetrics:
             )
 
             # Record metrics
-            cursor.execute(
+            await cursor.execute(
                 """
                 INSERT INTO executive_metrics
                 (project_id, metric_date, total_goals, completed_goals, abandoned_goals,
                  average_switch_cost_ms, total_switch_overhead_ms, average_goal_completion_hours,
                  success_rate, efficiency_score)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     project_id,
@@ -126,16 +126,16 @@ class ExecutiveMetrics:
                 efficiency_score=efficiency_score,
             )
 
-    def get_metrics_trend(self, project_id: int, days: int = 30) -> List[MetricsSnapshot]:
+    async def get_metrics_trend(self, project_id: int, days: int = 30) -> List[MetricsSnapshot]:
         """Get metrics trend over time."""
         metrics = []
 
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
             start_date = (date.today() - timedelta(days=days)).isoformat()
 
-            cursor.execute(
+            await cursor.execute(
                 """
                 SELECT project_id, metric_date, total_goals, completed_goals, abandoned_goals,
                        average_switch_cost_ms, total_switch_overhead_ms, average_goal_completion_hours,
@@ -147,7 +147,7 @@ class ExecutiveMetrics:
                 (project_id, start_date),
             )
 
-            for row in cursor.fetchall():
+            for row in await cursor.fetchall():
                 snapshot = MetricsSnapshot(
                     project_id=row[0],
                     metric_date=datetime.fromisoformat(row[1]).date(),
@@ -180,10 +180,10 @@ class ExecutiveMetrics:
             'avg_hours_to_complete': float
         }
         """
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
-            cursor.execute(
+            await cursor.execute(
                 """
                 SELECT outcome, COUNT(*) as count, AVG(hours_actual) as avg_hours
                 FROM strategy_recommendations sr
@@ -194,7 +194,7 @@ class ExecutiveMetrics:
                 (project_id, strategy_name),
             )
 
-            results = cursor.fetchall()
+            results = await cursor.fetchall()
             if not results:
                 return None
 
@@ -215,12 +215,12 @@ class ExecutiveMetrics:
                 "avg_hours_to_complete": outcome_data.get("success", {}).get("avg_hours"),
             }
 
-    def get_efficiency_score(self, project_id: int) -> float:
+    async def get_efficiency_score(self, project_id: int) -> float:
         """Get current efficiency score for a project."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
-            cursor.execute(
+            await cursor.execute(
                 """
                 SELECT efficiency_score
                 FROM executive_metrics
@@ -231,14 +231,14 @@ class ExecutiveMetrics:
                 (project_id,),
             )
 
-            row = cursor.fetchone()
+            row = await cursor.fetchone()
             return row[0] if row else 0.0
 
     # Private helper methods
 
     def _calculate_switch_overhead(self, project_id: int, cursor) -> Dict:
         """Calculate task switching overhead."""
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT switch_cost_ms FROM task_switches
             WHERE project_id = ?
@@ -246,7 +246,7 @@ class ExecutiveMetrics:
             (project_id,),
         )
 
-        switch_costs = [row[0] for row in cursor.fetchall()]
+        switch_costs = [row[0] for row in await cursor.fetchall()]
 
         if not switch_costs:
             return {"total_ms": 0, "average_ms": 0.0}
@@ -258,7 +258,7 @@ class ExecutiveMetrics:
 
     def _get_completion_times(self, project_id: int, cursor) -> List[float]:
         """Get goal completion times in hours."""
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT actual_hours
             FROM executive_goals
@@ -268,7 +268,7 @@ class ExecutiveMetrics:
             (project_id,),
         )
 
-        completion_times = [row[0] for row in cursor.fetchall()]
+        completion_times = [row[0] for row in await cursor.fetchall()]
         return completion_times
 
     def _calculate_efficiency_score(

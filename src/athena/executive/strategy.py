@@ -118,10 +118,10 @@ class StrategySelector:
         2. Score each strategy based on weighted feature importance
         3. Rank by confidence and return top-K
         """
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
-            cursor.execute(
+            await cursor.execute(
                 """
                 SELECT id, project_id, goal_text, priority, estimated_hours,
                        deadline, created_at, parent_goal_id, progress, status
@@ -130,7 +130,7 @@ class StrategySelector:
                 """,
                 (goal_id,),
             )
-            row = cursor.fetchone()
+            row = await cursor.fetchone()
             if not row:
                 return []
 
@@ -168,11 +168,11 @@ class StrategySelector:
                 recommendations.append(rec)
 
                 # Store recommendation in DB
-                cursor.execute(
+                await cursor.execute(
                     """
                     INSERT INTO strategy_recommendations
                     (goal_id, strategy_name, confidence, recommended_at, model_version)
-                    VALUES (?, ?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s, %s)
                     """,
                     (goal_id, strategy.value, confidence, datetime.now().isoformat(), "v1.0"),
                 )
@@ -181,14 +181,14 @@ class StrategySelector:
 
         return recommendations
 
-    def record_outcome(
+    async def record_outcome(
         self, recommendation_id: int, outcome: str, hours_actual: float, feedback: Optional[str] = None
     ) -> bool:
         """Record outcome of a strategy recommendation."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
-            cursor.execute(
+            await cursor.execute(
                 """
                 UPDATE strategy_recommendations
                 SET outcome = ?
@@ -201,10 +201,10 @@ class StrategySelector:
 
         return cursor.rowcount > 0
 
-    def get_strategy_success_rate(self, strategy_name: str, project_id: Optional[int] = None) -> float:
+    async def get_strategy_success_rate(self, strategy_name: str, project_id: Optional[int] = None) -> float:
         """Get success rate for a strategy."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
             if project_id:
                 query = """
@@ -215,7 +215,7 @@ class StrategySelector:
                     WHERE sr.strategy_name = ? AND eg.project_id = ?
                     AND sr.outcome IS NOT NULL
                 """
-                cursor.execute(query, (strategy_name, project_id))
+                await cursor.execute(query, (strategy_name, project_id))
             else:
                 query = """
                     SELECT COUNT(*) as total,
@@ -223,9 +223,9 @@ class StrategySelector:
                     FROM strategy_recommendations
                     WHERE strategy_name = ? AND outcome IS NOT NULL
                 """
-                cursor.execute(query, (strategy_name,))
+                await cursor.execute(query, (strategy_name,))
 
-            row = cursor.fetchone()
+            row = await cursor.fetchone()
             if not row or row[0] == 0:
                 return 0.5  # Default neutral confidence
 
@@ -243,11 +243,11 @@ class StrategySelector:
             'confidence': float
         }
         """
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
-            def get_stats(strategy_name):
-                cursor.execute(
+            async def get_stats(strategy_name):
+                await cursor.execute(
                     """
                     SELECT COUNT(*) as total,
                            SUM(CASE WHEN outcome = 'success' THEN 1 ELSE 0 END) as successes,
@@ -257,7 +257,7 @@ class StrategySelector:
                     """,
                     (strategy_name,),
                 )
-                row = cursor.fetchone()
+                row = await cursor.fetchone()
                 if not row or row[0] == 0:
                     return {"success_rate": 0.5, "count": 0, "avg_hours": None}
 
@@ -287,12 +287,12 @@ class StrategySelector:
                 "confidence": confidence,
             }
 
-    def get_recommendation_by_id(self, recommendation_id: int) -> Optional[Dict]:
+    async def get_recommendation_by_id(self, recommendation_id: int) -> Optional[Dict]:
         """Get a recommendation by ID."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
-            cursor.execute(
+            await cursor.execute(
                 """
                 SELECT id, goal_id, strategy_name, confidence, recommended_at, outcome, model_version
                 FROM strategy_recommendations
@@ -300,7 +300,7 @@ class StrategySelector:
                 """,
                 (recommendation_id,),
             )
-            row = cursor.fetchone()
+            row = await cursor.fetchone()
 
             if not row:
                 return None
@@ -346,25 +346,25 @@ class StrategySelector:
         progress = goal_data["progress"]
 
         # Feature 7: blockers (count from DB)
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT COUNT(*) FROM goal_blockers
             WHERE goal_id = ? AND resolved = 0
             """,
             (goal_id,),
         )
-        blocker_row = cursor.fetchone()
+        blocker_row = await cursor.fetchone()
         blockers_count = blocker_row[0] if blocker_row else 0
 
         # Feature 8: related_goals_count
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT COUNT(*) FROM executive_goals
             WHERE project_id = ? AND parent_goal_id = ? AND status = 'active'
             """,
             (goal_data["project_id"], goal_data["parent_goal_id"]),
         )
-        related_row = cursor.fetchone()
+        related_row = await cursor.fetchone()
         related_goals = related_row[0] if related_row else 0
 
         return {

@@ -6,6 +6,7 @@ from pathlib import Path
 from athena.core.database import Database
 from athena.safety.evaluator import SafetyEvaluator
 from athena.safety.models import (
+pytest.importorskip("psycopg")
     ChangeType,
     ChangeRiskLevel,
     ApprovalStatus,

@@ -92,57 +92,57 @@ class ProspectiveStore(BaseStore):
         # Add missing columns if they don't exist (for backward compatibility)
         try:
             cursor.execute("ALTER TABLE prospective_tasks ADD COLUMN phase TEXT DEFAULT 'planning'")
-        except sqlite3.OperationalError:
+        except psycopg.errors.OperationalError:
             pass  # Column already exists
 
         try:
             cursor.execute("ALTER TABLE prospective_tasks ADD COLUMN plan_json TEXT")
-        except sqlite3.OperationalError:
+        except psycopg.errors.OperationalError:
             pass
 
         try:
             cursor.execute("ALTER TABLE prospective_tasks ADD COLUMN plan_created_at INTEGER")
-        except sqlite3.OperationalError:
+        except psycopg.errors.OperationalError:
             pass
 
         try:
             cursor.execute("ALTER TABLE prospective_tasks ADD COLUMN phase_started_at INTEGER")
-        except sqlite3.OperationalError:
+        except psycopg.errors.OperationalError:
             pass
 
         try:
             cursor.execute("ALTER TABLE prospective_tasks ADD COLUMN phase_metrics_json TEXT")
-        except sqlite3.OperationalError:
+        except psycopg.errors.OperationalError:
             pass
 
         try:
             cursor.execute("ALTER TABLE prospective_tasks ADD COLUMN actual_duration_minutes REAL")
-        except sqlite3.OperationalError:
+        except psycopg.errors.OperationalError:
             pass
 
         try:
             cursor.execute("ALTER TABLE prospective_tasks ADD COLUMN lessons_learned TEXT")
-        except sqlite3.OperationalError:
+        except psycopg.errors.OperationalError:
             pass
 
         try:
             cursor.execute("ALTER TABLE prospective_tasks ADD COLUMN blocked_reason TEXT")
-        except sqlite3.OperationalError:
+        except psycopg.errors.OperationalError:
             pass
 
         try:
             cursor.execute("ALTER TABLE prospective_tasks ADD COLUMN failure_reason TEXT")
-        except sqlite3.OperationalError:
+        except psycopg.errors.OperationalError:
             pass
 
         try:
             cursor.execute("ALTER TABLE prospective_tasks ADD COLUMN notes TEXT")
-        except sqlite3.OperationalError:
+        except psycopg.errors.OperationalError:
             pass
 
         try:
             cursor.execute("ALTER TABLE prospective_tasks ADD COLUMN assignee TEXT")
-        except sqlite3.OperationalError:
+        except psycopg.errors.OperationalError:
             pass
 
         # Task triggers
@@ -939,7 +939,7 @@ class ProspectiveStore(BaseStore):
         Returns:
             ProspectiveTask instance
         """
-        # Convert sqlite3.Row to dict if needed
+        # Convert psycopg Record to dict if needed
         if hasattr(row, 'keys'):
             # Row-like object, convert to dict
             row_dict = dict(row)

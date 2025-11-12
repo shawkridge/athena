@@ -26,7 +26,7 @@ class MetaMemoryStore(BaseStore):
         """Convert database row to DomainCoverage model.
 
         Args:
-            row: Database row (sqlite3.Row or dict)
+            row: Database row (psycopg Record or dict)
 
         Returns:
             DomainCoverage instance

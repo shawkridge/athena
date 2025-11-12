@@ -6,12 +6,20 @@ Never returns full pattern objects or full event data.
 """
 
 from typing import Dict, Any, Optional, List
-import sqlite3
+try:
+    import psycopg
+    from psycopg import AsyncConnection
+except ImportError:
+    raise ImportError("PostgreSQL required: pip install psycopg[binary]")
 from datetime import datetime, timedelta
 
 
-def extract_patterns(
-    db_path: str,
+async def extract_patterns(
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     time_window_hours: int = 24,
     min_support: float = 0.3,
     confidence_threshold: float = 0.5
@@ -38,13 +46,13 @@ def extract_patterns(
         - top_patterns_by_confidence: Top 5 pattern summaries (IDs only)
     """
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = await AsyncConnection.connect(db_path)
+        # PostgreSQL returns dicts
         cursor = conn.cursor()
 
         # Get recent events
         cutoff_time = datetime.utcnow() - timedelta(hours=time_window_hours)
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT id, event_type, outcome, confidence, timestamp
             FROM episodic_events
@@ -54,8 +62,8 @@ def extract_patterns(
             (cutoff_time.isoformat(),)
         )
 
-        events = [dict(row) for row in cursor.fetchall()]
-        conn.close()
+        events = [dict(row) for row in await cursor.fetchall()]
+        await conn.close()
 
         if not events:
             return {
@@ -104,23 +112,27 @@ def extract_patterns(
         }
 
 
-def get_pattern_details(
-    db_path: str,
+async def get_pattern_details(
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     pattern_id: str
 ) -> Dict[str, Any]:
     """Get details for a specific pattern (use sparingly)."""
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = await AsyncConnection.connect(db_path)
+        # PostgreSQL returns dicts
         cursor = conn.cursor()
 
-        cursor.execute(
+        await cursor.execute(
             "SELECT * FROM patterns WHERE id = ?",
             (pattern_id,)
         )
 
-        row = cursor.fetchone()
-        conn.close()
+        row = await cursor.fetchone()
+        await conn.close()
 
         if not row:
             return {"error": f"Pattern not found: {pattern_id}"}

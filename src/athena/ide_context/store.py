@@ -31,7 +31,7 @@ class IDEContextStore(BaseStore):
         """Convert database row to IDEFile model.
 
         Args:
-            row: Database row (sqlite3.Row or dict)
+            row: Database row (psycopg Record or dict)
 
         Returns:
             IDEFile instance

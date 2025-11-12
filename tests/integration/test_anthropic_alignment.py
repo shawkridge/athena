@@ -6,11 +6,16 @@ Tests the three systems working together:
 3. Skills persistence and matching
 
 Demonstrates 98.7% context reduction and privacy-preserving execution.
+
+NOTE: Skills tests require PostgreSQL. Skip if not available.
 """
 
 import pytest
 import tempfile
 from pathlib import Path
+
+# Skip entire module if PostgreSQL not available
+pytest.importorskip("psycopg")
 
 from athena.pii import PIIDetector, PIITokenizer, FieldPolicy
 from athena.tools_discovery import ToolsGenerator, register_core_tools
@@ -18,7 +23,7 @@ from athena.skills.models import Skill, SkillMetadata, SkillDomain
 from athena.skills.library import SkillLibrary
 from athena.skills.matcher import SkillMatcher
 from athena.skills.executor import SkillExecutor
-from athena.core.database import Database
+from athena.core.database_postgres import PostgresDatabase
 
 
 class TestPIIIntegration:
@@ -154,13 +159,26 @@ class TestToolsDiscoveryIntegration:
 
 
 class TestSkillsIntegration:
-    """Test skills system."""
+    """Test skills system.
 
-    def test_skill_creation_and_persistence(self):
+    Requires PostgreSQL to be running.
+    """
+
+    @pytest.fixture
+    def postgres_db(self) -> PostgresDatabase:
+        """Create PostgreSQL database instance."""
+        return PostgresDatabase(
+            host="localhost",
+            port=5432,
+            dbname="athena",
+            user="athena",
+            password="athena_dev",
+        )
+
+    def test_skill_creation_and_persistence(self, postgres_db):
         """Test creating and storing a skill."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            db = Database(f"{tmpdir}/skills.db")
-            library = SkillLibrary(db, storage_dir=tmpdir)
+            library = SkillLibrary(postgres_db, storage_dir=tmpdir)
 
             # Create a skill
             metadata = SkillMetadata(
@@ -190,11 +208,10 @@ class TestSkillsIntegration:
             assert retrieved is not None
             assert retrieved.metadata.quality_score == 0.95
 
-    def test_skill_matching_and_execution(self):
+    def test_skill_matching_and_execution(self, postgres_db):
         """Test matching skills to tasks and executing them."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            db = Database(f"{tmpdir}/skills.db")
-            library = SkillLibrary(db, storage_dir=tmpdir)
+            library = SkillLibrary(postgres_db, storage_dir=tmpdir)
 
             # Create several skills
             for name, desc, code in [

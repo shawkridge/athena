@@ -6,11 +6,19 @@ Never returns full entity/relation objects.
 """
 
 from typing import Dict, Any, Optional, List
-import sqlite3
+try:
+    import psycopg
+    from psycopg import AsyncConnection
+except ImportError:
+    raise ImportError("PostgreSQL required: pip install psycopg[binary]")
 
 
-def search_entities(
-    db_path: str,
+async def search_entities(
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     query: str,
     limit: int = 100,
     max_depth: int = 2
@@ -28,22 +36,22 @@ def search_entities(
         Summary with entity counts, relation counts, connectivity metrics
     """
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = await AsyncConnection.connect(db_path)
+        # PostgreSQL returns dicts
         cursor = conn.cursor()
 
         # Search entities
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT id, type, name, confidence
             FROM graph_entities
-            WHERE name LIKE ? OR description LIKE ?
+            WHERE name ILIKE ? OR description ILIKE ?
             LIMIT ?
             """,
             (f"%{query}%", f"%{query}%", limit)
         )
 
-        entities = [dict(row) for row in cursor.fetchall()]
+        entities = [dict(row) for row in await cursor.fetchall()]
 
         if not entities:
             return {
@@ -56,7 +64,7 @@ def search_entities(
 
         # Count relations for these entities
         placeholders = ",".join("?" * len(entity_ids))
-        cursor.execute(
+        await cursor.execute(
             f"""
             SELECT COUNT(*) as relation_count
             FROM graph_relations
@@ -65,10 +73,10 @@ def search_entities(
             entity_ids + entity_ids
         )
 
-        relation_count = cursor.fetchone()["relation_count"]
+        relation_count = await cursor.fetchone()["relation_count"]
 
         # Get relation type distribution
-        cursor.execute(
+        await cursor.execute(
             f"""
             SELECT relation_type, COUNT(*) as count
             FROM graph_relations
@@ -78,7 +86,7 @@ def search_entities(
             entity_ids + entity_ids
         )
 
-        rel_dist = {row["relation_type"]: row["count"] for row in cursor.fetchall()}
+        rel_dist = {row["relation_type"]: row["count"] for row in await cursor.fetchall()}
 
         # Entity type distribution
         type_dist = {}
@@ -86,7 +94,7 @@ def search_entities(
             etype = entity.get("type", "unknown")
             type_dist[etype] = type_dist.get(etype, 0) + 1
 
-        conn.close()
+        await conn.close()
 
         return {
             "query": query,
@@ -106,8 +114,12 @@ def search_entities(
         }
 
 
-def get_entity_neighbors(
-    db_path: str,
+async def get_entity_neighbors(
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     entity_id: str,
     relation_type: Optional[str] = None,
     depth: int = 1
@@ -118,26 +130,26 @@ def get_entity_neighbors(
     Returns counts and types, not full entities.
     """
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = await AsyncConnection.connect(db_path)
+        # PostgreSQL returns dicts
         cursor = conn.cursor()
 
-        where_clause = "(source_id = ? OR target_id = ?)"
+        where_clause = "(source_id = ? OR target_id = %s)"
         params = [entity_id, entity_id]
 
         if relation_type:
             where_clause += " AND relation_type = ?"
             params.append(relation_type)
 
-        cursor.execute(
+        await cursor.execute(
             f"SELECT COUNT(*) as count FROM graph_relations WHERE {where_clause}",
             params
         )
 
-        total_relations = cursor.fetchone()["count"]
+        total_relations = await cursor.fetchone()["count"]
 
         # Get relation type distribution
-        cursor.execute(
+        await cursor.execute(
             f"""
             SELECT relation_type, COUNT(*) as count
             FROM graph_relations
@@ -147,10 +159,10 @@ def get_entity_neighbors(
             params
         )
 
-        rel_dist = {row["relation_type"]: row["count"] for row in cursor.fetchall()}
+        rel_dist = {row["relation_type"]: row["count"] for row in await cursor.fetchall()}
 
         # Get neighbor entity types
-        cursor.execute(
+        await cursor.execute(
             f"""
             SELECT DISTINCT e.type, COUNT(*) as count
             FROM graph_entities e
@@ -161,9 +173,9 @@ def get_entity_neighbors(
             params
         )
 
-        neighbor_types = {row["type"]: row["count"] for row in cursor.fetchall()}
+        neighbor_types = {row["type"]: row["count"] for row in await cursor.fetchall()}
 
-        conn.close()
+        await conn.close()
 
         return {
             "entity_id": entity_id,

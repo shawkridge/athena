@@ -6,12 +6,20 @@ Returns task structure summary, not full task objects.
 """
 
 from typing import Dict, Any, Optional, List
-import sqlite3
+try:
+    import psycopg
+    from psycopg import AsyncConnection
+except ImportError:
+    raise ImportError("PostgreSQL required: pip install psycopg[binary]")
 from datetime import datetime
 
 
 def decompose_task(
-    db_path: str,
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     task_description: str,
     target_depth: int = 3,
     max_subtasks: int = 10
@@ -72,33 +80,37 @@ def decompose_task(
         }
 
 
-def get_task_structure(
-    db_path: str,
+async def get_task_structure(
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     task_id: str,
     include_subtasks: bool = True
 ) -> Dict[str, Any]:
     """Get task structure summary."""
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = await AsyncConnection.connect(db_path)
+        # PostgreSQL returns dicts
         cursor = conn.cursor()
 
-        cursor.execute(
+        await cursor.execute(
             "SELECT * FROM tasks WHERE id = ?",
             (task_id,)
         )
 
-        task = dict(cursor.fetchone() or {})
+        task = dict(await cursor.fetchone() or {})
 
         if include_subtasks:
-            cursor.execute(
+            await cursor.execute(
                 "SELECT COUNT(*) as count FROM tasks WHERE parent_task_id = ?",
                 (task_id,)
             )
-            subtask_count = cursor.fetchone()["count"]
+            subtask_count = await cursor.fetchone()["count"]
             task["subtask_count"] = subtask_count
 
-        conn.close()
+        await conn.close()
 
         return task if task else {"error": f"Task not found: {task_id}"}
 
@@ -109,18 +121,22 @@ def get_task_structure(
         }
 
 
-def get_dependency_graph(
-    db_path: str,
+async def get_dependency_graph(
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     task_id: str
 ) -> Dict[str, Any]:
     """Get dependency graph summary."""
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = await AsyncConnection.connect(db_path)
+        # PostgreSQL returns dicts
         cursor = conn.cursor()
 
         # Get dependencies
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT COUNT(*) as count FROM task_dependencies
             WHERE task_id = ? OR depends_on = ?
@@ -128,10 +144,10 @@ def get_dependency_graph(
             (task_id, task_id)
         )
 
-        dep_count = cursor.fetchone()["count"]
+        dep_count = await cursor.fetchone()["count"]
 
         # Get blocking dependencies
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT COUNT(*) as count FROM task_dependencies
             WHERE task_id = ? AND dependency_type = 'blocks'
@@ -139,10 +155,10 @@ def get_dependency_graph(
             (task_id,)
         )
 
-        blocking_count = cursor.fetchone()["count"]
+        blocking_count = await cursor.fetchone()["count"]
 
         # Get blocked by
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT COUNT(*) as count FROM task_dependencies
             WHERE depends_on = ? AND dependency_type = 'blocks'
@@ -150,9 +166,9 @@ def get_dependency_graph(
             (task_id,)
         )
 
-        blocked_by_count = cursor.fetchone()["count"]
+        blocked_by_count = await cursor.fetchone()["count"]
 
-        conn.close()
+        await conn.close()
 
         return {
             "task_id": task_id,

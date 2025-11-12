@@ -57,12 +57,12 @@ class ProgressMonitor:
         milestones = []
         progress_increments = [1.0 / milestone_count * (i + 1) for i in range(milestone_count)]
 
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
+            await cursor.execute(
                 "SELECT created_at FROM executive_goals WHERE id = ?", (goal_id,)
             )
-            row = cursor.fetchone()
+            row = await cursor.fetchone()
             if not row:
                 return []
 
@@ -86,11 +86,11 @@ class ProgressMonitor:
                     completed_at=None,
                 )
 
-                cursor.execute(
+                await cursor.execute(
                     """
                     INSERT INTO progress_milestones
                     (goal_id, milestone_text, expected_progress, actual_progress, target_date)
-                    VALUES (?, ?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s, %s)
                     """,
                     (
                         goal_id,
@@ -107,13 +107,13 @@ class ProgressMonitor:
 
         return milestones
 
-    def get_milestones(self, goal_id: int) -> List[ProgressMilestone]:
+    async def get_milestones(self, goal_id: int) -> List[ProgressMilestone]:
         """Get all milestones for a goal."""
         milestones = []
 
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
+            await cursor.execute(
                 """
                 SELECT id, goal_id, milestone_text, expected_progress, actual_progress,
                        target_date, completed_at
@@ -124,7 +124,7 @@ class ProgressMonitor:
                 (goal_id,),
             )
 
-            for row in cursor.fetchall():
+            for row in await cursor.fetchall():
                 milestone = ProgressMilestone(
                     id=row[0],
                     goal_id=row[1],
@@ -138,27 +138,27 @@ class ProgressMonitor:
 
         return milestones
 
-    def update_milestone_progress(
+    async def update_milestone_progress(
         self, milestone_id: int, actual_progress: float
     ) -> ProgressMilestone:
         """Update milestone progress."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
             completed_at = None
             if actual_progress >= 1.0:
                 completed_at = datetime.now().isoformat()
 
-            cursor.execute(
+            await cursor.execute(
                 """
                 UPDATE progress_milestones
-                SET actual_progress = ?, completed_at = ?
+                SET actual_progress = %s, completed_at = ?
                 WHERE id = ?
                 """,
                 (actual_progress, completed_at, milestone_id),
             )
 
-            cursor.execute(
+            await cursor.execute(
                 """
                 SELECT id, goal_id, milestone_text, expected_progress, actual_progress,
                        target_date, completed_at
@@ -167,7 +167,7 @@ class ProgressMonitor:
                 """,
                 (milestone_id,),
             )
-            row = cursor.fetchone()
+            row = await cursor.fetchone()
             conn.commit()
 
         milestone = ProgressMilestone(
@@ -192,21 +192,21 @@ class ProgressMonitor:
         """
         blockers = []
 
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
             # Get goal info
-            cursor.execute(
+            await cursor.execute(
                 "SELECT id, progress FROM executive_goals WHERE id = ?", (goal_id,)
             )
-            row = cursor.fetchone()
+            row = await cursor.fetchone()
             if not row:
                 return []
 
             current_progress = row[1]
 
             # Check if we have progress history
-            cursor.execute(
+            await cursor.execute(
                 """
                 SELECT progress, updated_at FROM goal_progress_history
                 WHERE goal_id = ?
@@ -215,7 +215,7 @@ class ProgressMonitor:
                 """,
                 (goal_id,),
             )
-            history_row = cursor.fetchone()
+            history_row = await cursor.fetchone()
 
             if history_row:
                 previous_progress = history_row[0]
@@ -243,10 +243,10 @@ class ProgressMonitor:
 
         Returns expected progress vs actual progress over time.
         """
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
-            cursor.execute(
+            await cursor.execute(
                 """
                 SELECT id, progress, created_at, estimated_hours, actual_hours
                 FROM executive_goals
@@ -254,7 +254,7 @@ class ProgressMonitor:
                 """,
                 (goal_id,),
             )
-            row = cursor.fetchone()
+            row = await cursor.fetchone()
             if not row:
                 return None
 
@@ -291,10 +291,10 @@ class ProgressMonitor:
 
         Returns: (estimated_completion_date, confidence_0_to_1)
         """
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
-            cursor.execute(
+            await cursor.execute(
                 """
                 SELECT progress, created_at, estimated_hours, deadline
                 FROM executive_goals
@@ -302,7 +302,7 @@ class ProgressMonitor:
                 """,
                 (goal_id,),
             )
-            row = cursor.fetchone()
+            row = await cursor.fetchone()
             if not row:
                 return None
 
@@ -337,7 +337,7 @@ class ProgressMonitor:
 
             return (estimated_completion, confidence)
 
-    def get_next_milestone(self, goal_id: int) -> Optional[ProgressMilestone]:
+    async def get_next_milestone(self, goal_id: int) -> Optional[ProgressMilestone]:
         """Get the next incomplete milestone for a goal."""
         milestones = self.get_milestones(goal_id)
 
@@ -347,12 +347,12 @@ class ProgressMonitor:
 
         return None
 
-    def get_milestone_status(self, milestone_id: int) -> Optional[dict]:
+    async def get_milestone_status(self, milestone_id: int) -> Optional[dict]:
         """Get detailed status of a milestone."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
-            cursor.execute(
+            await cursor.execute(
                 """
                 SELECT id, goal_id, milestone_text, expected_progress, actual_progress,
                        target_date, completed_at
@@ -361,7 +361,7 @@ class ProgressMonitor:
                 """,
                 (milestone_id,),
             )
-            row = cursor.fetchone()
+            row = await cursor.fetchone()
             if not row:
                 return None
 

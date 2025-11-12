@@ -14,6 +14,7 @@ from athena.research import (
 from athena.core.database import Database
 
 
+pytest.importorskip("psycopg")
 class TestResearchAgentExecutor:
     """Test ResearchAgentExecutor class."""
 

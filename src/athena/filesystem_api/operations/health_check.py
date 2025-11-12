@@ -6,12 +6,20 @@ No sensitive data exposed, only metrics and anomaly flags.
 """
 
 from typing import Dict, Any
-import sqlite3
+try:
+    import psycopg
+    from psycopg import AsyncConnection
+except ImportError:
+    raise ImportError("PostgreSQL required: pip install psycopg[binary]")
 from datetime import datetime, timedelta
 
 
-def get_system_health(
-    db_path: str,
+async def get_system_health(
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     include_anomalies: bool = True
 ) -> Dict[str, Any]:
     """
@@ -34,8 +42,8 @@ def get_system_health(
         Health dashboard summary
     """
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = await AsyncConnection.connect(db_path)
+        # PostgreSQL returns dicts
         cursor = conn.cursor()
 
         health = {
@@ -47,13 +55,13 @@ def get_system_health(
         }
 
         # Episodic health
-        cursor.execute("""
+        await cursor.execute("""
             SELECT COUNT(*) as count,
                    AVG(confidence) as avg_conf,
                    COUNT(CASE WHEN confidence < 0.5 THEN 1 END) as low_conf_count
             FROM episodic_events
         """)
-        epi = cursor.fetchone()
+        epi = await cursor.fetchone()
         health["layers"]["episodic"] = {
             "event_count": epi["count"],
             "avg_confidence": epi["avg_conf"],
@@ -62,13 +70,13 @@ def get_system_health(
         }
 
         # Semantic health
-        cursor.execute("""
+        await cursor.execute("""
             SELECT COUNT(*) as count,
                    AVG(confidence) as avg_conf,
                    AVG(usefulness_score) as avg_usefulness
             FROM semantic_memories
         """)
-        sem = cursor.fetchone()
+        sem = await cursor.fetchone()
         health["layers"]["semantic"] = {
             "memory_count": sem["count"],
             "avg_confidence": sem["avg_conf"],
@@ -77,14 +85,14 @@ def get_system_health(
         }
 
         # Graph health
-        cursor.execute("""
+        await cursor.execute("""
             SELECT COUNT(*) as entity_count FROM graph_entities
         """)
-        cursor.execute("""
+        await cursor.execute("""
             SELECT COUNT(*) as relation_count FROM graph_relations
         """)
-        graph_entities = cursor.fetchone()["entity_count"]
-        graph_relations = cursor.fetchone()["relation_count"]
+        graph_entities = await cursor.fetchone()["entity_count"]
+        graph_relations = await cursor.fetchone()["relation_count"]
 
         health["layers"]["graph"] = {
             "entity_count": graph_entities,
@@ -93,24 +101,24 @@ def get_system_health(
         }
 
         # Task health
-        cursor.execute("""
+        await cursor.execute("""
             SELECT status, COUNT(*) as count
             FROM tasks
             GROUP BY status
         """)
-        task_dist = {row["status"]: row["count"] for row in cursor.fetchall()}
+        task_dist = {row["status"]: row["count"] for row in await cursor.fetchall()}
         health["layers"]["prospective"] = {
             "status_distribution": task_dist,
             "total_tasks": sum(task_dist.values())
         }
 
         # Procedure health
-        cursor.execute("""
+        await cursor.execute("""
             SELECT COUNT(*) as count,
                    AVG(effectiveness_score) as avg_eff
             FROM procedures
         """)
-        proc = cursor.fetchone()
+        proc = await cursor.fetchone()
         health["layers"]["procedural"] = {
             "procedure_count": proc["count"],
             "avg_effectiveness": proc["avg_eff"],
@@ -118,8 +126,8 @@ def get_system_health(
         }
 
         # Metrics
-        cursor.execute("SELECT COUNT(*) as count FROM episodic_events WHERE timestamp > datetime('now', '-24 hours')")
-        recent_events = cursor.fetchone()["count"]
+        await cursor.execute("SELECT COUNT(*) as count FROM episodic_events WHERE timestamp > datetime('now', '-24 hours')")
+        recent_events = await cursor.fetchone()["count"]
 
         health["metrics"] = {
             "total_data_points": (epi["count"] or 0) + (sem["count"] or 0),
@@ -162,7 +170,7 @@ def get_system_health(
         elif any(l.get("status") == "critical" for l in health["layers"].values()):
             health["status"] = "critical"
 
-        conn.close()
+        await conn.close()
 
         return health
 

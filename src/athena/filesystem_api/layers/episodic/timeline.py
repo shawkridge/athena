@@ -7,11 +7,19 @@ Returns summary statistics, not full event timelines.
 
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
-import sqlite3
+try:
+    import psycopg
+    from psycopg import AsyncConnection
+except ImportError:
+    raise ImportError("PostgreSQL required: pip install psycopg[binary]")
 
 
-def get_event_timeline(
-    db_path: str,
+async def get_event_timeline(
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     event_type: Optional[str] = None,
@@ -33,7 +41,7 @@ def get_event_timeline(
         Timeline summary with event counts per bucket
     """
     try:
-        conn = sqlite3.connect(db_path)
+        conn = await AsyncConnection.connect(db_path)
         cursor = conn.cursor()
 
         # Build query
@@ -55,13 +63,13 @@ def get_event_timeline(
         where_clause = " AND ".join(where_clauses)
 
         # Get data for bucketing
-        cursor.execute(
+        await cursor.execute(
             f"SELECT timestamp, event_type FROM episodic_events WHERE {where_clause}",
             params
         )
 
-        events = cursor.fetchall()
-        conn.close()
+        events = await cursor.fetchall()
+        await conn.close()
 
         if not events:
             return {
@@ -97,8 +105,12 @@ def get_event_timeline(
         }
 
 
-def get_event_causality(
-    db_path: str,
+async def get_event_causality(
+    host: str,
+    port: int,
+    dbname: str,
+    user: str,
+    password: str,
     event_id: str,
     window_minutes: int = 30
 ) -> Dict[str, Any]:
@@ -116,16 +128,16 @@ def get_event_causality(
         Summary of causally-nearby events
     """
     try:
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
+        conn = await AsyncConnection.connect(db_path)
+        # PostgreSQL returns dicts
         cursor = conn.cursor()
 
         # Get target event timestamp
-        cursor.execute(
+        await cursor.execute(
             "SELECT timestamp FROM episodic_events WHERE id = ?",
             (event_id,)
         )
-        target_row = cursor.fetchone()
+        target_row = await cursor.fetchone()
         if not target_row:
             return {"error": f"Event not found: {event_id}"}
 
@@ -135,19 +147,19 @@ def get_event_causality(
         window_start = target_time - timedelta(minutes=window_minutes)
         window_end = target_time + timedelta(minutes=window_minutes)
 
-        cursor.execute(
+        await cursor.execute(
             """
             SELECT id, timestamp, event_type, outcome
             FROM episodic_events
             WHERE timestamp BETWEEN ? AND ? AND id != ?
-            ORDER BY ABS(CAST((julianday(timestamp) - julianday(?)) AS INTEGER))
+            ORDER BY ABS(CAST((julianday(timestamp) - julianday(%s)) AS INTEGER))
             LIMIT 10
             """,
             (window_start.isoformat(), window_end.isoformat(), event_id, target_time.isoformat())
         )
 
-        nearby = [dict(row) for row in cursor.fetchall()]
-        conn.close()
+        nearby = [dict(row) for row in await cursor.fetchall()]
+        await conn.close()
 
         # Categorize by before/after
         before = [e for e in nearby if e["timestamp"] < target_time.isoformat()]

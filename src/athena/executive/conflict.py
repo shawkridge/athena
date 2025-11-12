@@ -30,8 +30,8 @@ class ConflictResolver:
     Factors:
     1. Explicit priority (user-set, 1-10)
     2. Deadline urgency (remaining days)
-    3. Blocker severity (blocked other goals?)
-    4. Dependency chain (affects other goals?)
+    3. Blocker severity (blocked other goals%s)
+    4. Dependency chain (affects other goals%s)
     5. Progress toward completion
     """
 
@@ -53,13 +53,13 @@ class ConflictResolver:
         if not competing_goal_ids:
             return None
 
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
             # Get goal data
             goals = {}
             for goal_id in competing_goal_ids:
-                cursor.execute(
+                await cursor.execute(
                     """
                     SELECT id, project_id, goal_text, priority, deadline, created_at, progress
                     FROM executive_goals
@@ -67,7 +67,7 @@ class ConflictResolver:
                     """,
                     (goal_id,),
                 )
-                row = cursor.fetchone()
+                row = await cursor.fetchone()
                 if row:
                     goals[goal_id] = {
                         "id": row[0],
@@ -96,11 +96,11 @@ class ConflictResolver:
 
             # Log resolution
             project_id = goals[primary_goal_id]["project_id"]
-            cursor.execute(
+            await cursor.execute(
                 """
                 INSERT INTO conflict_resolutions
                 (project_id, primary_goal_id, competing_goals, resolution_timestamp, reasoning)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s)
                 """,
                 (
                     project_id,
@@ -121,10 +121,10 @@ class ConflictResolver:
 
     def suspend_goal(self, goal_id: int, reason: str = "conflict_resolution") -> bool:
         """Suspend a goal (pause work on it)."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
-            cursor.execute(
+            await cursor.execute(
                 """
                 UPDATE executive_goals
                 SET status = 'suspended'
@@ -133,10 +133,10 @@ class ConflictResolver:
                 (goal_id,),
             )
 
-            cursor.execute(
+            await cursor.execute(
                 """
                 INSERT INTO goal_suspension_log (goal_id, reason, suspended_at)
-                VALUES (?, ?, ?)
+                VALUES (%s, %s, %s)
                 """,
                 (goal_id, reason, datetime.now().isoformat()),
             )
@@ -146,10 +146,10 @@ class ConflictResolver:
 
     def resume_goal(self, goal_id: int) -> bool:
         """Resume a suspended goal."""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
-            cursor.execute(
+            await cursor.execute(
                 """
                 UPDATE executive_goals
                 SET status = 'active'
@@ -158,10 +158,10 @@ class ConflictResolver:
                 (goal_id,),
             )
 
-            cursor.execute(
+            await cursor.execute(
                 """
                 INSERT INTO goal_suspension_log (goal_id, reason, resumed_at)
-                VALUES (?, ?, ?)
+                VALUES (%s, %s, %s)
                 """,
                 (goal_id, "conflict_resolved", datetime.now().isoformat()),
             )
@@ -169,14 +169,14 @@ class ConflictResolver:
             conn.commit()
             return cursor.rowcount > 0
 
-    def get_conflict_resolution_log(self, project_id: int, limit: int = 10) -> List[Dict]:
+    async def get_conflict_resolution_log(self, project_id: int, limit: int = 10) -> List[Dict]:
         """Get conflict resolution history."""
         resolutions = []
 
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
-            cursor.execute(
+            await cursor.execute(
                 """
                 SELECT id, primary_goal_id, competing_goals, resolution_timestamp, reasoning
                 FROM conflict_resolutions
@@ -187,7 +187,7 @@ class ConflictResolver:
                 (project_id, limit),
             )
 
-            for row in cursor.fetchall():
+            for row in await cursor.fetchall():
                 resolution = {
                     "id": row[0],
                     "primary_goal_id": row[1],
@@ -211,13 +211,13 @@ class ConflictResolver:
         if not active_goal_ids:
             return {}
 
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
             # Get goal scores
             scores = {}
             for goal_id in active_goal_ids:
-                cursor.execute(
+                await cursor.execute(
                     """
                     SELECT priority, deadline, created_at, progress
                     FROM executive_goals
@@ -225,7 +225,7 @@ class ConflictResolver:
                     """,
                     (goal_id,),
                 )
-                row = cursor.fetchone()
+                row = await cursor.fetchone()
                 if row:
                     goal_data = {
                         "priority": row[0],
@@ -253,11 +253,11 @@ class ConflictResolver:
 
         If multiple goals have high priority, suspend lower-priority ones.
         """
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        async with AsyncConnection.connect(self.postgres_url) as conn:
+            async with conn.cursor() as cursor:
 
             # Get all active goals
-            cursor.execute(
+            await cursor.execute(
                 """
                 SELECT id FROM executive_goals
                 WHERE project_id = ? AND status = 'active'
@@ -266,7 +266,7 @@ class ConflictResolver:
                 (project_id,),
             )
 
-            active_goals = [row[0] for row in cursor.fetchall()]
+            active_goals = [row[0] for row in await cursor.fetchall()]
 
             if len(active_goals) <= 1:
                 return None  # No conflict
@@ -315,14 +315,14 @@ class ConflictResolver:
         dependency_factor = 0.0
         goal_id = goal_data.get("id")
         if goal_id:
-            cursor.execute(
+            await cursor.execute(
                 """
                 SELECT COUNT(*) FROM executive_goals
                 WHERE parent_goal_id = ? AND status = 'active'
                 """,
                 (goal_id,),
             )
-            dependent_count = cursor.fetchone()[0]
+            dependent_count = await cursor.fetchone()[0]
             dependency_factor = min(1.0, dependent_count / 3.0)
 
         # Factor 4: Progress toward completion (favor goals near completion)
