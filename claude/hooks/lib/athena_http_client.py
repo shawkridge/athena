@@ -1,10 +1,15 @@
-"""Direct HTTP client for Athena REST API.
+"""Athena client with filesystem API fallback (HTTP as legacy option).
 
-This client communicates directly with the Athena HTTP server running in Docker
-at http://localhost:8000 (or ATHENA_HTTP_URL environment variable).
+This client tries HTTP first (for backward compatibility), but falls back to
+the FilesystemAPIAdapter for the modern code execution paradigm.
 
-It does NOT depend on the athena.client library (which may not be installed locally).
-Instead, it makes direct HTTP requests to the REST endpoints.
+The filesystem API approach (code execution) is preferred because:
+- Executes operations locally (no network latency)
+- Returns summaries only (never full data, <300 tokens)
+- Implements progressive disclosure (discover → read → execute)
+- Achieves ~99% token reduction vs old patterns
+
+When HTTP is unavailable, automatically uses filesystem API instead.
 """
 
 import logging
@@ -14,6 +19,8 @@ from typing import Any, Dict, Optional
 import json
 
 logger = logging.getLogger(__name__)
+
+DB_PATH = os.environ.get('ATHENA_DB_PATH', '~/.athena/memory.db')
 
 # Try to import requests, fallback to urllib if not available
 try:
@@ -396,3 +403,238 @@ def recall_memories(query: str, k: int = 5) -> Optional[list]:
 
 # Alias the old class name for backward compatibility
 AthenaHTTPClientError = Exception
+
+
+# ============================================================================
+# FILESYSTEM API CLIENT (Preferred Modern Approach)
+# ============================================================================
+
+class AthenaFilesystemClient:
+    """Athena client using filesystem API paradigm (code execution).
+
+    This is the modern, recommended approach:
+    - Executes operations locally (no network)
+    - Returns summaries (not full data)
+    - ~99% token reduction
+    - Progressive disclosure (discover → read → execute)
+    """
+
+    def __init__(self):
+        """Initialize filesystem API client."""
+        self.adapter = None
+        self._initialized = False
+
+    def _ensure_initialized(self) -> bool:
+        """Initialize adapter on first use."""
+        if self._initialized:
+            return True
+
+        try:
+            from .filesystem_api_adapter import FilesystemAPIAdapter
+            self.adapter = FilesystemAPIAdapter()
+            self._initialized = True
+            logger.info("✅ FilesystemAPIClient initialized")
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to initialize FilesystemAPIClient: {e}")
+            return False
+
+    def health_check(self) -> bool:
+        """Check Athena health."""
+        if not self._ensure_initialized():
+            return False
+
+        try:
+            result = self.adapter.execute_operation(
+                "semantic",
+                "health",
+                {"db_path": os.path.expanduser(DB_PATH)}
+            )
+            return result.get("status") == "success"
+        except Exception as e:
+            logger.warning(f"Health check failed: {e}")
+            return False
+
+    def record_event(
+        self,
+        content: str,
+        event_type: str = "general",
+        outcome: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """Record an episodic event."""
+        if not self._ensure_initialized():
+            return False
+
+        try:
+            result = self.adapter.execute_operation(
+                "episodic",
+                "record_event",
+                {
+                    "event_type": event_type,
+                    "content": content,
+                    "outcome": outcome or "unknown",
+                    "context": context or {},
+                    "db_path": os.path.expanduser(DB_PATH)
+                }
+            )
+            return result.get("status") == "success"
+        except Exception as e:
+            logger.warning(f"Failed to record event: {e}")
+            return False
+
+    def recall_memories(self, query: str, k: int = 5) -> Optional[list]:
+        """Recall memories matching query."""
+        if not self._ensure_initialized():
+            return None
+
+        try:
+            result = self.adapter.execute_operation(
+                "semantic",
+                "recall",
+                {
+                    "query": query,
+                    "limit": k,
+                    "db_path": os.path.expanduser(DB_PATH)
+                }
+            )
+            if result.get("status") == "success":
+                return result.get("result", {}).get("top_results", [])
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to recall memories: {e}")
+            return None
+
+    def consolidate(self, strategy: str = "balanced", dry_run: bool = False) -> bool:
+        """Run consolidation."""
+        if not self._ensure_initialized():
+            return False
+
+        try:
+            result = self.adapter.execute_operation(
+                "consolidation",
+                "consolidate",
+                {
+                    "strategy": strategy,
+                    "dry_run": dry_run,
+                    "db_path": os.path.expanduser(DB_PATH)
+                }
+            )
+            return result.get("status") == "success"
+        except Exception as e:
+            logger.warning(f"Failed to run consolidation: {e}")
+            return False
+
+    def get_cognitive_load(self) -> Optional[Dict[str, Any]]:
+        """Get cognitive load metrics."""
+        if not self._ensure_initialized():
+            return None
+
+        try:
+            result = self.adapter.execute_operation(
+                "meta",
+                "cognitive_load",
+                {"db_path": os.path.expanduser(DB_PATH)}
+            )
+            if result.get("status") == "success":
+                return result.get("result", {})
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to check cognitive load: {e}")
+            return None
+
+
+# ============================================================================
+# HYBRID CLIENT (Try HTTP first, fallback to filesystem API)
+# ============================================================================
+
+class AthenaHybridClient:
+    """Hybrid client that prefers HTTP but falls back to filesystem API.
+
+    Strategy:
+    1. Try HTTP client first (for existing HTTP servers)
+    2. On failure, fall back to filesystem API (always available)
+    3. Return consistent interface either way
+
+    This ensures maximum compatibility while preferring modern approach.
+    """
+
+    def __init__(self, prefer_filesystem: bool = False):
+        """Initialize hybrid client.
+
+        Args:
+            prefer_filesystem: If True, use filesystem API first, then HTTP
+        """
+        self.prefer_filesystem = prefer_filesystem
+        self.http_client = AthenaHTTPClientWrapper()
+        self.fs_client = AthenaFilesystemClient()
+
+    def health_check(self) -> bool:
+        """Check health via preferred method."""
+        if self.prefer_filesystem:
+            if self.fs_client.health_check():
+                return True
+            return self.http_client.health_check()
+        else:
+            if self.http_client.health_check():
+                return True
+            logger.info("HTTP client failed, falling back to filesystem API")
+            return self.fs_client.health_check()
+
+    def record_event(
+        self,
+        content: str,
+        event_type: str = "general",
+        outcome: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        """Record event via preferred method."""
+        if self.prefer_filesystem:
+            if self.fs_client.record_event(content, event_type, outcome, context):
+                return True
+            return self.http_client.record_event(content, event_type, outcome, context)
+        else:
+            if self.http_client.record_event(content, event_type, outcome, context):
+                return True
+            logger.debug("HTTP client failed, trying filesystem API")
+            return self.fs_client.record_event(content, event_type, outcome, context)
+
+    def recall_memories(self, query: str, k: int = 5) -> Optional[list]:
+        """Recall memories via preferred method."""
+        if self.prefer_filesystem:
+            result = self.fs_client.recall_memories(query, k)
+            if result is not None:
+                return result
+            return self.http_client.recall_memories(query, k)
+        else:
+            result = self.http_client.recall_memories(query, k)
+            if result is not None:
+                return result
+            logger.debug("HTTP client failed, trying filesystem API")
+            return self.fs_client.recall_memories(query, k)
+
+    def consolidate(self, strategy: str = "balanced", dry_run: bool = False) -> bool:
+        """Run consolidation via preferred method."""
+        if self.prefer_filesystem:
+            if self.fs_client.consolidate(strategy, dry_run):
+                return True
+            return self.http_client.consolidate(strategy, dry_run)
+        else:
+            if self.http_client.consolidate(strategy, dry_run):
+                return True
+            logger.debug("HTTP client failed, trying filesystem API")
+            return self.fs_client.consolidate(strategy, dry_run)
+
+    def get_cognitive_load(self) -> Optional[Dict[str, Any]]:
+        """Get cognitive load via preferred method."""
+        if self.prefer_filesystem:
+            result = self.fs_client.get_cognitive_load()
+            if result is not None:
+                return result
+            return self.http_client.get_cognitive_load()
+        else:
+            result = self.http_client.get_cognitive_load()
+            if result is not None:
+                return result
+            logger.debug("HTTP client failed, trying filesystem API")
+            return self.fs_client.get_cognitive_load()

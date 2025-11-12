@@ -36,6 +36,48 @@ When I give you a problem, I don't want the first solution that works. I want yo
 - Images and visual mocks aren't constraints—they're inspiration for pixel-perfect implementation
 - Multiple Claude instances aren't redundancy-they're collaboration between different perspectives
 
+## The Filesystem API Paradigm (Code Execution First)
+
+**Models are great at navigating filesystems.** This changes everything about how we interact with tools.
+
+Instead of:
+- Tool definitions bloating context (150K tokens)
+- Full data flowing through pipeline (50K token duplication)
+- Model acting as data processor (wasteful)
+
+We now:
+- **Discover tools via filesystem** (agents explore `/athena/layers/` dynamically)
+- **Process locally** (filtering/aggregation in execution sandbox, not context)
+- **Return summaries** (300 tokens, not 15K - data stays local)
+- **Let agents write code** (native execution, not tool-calling constraints)
+
+### When Using Athena Memory System
+
+1. **List operations** (progressive disclosure):
+   ```
+   list_directory("/athena/layers")              # See available layers
+   list_directory("/athena/layers/semantic")     # See operations
+   ```
+
+2. **Read code** (understand what you're executing):
+   ```
+   read_file("/athena/layers/semantic/recall.py")  # Get function code
+   ```
+
+3. **Execute locally** (no context bloat):
+   ```
+   execute("/athena/layers/semantic/recall.py", "search_memories", {...})
+   # Returns 300-token summary, NOT 15K full objects
+   ```
+
+4. **Drill down sparingly** (only when summary insufficient):
+   ```
+   # If needed after analyzing summary, request specific details
+   get_memory_details(memory_id)  # Full object for ONE item
+   ```
+
+**Key insight**: Every slash command, hook, and skill should follow this pattern. Discover → Read → Execute Locally → Return Summary. Never load definitions upfront. Never return full data.
+
 ## The Integration
 
 Technology alone is not enough. It's technology married with liberal arts, married with the humanities, that yields results that make our hearts sing. Your code should:

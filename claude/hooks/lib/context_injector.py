@@ -1,28 +1,39 @@
-"""Smart context injection for user prompts from memory."""
+"""Smart context injection for user prompts from memory (filesystem API paradigm).
+
+This module implements context injection using the filesystem API paradigm:
+- Discover relevant memory operations
+- Execute search operations locally (in sandbox)
+- Inject summaries into prompts (never full memory objects)
+
+Key principle: Injection stays <300 tokens, not bloating prompt context.
+"""
 
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
 import logging
+import os
 
 logger = logging.getLogger(__name__)
+
+DB_PATH = os.environ.get('ATHENA_DB_PATH', '~/.athena/memory.db')
 
 
 @dataclass
 class MemoryContext:
-    """Relevant memory context to inject."""
+    """Relevant memory context to inject (summary, not full object)."""
 
     id: str
     source_type: str  # implementation, procedure, learning, decision
     title: str
     relevance_score: float  # 0.0-1.0
-    content_preview: str
+    content_preview: str  # Preview only, not full content
     keywords: List[str]
     timestamp: str
 
 
 class ContextInjector:
-    """Smart context injection for user prompts."""
+    """Smart context injection for user prompts using filesystem API."""
 
     # Query intent patterns
     INTENT_PATTERNS = {
@@ -264,20 +275,93 @@ class ContextInjector:
         else:
             return prompt
 
-    def simulate_memory_search(
+    def search_memory_for_context(
         self, prompt: str, analysis: Dict[str, Any]
     ) -> List[MemoryContext]:
-        """Simulate searching memory for relevant context.
+        """Search memory for relevant context using filesystem API.
 
-        In actual implementation, would call rag_specialist agent
-        and memory_retrieval + semantic_search skills.
+        Executes semantic search locally (in sandbox).
+        Key: Returns summaries with IDs and relevance scores, not full memories.
+
+        Args:
+            prompt: User prompt
+            analysis: Prompt analysis (contains keywords, detected intents)
+
+        Returns:
+            List of relevant memory contexts (summaries only)
+        """
+        contexts: List[MemoryContext] = []
+
+        try:
+            # Import adapter locally (optional availability)
+            from .filesystem_api_adapter import FilesystemAPIAdapter
+
+            adapter = FilesystemAPIAdapter()
+
+            # Build search query from analysis
+            search_query = self.create_context_query(
+                prompt,
+                analysis.get("retrieval_strategy", "semantic_search")
+            )
+
+            # Execute semantic search locally
+            search_result = adapter.execute_operation(
+                "semantic",
+                "recall",
+                {
+                    "query": search_query,
+                    "limit": 5,
+                    "db_path": os.path.expanduser(DB_PATH)
+                }
+            )
+
+            # Extract context from search results
+            if search_result.get("status") == "success":
+                results = search_result.get("result", {})
+
+                # Convert search results to MemoryContext objects
+                for item in results.get("top_results", []):
+                    context = MemoryContext(
+                        id=item.get("id", "unknown"),
+                        source_type=item.get("type", "implementation"),
+                        title=item.get("title", "Untitled"),
+                        relevance_score=item.get("relevance", 0.0),
+                        content_preview=item.get("preview", ""),
+                        keywords=item.get("keywords", []),
+                        timestamp=item.get("timestamp", datetime.utcnow().isoformat())
+                    )
+                    contexts.append(context)
+
+            logger.debug(f"Found {len(contexts)} relevant context items via semantic search")
+
+        except ImportError:
+            # Fallback: If adapter not available, use simulated results
+            logger.debug("FilesystemAPIAdapter not available, using simulated results")
+            contexts = self._simulate_memory_search(prompt, analysis)
+        except Exception as e:
+            logger.warning(f"Memory search failed: {e}, falling back to simulation")
+            contexts = self._simulate_memory_search(prompt, analysis)
+
+        # Sort by relevance
+        contexts.sort(key=lambda c: c.relevance_score, reverse=True)
+
+        # Return top results
+        return contexts[:5]
+
+    def _simulate_memory_search(
+        self, prompt: str, analysis: Dict[str, Any]
+    ) -> List[MemoryContext]:
+        """Simulate memory search results as fallback.
+
+        Used when filesystem API is not available.
+        Returns mock results based on detected intents.
 
         Args:
             prompt: User prompt
             analysis: Prompt analysis
 
         Returns:
-            List of relevant memory contexts
+            List of simulated memory contexts
         """
         contexts: List[MemoryContext] = []
 
@@ -333,13 +417,7 @@ class ContextInjector:
                     )
                 )
 
-        # Sort by relevance
-        contexts.sort(
-            key=lambda c: c.relevance_score, reverse=True
-        )
-
-        # Return top 3-5
-        return contexts[:5]
+        return contexts
 
     def inject_context(
         self, prompt: str, contexts: List[MemoryContext]

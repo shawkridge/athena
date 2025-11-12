@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Episodic Event Schema",
+  "description": "Schema for episodic memory events in filesystem API",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique event identifier"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Event timestamp"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": ["code_execution", "user_interaction", "system_event", "learning", "consolidation"],
+      "description": "Type of event"
+    },
+    "content": {
+      "type": "string",
+      "description": "Event content/description"
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "files": {"type": "array", "items": {"type": "string"}},
+        "project": {"type": "string"},
+        "session_id": {"type": "string"}
+      },
+      "description": "Contextual information"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": ["success", "failure", "partial", "unknown"],
+      "description": "Outcome of the event"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Confidence score (0-1)"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata"
+    }
+  },
+  "required": ["id", "timestamp", "event_type", "outcome", "confidence"]
+}
