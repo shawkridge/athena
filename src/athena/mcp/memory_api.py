@@ -33,6 +33,7 @@ from datetime import datetime, timedelta
 from typing import Any, Optional, List, Dict
 
 from ..core.database import Database
+from ..core.database_factory import get_database
 from ..core.models import MemoryType
 from ..episodic.models import EpisodicEvent, EventType, EventContext, EventOutcome
 from ..episodic.store import EpisodicStore
@@ -183,16 +184,16 @@ class MemoryAPI:
         """Factory method to create a MemoryAPI instance.
 
         Args:
-            db_path: Optional database path (uses default if not provided)
+            db_path: Optional database path (ignored, uses PostgreSQL)
 
         Returns:
             Initialized MemoryAPI instance
         """
-        # Initialize database - force SQLite for synchronous operations
-        database = Database(db_path) if db_path else Database()
+        # Initialize database - PostgreSQL only
+        database = get_database(backend='postgres')
 
-        # Initialize all memory layers - force SQLite backend with use_qdrant=False for tests
-        semantic = MemoryStore(db_path=db_path if db_path else None, use_qdrant=False, backend='sqlite')
+        # Initialize all memory layers - PostgreSQL backend exclusively
+        semantic = MemoryStore()
         episodic = EpisodicStore(database)
         procedural = ProceduralStore(database)
         prospective = ProspectiveStore(database)
