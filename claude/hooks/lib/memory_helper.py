@@ -45,7 +45,7 @@ class EmbeddingService:
         # Use llamacpp service (local, no cloud dependencies)
         try:
             import requests
-            resp = requests.get("http://localhost:8000/health", timeout=1)
+            resp = requests.get("http://localhost:8001/health", timeout=1)
             if resp.status_code == 200:
                 self.provider = "llamacpp"
                 self.model = "nomic-embed-text"
@@ -75,18 +75,17 @@ class EmbeddingService:
             # Use local llamacpp with nomic-embed-text model
             import requests
             response = requests.post(
-                "http://localhost:8000/v1/embeddings",
+                "http://localhost:8001/embeddings",
                 json={"model": "nomic-embed-text", "input": text},
                 timeout=10
             )
             if response.status_code == 200:
                 data = response.json()
-                # Extract embedding from OpenAI-compatible response format
-                if "data" in data and len(data["data"]) > 0:
-                    embedding = data["data"][0].get("embedding")
-                    if embedding:
-                        logger.debug(f"Generated llamacpp embedding: {len(embedding)} dims")
-                        return embedding
+                # Extract embedding from llamacpp response format
+                embedding = data.get("embedding")
+                if embedding:
+                    logger.debug(f"Generated llamacpp embedding: {len(embedding)} dims")
+                    return embedding
             else:
                 logger.warning(f"llamacpp embeddings request failed: {response.status_code}")
 
