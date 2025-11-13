@@ -228,8 +228,8 @@ Layer 3: Procedural Memory (Reusable workflows, 101 extracted)
 Layer 2: Semantic Memory (Vector + BM25 hybrid search)
 Layer 1: Episodic Memory (Events with spatial-temporal grounding)
     ↓
-SQLite + sqlite-vec (Local-first, no cloud)
-Current: 8,128 episodic events, 101 procedures, 5.5MB database
+PostgreSQL (Async-first, connection pooling)
+Current: 8,128 episodic events, 101 procedures
 ```
 
 ### Key Layers & Responsibilities
@@ -754,7 +754,7 @@ src/athena/mcp/
 
 ### 1. Database Access
 
-Database access uses SQLite with `sqlite-vec` for vector storage. The `Database` class in `src/athena/core/database.py` provides both high-level methods and direct connection access.
+Database access uses PostgreSQL with async/await for connection management. The `Database` class in `src/athena/core/database.py` (which aliases `PostgresDatabase`) provides both high-level methods and direct connection access through an async connection pool.
 
 **High-Level Methods** (Preferred for common operations):
 
@@ -841,11 +841,25 @@ pytest tests/performance/ -v --benchmark-only
 
 Configuration is managed through:
 
-1. **Environment variables**: `ANTHROPIC_API_KEY`, `OLLAMA_HOST`, `DEBUG`
+1. **Environment variables**: `ANTHROPIC_API_KEY`, `OLLAMA_HOST`, `DEBUG`, `DB_*` (PostgreSQL connection)
 2. **Config file**: `~/.claude/settings.local.json` (local user settings)
 3. **Defaults**: Hardcoded in `src/athena/core/config.py`
 
 **Precedence**: Env vars > local settings file > hardcoded defaults
+
+**Database Configuration** (PostgreSQL):
+```bash
+# Default connection (localhost)
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=athena
+DB_USER=postgres
+DB_PASSWORD=postgres
+
+# Connection pool settings
+DB_MIN_POOL_SIZE=2
+DB_MAX_POOL_SIZE=10
+```
 
 ### 5. Error Handling in Hooks
 
@@ -866,16 +880,20 @@ The hook system in `src/athena/hooks/` includes graceful degradation:
    /memory-health --detail
    ```
 
-2. **Query the database directly**:
+2. **Query the database directly** (PostgreSQL):
    ```python
-   from athena.core.database import Database
-   db = Database("memory.db")
+   import asyncio
+   from athena.core.database import get_database
 
-   # List all tables
-   tables = db.execute("SELECT name FROM sqlite_master WHERE type='table'")
+   async def debug():
+       db = get_database()
+       # List all tables
+       tables = await db.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
 
-   # Inspect a table
-   events = db.execute("SELECT * FROM episodic_events LIMIT 10")
+       # Inspect a table
+       events = await db.execute("SELECT * FROM episodic_events LIMIT 10")
+
+   asyncio.run(debug())
    ```
 
 3. **Enable debug logging**:
@@ -925,12 +943,13 @@ To extend planning:
 
 ## Architecture Decisions
 
-### Why Local-First?
+### Why PostgreSQL?
 
-- **Privacy**: No data leaves local machine
-- **Performance**: No network latency
-- **Cost**: No API fees for basic operations
-- **Reliability**: Works offline
+- **Scalability**: Handles large datasets efficiently
+- **Concurrency**: Built-in support for async operations
+- **Reliability**: ACID compliance, crash recovery
+- **Performance**: Optimized for complex queries and indexing
+- **Ecosystem**: Rich tooling and library support
 
 ### Why Dual-Process Consolidation?
 
@@ -943,13 +962,6 @@ To extend planning:
 - **Code Understanding**: Hierarchical file paths map to code structure
 - **Temporal Reasoning**: Automatic causality inference between events
 - **Hybrid Scoring**: 70% semantic + 30% spatial balances both signals
-
-### Why SQLite + sqlite-vec?
-
-- **Simplicity**: Single file, no server
-- **Performance**: <100ms most queries
-- **Vectors**: sqlite-vec extension supports embedding storage
-- **Maturity**: SQLite proven at scale
 
 ---
 
