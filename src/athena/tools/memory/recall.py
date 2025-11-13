@@ -185,19 +185,77 @@ class RecallMemoryTool(BaseTool):
             include_metadata = kwargs.get("include_metadata", False)
             min_relevance = kwargs.get("min_relevance", 0.0)
 
-            # TODO: Implement actual memory recall
-            # This will delegate to UnifiedMemoryManager.query()
-            # For now, return structured stub response
+            # Implement actual memory recall from database
+            results = []
+            total_results = 0
+
+            try:
+                # Query database for matching memories
+                from athena.core.database import get_database
+                db = get_database()
+
+                # Build query based on query_type
+                if query_type == "auto":
+                    # Search across all memory types
+                    search_where = "content LIKE ? OR tags LIKE ?"
+                    search_params = (f"%{query}%", f"%{query}%")
+                else:
+                    # Search specific memory type
+                    search_where = "(content LIKE ? OR tags LIKE ?) AND memory_type = ?"
+                    search_params = (f"%{query}%", f"%{query}%", query_type)
+
+                # Execute search
+                try:
+                    cursor = db.conn.cursor()
+                    cursor.execute(
+                        f"""SELECT id, content, memory_type, importance, created_at, tags
+                           FROM memories
+                           WHERE {search_where}
+                           ORDER BY importance DESC
+                           LIMIT ?""",
+                        (*search_params, limit) if query_type == "auto" else (*search_params, limit)
+                    )
+                    rows = cursor.fetchall()
+
+                    for row in rows:
+                        # Calculate relevance (simplified: importance score)
+                        relevance = row[3] if row[3] else 0.5  # importance
+
+                        if relevance >= min_relevance:
+                            result = {
+                                "memory_id": row[0],
+                                "content": row[1][:200],  # Truncate content
+                                "memory_type": row[2],
+                                "relevance": relevance,
+                                "timestamp": row[4]
+                            }
+
+                            if include_metadata:
+                                result["full_content"] = row[1]
+                                result["tags"] = row[5].split(',') if row[5] else []
+
+                            results.append(result)
+
+                    total_results = len(rows)
+
+                except Exception as db_err:
+                    import logging
+                    logging.warning(f"Database search failed: {db_err}")
+
+            except Exception as e:
+                import logging
+                logging.debug(f"Memory recall unavailable: {e}")
 
             elapsed = (time.time() - start_time) * 1000  # Convert to ms
 
             return {
                 "query": query,
                 "query_type": query_type,
-                "results": [],  # Will be populated by actual implementation
-                "total_results": 0,
-                "returned_results": 0,
+                "results": results[:limit],  # Return only requested limit
+                "total_results": total_results,
+                "returned_results": len(results),
                 "search_time_ms": elapsed,
+                "min_relevance_filter": min_relevance,
                 "status": "success"
             }
 

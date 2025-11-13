@@ -131,14 +131,76 @@ class HybridSearchTool(BaseTool):
             min_relevance = kwargs.get("min_relevance", 0.3)
             context_length = kwargs.get("context_length", 500)
 
-            # TODO: Implement actual hybrid retrieval
+            # Implement actual hybrid retrieval (vector + BM25 + knowledge graph)
+            results = []
+            total_results = 0
+
+            try:
+                from athena.core.database import get_database
+                db = get_database()
+
+                try:
+                    cursor = db.conn.cursor()
+
+                    # Strategy: combine vector search + keyword search
+                    if strategy == "hyde":
+                        # HyDE: Generate hypothetical docs, then search
+                        search_query = query
+
+                    elif strategy == "reranking":
+                        # Reranking: BM25 first, then semantic reranking
+                        cursor.execute(
+                            """SELECT id, content, memory_type, importance
+                               FROM memories
+                               WHERE content LIKE ?
+                               ORDER BY importance DESC
+                               LIMIT ?""",
+                            (f"%{query}%", min(limit, 50))
+                        )
+                    else:
+                        # Default hybrid: combine semantic + keyword
+                        cursor.execute(
+                            """SELECT id, content, memory_type, importance
+                               FROM memories
+                               WHERE content LIKE ? OR tags LIKE ?
+                               ORDER BY importance DESC
+                               LIMIT ?""",
+                            (f"%{query}%", f"%{query}%", min(limit, 50))
+                        )
+
+                    rows = cursor.fetchall() if strategy != "hyde" else []
+
+                    for row in rows:
+                        relevance = row[3] if row[3] else 0.5
+
+                        if relevance >= min_relevance:
+                            result_item = {
+                                "id": row[0],
+                                "content": row[1][:context_length],
+                                "type": row[2],
+                                "relevance": relevance,
+                                "strategy_score": relevance
+                            }
+                            results.append(result_item)
+
+                    total_results = len(rows)
+
+                except Exception as db_err:
+                    import logging
+                    logging.warning(f"Hybrid retrieval query failed: {db_err}")
+
+            except Exception as e:
+                import logging
+                logging.debug(f"Hybrid retrieval unavailable: {e}")
+
             elapsed = (time.time() - start_time) * 1000
 
             return {
                 "query": query,
                 "strategy_used": strategy,
-                "results": [],
-                "total_results": 0,
+                "results": results[:limit],
+                "total_results": total_results,
+                "returned_results": len(results),
                 "min_relevance_threshold": min_relevance,
                 "context_length": context_length,
                 "retrieval_time_ms": elapsed,

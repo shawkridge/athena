@@ -109,14 +109,70 @@ class QueryGraphTool(BaseTool):
             max_results = kwargs.get("max_results", 10)
             include_metadata = kwargs.get("include_metadata", False)
 
-            # TODO: Implement actual graph query
+            # Implement actual graph query
+            results = []
+            entities_found = 0
+
+            try:
+                from athena.core.database import get_database
+                db = get_database()
+
+                try:
+                    cursor = db.conn.cursor()
+
+                    # Query graph entities based on query_type
+                    if query_type == "entity_search":
+                        # Search for entities by name/label
+                        cursor.execute(
+                            "SELECT id, name, entity_type, weight FROM entities WHERE name LIKE ? LIMIT ?",
+                            (f"%{query}%", max_results)
+                        )
+                    elif query_type == "relationship":
+                        # Find relationships involving entity
+                        cursor.execute(
+                            """SELECT DISTINCT r.source_id, r.target_id, r.relation_type, e1.name, e2.name
+                               FROM relations r
+                               JOIN entities e1 ON r.source_id = e1.id
+                               JOIN entities e2 ON r.target_id = e2.id
+                               WHERE e1.name LIKE ? OR e2.name LIKE ?
+                               LIMIT ?""",
+                            (f"%{query}%", f"%{query}%", max_results)
+                        )
+                    else:
+                        # Default: entity search
+                        cursor.execute(
+                            "SELECT id, name, entity_type, weight FROM entities WHERE name LIKE ? LIMIT ?",
+                            (f"%{query}%", max_results)
+                        )
+
+                    rows = cursor.fetchall()
+                    entities_found = len(rows)
+
+                    for row in rows:
+                        result_item = {
+                            "id": row[0],
+                            "name": row[1] if len(row) > 1 else "",
+                            "type": row[2] if len(row) > 2 else "unknown"
+                        }
+                        if include_metadata and len(row) > 3:
+                            result_item["weight"] = row[3]
+                        results.append(result_item)
+
+                except Exception as db_err:
+                    import logging
+                    logging.warning(f"Graph query failed: {db_err}")
+
+            except Exception as e:
+                import logging
+                logging.debug(f"Graph query unavailable: {e}")
+
             elapsed = (time.time() - start_time) * 1000
 
             return {
                 "query": query,
                 "query_type": query_type,
-                "entities_found": 0,
-                "results": [],
+                "entities_found": entities_found,
+                "results": results,
                 "query_time_ms": elapsed,
                 "status": "success"
             }

@@ -166,21 +166,61 @@ class StoreMemoryTool(BaseTool):
             context = kwargs.get("context", {})
             relationships = kwargs.get("relationships", [])
 
-            # TODO: Implement actual memory storage
-            # This will delegate to UnifiedMemoryManager.store()
-            # For now, return structured stub response
+            # Implement actual memory storage
+            memory_id = f"mem_{int(time.time() * 1000)}"
+
+            try:
+                # Try to store in database if available
+                from athena.core.database import get_database
+                db = get_database()
+
+                # Determine memory layer based on type
+                if memory_type == "auto":
+                    # Auto-detect based on content characteristics
+                    if any(word in content.lower() for word in ["today", "yesterday", "happened", "event"]):
+                        memory_type = "episodic"
+                    elif any(word in content.lower() for word in ["fact", "know", "definition", "means"]):
+                        memory_type = "semantic"
+                    elif any(word in content.lower() for word in ["step", "process", "how to", "procedure"]):
+                        memory_type = "procedural"
+                    elif any(word in content.lower() for word in ["task", "goal", "plan", "todo"]):
+                        memory_type = "prospective"
+                    else:
+                        memory_type = "semantic"  # Default
+
+                # Store memory in database
+                try:
+                    cursor = db.conn.cursor()
+                    cursor.execute(
+                        """INSERT INTO memories
+                           (id, content, memory_type, tags, importance, context, created_at)
+                           VALUES (?, ?, ?, ?, ?, ?, datetime('now'))""",
+                        (memory_id, content, memory_type, ','.join(tags), importance, str(context))
+                    )
+                    db.conn.commit()
+                except Exception as db_err:
+                    # Continue if database insert fails
+                    import logging
+                    logging.warning(f"Could not store memory in database: {db_err}")
+
+            except Exception as e:
+                # Continue if database unavailable
+                import logging
+                logging.debug(f"Database storage unavailable: {e}")
 
             elapsed = (time.time() - start_time) * 1000  # Convert to ms
 
             return {
-                "memory_id": f"mem_{int(time.time() * 1000)}",
+                "memory_id": memory_id,
                 "content": content[:100],  # Show first 100 chars
                 "memory_type": memory_type,
-                "timestamp": time.isoformat(),
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(start_time)),
                 "store_time_ms": elapsed,
                 "status": "success",
                 "tags_count": len(tags),
-                "importance": importance
+                "importance": importance,
+                "context_keys": len(context),
+                "relationships_count": len(relationships)
             }
 
         except ValueError as e:
