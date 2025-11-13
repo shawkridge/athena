@@ -2,6 +2,26 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Global Context
+
+This project exports the **Athena memory system** that powers global hooks for ALL projects:
+
+- **Global Hooks**: Registered in `~/.claude/settings.json` and active for all projects
+- **Memory Access**: All hooks use the Athena memory API to provide cross-project memory
+- **No MCP Servers**: Projects no longer use MCP servers; hooks provide memory access directly
+- **Documentation**: See `~/.claude/HOOKS_AND_MEMORY.md` for complete integration guide
+
+### What This Means
+
+Every project in `~/.work/` automatically has access to:
+- **Episodic memory** (what happened when)
+- **Semantic memory** (facts learned across projects)
+- **Procedural memory** (reusable workflows)
+- **Working memory** (7±2 focus items from previous session)
+- **Knowledge graph** (entity relationships)
+
+This is managed entirely through global hooks - no configuration needed per-project.
+
 ## Quick Commands
 
 **Development**:
@@ -274,27 +294,40 @@ Current: 8,128 episodic events, 101 procedures, 5.5MB database
 | `rag/` | Advanced retrieval | `manager.py`, `reflective.py`, `hyde.py`, `reranker.py` |
 | `planning/` | Advanced planning (Phase 6) | `validator.py`, `formal_verification.py`, `scenario_simulator.py` |
 | `associations/` | Zettelkasten | `zettelkasten.py`, `hierarchical_index.py`, `hebbian.py` |
-| `mcp/` | MCP server & tools | `handlers.py` (main), `handlers_*.py` (specialized), `operation_router.py` |
+| `mcp/` | MCP server & tools | `handlers.py` (core), `handlers_*.py` (domain-organized), `operation_router.py` |
 | `manager.py` | Unified memory manager | Query routing, layer orchestration |
 
 ### MCP Server Architecture
 
-The MCP server in `src/athena/mcp/` implements 27 tools with 228+ operations:
+The MCP server in `src/athena/mcp/` implements 27 tools with 228+ operations (313 handler methods):
 
-- **`handlers.py`** (526KB): Main server class `MemoryMCPServer` with all tool definitions
-- **`handlers_*.py`**: Specialized handlers for tool groups:
-  - `handlers_tools.py`: Memory core operations (recall, remember, forget, optimize)
-  - `handlers_system.py`: System operations (health, monitoring, consolidation)
-  - `handlers_planning.py`: Planning & validation operations
-  - `handlers_retrieval.py`: Advanced RAG operations
-  - `handlers_consolidation.py`: Consolidation strategy operations
-  - `handlers_integration.py`: Cross-layer integration operations
-  - `handlers_agent_optimization.py`: Agent optimization operations
-  - `handlers_skill_optimization.py`: Skill enhancement operations
-  - `handlers_hook_coordination.py`: Hook coordination operations
-  - `handlers_slash_commands.py`: Slash command implementations
+#### Core Handler Organization (November 13, 2025 Refactoring)
 
-**Operation Routing**: `operation_router.py` dispatches tool calls to the appropriate handler based on operation name and parameters.
+**Status**: ✅ Refactored into 11 domain-organized modules (forwarding pattern)
+
+The MCP server handler methods are now logically organized by memory domain while maintaining 100% backward compatibility:
+
+- **`handlers.py`** (12,363 lines): Main `MemoryMCPServer` class with all 313 handler method implementations
+- **Domain-Organized Handler Modules** (forwarding pattern for code navigation):
+  - `handlers_memory_core.py`: Core operations (25 methods) - remember, recall, forget, list, optimize, search
+  - `handlers_episodic.py`: Episodic memory (16 methods) - event recording, temporal retrieval, consolidation
+  - `handlers_procedural.py`: Procedural memory (29 methods) - workflows, procedures, execution tracking
+  - `handlers_prospective.py`: Prospective memory (24 methods) - tasks, goals, milestones, planning
+  - `handlers_graph.py`: Knowledge graph (12 methods) - entities, relations, observations, search
+  - `handlers_working_memory.py`: Working memory (11 methods) - 7±2 cognitive limit operations
+  - `handlers_metacognition.py`: Metacognition (8 methods) - quality, learning, gaps, expertise, load
+  - `handlers_planning.py`: Planning (33 methods) - decomposition, verification, validation, strategy
+  - `handlers_consolidation.py`: Consolidation (12 methods) - pattern extraction, RAG, retrieval
+  - `handlers_research.py`: Research (2 methods) - research tasks, findings integration
+  - `handlers_system.py`: System (141 methods) - health, analytics, code, automation, budget, IDE, patterns
+
+**Design Pattern**: Forwarding modules provide logical separation without code duplication:
+- All implementations remain in `handlers.py::MemoryMCPServer`
+- Domain modules import and reference these methods for discoverability
+- Zero breaking changes, 100% backward compatible
+- Enables incremental migration to full extraction
+
+**Operation Routing**: `operation_router.py` dispatches tool calls to the appropriate `MemoryMCPServer._handle_*` method based on operation name.
 
 ### Testing
 
