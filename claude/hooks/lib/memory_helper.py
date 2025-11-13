@@ -210,16 +210,49 @@ class EmbeddingService:
             """, [project_id] + search_params + [limit])
 
             results = cursor.fetchall()
-            return [
-                {
-                    "id": r[0],
-                    "content": r[1],
-                    "event_type": r[2],
-                    "timestamp": r[3],
-                    "relevance_score": 0.5  # Placeholder
-                }
-                for r in results
-            ]
+
+            # Calculate relevance scores based on term matching and recency
+            current_time = int(datetime.now().timestamp() * 1000)
+            scored_results = []
+
+            for r in results:
+                event_id, content, event_type, timestamp = r
+                content_lower = content.lower()
+
+                # Term frequency scoring (0.0-0.7)
+                term_matches = sum(1 for term in search_terms if term in content_lower)
+                term_score = min(0.7, (term_matches / len(search_terms)) * 0.9) if search_terms else 0
+
+                # Recency scoring (0.0-0.2)
+                # Events from last hour: 0.2, last day: 0.1, older: 0.05
+                age_ms = current_time - timestamp
+                if age_ms < 3600000:  # Last hour
+                    recency_score = 0.2
+                elif age_ms < 86400000:  # Last day
+                    recency_score = 0.1
+                else:
+                    recency_score = 0.05
+
+                # Event type bonus (0.0-0.1)
+                # Higher scores for analysis and discovery events
+                type_bonus = 0.0
+                if event_type in ["analysis", "discovery", "insight"]:
+                    type_bonus = 0.1
+                elif event_type in ["code_change", "test", "debug"]:
+                    type_bonus = 0.05
+
+                # Combined relevance score (0.0-1.0)
+                relevance_score = min(1.0, term_score + recency_score + type_bonus)
+
+                scored_results.append({
+                    "id": event_id,
+                    "content": content,
+                    "event_type": event_type,
+                    "timestamp": timestamp,
+                    "relevance_score": max(0.1, relevance_score)  # Minimum 0.1 for any match
+                })
+
+            return scored_results
         except Exception as e:
             logger.error(f"Keyword search failed: {str(e)}")
             return []

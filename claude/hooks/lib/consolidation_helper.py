@@ -47,6 +47,73 @@ class ConsolidationHelper:
         if self.conn:
             self.conn.close()
 
+    def _get_embedding_service(self):
+        """Get embedding service for generating vectors."""
+        try:
+            # Try to import llamacpp embedding service
+            import sys
+            import os
+
+            # Add hooks lib to path
+            hooks_lib_path = os.path.dirname(os.path.abspath(__file__))
+            if hooks_lib_path not in sys.path:
+                sys.path.insert(0, hooks_lib_path)
+
+            # Try to get embeddings from memory_helper if available
+            try:
+                from memory_helper import embed_text
+
+                class EmbeddingServiceWrapper:
+                    @staticmethod
+                    def embed(text: str) -> Optional[List[float]]:
+                        """Embed text using llamacpp service."""
+                        return embed_text(text)
+
+                return EmbeddingServiceWrapper()
+            except:
+                pass
+
+            # Fallback: Try to connect to local llamacpp service
+            try:
+                import requests
+
+                class LlamaCppEmbeddingService:
+                    def __init__(self, host: str = "localhost", port: int = 8001):
+                        self.url = f"http://{host}:{port}/v1/embeddings"
+
+                    def embed(self, text: str) -> Optional[List[float]]:
+                        """Generate embedding using llamacpp service."""
+                        try:
+                            response = requests.post(
+                                self.url,
+                                json={
+                                    "input": text,
+                                    "model": "nomic-embed-text"
+                                },
+                                timeout=5
+                            )
+
+                            if response.status_code == 200:
+                                data = response.json()
+                                if "data" in data and len(data["data"]) > 0:
+                                    return data["data"][0].get("embedding")
+                        except Exception as e:
+                            logger.debug(f"Llamacpp embedding failed: {e}")
+
+                        return None
+
+                return LlamaCppEmbeddingService()
+            except:
+                pass
+
+            # No embedding service available
+            logger.warning("No embedding service available for consolidation")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error initializing embedding service: {e}")
+            return None
+
     def consolidate_session(
         self, project_id: int, session_id: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -277,55 +344,199 @@ class ConsolidationHelper:
     def _create_semantic_memories(
         self, project_id: int, patterns: List[Dict], discoveries: List[Dict]
     ) -> List[int]:
-        """Create semantic memories from patterns and discoveries."""
-        created = []
+        """Create semantic memories from patterns and discoveries in memory_vectors table."""
+        created_ids = []
 
         try:
             cursor = self.conn.cursor()
 
+            # Get embedding service
+            embedding_service = self._get_embedding_service()
+
             # Create memories from high-confidence patterns
             for pattern in patterns:
                 if pattern.get("confidence", 0) >= 0.7:
-                    memory_content = {
-                        "pattern_type": pattern["type"],
-                        "cluster": pattern["cluster"],
-                        "content": pattern["content"],
-                        "extracted_at": datetime.now().isoformat(),
-                    }
+                    content = pattern["content"]
 
-                    # For now, just log that we'd create this
-                    # Real implementation would create semantic_memory records
-                    logger.debug(f"Would create semantic memory: {pattern['content']}")
-                    created.append(1)  # Placeholder
+                    # Generate embedding for pattern
+                    embedding = embedding_service.embed(content) if embedding_service else None
+
+                    # Convert embedding to pgvector format if available
+                    embedding_str = None
+                    if embedding:
+                        embedding_str = "[" + ",".join(f"{float(x):.6f}" for x in embedding) + "]"
+
+                    # Insert into memory_vectors table
+                    cursor.execute("""
+                        INSERT INTO memory_vectors (
+                            project_id, content, memory_type,
+                            domain, tags, embedding, content_type,
+                            consolidation_state, usefulness_score, confidence
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        RETURNING id
+                    """, (
+                        project_id,
+                        content,
+                        "pattern",
+                        pattern.get("domain", "general"),
+                        [pattern["type"], pattern.get("cluster", "unclustered")],
+                        embedding_str,
+                        "pattern",
+                        "consolidation_extracted",
+                        0.8,
+                        pattern.get("confidence", 0.7)
+                    ))
+
+                    memory_id = cursor.fetchone()[0] if cursor.rowcount > 0 else None
+                    if memory_id:
+                        created_ids.append(memory_id)
+                        logger.info(f"Created semantic memory {memory_id} from pattern: {content[:100]}...")
 
             # Create memories from discoveries
             for discovery in discoveries:
-                memory_content = {
-                    "discovery_type": discovery["type"],
-                    "title": discovery["title"],
-                    "content": discovery["content"][:500],
-                    "extracted_at": datetime.now().isoformat(),
-                }
+                content = discovery["content"][:500] if discovery.get("content") else discovery.get("title", "")
 
-                logger.debug(f"Would create semantic memory: {discovery['title']}")
-                created.append(1)  # Placeholder
+                # Generate embedding for discovery
+                embedding = embedding_service.embed(content) if embedding_service else None
+
+                # Convert embedding to pgvector format if available
+                embedding_str = None
+                if embedding:
+                    embedding_str = "[" + ",".join(f"{float(x):.6f}" for x in embedding) + "]"
+
+                # Insert into memory_vectors table
+                cursor.execute("""
+                    INSERT INTO memory_vectors (
+                        project_id, content, memory_type,
+                        domain, tags, embedding, content_type,
+                        consolidation_state, usefulness_score, confidence
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """, (
+                    project_id,
+                    content,
+                    discovery.get("type", "discovery"),
+                    "discovery",
+                    [discovery.get("type", "discovery"), discovery.get("category", "general")],
+                    embedding_str,
+                    "discovery",
+                    "consolidation_extracted",
+                    0.9,
+                    0.95
+                ))
+
+                memory_id = cursor.fetchone()[0] if cursor.rowcount > 0 else None
+                if memory_id:
+                    created_ids.append(memory_id)
+                    logger.info(f"Created semantic memory {memory_id} from discovery: {discovery.get('title', content[:100])}")
+
+            # Commit all inserts
+            self.conn.commit()
 
         except Exception as e:
-            logger.warning(f"Error creating semantic memories: {e}")
+            logger.error(f"Error creating semantic memories: {e}")
+            if self.conn:
+                self.conn.rollback()
 
-        return created
+        return created_ids
 
     def _extract_procedures(self, project_id: int, patterns: List[Dict]) -> List[int]:
-        """Extract reusable procedures from patterns."""
-        procedures = []
+        """Extract reusable procedures from temporal patterns (multi-step workflows)."""
+        created_procedure_ids = []
 
-        # Procedures would be extracted from temporal patterns (multi-step workflows)
-        for pattern in patterns:
-            if pattern["type"] == "temporal" and pattern.get("duration_minutes", 0) > 5:
-                logger.debug(f"Would extract procedure from: {pattern['content']}")
-                procedures.append(1)  # Placeholder
+        try:
+            cursor = self.conn.cursor()
 
-        return procedures
+            # Extract procedures from temporal patterns with high confidence
+            for pattern in patterns:
+                if pattern["type"] == "temporal" and pattern.get("duration_minutes", 0) > 5:
+                    # Only create procedures from high-confidence patterns
+                    if pattern.get("confidence", 0) < 0.6:
+                        continue
+
+                    # Generate procedure name from pattern content
+                    procedure_name = self._generate_procedure_name(pattern["content"][:100])
+
+                    # Check if procedure already exists
+                    cursor.execute(
+                        "SELECT id FROM procedures WHERE name = %s",
+                        (procedure_name,)
+                    )
+
+                    existing = cursor.fetchone()
+                    if existing:
+                        logger.debug(f"Procedure '{procedure_name}' already exists, skipping")
+                        continue
+
+                    # Extract steps from pattern (simple heuristic: split by sentences)
+                    steps = self._extract_steps_from_pattern(pattern)
+
+                    # Create procedure in database
+                    cursor.execute("""
+                        INSERT INTO procedures (
+                            name, category, description, trigger_pattern,
+                            template, steps, created_at, created_by
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        RETURNING id
+                    """, (
+                        procedure_name,
+                        pattern.get("category", "workflow"),
+                        pattern["content"][:500],  # description
+                        pattern.get("trigger_pattern", "manual"),  # trigger_pattern
+                        pattern["content"],  # template
+                        json.dumps(steps),  # steps (JSON array)
+                        int(datetime.now().timestamp() * 1000),  # created_at (milliseconds)
+                        "consolidation"  # created_by
+                    ))
+
+                    procedure_id = cursor.fetchone()[0] if cursor.rowcount > 0 else None
+                    if procedure_id:
+                        created_procedure_ids.append(procedure_id)
+                        logger.info(f"Created procedure {procedure_id}: {procedure_name} with {len(steps)} steps")
+
+            # Commit all inserts
+            self.conn.commit()
+
+        except Exception as e:
+            logger.error(f"Error extracting procedures: {e}")
+            if self.conn:
+                self.conn.rollback()
+
+        return created_procedure_ids
+
+    def _generate_procedure_name(self, content: str) -> str:
+        """Generate a unique procedure name from pattern content."""
+        # Take first 50 chars, replace spaces with underscores, remove special chars
+        import re
+        base_name = re.sub(r'[^a-zA-Z0-9_]+', '_', content[:50].strip()).lower()
+        # Ensure it's unique by adding timestamp
+        timestamp = int(datetime.now().timestamp() * 1000) % 100000
+        return f"{base_name}_{timestamp}"
+
+    def _extract_steps_from_pattern(self, pattern: Dict[str, Any]) -> List[str]:
+        """Extract procedure steps from a pattern."""
+        steps = []
+
+        # Try to get explicit steps if available
+        if "steps" in pattern:
+            if isinstance(pattern["steps"], list):
+                return pattern["steps"]
+            elif isinstance(pattern["steps"], str):
+                steps = pattern["steps"].split(";")
+
+        # If no explicit steps, split content into sentences as steps
+        if not steps:
+            content = pattern.get("content", "")
+            # Split by sentence boundaries
+            import re
+            sentences = re.split(r'[.!?]+', content)
+            steps = [s.strip() for s in sentences if s.strip()]
+
+        # Limit to reasonable number of steps (max 20)
+        return steps[:20] if steps else ["Execute pattern"]
 
     def _mark_consolidated(self, project_id: int, events: List[Dict[str, Any]]) -> int:
         """Mark events as consolidated."""
