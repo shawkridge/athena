@@ -41,8 +41,8 @@ class EmbeddingService:
         self._init_model()
 
     def _init_model(self):
-        """Try to initialize embedding model (graceful degradation)."""
-        # Try llamacpp service first (always available as a service)
+        """Initialize local embedding model (llamacpp)."""
+        # Use llamacpp service (local, no cloud dependencies)
         try:
             import requests
             resp = requests.get("http://localhost:8000/health", timeout=1)
@@ -51,33 +51,11 @@ class EmbeddingService:
                 self.model = "nomic-embed-text"
                 logger.info("Initialized llamacpp embeddings with nomic-embed-text")
                 return
-        except Exception:
-            pass
-
-        # Try Ollama local
-        try:
-            import requests
-            resp = requests.get("http://localhost:11434/api/version", timeout=1)
-            if resp.status_code == 200:
-                self.provider = "ollama"
-                self.model = "nomic-embed-text"  # Default Ollama embedding model
-                logger.info("Initialized Ollama embeddings")
-                return
-        except Exception:
-            pass
-
-        # Try Claude API (lowest priority - cloud dependency)
-        try:
-            import anthropic
-            self.provider = "claude"
-            self.model = "claude"
-            logger.info("Initialized Claude embeddings")
-            return
-        except ImportError:
-            pass
+        except Exception as e:
+            logger.warning(f"llamacpp service not available: {e}")
 
         # Fall back to None (keyword search only)
-        logger.warning("No embedding model available, using keyword search fallback")
+        logger.warning("llamacpp embeddings unavailable, using keyword search fallback")
         self.provider = None
         self.model = None
 
@@ -94,35 +72,23 @@ class EmbeddingService:
             return None
 
         try:
-            if self.provider == "llamacpp":
-                # Use local llamacpp with nomic-embed-text model
-                import requests
-                response = requests.post(
-                    "http://localhost:8000/v1/embeddings",
-                    json={"model": "nomic-embed-text", "input": text},
-                    timeout=10
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    # Extract embedding from OpenAI-compatible response format
-                    if "data" in data and len(data["data"]) > 0:
-                        embedding = data["data"][0].get("embedding")
-                        if embedding:
-                            logger.debug(f"Generated llamacpp embedding: {len(embedding)} dims")
-                            return embedding
-                else:
-                    logger.warning(f"llamacpp embeddings request failed: {response.status_code}")
-
-            elif self.provider == "ollama":
-                import requests
-                response = requests.post(
-                    "http://localhost:11434/api/embed",
-                    json={"model": self.model, "input": text},
-                    timeout=10
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    return data.get("embedding", None)
+            # Use local llamacpp with nomic-embed-text model
+            import requests
+            response = requests.post(
+                "http://localhost:8000/v1/embeddings",
+                json={"model": "nomic-embed-text", "input": text},
+                timeout=10
+            )
+            if response.status_code == 200:
+                data = response.json()
+                # Extract embedding from OpenAI-compatible response format
+                if "data" in data and len(data["data"]) > 0:
+                    embedding = data["data"][0].get("embedding")
+                    if embedding:
+                        logger.debug(f"Generated llamacpp embedding: {len(embedding)} dims")
+                        return embedding
+            else:
+                logger.warning(f"llamacpp embeddings request failed: {response.status_code}")
 
         except Exception as e:
             logger.warning(f"Embedding generation failed: {str(e)}")
