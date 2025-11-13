@@ -100,6 +100,7 @@ markers = [
     "unit: unit tests (fast, isolated)",
     "integration: integration tests (slower, cross-layer)",
     "benchmark: performance benchmark tests (very slow)",
+    "performance: performance tests (profiling, load testing, chaos)",
     "slow: slow tests to skip in CI",
     "llm: tests requiring LLM services",
     "smoke: smoke tests for quick validation",

@@ -155,7 +155,12 @@ class LocalConsolidationReasoner:
                     f"Local confidence {confidence_score:.2f} < {confidence_threshold}, "
                     f"requesting Claude validation"
                 )
-                # TODO: Call Claude for validation
+                # Call Claude for validation
+                patterns = await self._validate_patterns_with_claude(
+                    patterns=patterns,
+                    events_text=events_text,
+                    local_reasoning=reasoning_result.text
+                )
 
             return LocalReasoningResult(
                 patterns=patterns,
@@ -321,6 +326,99 @@ Local Patterns Extracted:
         """
         return await self.llm_client.check_health()
 
+    async def _validate_patterns_with_claude(
+        self,
+        patterns: List[Pattern],
+        events_text: str,
+        local_reasoning: str,
+    ) -> List[Pattern]:
+        """Validate patterns using Claude API.
+
+        Args:
+            patterns: Patterns extracted locally
+            events_text: Original events text
+            local_reasoning: Reasoning from local LLM
+
+        Returns:
+            Validated patterns with updated confidence scores
+        """
+        if not self.claude_client:
+            logger.warning("Claude client not available, skipping validation")
+            return patterns
+
+        try:
+            # Build validation prompt
+            validation_prompt = f"""Review these patterns extracted from events and provide confidence scores.
+
+Events:
+{events_text[:500]}
+
+Local Reasoning:
+{local_reasoning[:500]}
+
+Extracted Patterns:
+{json.dumps([p.to_dict() for p in patterns], indent=2)}
+
+For each pattern, assess:
+1. Is it supported by the events?
+2. How confident are you in this pattern? (0.0-1.0)
+3. Should this pattern be kept, refined, or discarded?
+
+Return JSON array with validation results:
+```json
+[
+  {{
+    "description": "original description",
+    "validated": true,
+    "confidence": 0.85,
+    "notes": "why you think this is valid/invalid"
+  }}
+]
+```"""
+
+            # Call Claude API
+            response = await asyncio.to_thread(
+                lambda: self.claude_client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=1000,
+                    messages=[{"role": "user", "content": validation_prompt}]
+                )
+            )
+
+            # Parse validation results
+            validation_text = response.content[0].text if response.content else "{}"
+
+            # Extract JSON from response
+            try:
+                json_start = validation_text.find("[")
+                json_end = validation_text.rfind("]") + 1
+                if json_start >= 0 and json_end > json_start:
+                    validation_json = validation_text[json_start:json_end]
+                    validations = json.loads(validation_json)
+
+                    # Update patterns with validation results
+                    validated_patterns = []
+                    for i, pattern in enumerate(patterns):
+                        if i < len(validations):
+                            val = validations[i]
+                            if val.get("validated", True):
+                                # Update confidence with Claude's assessment
+                                pattern.confidence = val.get("confidence", pattern.confidence)
+                                validated_patterns.append(pattern)
+                        else:
+                            validated_patterns.append(pattern)
+
+                    logger.info(f"Claude validation: {len(validated_patterns)}/{len(patterns)} patterns validated")
+                    return validated_patterns
+            except (json.JSONDecodeError, IndexError) as e:
+                logger.warning(f"Failed to parse Claude validation response: {e}")
+                return patterns
+
+        except Exception as e:
+            logger.error(f"Claude validation failed: {e}")
+            # Return patterns with original confidence scores
+            return patterns
+
 
 class ConsolidationWithDualProcess:
     """Consolidation pipeline enhanced with dual-process reasoning.
@@ -417,7 +515,12 @@ class ConsolidationWithDualProcess:
 
             cost_saved = compression_result["token_savings"]
 
-            # TODO: Call Claude API for validation
+            # Call Claude API for validation
+            claude_patterns = await self.local_reasoner._validate_patterns_with_claude(
+                patterns=local_patterns,
+                events_text=self.local_reasoner._format_events(event_cluster),
+                local_reasoning=json.dumps([p.to_dict() for p in local_patterns])
+            )
             logger.info(f"Compressed prompt: saved {cost_saved} tokens")
 
         # Step 4: Merge patterns (avoid duplicates)

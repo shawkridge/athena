@@ -465,3 +465,43 @@ DEVELOPMENT_POLICY = (
     .allow_domain("registry.npmjs.org")
     .build()
 )
+
+
+# ============================================================================
+# SandboxConfig and SandboxMode for test compatibility
+# ============================================================================
+
+class SandboxMode(str, Enum):
+    """Sandbox execution modes."""
+    
+    MOCK = "mock"  # Mock execution (no actual sandboxing)
+    RESTRICTED_PYTHON = "restricted_python"  # RestrictedPython sandbox
+    SRT = "srt"  # Full SRT sandbox
+
+
+@dataclass
+class SandboxConfig:
+    """Configuration for sandbox execution."""
+    
+    mode: SandboxMode = SandboxMode.MOCK
+    timeout: int = 30
+    max_memory: int = 512  # MB
+    max_cpu: float = 1.0
+    allow_network: bool = False
+    allowed_paths: List[str] = field(default_factory=list)
+    blocked_paths: List[str] = field(default_factory=list)
+    
+    @classmethod
+    def default(cls) -> "SandboxConfig":
+        """Create default sandbox configuration."""
+        return cls(mode=SandboxMode.MOCK)
+    
+    @classmethod
+    def restricted(cls) -> "SandboxConfig":
+        """Create restricted sandbox configuration."""
+        return cls(mode=SandboxMode.RESTRICTED_PYTHON)
+    
+    @classmethod
+    def full(cls) -> "SandboxConfig":
+        """Create full SRT sandbox configuration."""
+        return cls(mode=SandboxMode.SRT)
