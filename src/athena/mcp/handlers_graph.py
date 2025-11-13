@@ -7,6 +7,7 @@ from datetime import datetime
 from mcp.types import TextContent
 
 from .structured_result import StructuredResult, ResultStatus, PaginationMetadata
+from .filesystem_api_integration import get_integration
 from ..graph.models import Entity, Relation, EntityType, RelationType
 
 logger = logging.getLogger(__name__)

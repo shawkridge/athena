@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from mcp.types import TextContent
 
 from .structured_result import StructuredResult, ResultStatus, PaginationMetadata
+from .filesystem_api_integration import get_integration
 
 logger = logging.getLogger(__name__)
 

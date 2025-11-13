@@ -112,6 +112,12 @@ from .handlers_planning import PlanningHandlersMixin
 from .handlers_metacognition import MetacognitionHandlersMixin
 from .handlers_system import SystemHandlersMixin
 
+# Phase 5-6 Advanced Features: Agent, Hook, Skill Optimization & Slash Commands
+from .handlers_agent_optimization import AgentOptimizationHandlersMixin
+from .handlers_hook_coordination import HookCoordinationHandlersMixin
+from .handlers_skill_optimization import SkillOptimizationHandlersMixin
+from .handlers_slash_commands import SlashCommandHandlersMixin
+
 # Phase 3: Git-Aware Temporal Chains
 from .git_tools import get_git_tools, GitMCPHandlers
 from ..temporal.git_store import GitStore
@@ -158,7 +164,21 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class MemoryMCPServer(EpisodicHandlersMixin, MemoryCoreHandlersMixin, ProceduralHandlersMixin, ProspectiveHandlersMixin, GraphHandlersMixin, ConsolidationHandlersMixin, PlanningHandlersMixin, MetacognitionHandlersMixin, SystemHandlersMixin):
+class MemoryMCPServer(
+    EpisodicHandlersMixin,
+    MemoryCoreHandlersMixin,
+    ProceduralHandlersMixin,
+    ProspectiveHandlersMixin,
+    GraphHandlersMixin,
+    ConsolidationHandlersMixin,
+    PlanningHandlersMixin,
+    MetacognitionHandlersMixin,
+    SystemHandlersMixin,
+    AgentOptimizationHandlersMixin,
+    HookCoordinationHandlersMixin,
+    SkillOptimizationHandlersMixin,
+    SlashCommandHandlersMixin,
+):
     """MCP server for memory operations.
 
     Handler Refactoring Status: 100% COMPLETE ✅

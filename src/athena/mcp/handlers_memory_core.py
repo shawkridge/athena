@@ -6,9 +6,11 @@ from typing import Any, Dict, List, Optional
 from mcp.types import TextContent
 
 from .structured_result import StructuredResult, ResultStatus, PaginationMetadata
+from .filesystem_api_integration import get_integration
 from ..core.models import MemoryType
 
 logger = logging.getLogger(__name__)
+integration = get_integration()
 
 
 class MemoryCoreHandlersMixin:

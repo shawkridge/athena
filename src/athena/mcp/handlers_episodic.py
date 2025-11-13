@@ -47,6 +47,8 @@ from typing import Any, List, Dict, Optional
 
 from mcp.types import TextContent
 
+from .filesystem_api_integration import get_integration
+
 logger = logging.getLogger(__name__)
 
 
