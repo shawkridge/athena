@@ -1255,6 +1255,110 @@ class EpisodicHandlersMixin:
             logger.error(f"Error consolidating temporal events: {e}", exc_info=True)
             return [TextContent(type="text", text=json.dumps({"error": str(e)}))]
 
+    async def _handle_find_duplicate_events(self, args: dict) -> list[TextContent]:
+        """Find near-duplicate events that can be merged.
+
+        Uses content similarity and temporal proximity to identify duplicate events.
+
+        Args:
+            similarity_threshold: Minimum similarity (0-1, default 0.85)
+            time_window_minutes: Time window for grouping (default 60)
+            limit: Max events to analyze (default 100)
+
+        Returns:
+            List of duplicate event groups with merge opportunities
+        """
+        try:
+            from ..episodic.store import EpisodicStore
+
+            project = self.project_manager.get_or_create_project()
+            episodic_store = EpisodicStore(self.db)
+
+            similarity_threshold = float(args.get("similarity_threshold", 0.85))
+            time_window_minutes = int(args.get("time_window_minutes", 60))
+            limit = int(args.get("limit", 100))
+
+            result = episodic_store.find_duplicate_events(
+                project.id,
+                similarity_threshold=similarity_threshold,
+                time_window_minutes=time_window_minutes,
+                limit=limit
+            )
+
+            response = f"🔍 Event Duplication Analysis:\n\n"
+            response += f"Duplicate Groups Found: {len(result['duplicate_groups'])}\n"
+            response += f"Total Duplicate Events: {result['total_duplicates']}\n"
+            response += f"Merge Opportunities: {result['merge_opportunities']}\n"
+            response += f"Estimated Storage Savings: {result['estimated_savings']} events\n\n"
+
+            if result['duplicate_groups']:
+                response += "📋 Duplicate Groups:\n"
+                for i, group in enumerate(result['duplicate_groups'], 1):
+                    response += f"\n{i}. Event IDs: {group['ids']}\n"
+                    response += f"   Count: {group['count']} events\n"
+                    if group['first_timestamp']:
+                        response += f"   First: {group['first_timestamp']}\n"
+                        response += f"   Last:  {group['last_timestamp']}\n"
+
+            response += "\n💡 Use merge_duplicate_events operation to consolidate these.\n"
+
+            return [TextContent(type="text", text=response)]
+        except Exception as e:
+            logger.error(f"Error finding duplicate events: {e}")
+            return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+    async def _handle_merge_duplicate_events(self, args: dict) -> list[TextContent]:
+        """Merge duplicate events into a single event.
+
+        Consolidates near-duplicate events by aggregating metrics and preserving data.
+
+        Args:
+            primary_event_id: Event ID to keep (will contain merged data)
+            duplicate_event_ids: List of event IDs to merge
+            keep_duplicate_ids: Keep duplicates after merge (default False)
+
+        Returns:
+            Merge result with aggregated metrics
+        """
+        try:
+            from ..episodic.store import EpisodicStore
+
+            project = self.project_manager.get_or_create_project()
+            episodic_store = EpisodicStore(self.db)
+
+            primary_id = int(args.get("primary_event_id"))
+            dup_ids = [int(id) for id in args.get("duplicate_event_ids", [])]
+            keep_dups = bool(args.get("keep_duplicate_ids", False))
+
+            result = episodic_store.merge_duplicate_events(
+                project.id,
+                primary_event_id=primary_id,
+                duplicate_event_ids=dup_ids,
+                keep_duplicate_ids=keep_dups
+            )
+
+            if not result.get("merged"):
+                return [TextContent(type="text", text=f"Merge failed: {result.get('error', 'Unknown error')}")]
+
+            response = f"✅ Events Merged Successfully:\n\n"
+            response += f"Primary Event ID: {result['primary_event_id']}\n"
+            response += f"Events Merged: {result['merged_count']}\n"
+            response += f"Events Deleted: {result['deleted_count']}\n\n"
+
+            metrics = result['aggregated_metrics']
+            response += f"📊 Aggregated Metrics:\n"
+            response += f"  Files Changed: {metrics['files_changed']}\n"
+            response += f"  Lines Added: {metrics['lines_added']}\n"
+            response += f"  Lines Deleted: {metrics['lines_deleted']}\n"
+            response += f"  Total Duration: {metrics['duration_ms']}ms\n"
+            response += f"  Avg Confidence: {metrics['avg_confidence']}\n"
+            response += f"  Unique Files: {metrics['unique_files']}\n"
+
+            return [TextContent(type="text", text=response)]
+        except Exception as e:
+            logger.error(f"Error merging duplicate events: {e}")
+            return [TextContent(type="text", text=f"Error: {str(e)}")]
+
 
 # ============================================================================
 # Module-level imports and stubs for test compatibility

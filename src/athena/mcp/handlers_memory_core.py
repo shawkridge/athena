@@ -349,3 +349,107 @@ class MemoryCoreHandlersMixin:
             result = StructuredResult.error(str(e), metadata={"operation": "search_projects"})
 
         return [result.as_optimized_content(schema_name="semantic_search")]
+
+    async def _handle_get_embedding_model_version(self, args: dict) -> list[TextContent]:
+        """Get current embedding model version information.
+
+        This operation returns the version and metadata of the embedding model currently
+        in use. Useful for tracking which model generated embeddings and detecting when
+        embeddings need to be refreshed due to model changes.
+
+        Returns:
+            Model name, version, provider, and metadata
+        """
+        try:
+            from ..core.embeddings import EmbeddingModel
+
+            # Create embedder to get version info
+            embedder = EmbeddingModel()
+
+            model_info = embedder.get_model_info()
+
+            response = "📊 Embedding Model Information:\n\n"
+            response += f"Version: {model_info['version']}\n"
+            response += f"Provider: {model_info['provider']}\n"
+            response += f"Backend: {model_info['backend']}\n"
+            response += f"Dimension: {model_info['embedding_dim']}D\n\n"
+
+            if model_info['metadata']:
+                response += "📋 Raw Metadata:\n"
+                for key, value in model_info['metadata'].items():
+                    response += f"  {key}: {value}\n"
+
+            response += "\n💡 Use this information to:\n"
+            response += "  • Detect when embeddings need refreshing (version changes)\n"
+            response += "  • Compare embeddings from different model versions\n"
+            response += "  • Track which model generated specific embeddings\n"
+
+            return [TextContent(type="text", text=response)]
+        except Exception as e:
+            logger.error(f"Error getting embedding model version: {e}")
+            return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+    async def _handle_detect_embedding_drift(self, args: dict) -> list[TextContent]:
+        """Detect embeddings that are out of sync with current model version.
+
+        Quick Win #4: Identifies embeddings that don't match the current
+        embedding model version (e.g., from old model), which may need refreshing.
+
+        Args:
+            limit: Maximum memories to scan (default 1000)
+
+        Returns:
+            Drift detection report with:
+            - Health status (healthy/degraded/critical)
+            - Stale memory count
+            - Refresh cost estimate
+            - Action recommendations
+        """
+        try:
+            from ..memory.search import EmbeddingDriftDetector
+            from ..core.embeddings import EmbeddingModel
+
+            project = self.project_manager.get_or_create_project()
+
+            # Create embedder and drift detector
+            embedder = EmbeddingModel()
+            drift_detector = EmbeddingDriftDetector(self.db, embedder)
+
+            limit = int(args.get("limit", 1000))
+
+            # Get health report
+            report = drift_detector.get_embedding_health_report(project.id, limit)
+
+            # Format response
+            response = f"📊 Embedding Health Report:\n\n"
+            response += f"Status: {report['health_status'].upper()}\n"
+            response += f"{report['summary']}\n\n"
+
+            # Drift info
+            response += f"📋 Drift Analysis:\n"
+            response += f"  Current Version: {report['drift_info'].get('current_version', 'unknown')}\n"
+            response += f"  Total Scanned: {report['drift_info'].get('total_scanned', 0)}\n"
+            response += f"  Stale Embeddings: {report['drift_info'].get('stale_memories', 0)}\n"
+            response += f"  Stale Ratio: {report['drift_info'].get('stale_ratio', 0)*100:.1f}%\n\n"
+
+            # Refresh cost
+            cost = report.get('refresh_cost', {})
+            if cost.get('stale_memory_count', 0) > 0:
+                response += f"⏱️ Refresh Cost:\n"
+                response += f"  Time to refresh: {cost.get('total_time_minutes', 0):.1f} minutes\n"
+                response += f"  Recommended batch size: {cost.get('recommended_batch_size', 0)}\n"
+                if cost.get('notes'):
+                    response += f"  Notes:\n"
+                    for note in cost['notes']:
+                        response += f"    • {note}\n"
+                response += "\n"
+
+            # Action plan
+            response += f"📋 Action Plan:\n"
+            for action in report.get('action_plan', []):
+                response += f"  • {action}\n"
+
+            return [TextContent(type="text", text=response)]
+        except Exception as e:
+            logger.error(f"Error detecting embedding drift: {e}")
+            return [TextContent(type="text", text=f"Error: {str(e)}")]

@@ -1307,3 +1307,286 @@ class EpisodicStore(BaseStore):
             )
 
         return [self._row_to_model(row) for row in rows]
+
+    def find_duplicate_events(
+        self,
+        project_id: int,
+        similarity_threshold: float = 0.85,
+        time_window_minutes: int = 60,
+        limit: int = 100
+    ) -> Dict[str, Any]:
+        """Find near-duplicate events that can be merged.
+
+        This implements event deduplication using content similarity and temporal
+        proximity. Events within time_window_minutes with similarity > threshold
+        are candidates for merging.
+
+        Args:
+            project_id: Project ID
+            similarity_threshold: Minimum similarity score (0-1, default 0.85)
+            time_window_minutes: Consider events within this time window (default 60 minutes)
+            limit: Maximum events to analyze (default 100)
+
+        Returns:
+            Dictionary with:
+            - duplicate_groups: List of event groups that are duplicates
+            - total_duplicates: Count of duplicate events found
+            - merge_opportunities: Count of merge operations that could be done
+            - estimated_savings: Estimated reduction in event count after merging
+        """
+        from datetime import timedelta
+
+        # Get recent events for the project
+        events = self.recall_by_timeframe(
+            project_id,
+            start_time=datetime.now() - timedelta(days=1),
+            end_time=datetime.now(),
+            limit=limit
+        )
+
+        if len(events) < 2:
+            return {
+                "duplicate_groups": [],
+                "total_duplicates": 0,
+                "merge_opportunities": 0,
+                "estimated_savings": 0,
+            }
+
+        duplicate_groups = []
+        processed = set()
+
+        # Compare events pairwise
+        for i, event1 in enumerate(events):
+            if event1.id in processed:
+                continue
+
+            group = [event1]
+
+            for j, event2 in enumerate(events[i+1:], i+1):
+                if event2.id in processed:
+                    continue
+
+                # Check temporal proximity
+                if event1.timestamp and event2.timestamp:
+                    time_diff = abs((event2.timestamp - event1.timestamp).total_seconds() / 60)
+                    if time_diff > time_window_minutes:
+                        continue
+
+                # Calculate similarity
+                similarity = self._calculate_event_similarity(event1, event2)
+
+                if similarity >= similarity_threshold:
+                    group.append(event2)
+                    processed.add(event2.id)
+
+            if len(group) > 1:
+                duplicate_groups.append(group)
+                processed.add(event1.id)
+
+        total_duplicates = sum(len(group) - 1 for group in duplicate_groups)
+        merge_opportunities = len(duplicate_groups)
+        estimated_savings = total_duplicates  # Can reduce by merging
+
+        return {
+            "duplicate_groups": [
+                {
+                    "ids": [e.id for e in group],
+                    "count": len(group),
+                    "first_timestamp": min((e.timestamp for e in group if e.timestamp), default=None),
+                    "last_timestamp": max((e.timestamp for e in group if e.timestamp), default=None),
+                }
+                for group in duplicate_groups
+            ],
+            "total_duplicates": total_duplicates,
+            "merge_opportunities": merge_opportunities,
+            "estimated_savings": estimated_savings,
+        }
+
+    def _calculate_event_similarity(self, event1: EpisodicEvent, event2: EpisodicEvent) -> float:
+        """Calculate similarity between two events (0-1 scale).
+
+        Uses multiple signals:
+        - Content similarity (string similarity)
+        - Event type matching
+        - File context matching
+        - Outcome matching
+
+        Args:
+            event1: First event
+            event2: Second event
+
+        Returns:
+            Similarity score (0.0 - 1.0)
+        """
+        import difflib
+
+        if not event1.content or not event2.content:
+            return 0.0
+
+        # Content similarity (sequence matcher ratio)
+        content_sim = difflib.SequenceMatcher(None, event1.content, event2.content).ratio()
+
+        # Type matching bonus
+        type_bonus = 0.15 if event1.event_type == event2.event_type else 0.0
+
+        # File context matching bonus
+        file_bonus = 0.0
+        if event1.context.files and event2.context.files:
+            common_files = set(event1.context.files) & set(event2.context.files)
+            if common_files:
+                file_bonus = 0.1 * (len(common_files) / max(len(event1.context.files), len(event2.context.files)))
+
+        # Outcome matching bonus
+        outcome_bonus = 0.1 if event1.outcome == event2.outcome else 0.0
+
+        # Final weighted similarity
+        total_sim = content_sim + type_bonus + file_bonus + outcome_bonus
+        return min(1.0, total_sim)
+
+    def merge_duplicate_events(
+        self,
+        project_id: int,
+        primary_event_id: int,
+        duplicate_event_ids: list[int],
+        keep_duplicate_ids: bool = False
+    ) -> Dict[str, Any]:
+        """Merge duplicate events into a single event.
+
+        Consolidates near-duplicate events by:
+        - Keeping primary event's metadata
+        - Aggregating metrics (files changed, lines added/deleted)
+        - Combining confidence scores
+        - Preserving all unique information
+
+        Args:
+            project_id: Project ID
+            primary_event_id: Event ID to keep (will contain merged data)
+            duplicate_event_ids: Event IDs to merge into primary
+            keep_duplicate_ids: If False, delete duplicates after merge (default: False)
+
+        Returns:
+            Dictionary with:
+            - merged: True if successful
+            - primary_event_id: ID of merged event
+            - merged_count: Count of events merged
+            - aggregated_metrics: Summary of aggregated data
+        """
+        if not duplicate_event_ids:
+            return {
+                "merged": False,
+                "primary_event_id": primary_event_id,
+                "merged_count": 0,
+                "aggregated_metrics": {},
+            }
+
+        # Get all events
+        primary_event = self.get_by_id(primary_event_id)
+        if not primary_event:
+            return {
+                "merged": False,
+                "primary_event_id": primary_event_id,
+                "error": f"Primary event {primary_event_id} not found",
+            }
+
+        duplicate_events = []
+        for dup_id in duplicate_event_ids:
+            event = self.get_by_id(dup_id)
+            if event:
+                duplicate_events.append(event)
+
+        if not duplicate_events:
+            return {
+                "merged": False,
+                "primary_event_id": primary_event_id,
+                "merged_count": 0,
+                "error": "No duplicate events found",
+            }
+
+        # Aggregate metrics
+        total_files_changed = primary_event.files_changed or 0
+        total_lines_added = primary_event.lines_added or 0
+        total_lines_deleted = primary_event.lines_deleted or 0
+        total_duration_ms = primary_event.duration_ms or 0
+        all_files = set(primary_event.context.files) if primary_event.context.files else set()
+
+        confidence_scores = [primary_event.confidence or 1.0]
+
+        for dup_event in duplicate_events:
+            total_files_changed += dup_event.files_changed or 0
+            total_lines_added += dup_event.lines_added or 0
+            total_lines_deleted += dup_event.lines_deleted or 0
+            total_duration_ms += dup_event.duration_ms or 0
+
+            if dup_event.context.files:
+                all_files.update(dup_event.context.files)
+
+            confidence_scores.append(dup_event.confidence or 1.0)
+
+        # Calculate average confidence (weighted by number of events)
+        avg_confidence = sum(confidence_scores) / len(confidence_scores)
+
+        # Update primary event with aggregated data
+        self.execute(
+            """
+            UPDATE episodic_events
+            SET files_changed = %s,
+                lines_added = %s,
+                lines_deleted = %s,
+                duration_ms = %s,
+                confidence = %s,
+                context_files = %s
+            WHERE id = %s
+            """,
+            (
+                total_files_changed,
+                total_lines_added,
+                total_lines_deleted,
+                total_duration_ms,
+                avg_confidence,
+                json.dumps(list(all_files)),
+                primary_event_id,
+            ),
+        )
+
+        # Delete duplicates if requested
+        deleted_count = 0
+        if not keep_duplicate_ids:
+            for dup_id in duplicate_event_ids:
+                try:
+                    self.delete_event(dup_id)
+                    deleted_count += 1
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Could not delete event {dup_id}: {e}")
+
+        return {
+            "merged": True,
+            "primary_event_id": primary_event_id,
+            "merged_count": len(duplicate_events),
+            "deleted_count": deleted_count,
+            "aggregated_metrics": {
+                "files_changed": total_files_changed,
+                "lines_added": total_lines_added,
+                "lines_deleted": total_lines_deleted,
+                "duration_ms": total_duration_ms,
+                "avg_confidence": round(avg_confidence, 4),
+                "unique_files": len(all_files),
+            },
+        }
+
+    def delete_event(self, event_id: int) -> bool:
+        """Delete a single event and its associated data.
+
+        Args:
+            event_id: Event ID to delete
+
+        Returns:
+            True if deleted, False if not found
+        """
+        cursor = self.execute(
+            "DELETE FROM episodic_events WHERE id = %s",
+            (event_id,),
+            fetch_one=False
+        )
+        return cursor and cursor.rowcount > 0 if hasattr(cursor, 'rowcount') else False

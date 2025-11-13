@@ -594,3 +594,98 @@ class AttentionManager(BaseStore):
             session_end=row[13],
             total_focused_time_minutes=row[14],
         )
+
+    def apply_importance_decay(
+        self, project_id: int, decay_rate: float = 0.05, days_threshold: int = 30
+    ) -> dict:
+        """Apply exponential decay to importance of old, unused items.
+
+        This implements spaced repetition-style decay: items not accessed recently
+        have their importance gradually reduced. This helps the system focus on
+        current and recently-used knowledge.
+
+        Args:
+            project_id: Project ID
+            decay_rate: Exponential decay rate (0.05 = 5% per day, default)
+            days_threshold: Only decay items older than this (default 30 days)
+
+        Returns:
+            Dictionary with decay statistics:
+            - items_decayed: Count of items affected
+            - avg_decay_amount: Average importance reduction
+            - items_with_zero_importance: Count of items reaching zero importance
+            - timestamp: When decay was applied
+        """
+        from datetime import datetime, timedelta
+
+        # Calculate decay threshold
+        threshold_date = datetime.now() - timedelta(days=days_threshold)
+
+        # Get all old, unused items
+        old_items = self.db.execute(
+            """
+            SELECT id, importance, last_accessed
+            FROM attention_items
+            WHERE project_id = %s
+              AND last_accessed < %s
+            ORDER BY last_accessed ASC
+            """,
+            (project_id, threshold_date),
+            fetch_all=True,
+        )
+
+        if not old_items:
+            return {
+                "items_decayed": 0,
+                "avg_decay_amount": 0.0,
+                "items_with_zero_importance": 0,
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        items_decayed = 0
+        total_decay = 0.0
+        items_zeroed = 0
+
+        for item_id, importance, last_accessed in old_items:
+            # Calculate days since last access
+            days_inactive = (datetime.now() - last_accessed).days
+
+            # Apply exponential decay: new_importance = old * e^(-decay_rate * days)
+            import math
+
+            decay_factor = math.exp(-decay_rate * days_inactive)
+            new_importance = max(0.0, importance * decay_factor)
+            decay_amount = importance - new_importance
+
+            if new_importance == 0.0:
+                items_zeroed += 1
+
+            # Update importance and recalculate salience
+            recency_factor = max(0.0, 1.0 - (days_inactive / 365.0))
+            new_salience = self._compute_salience(
+                recency=recency_factor, importance=new_importance, relevance=0.5
+            )
+
+            self.db.execute(
+                """
+                UPDATE attention_items
+                SET importance = %s,
+                    recency = %s,
+                    salience_score = %s,
+                    last_updated = CURRENT_TIMESTAMP
+                WHERE id = %s
+                """,
+                (new_importance, recency_factor, new_salience, item_id),
+            )
+
+            items_decayed += 1
+            total_decay += decay_amount
+
+        avg_decay = total_decay / items_decayed if items_decayed > 0 else 0.0
+
+        return {
+            "items_decayed": items_decayed,
+            "avg_decay_amount": round(avg_decay, 4),
+            "items_with_zero_importance": items_zeroed,
+            "timestamp": datetime.now().isoformat(),
+        }

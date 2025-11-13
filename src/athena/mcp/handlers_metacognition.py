@@ -1318,6 +1318,48 @@ class MetacognitionHandlersMixin:
             logger.error(f"Error listing attention items: {e}")
             return [TextContent(type="text", text=f"Error: {str(e)}")]
 
+    async def _handle_apply_importance_decay(self, args: dict) -> list[TextContent]:
+        """Apply exponential decay to importance of old, unused items.
+
+        This implements spaced repetition: items not accessed recently have their
+        importance gradually reduced, helping the system focus on current knowledge.
+
+        Args:
+            decay_rate: Exponential decay rate (default 0.05 = 5% per day)
+            days_threshold: Only decay items older than this (default 30 days)
+
+        Returns:
+            Decay statistics and summary
+        """
+        try:
+            from ..meta.attention import AttentionManager
+
+            project = self.project_manager.get_or_create_project()
+            attention_mgr = AttentionManager(self.db)
+
+            decay_rate = float(args.get("decay_rate", 0.05))
+            days_threshold = int(args.get("days_threshold", 30))
+
+            result = attention_mgr.apply_importance_decay(
+                project.id, decay_rate=decay_rate, days_threshold=days_threshold
+            )
+
+            if result["items_decayed"] == 0:
+                response = "✅ No items needed decay (all items are recent/actively used)\n"
+            else:
+                response = f"📉 Importance Decay Applied:\n\n"
+                response += f"Items Affected: {result['items_decayed']}\n"
+                response += f"Average Decay: {result['avg_decay_amount']:.4f} importance units\n"
+                response += f"Items Reaching Zero: {result['items_with_zero_importance']}\n"
+                response += f"Applied At: {result['timestamp']}\n\n"
+                response += f"💡 This helps the system focus on active, relevant knowledge\n"
+                response += f"   Items not accessed in {days_threshold}+ days were decayed by ~{decay_rate*100:.1f}% per day\n"
+
+            return [TextContent(type="text", text=response)]
+        except Exception as e:
+            logger.error(f"Error applying importance decay: {e}")
+            return [TextContent(type="text", text=f"Error: {str(e)}")]
+
     async def _handle_get_working_memory(self, args: dict) -> list[TextContent]:
         """Get working memory state (7±2 constraint status).
 

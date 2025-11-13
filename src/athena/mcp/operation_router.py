@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class OperationRouter:
     """Routes meta-tool operations to original handlers."""
 
-    # MEMORY_TOOLS: 28 operations
+    # MEMORY_TOOLS: 31 operations
     MEMORY_OPERATIONS = {
         "recall": "_handle_recall",
         "remember": "_handle_remember",
@@ -43,10 +43,13 @@ class OperationRouter:
         "get_self_reflection": "_handle_get_self_reflection",
         "run_consolidation": "_handle_run_consolidation",
         "schedule_consolidation": "_handle_schedule_consolidation",
+        "apply_importance_decay": "_handle_apply_importance_decay",  # Quick Win #1: Spaced repetition
+        "get_embedding_model_version": "_handle_get_embedding_model_version",  # Quick Win #2: Embedding versioning
+        "detect_embedding_drift": "_handle_detect_embedding_drift",  # Quick Win #4: Drift detection
         "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # EPISODIC_TOOLS: 11 operations
+    # EPISODIC_TOOLS: 13 operations
     EPISODIC_OPERATIONS = {
         "record_event": "_handle_record_event",
         "recall_events": "_handle_recall_events",
@@ -57,6 +60,8 @@ class OperationRouter:
         "record_execution": "_handle_record_execution",
         "record_execution_feedback": "_handle_record_execution_feedback",
         "record_git_commit": "_handle_record_git_commit",
+        "find_duplicate_events": "_handle_find_duplicate_events",  # Quick Win #3: Detect duplicates
+        "merge_duplicate_events": "_handle_merge_duplicate_events",  # Quick Win #3: Merge duplicates
         "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 

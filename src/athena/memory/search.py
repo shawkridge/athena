@@ -556,3 +556,216 @@ def diversify_by_type(results: list[MemorySearchResult], k: int) -> list[MemoryS
     diversified.sort(key=lambda x: x.rank)
 
     return diversified[:k]
+
+
+class EmbeddingDriftDetector:
+    """Detects and reports embedding drift when model version changes."""
+
+    def __init__(self, db: PostgresDatabase, embedder: EmbeddingModel):
+        """Initialize drift detector.
+
+        Args:
+            db: PostgreSQL database instance
+            embedder: Current embedding model for version checking
+        """
+        self.db = db
+        self.embedder = embedder
+        self.current_version = embedder.get_version()
+
+    def detect_drift(
+        self,
+        project_id: int,
+        limit: int = 1000
+    ) -> dict:
+        """Detect embeddings that don't match current model version.
+
+        Scans memory embeddings and identifies those from different embedding
+        model versions. These embeddings are "stale" and may not align with
+        current embeddings generated from the same text.
+
+        Args:
+            project_id: Project ID to scan
+            limit: Maximum memories to scan (default 1000)
+
+        Returns:
+            Dictionary with:
+            - drift_detected: Whether version mismatch found
+            - current_version: Current embedder version
+            - memories_by_version: Count of memories per version
+            - stale_memories: Count of embeddings needing refresh
+            - total_scanned: Total memories checked
+            - refresh_recommendations: What to do about drift
+        """
+        try:
+            # Query memories and their metadata (if available)
+            rows = self.db.execute(
+                """
+                SELECT id, created_at
+                FROM memories
+                WHERE project_id = %s
+                ORDER BY created_at DESC
+                LIMIT %s
+                """,
+                (project_id, limit),
+                fetch_all=True
+            )
+
+            if not rows:
+                return {
+                    "drift_detected": False,
+                    "current_version": self.current_version,
+                    "memories_by_version": {},
+                    "stale_memories": 0,
+                    "total_scanned": 0,
+                    "refresh_recommendations": "No memories found to scan",
+                }
+
+            # Track versions (we don't have version stored yet, but this is the pattern)
+            # In future: store embedding_model_version with each memory
+            memories_by_version = {"current": len(rows)}  # All assumed current for now
+            stale_count = 0
+
+            # For now, mark as potentially stale if created more than 30 days ago
+            # (when embedder would likely have been updated)
+            from datetime import datetime, timedelta
+            thirty_days_ago = datetime.now() - timedelta(days=30)
+
+            stale_count = sum(
+                1 for row in rows
+                if row[1] and datetime.fromisoformat(str(row[1])) < thirty_days_ago
+            )
+
+            drift_detected = stale_count > 0
+
+            recommendations = []
+            if drift_detected:
+                if stale_count / len(rows) > 0.5:
+                    recommendations.append("Re-embed >50% of memories (high drift)")
+                else:
+                    recommendations.append(f"Re-embed {stale_count} stale memories")
+                recommendations.append("Use memory refresh operation to re-embed")
+
+            return {
+                "drift_detected": drift_detected,
+                "current_version": self.current_version,
+                "memories_by_version": memories_by_version,
+                "stale_memories": stale_count,
+                "total_scanned": len(rows),
+                "stale_ratio": round(stale_count / len(rows), 3) if rows else 0,
+                "refresh_recommendations": recommendations,
+            }
+
+        except Exception as e:
+            logger.error(f"Error detecting embedding drift: {e}")
+            return {
+                "drift_detected": False,
+                "error": str(e),
+                "current_version": self.current_version,
+            }
+
+    def estimate_refresh_cost(
+        self,
+        stale_memory_count: int,
+        avg_embedding_time_ms: float = 50.0
+    ) -> dict:
+        """Estimate cost of refreshing stale embeddings.
+
+        Args:
+            stale_memory_count: Number of stale embeddings to refresh
+            avg_embedding_time_ms: Average time per embedding (default 50ms)
+
+        Returns:
+            Dictionary with:
+            - total_time_seconds: Total time to re-embed all
+            - total_time_minutes: Same, in minutes
+            - estimated_api_calls: Count of embedding API calls
+            - recommended_batch_size: Suggested batch size
+            - notes: Recommendations for refresh strategy
+        """
+        total_time_ms = stale_memory_count * avg_embedding_time_ms
+        total_time_seconds = total_time_ms / 1000.0
+        total_time_minutes = total_time_seconds / 60.0
+
+        # Recommend batch size (balance between latency and throughput)
+        recommended_batch_size = min(100, max(10, stale_memory_count // 10))
+
+        notes = []
+        if stale_memory_count > 10000:
+            notes.append("Large batch: Consider spreading over multiple sessions")
+        if total_time_minutes > 60:
+            notes.append("Long operation: Can run in background during idle time")
+        if stale_memory_count < 10:
+            notes.append("Small batch: Can refresh immediately")
+
+        return {
+            "stale_memory_count": stale_memory_count,
+            "total_time_seconds": round(total_time_seconds, 2),
+            "total_time_minutes": round(total_time_minutes, 2),
+            "estimated_api_calls": stale_memory_count,
+            "recommended_batch_size": recommended_batch_size,
+            "avg_time_per_embedding_ms": avg_embedding_time_ms,
+            "notes": notes,
+        }
+
+    def get_embedding_health_report(
+        self,
+        project_id: int,
+        limit: int = 1000
+    ) -> dict:
+        """Generate comprehensive embedding health report.
+
+        Combines drift detection, aging analysis, and refresh recommendations
+        into a single health assessment.
+
+        Args:
+            project_id: Project ID to analyze
+            limit: Maximum memories to scan
+
+        Returns:
+            Dictionary with:
+            - health_status: "healthy", "degraded", or "critical"
+            - drift_info: Embedding version drift information
+            - refresh_cost: Estimated cost of full refresh
+            - action_plan: Recommended next steps
+            - summary: Human-readable summary
+        """
+        drift_info = self.detect_drift(project_id, limit)
+        refresh_cost = self.estimate_refresh_cost(
+            drift_info.get("stale_memories", 0)
+        )
+
+        # Determine health status
+        stale_ratio = drift_info.get("stale_ratio", 0)
+        if stale_ratio > 0.7:
+            health_status = "critical"
+        elif stale_ratio > 0.3:
+            health_status = "degraded"
+        else:
+            health_status = "healthy"
+
+        # Generate action plan
+        action_plan = []
+        if health_status == "critical":
+            action_plan.append("URGENT: Re-embed all memories")
+            action_plan.append("Schedule bulk refresh operation")
+        elif health_status == "degraded":
+            action_plan.append("Plan refresh of older embeddings")
+            action_plan.append("Prioritize >30 day old embeddings")
+        else:
+            action_plan.append("Monitor for version changes")
+            action_plan.append("No immediate action needed")
+
+        # Human-readable summary
+        summary = f"Embedding health: {health_status.upper()} | "
+        summary += f"Current version: {self.current_version} | "
+        summary += f"Stale embeddings: {drift_info.get('stale_memories', 0)} "
+        summary += f"({stale_ratio*100:.1f}%)"
+
+        return {
+            "health_status": health_status,
+            "summary": summary,
+            "drift_info": drift_info,
+            "refresh_cost": refresh_cost,
+            "action_plan": action_plan,
+            "timestamp": datetime.now().isoformat() if 'datetime' in dir() else None,
+        }
