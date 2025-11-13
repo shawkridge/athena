@@ -779,9 +779,11 @@ class PostgresDatabase:
                 ON episodic_events USING ivfflat (embedding vector_cosine_ops)
                 WITH (lists = 100)
             """)
-        except Exception:
-            # Index may already exist or pgvector may not be installed
-            pass
+        except Exception as e:
+            import logging
+            logging.warning(f"Failed to create embedding index (semantic search may be slow): {e}")
+            # Don't fail init - embeddings column is optional, semantic search has fallback
+            # But log so it's visible if pgvector isn't properly set up
 
     # ===========================================================================
     # PROJECT OPERATIONS

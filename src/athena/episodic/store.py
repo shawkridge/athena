@@ -1592,8 +1592,14 @@ class EpisodicStore(BaseStore):
                 embedding = data.get("embedding")
                 if embedding:
                     return embedding
+            else:
+                import logging
+                logging.warning(f"Embedding service returned {response.status_code}: {response.text[:200]}")
+        except requests.exceptions.ConnectionError:
+            import logging
+            logging.warning("Embedding service (llamacpp:8001) is not available - semantic search will fall back to keyword matching")
         except Exception as e:
-            # Log but don't fail - embeddings are optional
+            # Log but don't fail - embeddings are optional fallback
             import logging
             logging.debug(f"Embedding generation failed: {e}")
 

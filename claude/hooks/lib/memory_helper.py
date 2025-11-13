@@ -86,9 +86,15 @@ class EmbeddingService:
                 if embedding:
                     logger.debug(f"Generated llamacpp embedding: {len(embedding)} dims")
                     return embedding
+                else:
+                    logger.warning(f"llamacpp returned empty embedding for text: {text[:50]}...")
             else:
-                logger.warning(f"llamacpp embeddings request failed: {response.status_code}")
+                logger.warning(f"llamacpp returned {response.status_code}: {response.text[:200]}")
 
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Cannot connect to llamacpp service at localhost:8001 - embeddings unavailable")
+        except requests.exceptions.Timeout:
+            logger.warning(f"llamacpp embedding request timed out after 10s")
         except Exception as e:
             logger.warning(f"Embedding generation failed: {str(e)}")
 
@@ -131,15 +137,20 @@ class EmbeddingService:
             # Convert embedding to pgvector string format
             embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
 
-            cursor.execute("""
-                SELECT
-                    id, content, event_type, timestamp,
-                    1 - (embedding <-> %s::vector) as similarity_score
-                FROM episodic_events
-                WHERE project_id = %s AND embedding IS NOT NULL
-                ORDER BY similarity_score DESC
-                LIMIT %s
-            """, (embedding_str, project_id, limit))
+            try:
+                cursor.execute("""
+                    SELECT
+                        id, content, event_type, timestamp,
+                        1 - (embedding <-> %s::vector) as similarity_score
+                    FROM episodic_events
+                    WHERE project_id = %s AND embedding IS NOT NULL
+                    ORDER BY similarity_score DESC
+                    LIMIT %s
+                """, (embedding_str, project_id, limit))
+            except Exception as db_error:
+                # pgvector query failed - might be missing index or column
+                logger.warning(f"pgvector semantic search failed: {db_error} - falling back to keyword search")
+                return self._keyword_search(query, project_id, db, limit)
 
             rows = cursor.fetchall()
 
@@ -158,11 +169,12 @@ class EmbeddingService:
                     "relevance_score": row[4]  # Similarity (0-1, higher = more similar)
                 })
 
-            logger.debug(f"Semantic search found {len(results)} results")
+            logger.debug(f"Semantic search found {len(results)} results with cosine similarity")
             return results
 
         except Exception as e:
-            logger.warning(f"Semantic search failed, using keyword fallback: {str(e)}")
+            logger.error(f"Unexpected error in semantic search: {str(e)}")
+            logger.info("Falling back to keyword search")
             return self._keyword_search(query, project_id, db, limit)
 
     def _keyword_search(
