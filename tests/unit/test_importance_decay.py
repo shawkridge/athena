@@ -8,56 +8,16 @@ Note: These tests require PostgreSQL to be running. They will be skipped if
 PostgreSQL is not available.
 """
 
-import tempfile
 from datetime import datetime, timedelta
-from pathlib import Path
-import os
-
 import pytest
 
-# Skip entire module if PostgreSQL is not available
-postgres_available = os.environ.get('POSTGRES_HOST') or os.environ.get('DATABASE_URL')
-pytestmark = pytest.mark.skipif(
-    not postgres_available,
-    reason="PostgreSQL not available (set POSTGRES_HOST or DATABASE_URL)"
-)
-
-from athena.core.database import Database, get_database, reset_database
 from athena.meta.attention import AttentionManager
 
 
 @pytest.fixture
-def temp_db():
-    """Create a temporary PostgreSQL database for testing."""
-    # Reset singleton for test isolation
-    reset_database()
-
-    # Get database (expects PostgreSQL to be running)
-    db = get_database(
-        dbname="athena_test",
-        user=os.environ.get('POSTGRES_USER', 'postgres'),
-        password=os.environ.get('POSTGRES_PASSWORD', 'postgres'),
-        host=os.environ.get('POSTGRES_HOST', 'localhost'),
-    )
-    yield db
-
-    # Reset for next test
-    reset_database()
-
-
-@pytest.fixture
-def test_project(temp_db):
-    """Create a test project."""
-    return temp_db.create_project(
-        name="test_decay_project",
-        path="/test/decay/project"
-    )
-
-
-@pytest.fixture
-def attention_manager(temp_db):
+def attention_manager(test_db):
     """Create an AttentionManager instance."""
-    return AttentionManager(temp_db)
+    return AttentionManager(test_db)
 
 
 class TestImportanceDecay:
@@ -91,10 +51,10 @@ class TestImportanceDecay:
         # Recent items should not be decayed
         assert result["items_decayed"] == 0
 
-    def test_decay_on_old_items(self, attention_manager, test_project, temp_db):
+    def test_decay_on_old_items(self, attention_manager, test_project, test_db):
         """Test that old items are decayed appropriately."""
         # Add an old item
-        cursor = temp_db.execute(
+        cursor = test_db.execute(
             """
             INSERT INTO attention_items (
                 project_id, item_type, item_id,
@@ -128,7 +88,7 @@ class TestImportanceDecay:
             # Importance should be reduced
             assert items[0].importance < 0.8
 
-    def test_decay_exponential_formula(self, attention_manager, test_project, temp_db):
+    def test_decay_exponential_formula(self, attention_manager, test_project, test_db):
         """Test that decay follows exponential formula: new = old * e^(-rate*days)."""
         import math
 
@@ -137,7 +97,7 @@ class TestImportanceDecay:
         days_inactive = 30
         decay_rate = 0.1  # 10% per day
 
-        cursor = temp_db.execute(
+        cursor = test_db.execute(
             """
             INSERT INTO attention_items (
                 project_id, item_type, item_id,
@@ -173,12 +133,12 @@ class TestImportanceDecay:
         # Allow small floating point error
         assert abs(actual_new_importance - expected_new_importance) < 0.001
 
-    def test_decay_multiple_items_statistics(self, attention_manager, test_project, temp_db):
+    def test_decay_multiple_items_statistics(self, attention_manager, test_project, test_db):
         """Test decay statistics with multiple items."""
         # Add 5 old items with different importances
         importances = [1.0, 0.8, 0.6, 0.4, 0.2]
         for i, importance in enumerate(importances):
-            cursor = temp_db.execute(
+            cursor = test_db.execute(
                 """
                 INSERT INTO attention_items (
                     project_id, item_type, item_id,
@@ -207,11 +167,11 @@ class TestImportanceDecay:
         # With 5 items and avg importance 0.6, avg decay should be reasonable
         assert 0.0 < result["avg_decay_amount"] < 0.2
 
-    def test_decay_respects_threshold(self, attention_manager, test_project, temp_db):
+    def test_decay_respects_threshold(self, attention_manager, test_project, test_db):
         """Test that items newer than threshold are not decayed."""
         # Add items: one old, one recent
         # Old item (45 days ago)
-        temp_db.execute(
+        test_db.execute(
             """
             INSERT INTO attention_items (
                 project_id, item_type, item_id,
@@ -229,7 +189,7 @@ class TestImportanceDecay:
         )
 
         # Recent item (15 days ago)
-        temp_db.execute(
+        test_db.execute(
             """
             INSERT INTO attention_items (
                 project_id, item_type, item_id,
@@ -256,10 +216,10 @@ class TestImportanceDecay:
         # Only the old item should be decayed
         assert result["items_decayed"] == 1
 
-    def test_decay_salience_recalculation(self, attention_manager, test_project, temp_db):
+    def test_decay_salience_recalculation(self, attention_manager, test_project, test_db):
         """Test that salience is recalculated after decay."""
         # Add an old item
-        temp_db.execute(
+        test_db.execute(
             """
             INSERT INTO attention_items (
                 project_id, item_type, item_id,
@@ -294,10 +254,10 @@ class TestImportanceDecay:
         # Salience should decrease since importance decreased
         assert new_salience < original_salience
 
-    def test_decay_zero_importance_handling(self, attention_manager, test_project, temp_db):
+    def test_decay_zero_importance_handling(self, attention_manager, test_project, test_db):
         """Test that items reaching zero importance are counted."""
         # Add an old item with low importance
-        temp_db.execute(
+        test_db.execute(
             """
             INSERT INTO attention_items (
                 project_id, item_type, item_id,
@@ -333,7 +293,7 @@ class TestImportanceDecay:
 class TestImportanceDecayIntegration:
     """Integration tests for importance decay with the broader attention system."""
 
-    def test_decay_preserves_other_items(self, attention_manager, test_project, temp_db):
+    def test_decay_preserves_other_items(self, attention_manager, test_project, test_db):
         """Test that decay doesn't affect items below threshold."""
         # Add recent item
         old_item_id = attention_manager.add_attention_item(
@@ -345,7 +305,7 @@ class TestImportanceDecayIntegration:
         )
 
         # Make it old
-        temp_db.execute(
+        test_db.execute(
             """
             UPDATE attention_items
             SET last_accessed = %s
@@ -384,10 +344,10 @@ class TestImportanceDecayIntegration:
         if recent_importance_after is not None:
             assert recent_importance_after == recent_importance_before
 
-    def test_decay_multiple_calls_idempotent(self, attention_manager, test_project, temp_db):
+    def test_decay_multiple_calls_idempotent(self, attention_manager, test_project, test_db):
         """Test that multiple decay calls reach stable state."""
         # Add an old item
-        temp_db.execute(
+        test_db.execute(
             """
             INSERT INTO attention_items (
                 project_id, item_type, item_id,
