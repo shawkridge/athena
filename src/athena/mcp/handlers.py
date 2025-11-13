@@ -101,6 +101,9 @@ from ..executive.agent_bridge import ExecutiveAgentBridge
 from ..executive.orchestration_bridge import OrchestrationBridge
 from ..executive.strategy_aware_planner import StrategyAwarePlanner
 
+# Phase 1 Handler Refactoring: Domain-Extracted Modules
+from .handlers_episodic import EpisodicHandlersMixin
+
 # Phase 3: Git-Aware Temporal Chains
 from .git_tools import get_git_tools, GitMCPHandlers
 from ..temporal.git_store import GitStore
@@ -147,8 +150,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class MemoryMCPServer:
-    """MCP server for memory operations."""
+class MemoryMCPServer(EpisodicHandlersMixin):
+    """MCP server for memory operations.
+
+    Handler Refactoring Status (Phase 1 - Episodic Domain):
+    - ✅ Episodic handlers extracted to handlers_episodic.py (16 methods, ~1752 lines)
+    - ✅ Using mixin pattern for clean separation
+    - Next phases: Extract remaining 9 domains (procedural, prospective, graph, etc.)
+    """
 
     def __init__(self, db_path: str | Path, enable_advanced_rag: bool = True):
         """Initialize MCP server.
