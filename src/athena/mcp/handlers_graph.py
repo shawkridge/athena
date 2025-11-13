@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 from datetime import datetime
 from mcp.types import TextContent
 
-from .structured_result import StructuredResult, ResultStatus, PaginationMetadata
+from .structured_result import StructuredResult, ResultStatus, PaginationMetadata, create_paginated_result, paginate_results
 from .filesystem_api_integration import get_integration
 from ..graph.models import Entity, Relation, EntityType, RelationType
 
@@ -116,8 +116,16 @@ class GraphHandlersMixin:
         """Handle search_graph tool call."""
         try:
             query = args["query"]
-            entities = self.graph_store.search_entities(query)[:5]
+            limit = min(args.get("limit", 10), 100)
+            offset = args.get("offset", 0)
             depth = args.get("depth", 1)
+
+            # Get all matching entities for count
+            all_entities = self.graph_store.search_entities(query)
+            total_count = len(all_entities)
+
+            # Apply pagination
+            entities = all_entities[offset:offset+limit]
 
             if not entities:
                 result = StructuredResult.success(
@@ -159,19 +167,12 @@ class GraphHandlersMixin:
                         "relations": relations_list,
                     })
 
-                result = StructuredResult.success(
-                    data=formatted_entities,
-                    metadata={
-                        "operation": "search_graph",
-                        "schema": "knowledge_graph",
-                        "query": query,
-                        "depth": depth,
-                        "count": len(formatted_entities),
-                    },
-                    pagination=PaginationMetadata(
-                        returned=len(formatted_entities),
-                        limit=5,
-                    )
+                result = paginate_results(
+                    results=formatted_entities,
+                    args=args,
+                    total_count=total_count,
+                    operation="search_graph",
+                    drill_down_hint="Use search_graph_with_depth for detailed entity traversal and relationship exploration"
                 )
         except Exception as e:
             result = StructuredResult.error(str(e), metadata={"operation": "search_graph"})

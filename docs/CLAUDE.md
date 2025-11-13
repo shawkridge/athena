@@ -87,6 +87,137 @@ Every hook, skill, agent, and slash command **MUST** follow this pattern:
 
 **Why**: This pattern drastically reduces token usage (150K → 2K) and improves efficiency.
 
+### Token Limits and Context Budgeting
+
+**Context Token Targets** (MANDATORY for all handlers):
+
+Every MCP handler result **MUST** respect these token limits:
+
+| Result Type | Target | Notes |
+|-------------|--------|-------|
+| **Summary** | ~300 tokens | Primary use case - top results + metadata |
+| **Pagination metadata** | ~50 tokens | Tells user how to drill down |
+| **Full context** | ~4000 tokens max | Only on explicit drill-down request |
+
+**Default Item Limits** (MANDATORY for all list-returning handlers):
+
+```python
+# All handlers returning lists MUST implement these defaults
+args = {
+    "limit": min(args.get("limit", 10), 100),  # Default 10, max 100
+    "offset": args.get("offset", 0),
+}
+results = fetch_results(offset=args["offset"], limit=args["limit"])
+```
+
+**Pagination Pattern** (MANDATORY for all list-returning handlers):
+
+Every handler that returns multiple items MUST include pagination metadata:
+
+```python
+from src.athena.mcp.structured_result import StructuredResult, PaginationMetadata
+
+# Fetch results with limit
+results = fetch_results(limit=limit)
+
+# Return with pagination metadata
+return StructuredResult.success(
+    data=results,
+    pagination=PaginationMetadata(
+        returned=len(results),
+        total=total_count,  # Get from database
+        limit=limit,
+        offset=offset,
+        has_more=(offset + limit) < total_count,
+    ),
+    summary=f"Returned {len(results)} of {total_count} items. Use /recall to drill into specific items."
+)
+```
+
+**When to Use Pagination vs Drill-Down**:
+
+| Scenario | Use Pagination | Reason |
+|----------|----------------|--------|
+| User asks "list all tasks" | ✅ YES | Return top-10 with "has_more" flag |
+| User asks "show first 3 items" | ✅ YES | Limit by default, add drill-down guidance |
+| User asks "details on item #5" | ❌ NO (drill-down) | Return full item without pagination |
+| Search returns 500+ results | ✅ YES | Must paginate for token efficiency |
+| A single operation returns <5 items | ⚠️ OPTIONAL | Can return all if <100 tokens |
+
+**Overflow Handling Strategies** (when content exceeds limits):
+
+The TokenBudgetManager in `src/athena/efficiency/token_budget.py` provides 6 strategies:
+
+1. **COMPRESS** - Use TOON encoding (40-60% savings)
+2. **TRUNCATE_START** - Remove older/less relevant items from start
+3. **TRUNCATE_END** - Remove newer/less relevant items from end
+4. **TRUNCATE_MIDDLE** - Remove middle items, keep head and tail
+5. **DELEGATE** - Suggest pagination/drill-down instead
+6. **DEGRADE** - Return simpler format (metadata only vs full objects)
+
+**Default overflow strategy**:
+```python
+# Priority: COMPRESS → TRUNCATE_END → DELEGATE
+if content_tokens > 300:
+    result = compress_with_toon(result)  # Try 40-60% reduction
+    if remaining_tokens > 300:
+        result = truncate_to_top_k(result, k=5)  # Keep top-5
+    if still_too_large:
+        return error_with_drill_down_suggestion()  # Delegate to user
+```
+
+**Example: Implementing a Paginated Handler**
+
+```python
+async def _handle_list_tasks(self, args: dict) -> StructuredResult:
+    """List tasks with mandatory pagination."""
+    # Parse arguments with safe defaults
+    limit = min(args.get("limit", 10), 100)  # Max 100
+    offset = max(args.get("offset", 0), 0)   # Min 0
+
+    # Fetch results
+    tasks = await self.db.list_tasks(limit=limit, offset=offset)
+    total_count = await self.db.count_tasks()  # Get total for pagination
+
+    # Check token budget
+    tokens = self.token_budget.count_tokens(json.dumps(tasks))
+    if tokens > 300:
+        # Compress or truncate
+        tasks = tasks[:5]  # Keep only top-5
+
+    # Return with pagination metadata
+    return StructuredResult.success(
+        data={
+            "tasks": [task.to_dict() for task in tasks],
+            "count": len(tasks),
+        },
+        pagination=PaginationMetadata(
+            returned=len(tasks),
+            total=total_count,
+            limit=limit,
+            offset=offset,
+            has_more=(offset + limit) < total_count,
+        ),
+        summary=f"Returned {len(tasks)} of {total_count} tasks. "
+                f"Use /recall-memory with task_id for full details."
+    )
+```
+
+**Monitoring Token Usage**:
+
+Enable token budget enforcement globally to catch violations:
+
+```bash
+# Check token budget metrics
+curl -X POST http://localhost:3000/health/metrics
+# Returns: total_tokens_used, budget_violations, compression_ratio
+
+# Enable detailed logging
+DEBUG=1 memory-mcp
+```
+
+---
+
 ### Subagent Strategy: When to Use What
 
 Athena uses **three complementary layers** for agent-based work:

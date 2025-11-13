@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from datetime import datetime, timedelta
 from mcp.types import TextContent
 
-from .structured_result import StructuredResult, ResultStatus, PaginationMetadata
+from .structured_result import StructuredResult, ResultStatus, PaginationMetadata, create_paginated_result, paginate_results
 from .filesystem_api_integration import get_integration
 
 logger = logging.getLogger(__name__)
@@ -181,6 +181,8 @@ class ConsolidationHandlersMixin:
         project = self.project_manager.get_or_create_project()
         item_id = args.get("item_id")
         auto_route = args.get("auto_route", True)
+        limit = min(args.get("limit", 10), 100)
+        offset = args.get("offset", 0)
 
         if item_id is not None:
             # Consolidate specific item
@@ -190,6 +192,8 @@ class ConsolidationHandlersMixin:
             response += f"Target layer: {result['target_layer']}\n"
             if "confidence" in result:
                 response += f"Confidence: {result['confidence']:.2f}"
+
+            return [TextContent(type="text", text=response)]
         else:
             # Consolidate least active items
             all_items = []
@@ -200,22 +204,34 @@ class ConsolidationHandlersMixin:
             # Sort by activation level (least active first)
             all_items.sort(key=lambda x: getattr(x, "current_activation", getattr(x, "activation_level", 0)))
 
-            # Consolidate 1-3 least active items
-            consolidate_count = min(3, len(all_items))
+            total_items = len(all_items)
+            items_to_process = all_items[offset:offset+limit]
             results = []
 
-            for item in all_items[:consolidate_count]:
+            for item in items_to_process:
                 try:
                     result = self.consolidation_router.route_item(project.id, item.id, use_ml=auto_route)
                     results.append(result)
                 except Exception as e:
                     logger.warning(f"Failed to consolidate item {item.id}: {e}")
 
-            response = f"✓ Consolidated {len(results)} least active items\n"
-            for r in results:
-                response += f"  - Item {r.get('item_id')} → {r['target_layer']}\n"
+            # Build paginated response
+            formatted_results = [
+                {
+                    "item_id": r.get('item_id'),
+                    "target_layer": r['target_layer'],
+                    "confidence": r.get('confidence', 0.0)
+                }
+                for r in results
+            ]
 
-        return [TextContent(type="text", text=response)]
+            return paginate_results(
+                results=formatted_results,
+                args=args,
+                total_count=total_items,
+                operation="consolidate_working_memory",
+                drill_down_hint="Check individual items with get_working_memory for detailed activation and metadata"
+            ).as_text_content()
 
 
     async def _handle_consolidation_quality_metrics(self, args: dict) -> list[TextContent]:

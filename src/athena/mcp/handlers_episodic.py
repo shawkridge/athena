@@ -49,6 +49,7 @@ from mcp.types import TextContent
 
 from .filesystem_api_integration import get_integration
 
+from .structured_result import StructuredResult, ResultStatus, PaginationMetadata, create_paginated_result, paginate_results
 logger = logging.getLogger(__name__)
 
 
@@ -177,7 +178,8 @@ class EpisodicHandlersMixin:
                 - query: Search query
                 - filters: Dict with min_timestamp, max_timestamp, session_id, context_type,
                   spatial_path, tags, min_importance
-                - limit: Maximum results (default: 10)
+                - limit: Maximum results (default: 10, max: 100)
+                - offset: Offset for pagination (default: 0)
 
         Returns:
             List with TextContent containing events, clusters, and spatial distribution
@@ -185,7 +187,8 @@ class EpisodicHandlersMixin:
         try:
             query = args.get("query", "")
             filters = args.get("filters", {})
-            limit = args.get("limit", 10)
+            limit = min(args.get("limit", 10), 100)
+            offset = args.get("offset", 0)
 
             # Parse filters
             min_timestamp = filters.get("min_timestamp")
@@ -235,11 +238,17 @@ class EpisodicHandlersMixin:
                     params.append(f'%"{tag}"%')
 
             sql_parts.append("ORDER BY timestamp DESC")
-            sql_parts.append(f"LIMIT {limit}")
 
+            # Get total count for pagination
+            count_sql = " ".join(sql_parts[:sql_parts.index("ORDER BY timestamp DESC")])
+            count_sql = count_sql.replace("SELECT * FROM", "SELECT COUNT(*) FROM")
+            cursor = self.database.conn.cursor()
+            cursor.execute(count_sql, params)
+            total_count = cursor.fetchone()[0]
+
+            sql_parts.append(f"LIMIT {limit} OFFSET {offset}")
             sql = " ".join(sql_parts)
 
-            cursor = self.database.conn.cursor()
             cursor.execute(sql, params)
             rows = cursor.fetchall()
 
@@ -290,33 +299,14 @@ class EpisodicHandlersMixin:
                 path = event.get("spatial_context", "unknown")
                 spatial_distribution[path] = spatial_distribution.get(path, 0) + 1
 
-            # Build response
-            response = {
-                "events": events,
-                "total": len(events),
-                "clusters": [
-                    {
-                        "start": cluster[0]["timestamp"],
-                        "end": cluster[-1]["timestamp"],
-                        "size": len(cluster),
-                        "importance": sum(e.get("importance", 0) for e in cluster) / len(cluster)
-                    }
-                    for cluster in clusters
-                ],
-                "spatial_distribution": spatial_distribution,
-                "filters_applied": {
-                    "query": query,
-                    "min_timestamp": min_timestamp,
-                    "max_timestamp": max_timestamp,
-                    "session_id": session_id,
-                    "context_type": context_type,
-                    "spatial_path": spatial_path,
-                    "tags": tags,
-                    "min_importance": min_importance
-                }
-            }
-
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            # Build paginated response
+            return paginate_results(
+                results=events,
+                args=args,
+                total_count=total_count,
+                operation="recall_events",
+                drill_down_hint="Use recall_events with specific event IDs for full details including metadata and context"
+            ).as_text_content()
 
         except Exception as e:
             logger.error(f"Error recalling events: {e}", exc_info=True)

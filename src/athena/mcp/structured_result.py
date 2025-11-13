@@ -188,3 +188,143 @@ class StructuredResult:
                 "timestamp": datetime.now().isoformat(),
             },
         )
+
+
+# ============================================================================
+# Global Pagination Utility - Used by all handlers (Anthropic alignment)
+# ============================================================================
+
+def create_paginated_result(
+    items: List[Any],
+    total_count: Optional[int] = None,
+    offset: int = 0,
+    limit: int = 10,
+    max_limit: int = 100,
+    operation: Optional[str] = None,
+    drill_down_hint: Optional[str] = None,
+) -> StructuredResult:
+    """Create a paginated result following Anthropic pattern.
+
+    This is the STANDARD pattern for all list-returning handlers.
+
+    Args:
+        items: List of items to return (should be limited by query)
+        total_count: Total count (from database COUNT query)
+        offset: Current offset/page start position
+        limit: Requested limit (will be capped at max_limit)
+        max_limit: Maximum allowed limit (default 100)
+        operation: Handler operation name for logging
+        drill_down_hint: Hint text for drilling down (e.g., "/recall-memory")
+
+    Returns:
+        StructuredResult with pagination metadata and summary
+
+    Example:
+        # In handler
+        limit = min(args.get("limit", 10), 100)
+        offset = args.get("offset", 0)
+        items = await db.fetch_items(offset=offset, limit=limit)
+        total_count = await db.count_items()
+
+        return create_paginated_result(
+            items=items,
+            total_count=total_count,
+            offset=offset,
+            limit=limit,
+            operation="list_tasks",
+            drill_down_hint="/recall-memory with task_id for full details"
+        )
+    """
+    # Cap limit at maximum
+    limit = min(limit, max_limit)
+
+    # If total_count is None, infer it from items
+    if total_count is None:
+        total_count = len(items)
+
+    # Calculate pagination state
+    has_more = (offset + len(items)) < total_count
+
+    # Build pagination metadata
+    pagination = PaginationMetadata(
+        returned=len(items),
+        total=total_count,
+        limit=limit,
+        offset=offset,
+        has_more=has_more,
+    )
+
+    # Build summary (keep under 300 tokens total with data)
+    summary_lines = [
+        f"Returned {len(items)} of {total_count} items",
+    ]
+    if offset > 0:
+        summary_lines.append(f"(showing items {offset}-{offset + len(items)})")
+    if has_more:
+        summary_lines.append(
+            f"More available. "
+            f"Use offset={offset + len(items)} limit={limit} for next page."
+        )
+    if drill_down_hint:
+        summary_lines.append(f"💡 {drill_down_hint}")
+
+    summary = " | ".join(summary_lines)
+
+    # Build metadata
+    metadata = {
+        "operation": operation,
+        "pagination_applied": True,
+        "summary": summary,
+    }
+
+    return StructuredResult.success(
+        data=items,
+        metadata=metadata,
+        pagination=pagination,
+    )
+
+
+def paginate_results(
+    results: List[Any],
+    args: dict,
+    total_count: Optional[int] = None,
+    operation: Optional[str] = None,
+    drill_down_hint: Optional[str] = None,
+    default_limit: int = 10,
+    max_limit: int = 100,
+) -> StructuredResult:
+    """Convenience wrapper for paginating handler results from args dict.
+
+    Args:
+        results: List of items to paginate
+        args: Handler args dict (expected to have 'limit' and 'offset' keys)
+        total_count: Total count from database (if None, inferred from results)
+        operation: Handler operation name
+        drill_down_hint: Guidance for drilling down
+        default_limit: Default limit if not in args (default 10)
+        max_limit: Maximum allowed limit (default 100)
+
+    Returns:
+        StructuredResult with pagination
+
+    Example:
+        # In handler - super simple!
+        results = await db.list_items(
+            limit=min(args.get("limit", 10), 100),
+            offset=args.get("offset", 0)
+        )
+        total = await db.count_items()
+        return paginate_results(results, args, total_count=total)
+    """
+    limit = min(args.get("limit", default_limit), max_limit)
+    offset = max(args.get("offset", 0), 0)
+
+    return create_paginated_result(
+        items=results,
+        total_count=total_count,
+        offset=offset,
+        limit=limit,
+        max_limit=max_limit,
+        operation=operation,
+        drill_down_hint=drill_down_hint,
+    )

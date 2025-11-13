@@ -51,6 +51,7 @@ from typing import List, Optional
 
 from mcp.types import TextContent
 
+from .structured_result import StructuredResult, ResultStatus, PaginationMetadata, create_paginated_result, paginate_results
 logger = logging.getLogger(__name__)
 
 # Import research types for callback methods
@@ -1742,7 +1743,8 @@ class PlanningHandlersMixin:
             project_id = args.get("project_id")
             category = args.get("category")
             enabled_only = args.get("enabled_only", True)
-            limit = args.get("limit", 50)
+            limit = min(args.get("limit", 10), 100)
+            offset = args.get("offset", 0)
 
             if not project_id:
                 result = StructuredResult.error(
@@ -1751,12 +1753,13 @@ class PlanningHandlersMixin:
                 )
                 return [result.as_optimized_content(schema_name="validation")]
 
-            rules = self.rules_store.list_rules(project_id, enabled_only=enabled_only)
+            all_rules = self.rules_store.list_rules(project_id, enabled_only=enabled_only)
 
             if category:
-                rules = [r for r in rules if str(r.category).lower() == category.lower()]
+                all_rules = [r for r in all_rules if str(r.category).lower() == category.lower()]
 
-            rules = rules[:limit]
+            total_count = len(all_rules)
+            rules = all_rules[offset:offset+limit]
 
             # Format rules for structured response
             formatted_rules = []
@@ -1770,18 +1773,12 @@ class PlanningHandlersMixin:
                     "enabled": enabled_only  # inferred from filter
                 })
 
-            result = StructuredResult.success(
-                data=formatted_rules,
-                metadata={
-                    "operation": "list_rules",
-                    "schema": "validation",
-                    "project_id": project_id,
-                    "category_filter": category,
-                },
-                pagination=PaginationMetadata(
-                    returned=len(formatted_rules),
-                    limit=limit,
-                )
+            result = paginate_results(
+                results=formatted_rules,
+                args=args,
+                total_count=total_count,
+                operation="list_rules",
+                drill_down_hint="Use validate_task_against_rules to see rule violations and detailed validation results"
             )
         except Exception as e:
             result = StructuredResult.error(str(e), metadata={"operation": "list_rules"})

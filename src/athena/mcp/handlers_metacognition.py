@@ -30,6 +30,7 @@ from typing import List
 
 from mcp.types import TextContent
 
+from .structured_result import StructuredResult, ResultStatus, PaginationMetadata, create_paginated_result, paginate_results
 logger = logging.getLogger(__name__)
 
 
@@ -513,6 +514,10 @@ class MetacognitionHandlersMixin:
         # Extract conversation history if provided
         conversation_history = args.get("conversation_history")
 
+        # Pagination parameters (limit per layer)
+        limit = min(args.get("limit", 10), 100)
+        offset = args.get("offset", 0)
+
         # Ensure unified_manager is initialized (with fallback if no project context)
         try:
             manager = self.unified_manager
@@ -525,7 +530,7 @@ class MetacognitionHandlersMixin:
         results = manager.retrieve(
             query=args["query"],
             context=args.get("context"),
-            k=args.get("k", 5),
+            k=min(args.get("k", 5), limit),  # Respect limit
             conversation_history=conversation_history
         )
 
@@ -554,9 +559,11 @@ class MetacognitionHandlersMixin:
             if not items:
                 continue
 
-            response += f"## {layer.title()} Layer ({len(items)} results)\n\n"
+            # Apply pagination to layer results
+            layer_items = items[offset:offset+limit]
+            response += f"## {layer.title()} Layer ({len(layer_items)} of {len(items)} results)\n\n"
 
-            for item in items[:3]:  # Top 3 per layer
+            for item in layer_items:
                 if isinstance(item, dict):
                     if "content" in item:
                         response += f"- {item['content'][:100]}{'...' if len(item.get('content', '')) > 100 else ''}\n"

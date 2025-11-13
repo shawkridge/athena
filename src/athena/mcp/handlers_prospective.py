@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 from datetime import datetime
 from mcp.types import TextContent
 
-from .structured_result import StructuredResult, ResultStatus, PaginationMetadata
+from .structured_result import StructuredResult, ResultStatus, PaginationMetadata, create_paginated_result, paginate_results
 from ..core.models import MemoryType
 from ..prospective.models import ProspectiveTask, TaskStatus, TaskPriority, TaskPhase
 
@@ -149,52 +149,44 @@ class ProspectiveHandlersMixin:
 
             status_filter = TaskStatus(args["status"]) if "status" in args else None
             priority_filter = TaskPriority(args["priority"]) if "priority" in args else None
-            limit = args.get("limit", 20)
+
+            # Pagination parameters (Anthropic pattern)
+            limit = min(args.get("limit", 10), 100)
+            offset = args.get("offset", 0)
 
             tasks = self.prospective_store.list_tasks(
                 project.id,
                 status=status_filter,
-                limit=limit
+                limit=limit,
+                offset=offset
             )
 
-            if not tasks:
-                result = StructuredResult.success(
-                    data=[],
-                    metadata={
-                        "operation": "list_tasks",
-                        "schema": "prospective",
-                        "status_filter": str(status_filter) if status_filter else None,
-                        "priority_filter": str(priority_filter) if priority_filter else None,
-                    }
-                )
-            else:
-                # Format tasks for structured response
-                formatted_tasks = []
-                for task in tasks:
-                    formatted_tasks.append({
-                        "id": task.id,
-                        "content": task.content,
-                        "status": task.status.value if hasattr(task.status, 'value') else str(task.status),
-                        "priority": task.priority.value if hasattr(task.priority, 'value') else str(task.priority),
-                        "due_at": task.due_at.isoformat() if task.due_at else None,
-                        "created_at": task.created_at.isoformat() if task.created_at else None,
-                    })
+            # Get total count for pagination
+            total_count = self.prospective_store.count_tasks(
+                project.id,
+                status=status_filter
+            )
 
-                result = StructuredResult.success(
-                    data=formatted_tasks,
-                    metadata={
-                        "operation": "list_tasks",
-                        "schema": "prospective",
-                        "project": project.name,
-                        "status_filter": str(status_filter) if status_filter else None,
-                        "priority_filter": str(priority_filter) if priority_filter else None,
-                        "count": len(formatted_tasks),
-                    },
-                    pagination=PaginationMetadata(
-                        returned=len(formatted_tasks),
-                        limit=limit,
-                    )
-                )
+            # Format tasks for structured response
+            formatted_tasks = []
+            for task in tasks:
+                formatted_tasks.append({
+                    "id": task.id,
+                    "content": task.content,
+                    "status": task.status.value if hasattr(task.status, 'value') else str(task.status),
+                    "priority": task.priority.value if hasattr(task.priority, 'value') else str(task.priority),
+                    "due_at": task.due_at.isoformat() if task.due_at else None,
+                    "created_at": task.created_at.isoformat() if task.created_at else None,
+                })
+
+            # Use standard pagination pattern
+            result = paginate_results(
+                results=formatted_tasks,
+                args=args,
+                total_count=total_count,
+                operation="list_tasks",
+                drill_down_hint="Use /get-task with task_id for full task details including triggers and history"
+            )
         except Exception as e:
             result = StructuredResult.error(str(e), metadata={"operation": "list_tasks"})
 
@@ -834,11 +826,16 @@ class ProspectiveHandlersMixin:
         try:
             project = self.project_manager.get_or_create_project()
             include_subgoals = args.get("include_subgoals", True)
+            limit = min(args.get("limit", 10), 100)
+            offset = args.get("offset", 0)
 
-            goals = self.central_executive.get_active_goals(project.id)
+            all_goals = self.central_executive.get_active_goals(project.id)
 
             if not include_subgoals:
-                goals = [g for g in goals if g.goal_type == "primary"]
+                all_goals = [g for g in all_goals if g.goal_type == "primary"]
+
+            total_count = len(all_goals)
+            goals = all_goals[offset:offset+limit]
 
             if not goals:
                 result = StructuredResult.success(
@@ -867,18 +864,12 @@ class ProspectiveHandlersMixin:
                         "parent_id": goal.parent_goal_id if hasattr(goal, 'parent_goal_id') else None,
                     })
 
-                result = StructuredResult.success(
-                    data=formatted_goals,
-                    metadata={
-                        "operation": "get_active_goals",
-                        "schema": "prospective",
-                        "project_id": project.id,
-                        "include_subgoals": include_subgoals,
-                        "count": len(formatted_goals),
-                    },
-                    pagination=PaginationMetadata(
-                        returned=len(formatted_goals),
-                    )
+                result = paginate_results(
+                    results=formatted_goals,
+                    args=args,
+                    total_count=total_count,
+                    operation="get_active_goals",
+                    drill_down_hint="Use set_goal or activate_goal to interact with specific goals and track progress"
                 )
         except Exception as e:
             result = StructuredResult.error(str(e), metadata={"operation": "get_active_goals"})

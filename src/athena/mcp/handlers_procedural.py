@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 from datetime import datetime
 from mcp.types import TextContent
 
-from .structured_result import StructuredResult, ResultStatus, PaginationMetadata
+from .structured_result import StructuredResult, ResultStatus, PaginationMetadata, create_paginated_result, paginate_results
 from ..core.models import MemoryType
 from ..procedural.models import Procedure, ProcedureCategory
 
@@ -372,8 +372,16 @@ class ProceduralHandlersMixin:
             if "category" in args:
                 context_tags.append(args["category"])
 
-            procedures = self.procedural_store.search_procedures(args["query"], context=context_tags)
-            limit = args.get("limit", 5)
+            # Pagination parameters
+            limit = min(args.get("limit", 10), 100)
+            offset = args.get("offset", 0)
+
+            # Get all matching procedures for count
+            all_procedures = self.procedural_store.search_procedures(args["query"], context=context_tags)
+            total_count = len(all_procedures)
+
+            # Apply pagination
+            procedures = all_procedures[offset:offset+limit]
 
             if not procedures:
                 result = StructuredResult.success(
@@ -398,18 +406,13 @@ class ProceduralHandlersMixin:
                         "template": proc.template[:100],
                     })
 
-                result = StructuredResult.success(
-                    data=formatted_procs,
-                    metadata={
-                        "operation": "find_procedures",
-                        "schema": "procedural",
-                        "query": args["query"],
-                        "count": len(formatted_procs),
-                    },
-                    pagination=PaginationMetadata(
-                        returned=len(formatted_procs),
-                        limit=limit,
-                    )
+                # Use standard pagination
+                result = paginate_results(
+                    results=formatted_procs,
+                    args=args,
+                    total_count=total_count,
+                    operation="find_procedures",
+                    drill_down_hint="Use get_procedure_effectiveness with procedure_name for full execution history and metrics"
                 )
         except Exception as e:
             result = StructuredResult.error(str(e), metadata={"operation": "find_procedures"})
