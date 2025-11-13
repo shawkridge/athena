@@ -42,14 +42,16 @@ class EmbeddingService:
 
     def _init_model(self):
         """Try to initialize embedding model (graceful degradation)."""
-        # Try Claude API first
+        # Try llamacpp service first (always available as a service)
         try:
-            import anthropic
-            self.provider = "claude"
-            self.model = "claude"
-            logger.info("Initialized Claude embeddings")
-            return
-        except ImportError:
+            import requests
+            resp = requests.get("http://localhost:8000/health", timeout=1)
+            if resp.status_code == 200:
+                self.provider = "llamacpp"
+                self.model = "nomic-embed-text"
+                logger.info("Initialized llamacpp embeddings with nomic-embed-text")
+                return
+        except Exception:
             pass
 
         # Try Ollama local
@@ -62,6 +64,16 @@ class EmbeddingService:
                 logger.info("Initialized Ollama embeddings")
                 return
         except Exception:
+            pass
+
+        # Try Claude API (lowest priority - cloud dependency)
+        try:
+            import anthropic
+            self.provider = "claude"
+            self.model = "claude"
+            logger.info("Initialized Claude embeddings")
+            return
+        except ImportError:
             pass
 
         # Fall back to None (keyword search only)
@@ -82,21 +94,24 @@ class EmbeddingService:
             return None
 
         try:
-            if self.provider == "claude":
-                import anthropic
-                client = anthropic.Anthropic()
-                response = client.messages.create(
-                    model="claude-3-5-sonnet-20241022",
-                    max_tokens=1024,
-                    system="You are an embedding generator. Generate a 1536-dimensional embedding vector as a JSON array of numbers.",
-                    messages=[
-                        {"role": "user", "content": f"Generate embedding for: {text[:500]}"}
-                    ]
+            if self.provider == "llamacpp":
+                # Use local llamacpp with nomic-embed-text model
+                import requests
+                response = requests.post(
+                    "http://localhost:8000/v1/embeddings",
+                    json={"model": "nomic-embed-text", "input": text},
+                    timeout=10
                 )
-                # Parse response as vector (simplified)
-                # In production, use actual embedding endpoint
-                logger.debug("Generated Claude embedding")
-                return [0.0] * 1536  # Placeholder
+                if response.status_code == 200:
+                    data = response.json()
+                    # Extract embedding from OpenAI-compatible response format
+                    if "data" in data and len(data["data"]) > 0:
+                        embedding = data["data"][0].get("embedding")
+                        if embedding:
+                            logger.debug(f"Generated llamacpp embedding: {len(embedding)} dims")
+                            return embedding
+                else:
+                    logger.warning(f"llamacpp embeddings request failed: {response.status_code}")
 
             elif self.provider == "ollama":
                 import requests
@@ -909,10 +924,24 @@ def run_consolidation(strategy: str = 'balanced', days_back: int = 7, project_na
             logger.error("Could not initialize Database")
             return False
 
-        # Consolidation is handled by the main Athena system
-        # For now, this is a placeholder that verifies database connectivity
-        logger.info(f"Consolidation placeholder: strategy={strategy}, days_back={days_back}")
-        return True
+        # Use ConsolidationHelper to perform real consolidation
+        from consolidation_helper import ConsolidationHelper
+
+        helper = ConsolidationHelper(db)
+        result = helper.consolidate(
+            strategy=strategy,
+            days_back=days_back,
+            project_name=project_name
+        )
+
+        if result:
+            logger.info(f"Consolidation completed: strategy={strategy}, days_back={days_back}, "
+                       f"patterns={result.get('patterns_found', 0)}, "
+                       f"memories={result.get('semantic_memories_created', 0)}")
+            return True
+        else:
+            logger.warning(f"Consolidation failed or found no patterns: strategy={strategy}, days_back={days_back}")
+            return False
 
     except Exception as e:
         logger.error(f"Failed to run consolidation: {str(e)}")

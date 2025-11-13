@@ -352,8 +352,10 @@ class MemoryMCPServer(
             progress_tracker=self.progress_monitor,
         )
 
-        # Mock planner agent (in production, connect to actual Planner Agent)
-        self.mock_planner_agent = None  # TODO: connect to agents/planner.py
+        # Planner agent (optional - StrategyAwarePlanner has graceful fallback when None)
+        # In production, can be connected to agents/planner.py for advanced planning
+        # For now, fallback generates basic 5-step plans (Analyze → Plan → Implement → Verify → Document)
+        self.mock_planner_agent = None
 
         self.strategy_aware_planner = StrategyAwarePlanner(
             planner_agent=self.mock_planner_agent,
