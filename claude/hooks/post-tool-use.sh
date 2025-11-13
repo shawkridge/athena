@@ -41,6 +41,7 @@ fi
 echo "$COUNTER" > "$OPERATIONS_COUNTER_FILE"
 
 # Record episodic event to memory via direct Python import
+TOOL_NAME="${TOOL_NAME:-unknown}"
 log "Recording episodic event: $TOOL_NAME ($TOOL_STATUS)"
 
 # Source environment variables for database connections
@@ -50,6 +51,7 @@ fi
 
 # Call Python directly to record episodic event using memory bridge
 # This stores tool execution details in memory for later consolidation
+# Note: If Claude Code doesn't provide tool context, we handle gracefully
 python3 << 'PYTHON_EOF'
 import sys
 import os
@@ -61,12 +63,17 @@ sys.path.insert(0, '/home/user/.claude/hooks/lib')
 try:
     from memory_bridge import MemoryBridge
 
+    # Read tool context from environment (with fallback handling)
     tool_name = os.environ.get('TOOL_NAME', 'unknown')
     tool_status = os.environ.get('TOOL_STATUS', 'unknown')
     duration_ms = int(os.environ.get('EXECUTION_TIME_MS', '0'))
 
-    # Record the tool execution event
-    content_str = f"Tool: {tool_name} | Status: {tool_status} | Duration: {duration_ms}ms"
+    # Build content with available information
+    if tool_name != 'unknown':
+        content_str = f"Tool: {tool_name} | Status: {tool_status} | Duration: {duration_ms}ms"
+    else:
+        # Fallback: note that context was missing
+        content_str = "Tool execution (context not provided by Claude Code - Environment: TOOL_NAME not set)"
 
     with MemoryBridge() as bridge:
         project = bridge.get_project_by_path(os.getcwd())
@@ -75,11 +82,15 @@ try:
                 project_id=project['id'],
                 event_type="tool_execution",
                 content=content_str,
-                outcome=tool_status
+                outcome=tool_status if tool_status != 'unknown' else 'unspecified'
             )
 
             if event_id:
-                print(f"✓ Tool execution recorded (ID: {event_id})", file=sys.stderr)
+                if tool_name != 'unknown':
+                    print(f"✓ Tool execution recorded: {tool_name} (ID: {event_id})", file=sys.stderr)
+                else:
+                    print(f"⚠ Tool execution recorded but tool context missing (ID: {event_id})", file=sys.stderr)
+                    print(f"  Note: Claude Code should set TOOL_NAME, TOOL_STATUS env vars", file=sys.stderr)
             else:
                 print(f"⚠ Event recording may have failed (returned None)", file=sys.stderr)
         else:

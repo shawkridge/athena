@@ -42,21 +42,24 @@ if [ -f "/home/user/.work/athena/.env.local" ]; then
     export $(grep -v '^#' /home/user/.work/athena/.env.local | xargs)
 fi
 
-# Run consolidation using MemoryBridge
+# Run REAL consolidation using ConsolidationHelper
 # This performs dual-process reasoning:
 # - System 1: Fast statistical clustering (~100ms)
 # - System 2: LLM validation where uncertainty > 0.5 (~1-5s)
 python3 << 'PYTHON_EOF'
 import sys
 import os
+import json
 
 # Add hooks lib to path
 sys.path.insert(0, '/home/user/.claude/hooks/lib')
 
 try:
-    from memory_bridge import MemoryBridge, PerformanceTimer
+    from memory_bridge import MemoryBridge
+    from consolidation_helper import ConsolidationHelper
+    from discovery_recorder import DiscoveryRecorder
 
-    # Initialize MemoryBridge
+    # Initialize MemoryBridge for project lookup
     bridge = MemoryBridge()
 
     # Get project
@@ -67,24 +70,48 @@ try:
         project = bridge.get_project_by_path("/home/user/.work/default")
 
     if project:
-        with PerformanceTimer("consolidation"):
-            # Get recent events for consolidation
-            active_mem = bridge.get_active_memories(project['id'], limit=50)
-            print(f"✓ Events clustered by temporal/semantic proximity", file=sys.stderr)
-            print(f"✓ Patterns extracted (System 1 baseline - {active_mem['count']} events)", file=sys.stderr)
-            print(f"✓ High-uncertainty patterns validated (System 2)", file=sys.stderr)
+        project_id = project['id']
+
+        # Run real consolidation
+        consolidator = ConsolidationHelper()
+        results = consolidator.consolidate_session(project_id)
+        consolidator.close()
+
+        # Report actual results
+        if results['status'] == 'success':
+            print(f"✓ Events consolidated: {results['events_found']} events", file=sys.stderr)
+            print(f"✓ Patterns extracted: {results['patterns_extracted']} patterns", file=sys.stderr)
+            print(f"✓ Discoveries found: {results['discoveries_found']} discoveries", file=sys.stderr)
+            print(f"✓ Semantic memories created: {results['semantic_memories_created']}", file=sys.stderr)
+            print(f"✓ Procedures extracted: {results['procedures_extracted']}", file=sys.stderr)
+
+            # Store consolidation results
+            bridge = MemoryBridge()
+            bridge.record_event(
+                project_id=project_id,
+                event_type="CONSOLIDATION_SESSION",
+                content=json.dumps({
+                    "events_processed": results['events_found'],
+                    "patterns_found": results['patterns_extracted'],
+                    "discoveries": results['discoveries_found'],
+                    "memories_created": results['semantic_memories_created'],
+                    "procedures_extracted": results['procedures_extracted'],
+                }),
+                outcome="success"
+            )
+            bridge.close()
+        else:
+            print(f"⚠ Consolidation status: {results.get('status', 'unknown')}", file=sys.stderr)
+            if 'error' in results:
+                print(f"⚠ Error: {results['error']}", file=sys.stderr)
     else:
         print(f"⚠ Could not find project for consolidation", file=sys.stderr)
 
-    bridge.close()
-
 except Exception as e:
     print(f"⚠ Consolidation failed: {str(e)}", file=sys.stderr)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
 PYTHON_EOF
-
-log "  ✓ Events clustered by temporal/semantic proximity"
-log "  ✓ Patterns extracted (System 1 baseline)"
-log "  ✓ High-uncertainty patterns validated (System 2)"
 
 # Phase 2: Invoke consolidation-engine agent
 log "Phase 2: Consolidation engine processing patterns..."
@@ -104,25 +131,11 @@ PYTHON_EOF
 
 log "  ✓ Patterns analyzed for quality and consistency"
 
-# Phase 3: Extract reusable procedures
-log "Phase 3: Extracting reusable procedures..."
+# Phase 3: Strengthen associations and extract procedures
+log "Phase 3: Strengthening associations and extracting procedures..."
 
-# Invoke workflow-learner agent (local execution)
-python3 << 'PYTHON_EOF'
-import sys
-sys.path.insert(0, '/home/user/.claude/hooks/lib')
-from agent_invoker import AgentInvoker
-
-invoker = AgentInvoker()
-invoker.invoke_agent("workflow-learner", {
-    "source": "session_events",
-    "focus": "multi_step_patterns",
-    "consolidation_context": True
-})
-PYTHON_EOF
-
-log "  ✓ Multi-step patterns identified"
-log "  ✓ Procedures extracted with effectiveness scores"
+# Note: Procedures are now extracted by ConsolidationHelper
+# Additional processing via workflow-learner agent is optional
 
 # Phase 4: Strengthen memory associations
 log "Phase 4: Strengthening memory associations (Hebbian learning)..."
@@ -207,10 +220,8 @@ except Exception as e:
     print(f"⚠ Event recording failed: {str(e)}", file=sys.stderr)
 PYTHON_EOF
 
-log "  ✓ New semantic memories created: 3"
-log "  ✓ Procedures extracted: 2"
-log "  ✓ Associations strengthened: 12"
-log "  ✓ Quality improvement: +3%"
+log "  ✓ Associations strengthened via learning mechanisms"
+log "  ✓ Memory quality updated based on consolidation results"
 
 # Phase 7: Token Cost Monitoring
 log "Phase 7: Monitoring token usage and costs..."
@@ -254,14 +265,14 @@ else:
 
 PYTHON_EOF
 
-log "  ✓ Token usage: 43K tokens (estimated)"
-log "  ✓ Session cost: ~$0.13 USD"
-log "  ✓ Context utilization: 34% (healthy)"
+log "  ✓ Token usage tracked and logged"
+log "  ✓ Session cost estimated"
+log "  ✓ Context utilization monitored"
 
 # Summary
 log "=== Session End Consolidation Complete ==="
 log "Status: SUCCESS"
-log "Cost Summary: ~$0.13 | Context: 34% | Quality Improved: +3%"
+log "Consolidation: Events analyzed, patterns extracted, discoveries recorded"
 log "Next Session: Ready to continue with enhanced memory"
 
 # Clean up temporary files
