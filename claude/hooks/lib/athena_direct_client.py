@@ -58,8 +58,12 @@ class AthenaDirectClient:
             return True
 
         try:
-            # Import adapter from local module
-            from .filesystem_api_adapter import FilesystemAPIAdapter
+            # Import adapter - try absolute import first (hooks lib context)
+            # Then fallback to relative import (package context)
+            try:
+                from filesystem_api_adapter import FilesystemAPIAdapter
+            except ImportError:
+                from .filesystem_api_adapter import FilesystemAPIAdapter
 
             logger.debug("Importing FilesystemAPIAdapter")
             self.adapter = FilesystemAPIAdapter()

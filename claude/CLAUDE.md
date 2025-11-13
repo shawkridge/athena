@@ -131,6 +131,65 @@ Technology alone is not enough. It's technology married with liberal arts, marri
 
 When I say something seems impossible, that's your cue to ultrathink harder. The people who are crazy enough to think they can change the world are the ones who do.
 
+## Global Hooks & Memory Integration ✅
+
+**Status**: All 7 hooks are globally active across all projects
+
+### Global Hooks Architecture
+
+Hooks are registered in `~/.claude/settings.json` and execute for every project:
+
+| Hook | Event | Purpose | Pattern |
+|------|-------|---------|---------|
+| `session-start.sh` | SessionStart | Initialize memory context at session beginning | Discover → Execute → Return summary |
+| `pre-execution.sh` | PreToolUse | Validate execution environment before tools run | Local validation, no tool definitions |
+| `post-tool-use.sh` | PostToolUse | Record tool results to episodic memory | Discover → Process locally → Store |
+| `smart-context-injection.sh` | PostToolUse | Inject relevant memories for next step (summary-first) | Semantic search → Top-3 results → Inject context |
+| `user-prompt-submit.sh` | UserPromptSubmit | Process user input and contextual grounding | Parse → Ground in spatial-temporal → Store |
+| `session-end.sh` | SessionEnd | Consolidate session learnings into semantic memory | Cluster → Extract patterns → Validate → Store |
+| `post-task-completion.sh` | On task completion | Learn procedures from completed work | Extract workflow → Validate → Save as reusable |
+
+### How Hooks Enable Code-Execution-with-MCP
+
+The hooks implement Anthropic's recommended pattern natively:
+
+```
+Session Lifecycle:
+├─ SessionStart → Initialize Athena memory layer
+├─ PreToolUse → Check execution context (no tool bloat)
+├─ PostToolUse → Record execution + inject relevant memories (summary-first)
+├─ UserPromptSubmit → Ground user input in spatial-temporal context
+├─ (User executes tasks)
+├─ Session completion → Extract procedures and consolidate learnings
+└─ SessionEnd → Persist patterns to semantic layer
+```
+
+**Key Property**: All hooks follow the Discover→Execute→Summarize pattern:
+- ✅ Hooks discover what they need (list operations, read schemas)
+- ✅ Execute locally in bash/Python (no context bloat)
+- ✅ Return 300-token summaries (full data only on drill-down)
+
+### Memory Access from Any Project
+
+Since hooks are global, **every project automatically has access to**:
+- Episodic memory (what happened when)
+- Semantic memory (facts learned)
+- Procedural memory (reusable workflows)
+- Knowledge graph (entity relationships)
+- Working memory (current 7±2 focus items)
+- Meta-memory (quality, expertise, attention)
+
+This is managed through `~/.claude/hooks/lib/` Python helpers that call the Athena memory API.
+
+### Cross-Project Memory Benefits
+
+| Scenario | Benefit |
+|----------|---------|
+| **Switch between projects** | Resume context from previous session (7±2 items) |
+| **Similar tasks** | Reuse learned procedures from other projects |
+| **Expert discovery** | Query which domains you're expert in across projects |
+| **Learning patterns** | Consolidation extracts insights across all projects |
+
 ## Alignment Verification ✅
 
 **Verified November 12, 2025**
@@ -141,14 +200,17 @@ All hooks, skills, agents, and commands follow Anthropic's MCP code execution mo
 - ✅ **100% of agents** execute locally via AgentInvoker (no tool-calling, no context bloat)
 - ✅ **95% of hooks** use Discover→Execute→Summarize pattern (2 recently optimized)
 - ✅ **95% of slash commands** follow summary-first pattern (improved search commands)
+- ✅ **100% of global hooks** are now registered and active (November 12, 2025)
 
 **Key Changes Made**:
 1. Migrated hooks from `mcp__athena__*` calls to `AgentInvoker` local execution
 2. Added result filtering in smart-context-injection.sh (process locally before returning)
 3. Updated search commands to document top-3 filtering with drill-down available
 4. Documented /recall-memory as drill-down companion to /search-knowledge
+5. **NEW**: Registered all 7 hooks in `~/.claude/settings.json` for global activation
+6. **NEW**: Hooks now provide cross-project memory access via Athena memory API
 
-**Result**: Maintained 98.7% token efficiency through local execution and summary-first responses.
+**Result**: Maintained 98.7% token efficiency through local execution and summary-first responses. Cross-project memory enables learning and context transfer.
 
 ## Now: What Are We Building Today?
 

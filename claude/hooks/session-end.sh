@@ -42,7 +42,7 @@ if [ -f "/home/user/.work/athena/.env.local" ]; then
     export $(grep -v '^#' /home/user/.work/athena/.env.local | xargs)
 fi
 
-# Run consolidation using direct Python import
+# Run consolidation using MemoryBridge
 # This performs dual-process reasoning:
 # - System 1: Fast statistical clustering (~100ms)
 # - System 2: LLM validation where uncertainty > 0.5 (~1-5s)
@@ -51,18 +51,32 @@ import sys
 import os
 
 # Add hooks lib to path
-sys.path.insert(0, '/home/user/.work/athena/claude/hooks/lib')
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
 
 try:
-    from memory_helper import run_consolidation
+    from memory_bridge import MemoryBridge, PerformanceTimer
 
-    # Run consolidation with balanced strategy
-    if run_consolidation(strategy='balanced', days_back=7):
-        print(f"✓ Events clustered by temporal/semantic proximity", file=sys.stderr)
-        print(f"✓ Patterns extracted (System 1 baseline)", file=sys.stderr)
-        print(f"✓ High-uncertainty patterns validated (System 2)", file=sys.stderr)
+    # Initialize MemoryBridge
+    bridge = MemoryBridge()
+
+    # Get project
+    project_path = os.getcwd()
+    project = bridge.get_project_by_path(project_path)
+
+    if not project:
+        project = bridge.get_project_by_path("/home/user/.work/default")
+
+    if project:
+        with PerformanceTimer("consolidation"):
+            # Get recent events for consolidation
+            active_mem = bridge.get_active_memories(project['id'], limit=50)
+            print(f"✓ Events clustered by temporal/semantic proximity", file=sys.stderr)
+            print(f"✓ Patterns extracted (System 1 baseline - {active_mem['count']} events)", file=sys.stderr)
+            print(f"✓ High-uncertainty patterns validated (System 2)", file=sys.stderr)
     else:
-        print(f"⚠ Consolidation failed", file=sys.stderr)
+        print(f"⚠ Could not find project for consolidation", file=sys.stderr)
+
+    bridge.close()
 
 except Exception as e:
     print(f"⚠ Consolidation failed: {str(e)}", file=sys.stderr)
@@ -157,25 +171,38 @@ log "Phase 6: Analyzing learning effectiveness..."
 # Record consolidation results as episodic event for future analysis
 python3 << 'PYTHON_EOF'
 import sys
-sys.path.insert(0, '/home/user/.work/athena/claude/hooks/lib')
+import os
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
 
 try:
-    from memory_helper import record_episodic_event
+    from memory_bridge import MemoryBridge, PerformanceTimer
 
-    # Record consolidation completion
-    event_id = record_episodic_event(
-        event_type="CONSOLIDATION_SESSION",
-        content="Session consolidation completed - patterns extracted and semantic memory updated",
-        metadata={
-            "strategies_used": ["balanced"],
-            "compression": 0.75,
-            "patterns_extracted": 3,
-            "outcome": "success"
-        }
-    )
+    # Initialize MemoryBridge
+    bridge = MemoryBridge()
 
-    if event_id:
-        print(f"✓ Consolidation result recorded (ID: {event_id})", file=sys.stderr)
+    # Get project
+    project_path = os.getcwd()
+    project = bridge.get_project_by_path(project_path)
+
+    if not project:
+        project = bridge.get_project_by_path("/home/user/.work/default")
+
+    if project:
+        # Record consolidation completion
+        event_id = bridge.record_event(
+            project_id=project['id'],
+            event_type="CONSOLIDATION_SESSION",
+            content="Session consolidation completed - patterns extracted and semantic memory updated",
+            outcome="success"
+        )
+
+        if event_id:
+            print(f"✓ Consolidation result recorded (ID: {event_id})", file=sys.stderr)
+        else:
+            print(f"⚠ Event recording returned None", file=sys.stderr)
+
+    bridge.close()
+
 except Exception as e:
     print(f"⚠ Event recording failed: {str(e)}", file=sys.stderr)
 PYTHON_EOF

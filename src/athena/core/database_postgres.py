@@ -228,11 +228,11 @@ class PostgresDatabase:
 
     def __init__(
         self,
-        host: str = "postgres",  # Docker service name (was "localhost")
+        host: str = "localhost",  # Local Postgres (no Docker)
         port: int = 5432,
         dbname: str = "athena",
-        user: str = "athena",
-        password: str = "athena_password",  # Match docker-compose.yml
+        user: str = "postgres",  # Default Postgres user (not "athena")
+        password: str = "postgres",  # Default Postgres password
         min_size: int = 2,
         max_size: int = 10,
         pool_timeout: int = 30,

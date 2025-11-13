@@ -59,5 +59,41 @@ fi
 log "Checking cognitive load..."
 log "✓ Pre-analysis complete (silent unless alerts)"
 
+# Record the user's prompt as an episodic event for cross-project memory
+# This enables remembering questions asked in other projects
+log "Recording prompt to episodic memory..."
+
+python3 << 'PYTHON_EOF'
+import sys
+import os
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
+
+try:
+    from memory_bridge import MemoryBridge
+
+    user_prompt = "$USER_PROMPT"
+
+    # Connect to memory and record event
+    with MemoryBridge() as bridge:
+        project = bridge.get_project_by_path(os.getcwd())
+        if project:
+            event_id = bridge.record_event(
+                project_id=project['id'],
+                event_type="user_question",
+                content=user_prompt,
+                outcome="recorded"
+            )
+
+            if event_id:
+                print(f"  ✓ Prompt recorded (event {event_id}) for cross-project access", file=sys.stderr)
+            else:
+                print(f"  ⚠ Failed to record prompt to memory", file=sys.stderr)
+        else:
+            print(f"  ⚠ No project context found", file=sys.stderr)
+
+except Exception as e:
+    print(f"  ⚠ Error recording prompt: {str(e)}", file=sys.stderr)
+PYTHON_EOF
+
 # Exit successfully (don't block user interaction)
 exit 0

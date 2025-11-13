@@ -17,15 +17,15 @@ except ImportError:
 class DatabaseFactory:
     """Factory for creating PostgreSQL database instances.
 
-    Docker configuration (no fallback):
-    - ATHENA_POSTGRES_HOST: postgres (Docker service name)
+    Local configuration (no Docker):
+    - ATHENA_POSTGRES_HOST: localhost (local Postgres)
     - ATHENA_POSTGRES_PORT: 5432
     - ATHENA_POSTGRES_DB: athena
-    - ATHENA_POSTGRES_USER: athena
-    - ATHENA_POSTGRES_PASSWORD: athena_password
+    - ATHENA_POSTGRES_USER: postgres (default Postgres user)
+    - ATHENA_POSTGRES_PASSWORD: postgres (default Postgres password)
 
     Usage:
-        # Automatic creation with hardcoded Docker defaults
+        # Automatic creation with localhost defaults
         db = DatabaseFactory.create()
 
         # Custom PostgreSQL connection
@@ -33,8 +33,8 @@ class DatabaseFactory:
             host='localhost',
             port=5432,
             dbname='athena',
-            user='athena',
-            password='athena_password'
+            user='postgres',
+            password='postgres'
         )
     """
 
@@ -84,11 +84,11 @@ class DatabaseFactory:
         3. Docker defaults (fallback)
 
         Environment variables:
-        - ATHENA_POSTGRES_HOST: PostgreSQL host (default: "postgres" for Docker)
+        - ATHENA_POSTGRES_HOST: PostgreSQL host (default: "localhost")
         - ATHENA_POSTGRES_PORT: PostgreSQL port (default: 5432)
         - ATHENA_POSTGRES_DB: Database name (default: athena)
-        - ATHENA_POSTGRES_USER: Database user (default: athena)
-        - ATHENA_POSTGRES_PASSWORD: Database password (default: athena_password)
+        - ATHENA_POSTGRES_USER: Database user (default: postgres)
+        - ATHENA_POSTGRES_PASSWORD: Database password (default: postgres)
 
         Args:
             **kwargs: PostgreSQL-specific config (overrides environment/defaults)
@@ -98,10 +98,11 @@ class DatabaseFactory:
         """
 
         # Configuration with proper priority: kwargs > env > defaults
+        # Defaults changed from Docker (postgres/athena) to localhost Postgres (localhost/postgres)
         config = {
             'host': kwargs.get(
                 'host',
-                os.environ.get('ATHENA_POSTGRES_HOST', 'postgres')
+                os.environ.get('ATHENA_POSTGRES_HOST', 'localhost')
             ),
             'port': int(kwargs.get(
                 'port',
@@ -113,11 +114,11 @@ class DatabaseFactory:
             ),
             'user': kwargs.get(
                 'user',
-                os.environ.get('ATHENA_POSTGRES_USER', 'athena')
+                os.environ.get('ATHENA_POSTGRES_USER', 'postgres')
             ),
             'password': kwargs.get(
                 'password',
-                os.environ.get('ATHENA_POSTGRES_PASSWORD', 'athena_password')
+                os.environ.get('ATHENA_POSTGRES_PASSWORD', 'postgres')
             ),
             'min_size': int(kwargs.get('min_size', '2')),
             'max_size': int(kwargs.get('max_size', '10')),
@@ -160,7 +161,7 @@ def get_database(**kwargs) -> PostgresDatabase:
         PostgresDatabase instance
 
     Example:
-        # Use hardcoded Docker defaults
+        # Use localhost defaults
         db = get_database()
 
         # Custom configuration
@@ -168,8 +169,8 @@ def get_database(**kwargs) -> PostgresDatabase:
             host='localhost',
             port=5432,
             dbname='athena',
-            user='athena',
-            password='athena_password'
+            user='postgres',
+            password='postgres'
         )
     """
     return DatabaseFactory.create(**kwargs)

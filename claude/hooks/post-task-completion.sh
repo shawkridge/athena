@@ -61,42 +61,52 @@ if [ -f "/home/user/.work/athena/.env.local" ]; then
     export $(grep -v '^#' /home/user/.work/athena/.env.local | xargs)
 fi
 
-# Record task progress via direct Python import
+# Record task progress via MemoryBridge
 python3 << 'PYTHON_EOF'
 import sys
 import os
 from datetime import datetime
 
 # Add hooks lib to path
-sys.path.insert(0, '/home/user/.work/athena/claude/hooks/lib')
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
 
 try:
-    from memory_helper import record_episodic_event
+    from memory_bridge import MemoryBridge, PerformanceTimer
 
-    # Record the task completion event
-    task_data = {
-        "task_id": os.environ.get('TASK_ID', 'unknown'),
-        "task_name": os.environ.get('TASK_NAME', 'Unnamed Task'),
-        "status": os.environ.get('TASK_STATUS', 'unknown'),
-        "quality_score": float(os.environ.get('QUALITY_SCORE', '0.75')),
-        "estimated_time_minutes": int(os.environ.get('ESTIMATED_TIME', '0')),
-        "actual_time_minutes": int(os.environ.get('ACTUAL_TIME', '0')),
-        "timestamp": datetime.utcnow().isoformat() + 'Z'
-    }
+    # Initialize MemoryBridge
+    bridge = MemoryBridge()
 
-    # Format content for memory storage
-    content_str = f"Task: {task_data['task_name']} | Status: {task_data['status']} | Quality: {task_data['quality_score']:.2f} | Time: {task_data['actual_time_minutes']}min"
+    # Get project
+    project_path = os.getcwd()
+    project = bridge.get_project_by_path(project_path)
 
-    event_id = record_episodic_event(
-        event_type="TASK_COMPLETION",
-        content=content_str,
-        metadata=task_data
-    )
+    if not project:
+        project = bridge.get_project_by_path("/home/user/.work/default")
 
-    if event_id:
-        print(f"✓ Task progress recorded (ID: {event_id})", file=sys.stderr)
-    else:
-        print(f"⚠ Task recording may have failed (returned None)", file=sys.stderr)
+    if project:
+        # Record the task completion event
+        task_id = os.environ.get('TASK_ID', 'unknown')
+        task_name = os.environ.get('TASK_NAME', 'Unnamed Task')
+        task_status = os.environ.get('TASK_STATUS', 'unknown')
+        quality_score = float(os.environ.get('QUALITY_SCORE', '0.75'))
+        actual_time = int(os.environ.get('ACTUAL_TIME', '0'))
+
+        # Format content for memory storage
+        content_str = f"Task: {task_name} | Status: {task_status} | Quality: {quality_score:.2f} | Time: {actual_time}min"
+
+        event_id = bridge.record_event(
+            project_id=project['id'],
+            event_type="TASK_COMPLETION",
+            content=content_str,
+            outcome="success" if task_status == "success" else "failure"
+        )
+
+        if event_id:
+            print(f"✓ Task progress recorded (ID: {event_id})", file=sys.stderr)
+        else:
+            print(f"⚠ Task recording may have failed (returned None)", file=sys.stderr)
+
+    bridge.close()
 
 except Exception as e:
     print(f"⚠ Task recording failed: {str(e)}", file=sys.stderr)
@@ -141,7 +151,7 @@ log "  ✓ Time estimation accuracy: $ACCURACY% (planned ${ESTIMATED_TIME}min, a
 log "  ✓ Quality score: $QUALITY_SCORE/1.0"
 log "  ✓ Task health: GOOD"
 
-# Record execution metrics as episodic event (handled by memory_helper above)
+# Execution metrics recorded via MemoryBridge above
 
 # Phase 3: Extract learnings and procedures
 log "Phase 3: Extracting learnings and procedures..."

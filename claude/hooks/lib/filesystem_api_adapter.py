@@ -25,9 +25,18 @@ class FilesystemAPIAdapter:
     """
 
     def __init__(self, athena_root: Optional[Path] = None):
-        """Initialize adapter with Athena filesystem API root."""
+        """Initialize adapter with Athena filesystem API root.
+
+        Uses absolute path /home/user/.work/athena/src/athena/filesystem_api
+        because hooks are symlinked and relative path resolution fails.
+        """
         if athena_root is None:
-            athena_root = Path(__file__).parent.parent.parent.parent / "src" / "athena" / "filesystem_api"
+            # Use absolute path directly (hooks are in symlink, so relative paths fail)
+            athena_root = Path("/home/user/.work/athena/src/athena/filesystem_api")
+
+            # Fallback to relative path if that fails (for testing)
+            if not athena_root.exists():
+                athena_root = Path(__file__).parent.parent.parent.parent / "src" / "athena" / "filesystem_api"
 
         self.athena_root = Path(athena_root)
         self._validate_root()
@@ -226,9 +235,17 @@ class FilesystemAPIAdapter:
             # Find main function name (usually matches operation name)
             function_name = self._get_function_name(layer, operation)
 
-            # Add db_path if not provided
-            if "db_path" not in args:
-                args["db_path"] = os.path.expanduser("~/.athena/memory.db")
+            # Add PostgreSQL connection params if not provided
+            if "db_host" not in args:
+                args["db_host"] = os.environ.get('ATHENA_DB_HOST', 'localhost')
+            if "db_port" not in args:
+                args["db_port"] = int(os.environ.get('ATHENA_DB_PORT', 5432))
+            if "db_name" not in args:
+                args["db_name"] = os.environ.get('ATHENA_DB_NAME', 'athena')
+            if "db_user" not in args:
+                args["db_user"] = os.environ.get('ATHENA_DB_USER', 'postgres')
+            if "db_password" not in args:
+                args["db_password"] = os.environ.get('ATHENA_DB_PASSWORD', 'postgres')
 
             # Execute locally - this is the key difference!
             # All data processing happens here, not in model context
@@ -272,8 +289,17 @@ class FilesystemAPIAdapter:
             module_path = f"/athena/operations/{operation}.py"
             function_name = self._get_function_name("operations", operation)
 
-            if "db_path" not in args:
-                args["db_path"] = os.path.expanduser("~/.athena/memory.db")
+            # Add PostgreSQL connection params if not provided
+            if "db_host" not in args:
+                args["db_host"] = os.environ.get('ATHENA_DB_HOST', 'localhost')
+            if "db_port" not in args:
+                args["db_port"] = int(os.environ.get('ATHENA_DB_PORT', 5432))
+            if "db_name" not in args:
+                args["db_name"] = os.environ.get('ATHENA_DB_NAME', 'athena')
+            if "db_user" not in args:
+                args["db_user"] = os.environ.get('ATHENA_DB_USER', 'postgres')
+            if "db_password" not in args:
+                args["db_password"] = os.environ.get('ATHENA_DB_PASSWORD', 'postgres')
 
             result = executor.execute(module_path, function_name, args)
 
@@ -321,7 +347,11 @@ class FilesystemAPIAdapter:
             module_path = f"/athena/layers/{layer}/{detail_type}.py"
 
             result = executor.execute(module_path, function_name, {
-                "db_path": os.path.expanduser("~/.athena/memory.db"),
+                "db_host": os.environ.get('ATHENA_DB_HOST', 'localhost'),
+                "db_port": int(os.environ.get('ATHENA_DB_PORT', 5432)),
+                "db_name": os.environ.get('ATHENA_DB_NAME', 'athena'),
+                "db_user": os.environ.get('ATHENA_DB_USER', 'postgres'),
+                "db_password": os.environ.get('ATHENA_DB_PASSWORD', 'postgres'),
                 "id": detail_id
             })
 

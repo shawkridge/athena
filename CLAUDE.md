@@ -57,19 +57,21 @@ cargo install ast-grep  # or: brew install ast-grep
 /project-status               # Overview with goal rankings + metrics
 ```
 
-## Anthropic MCP Code Execution Alignment ✅
+## Anthropic Code Execution Pattern Alignment ✅
 
-This project implements Anthropic's recommended code execution with MCP model (source: https://www.anthropic.com/engineering/code-execution-with-mcp).
+This project aligns with **Anthropic's code-execution pattern** from their article on code-execution-with-MCP (source: https://www.anthropic.com/engineering/code-execution-with-mcp).
+
+**Important Note**: We implement the **pattern principles** (progressive disclosure, local processing, summary-first) but not the **MCP protocol** itself. MCP is an optional protocol choice - the key efficiency comes from the pattern.
 
 ### Design Principles (MANDATORY for all new code)
 
-**The Model**: Code-as-API instead of traditional tool-calling
+**The Pattern**: Discover operations → Execute locally → Summarize results
 
 | Aspect | ❌ Old Way | ✅ New Way |
 |--------|-----------|-----------|
 | Tool definitions | Loaded upfront (150K tokens) | Discovered on-demand via filesystem |
 | Data handling | Full objects in context (50K token duplication) | Processed locally, 300-token summaries returned |
-| Execution | Alternating agent↔tool calls | Direct code execution in sandbox |
+| Execution | Alternating agent↔tool calls | Direct code execution in process |
 | Context efficiency | Wasteful | 98.7% token reduction |
 
 ### Implementation Requirements
@@ -77,13 +79,13 @@ This project implements Anthropic's recommended code execution with MCP model (s
 Every hook, skill, agent, and slash command **MUST** follow this pattern:
 
 ```
-1. Discover  → List available operations (list_directory, describe_api)
-2. Read      → Load only needed signatures (read_file, get_schema)
+1. Discover  → List available operations (filesystem, API)
+2. Read      → Load only needed signatures (import, describe_api)
 3. Execute   → Process data locally in execution environment
 4. Summarize → Return 300-token summary (NOT full objects)
 ```
 
-**Why**: This is how Anthropic designed MCP to work. Deviating wastes context tokens and defeats the architectural foundation.
+**Why**: This pattern drastically reduces token usage (150K → 2K) and improves efficiency.
 
 ### Subagent Strategy: When to Use What
 

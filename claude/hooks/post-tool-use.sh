@@ -48,41 +48,42 @@ if [ -f "/home/user/.work/athena/.env.local" ]; then
     export $(grep -v '^#' /home/user/.work/athena/.env.local | xargs)
 fi
 
-# Call Python directly to record episodic event
+# Call Python directly to record episodic event using memory bridge
 # This stores tool execution details in memory for later consolidation
 python3 << 'PYTHON_EOF'
 import sys
 import os
-import json
 from datetime import datetime
 
 # Add hooks lib to path
-sys.path.insert(0, '/home/user/.work/athena/claude/hooks/lib')
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
 
 try:
-    from memory_helper import record_episodic_event
+    from memory_bridge import MemoryBridge
+
+    tool_name = os.environ.get('TOOL_NAME', 'unknown')
+    tool_status = os.environ.get('TOOL_STATUS', 'unknown')
+    duration_ms = int(os.environ.get('EXECUTION_TIME_MS', '0'))
 
     # Record the tool execution event
-    event_data = {
-        "tool_name": os.environ.get('TOOL_NAME', 'unknown'),
-        "status": os.environ.get('TOOL_STATUS', 'unknown'),
-        "duration_ms": int(os.environ.get('EXECUTION_TIME_MS', '0')),
-        "timestamp": datetime.utcnow().isoformat() + 'Z'
-    }
+    content_str = f"Tool: {tool_name} | Status: {tool_status} | Duration: {duration_ms}ms"
 
-    # Convert event data to JSON string for the memory content
-    content_str = f"Tool: {event_data['tool_name']} | Status: {event_data['status']} | Duration: {event_data['duration_ms']}ms"
+    with MemoryBridge() as bridge:
+        project = bridge.get_project_by_path(os.getcwd())
+        if project:
+            event_id = bridge.record_event(
+                project_id=project['id'],
+                event_type="tool_execution",
+                content=content_str,
+                outcome=tool_status
+            )
 
-    event_id = record_episodic_event(
-        event_type="TOOL_EXECUTION",
-        content=content_str,
-        metadata=event_data
-    )
-
-    if event_id:
-        print(f"✓ Tool execution recorded (ID: {event_id})", file=sys.stderr)
-    else:
-        print(f"⚠ Event recording may have failed (returned None)", file=sys.stderr)
+            if event_id:
+                print(f"✓ Tool execution recorded (ID: {event_id})", file=sys.stderr)
+            else:
+                print(f"⚠ Event recording may have failed (returned None)", file=sys.stderr)
+        else:
+            print(f"⚠ No project context found", file=sys.stderr)
 
 except Exception as e:
     print(f"⚠ Event recording failed: {str(e)}", file=sys.stderr)
