@@ -13,6 +13,7 @@ from mcp.types import Tool, TextContent
 from .rate_limiter import MCPRateLimiter, rate_limit_response
 from .operation_router import OperationRouter
 from .structured_result import StructuredResult, ResultStatus, PaginationMetadata
+from .handler_middleware_wrapper import HandlerBudgetMiddlewareMixin
 from ..core.models import MemoryType
 from ..memory import MemoryStore
 from ..memory.quality import SemanticMemoryQualityAnalyzer
@@ -165,6 +166,7 @@ logger = logging.getLogger(__name__)
 
 
 class MemoryMCPServer(
+    HandlerBudgetMiddlewareMixin,
     EpisodicHandlersMixin,
     MemoryCoreHandlersMixin,
     ProceduralHandlersMixin,
