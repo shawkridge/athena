@@ -1247,12 +1247,19 @@ class MemoryMCPServer(
 
             Routes meta-tool calls to specific operations via OperationRouter.
             Consolidates 120+ individual tools into 11 meta-tools.
+
+            All responses are processed through TokenBudgetMiddleware to enforce
+            300-token summaries for efficient context management.
             """
             # Check rate limit first
             if not self.rate_limiter.allow_request(name):
                 retry_after = self.rate_limiter.get_retry_after(name)
                 error_response = rate_limit_response(retry_after)
-                return [TextContent(type="text", text=json.dumps(error_response, indent=2))]
+                response_text = json.dumps(error_response, indent=2)
+                response = TextContent(type="text", text=response_text)
+                # Apply budget middleware to rate limit error too
+                processed = self.budget_middleware.process_response(response, operation=f"{name}:rate-limit", is_summary=True)
+                return [processed]
 
             try:
                 # Use singleton operation router (initialized in __init__)
@@ -1263,28 +1270,62 @@ class MemoryMCPServer(
                 if name in meta_tools:
                     # Route operation through meta-tool dispatcher
                     result = await router.route(name, args)
-                    return [TextContent(type="text", text=json.dumps(result, indent=2))]
+                    response_text = json.dumps(result, indent=2)
+                    response = TextContent(type="text", text=response_text)
+
+                    # Apply budget middleware to enforce 300-token summary limit
+                    # Track operation name for metrics
+                    operation_name = args.get("operation", name)
+                    processed = self.budget_middleware.process_response(
+                        response,
+                        operation=f"{name}:{operation_name}",
+                        is_summary=True  # All responses are summary-first
+                    )
+
+                    # Record metrics from handler execution
+                    token_count_before = self.budget_middleware.budget_manager.count_tokens(response_text)
+                    token_count_after = self.budget_middleware.budget_manager.count_tokens(processed.text)
+
+                    self.handler_metrics.record_handler_execution(
+                        handler_name=f"{name}:{operation_name}",
+                        execution_time=0,  # Will be measured at higher level
+                        tokens_counted=token_count_before,
+                        tokens_returned=token_count_after,
+                        had_violation=token_count_before > 300,
+                        was_compressed=token_count_after < token_count_before,
+                    )
+
+                    return [processed]
                 else:
                     # Unknown tool
-                    return [TextContent(type="text", text=json.dumps({
+                    error_data = {
                         "status": "error",
                         "error": f"Unknown tool: {name}",
                         "available_tools": meta_tools
-                    }, indent=2))]
+                    }
+                    response = TextContent(type="text", text=json.dumps(error_data, indent=2))
+                    processed = self.budget_middleware.process_response(response, operation=f"{name}:unknown", is_summary=True)
+                    return [processed]
             except ValueError as e:
                 # Operation routing error (invalid operation or meta-tool)
                 logger.error(f"Routing error in tool {name}: {e}")
-                return [TextContent(type="text", text=json.dumps({
+                error_data = {
                     "status": "error",
                     "error": str(e)
-                }, indent=2))]
+                }
+                response = TextContent(type="text", text=json.dumps(error_data, indent=2))
+                processed = self.budget_middleware.process_response(response, operation=f"{name}:routing-error", is_summary=True)
+                return [processed]
             except Exception as e:
                 # Handler implementation error
                 logger.error(f"Error in tool {name}: {e}", exc_info=True)
-                return [TextContent(type="text", text=json.dumps({
+                error_data = {
                     "status": "error",
                     "error": str(e)
-                }, indent=2))]
+                }
+                response = TextContent(type="text", text=json.dumps(error_data, indent=2))
+                processed = self.budget_middleware.process_response(response, operation=f"{name}:error", is_summary=True)
+                return [processed]
 
     # ============================================================================
     # Handler methods (now called via OperationRouter from meta-tools)

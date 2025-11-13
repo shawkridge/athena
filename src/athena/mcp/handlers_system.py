@@ -637,7 +637,11 @@ class SystemHandlersMixin:
                 "execution_time_ms": result.execution_time_ms,
                 "violations": result.violations,
             }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
         except Exception as e:
             return [
                 TextContent(
@@ -663,7 +667,11 @@ class SystemHandlersMixin:
                 "warnings": result.get("warnings", []),
                 "confidence_score": result.get("confidence_score", 0.0),
             }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
         except Exception as e:
             return [
                 TextContent(
@@ -690,7 +698,11 @@ class SystemHandlersMixin:
                 "status": "success",
                 "message": f"Recorded execution for {procedure_name}",
             }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
         except Exception as e:
             return [
                 TextContent(
@@ -714,7 +726,11 @@ class SystemHandlersMixin:
                 "allow_network": config.allow_network,
                 "allow_filesystem": config.allow_filesystem,
             }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
         except Exception as e:
             return [
                 TextContent(

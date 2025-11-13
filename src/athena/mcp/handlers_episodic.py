@@ -161,7 +161,11 @@ class EpisodicHandlersMixin:
                     "similar_events": duplicates
                 })
 
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
 
         except Exception as e:
             logger.error(f"Error recording event: {e}", exc_info=True)
@@ -373,7 +377,11 @@ class EpisodicHandlersMixin:
                 "semantic_groups": semantic_groups
             }
 
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
 
         except Exception as e:
             logger.error(f"Error recalling events by context: {e}", exc_info=True)
@@ -436,7 +444,11 @@ class EpisodicHandlersMixin:
                 }
             }
 
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
 
         except Exception as e:
             logger.error(f"Error recalling events by session: {e}", exc_info=True)
@@ -494,7 +506,11 @@ class EpisodicHandlersMixin:
                 "tool_statistics": tool_stats
             }
 
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
 
         except Exception as e:
             logger.error(f"Error recalling events by tool usage: {e}", exc_info=True)
@@ -579,7 +595,11 @@ class EpisodicHandlersMixin:
                 }
             }
 
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
 
         except Exception as e:
             logger.error(f"Error querying timeline: {e}", exc_info=True)
@@ -641,7 +661,11 @@ class EpisodicHandlersMixin:
                 }
             }
 
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
 
         except Exception as e:
             logger.error(f"Error tracing consolidation: {e}", exc_info=True)
@@ -1081,7 +1105,11 @@ class EpisodicHandlersMixin:
                 "semantic_memory_id": semantic_id
             }
 
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
 
         except Exception as e:
             logger.error(f"Error consolidating session: {e}", exc_info=True)
@@ -1217,7 +1245,11 @@ class EpisodicHandlersMixin:
                 "temporal_threshold_seconds": temporal_threshold
             }
 
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
 
         except Exception as e:
             logger.error(f"Error consolidating temporal events: {e}", exc_info=True)

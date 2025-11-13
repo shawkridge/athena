@@ -1045,7 +1045,11 @@ class ProspectiveHandlersMixin:
                 }
             }
 
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
 
         except Exception as e:
             logger.error(f"Error in get_task_health [task_id={args.get('task_id')}]: {e}", exc_info=True)
@@ -1118,7 +1122,11 @@ class ProspectiveHandlersMixin:
                     "High risk detected. Add buffer time and contingency steps."
                 )
 
-            return [TextContent(type="text", text=json.dumps(response_data, indent=2))]
+            result = StructuredResult.success(
+                data=response_data,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
         except Exception as e:
             logger.error(f"Error in generate_task_plan [task_id={args.get('task_id')}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "generate_task_plan"})
@@ -1222,7 +1230,11 @@ class ProspectiveHandlersMixin:
                 "recommendations": recommendations[:4]
             }
 
-            return [TextContent(type="text", text=json.dumps(response_data, indent=2))]
+            result = StructuredResult.success(
+                data=response_data,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
         except Exception as e:
             logger.error(f"Error in calculate_task_cost: {e}", exc_info=True)
             error_response = {
@@ -1230,7 +1242,11 @@ class ProspectiveHandlersMixin:
                 "error": str(e),
                 "timestamp": datetime.utcnow().isoformat() + "Z"
             }
-            return [TextContent(type="text", text=json.dumps(error_response, indent=2))]
+            result = StructuredResult.error(
+                details=error_response,
+                metadata={"operation": "handler", "schema": "operation_error"}
+            )
+            return [result.as_optimized_content(schema_name="operation_error")]
 
 
     async def _handle_predict_task_duration(self, args: dict) -> list[TextContent]:
@@ -1307,7 +1323,11 @@ class ProspectiveHandlersMixin:
                 "recommendations": recommendations[:3]
             }
 
-            return [TextContent(type="text", text=json.dumps(response_data, indent=2))]
+            result = StructuredResult.success(
+                data=response_data,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
         except Exception as e:
             logger.error(f"Error in predict_task_duration: {e}", exc_info=True)
             error_response = {
@@ -1315,7 +1335,11 @@ class ProspectiveHandlersMixin:
                 "error": str(e),
                 "timestamp": datetime.utcnow().isoformat() + "Z"
             }
-            return [TextContent(type="text", text=json.dumps(error_response, indent=2))]
+            result = StructuredResult.error(
+                details=error_response,
+                metadata={"operation": "handler", "schema": "operation_error"}
+            )
+            return [result.as_optimized_content(schema_name="operation_error")]
 
 
     async def _handle_check_goal_conflicts(self, args: dict) -> list[TextContent]:
@@ -1327,7 +1351,11 @@ class ProspectiveHandlersMixin:
                 "conflicts": [],
                 "timestamp": datetime.utcnow().isoformat() + "Z"
             }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
         except Exception as e:
             logger.error(f"Error in _handle_check_goal_conflicts: {e}")
             return [TextContent(type="text", text=json.dumps({"status": "error", "error": str(e)}))]
@@ -1342,7 +1370,11 @@ class ProspectiveHandlersMixin:
                 "resolutions": [],
                 "timestamp": datetime.utcnow().isoformat() + "Z"
             }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
         except Exception as e:
             logger.error(f"Error in _handle_resolve_goal_conflicts: {e}")
             return [TextContent(type="text", text=json.dumps({"status": "error", "error": str(e)}))]
@@ -1376,7 +1408,11 @@ class ProspectiveHandlersMixin:
                 "message": f"Goal {goal_id} activated",
                 "timestamp": datetime.utcnow().isoformat() + "Z"
             }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
         except Exception as e:
             logger.error(f"Error in _handle_activate_goal: {e}")
             return [TextContent(type="text", text=json.dumps({"status": "error", "error": str(e)}))]
@@ -1412,7 +1448,11 @@ class ProspectiveHandlersMixin:
                 "confidence": 0,
                 "timestamp": datetime.utcnow().isoformat() + "Z"
             }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
         except Exception as e:
             logger.error(f"Error in _handle_recommend_next_goal: {e}")
             return [TextContent(type="text", text=json.dumps({"status": "error", "error": str(e)}))]
@@ -1448,7 +1488,11 @@ class ProspectiveHandlersMixin:
                 "notes": notes,
                 "timestamp": datetime.utcnow().isoformat() + "Z"
             }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
         except Exception as e:
             logger.error(f"Error in _handle_complete_goal: {e}")
             return [TextContent(type="text", text=json.dumps({"status": "error", "error": str(e)}))]

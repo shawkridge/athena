@@ -1117,7 +1117,11 @@ class PlanningHandlersMixin:
                     "Tendency to overestimate. Try to reduce estimation pessimism."
                 )
 
-            return [TextContent(type="text", text=json.dumps(response_data, indent=2))]
+            result = StructuredResult.success(
+                data=response_data,
+                metadata={"operation": "verify_plan", "schema": "planning_verification"}
+            )
+            return [result.as_optimized_content(schema_name="planning_verification")]
         except Exception as e:
             logger.error(f"Error in analyze_estimation_accuracy [project_id={args.get('project_id')}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "analyze_estimation_accuracy"})
@@ -1180,7 +1184,11 @@ class PlanningHandlersMixin:
                 "Ensure balanced workload across priority levels."
             )
 
-            return [TextContent(type="text", text=json.dumps(response_data, indent=2))]
+            result = StructuredResult.success(
+                data=response_data,
+                metadata={"operation": "planning_validation_benchmark", "schema": "validation_benchmark"}
+            )
+            return [result.as_optimized_content(schema_name="validation_benchmark")]
         except Exception as e:
             logger.error(f"Error in discover_patterns [project_id={args.get('project_id')}]: {e}", exc_info=True)
             error_response = json.dumps({"error": str(e), "tool": "discover_patterns"})
@@ -2996,7 +3004,11 @@ Anomalies:
                 "recommendations": recommendations[:3]  # Top 3 recommendations
             }
 
-            return [TextContent(type="text", text=json.dumps(response_data, indent=2))]
+            result = StructuredResult.success(
+                data=response_data,
+                metadata={"operation": "research_task", "schema": "research_task"}
+            )
+            return [result.as_optimized_content(schema_name="research_task")]
         except Exception as e:
             logger.error(f"Error in sync_with_external_system: {e}", exc_info=True)
             error_response = {
@@ -3004,7 +3016,11 @@ Anomalies:
                 "error": str(e),
                 "timestamp": datetime.utcnow().isoformat() + "Z"
             }
-            return [TextContent(type="text", text=json.dumps(error_response, indent=2))]
+            result = StructuredResult.error(
+                details=error_response,
+                metadata={"operation": "research_task", "schema": "research_task_error"}
+            )
+            return [result.as_optimized_content(schema_name="research_task_error")]
 
     async def _handle_map_external_data(self, args: dict) -> list[TextContent]:
         """Map external data to memory with bidirectional sync tracking."""
@@ -3070,7 +3086,11 @@ Anomalies:
                 "recommendations": recommendations[:2]  # Top 2 recommendations
             }
 
-            return [TextContent(type="text", text=json.dumps(response_data, indent=2))]
+            result = StructuredResult.success(
+                data=response_data,
+                metadata={"operation": "research_findings", "schema": "research_findings"}
+            )
+            return [result.as_optimized_content(schema_name="research_findings")]
         except Exception as e:
             logger.error(f"Error in map_external_data: {e}", exc_info=True)
             error_response = {
@@ -3078,7 +3098,11 @@ Anomalies:
                 "error": str(e),
                 "timestamp": datetime.utcnow().isoformat() + "Z"
             }
-            return [TextContent(type="text", text=json.dumps(error_response, indent=2))]
+            result = StructuredResult.error(
+                details=error_response,
+                metadata={"operation": "research_findings", "schema": "research_findings_error"}
+            )
+            return [result.as_optimized_content(schema_name="research_findings_error")]
 
     # PHASE 10: Advanced Features - Security Analysis Tools
     async def _handle_analyze_code_security(self, args: dict) -> list[TextContent]:
@@ -3192,7 +3216,11 @@ Anomalies:
                 "recommendations": recommendations[:3]  # Top 3 recommendations
             }
 
-            return [TextContent(type="text", text=json.dumps(response_data, indent=2))]
+            result = StructuredResult.success(
+                data=response_data,
+                metadata={"operation": "analyze_estimation_accuracy", "schema": "estimation_accuracy"}
+            )
+            return [result.as_optimized_content(schema_name="estimation_accuracy")]
         except Exception as e:
             logger.error(f"Error in analyze_code_security: {e}", exc_info=True)
             error_response = {
@@ -3279,7 +3307,11 @@ Anomalies:
                 "recommendations": recommendations[:3]  # Top 3 recommendations
             }
 
-            return [TextContent(type="text", text=json.dumps(response_data, indent=2))]
+            result = StructuredResult.success(
+                data=response_data,
+                metadata={"operation": "discover_patterns", "schema": "pattern_discovery"}
+            )
+            return [result.as_optimized_content(schema_name="pattern_discovery")]
         except Exception as e:
             logger.error(f"Error in track_sensitive_data: {e}", exc_info=True)
             error_response = {
@@ -3362,7 +3394,11 @@ Anomalies:
                 "recommendations": recommendations[:4]
             }
 
-            return [TextContent(type="text", text=json.dumps(response_data, indent=2))]
+            result = StructuredResult.success(
+                data=response_data,
+                metadata={"operation": "estimate_resources", "schema": "resource_estimation"}
+            )
+            return [result.as_optimized_content(schema_name="resource_estimation")]
         except Exception as e:
             logger.error(f"Error in forecast_resource_needs: {e}", exc_info=True)
             error_response = {
@@ -3442,7 +3478,11 @@ Anomalies:
                 "recommendations": recommendations[:4]
             }
 
-            return [TextContent(type="text", text=json.dumps(response_data, indent=2))]
+            result = StructuredResult.success(
+                data=response_data,
+                metadata={"operation": "add_project_dependency", "schema": "project_dependency"}
+            )
+            return [result.as_optimized_content(schema_name="project_dependency")]
         except Exception as e:
             logger.error(f"Error in detect_bottlenecks: {e}", exc_info=True)
             error_response = {

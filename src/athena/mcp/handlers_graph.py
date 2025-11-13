@@ -490,7 +490,11 @@ class GraphHandlersMixin:
                 "recommendations": recommendations[:3]
             }
 
-            return [TextContent(type="text", text=json.dumps(response_data, indent=2))]
+            result = StructuredResult.success(
+                data=response_data,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
         except Exception as e:
             logger.error(f"Error in analyze_graph_metrics: {e}", exc_info=True)
             error_response = {
@@ -498,7 +502,11 @@ class GraphHandlersMixin:
                 "error": str(e),
                 "timestamp": datetime.utcnow().isoformat() + "Z"
             }
-            return [TextContent(type="text", text=json.dumps(error_response, indent=2))]
+            result = StructuredResult.error(
+                details=error_response,
+                metadata={"operation": "handler", "schema": "operation_error"}
+            )
+            return [result.as_optimized_content(schema_name="operation_error")]
 
     async def _handle_detect_graph_communities(self, args: dict) -> list[TextContent]:
         """Detect communities using Leiden clustering algorithm."""

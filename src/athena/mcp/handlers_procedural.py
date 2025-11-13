@@ -784,7 +784,11 @@ class ProceduralHandlersMixin:
                 "notes": notes,
                 "timestamp": datetime.utcnow().isoformat() + "Z"
             }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
         except Exception as e:
             logger.error(f"Error in _handle_record_execution_progress: {e}")
             return [TextContent(type="text", text=json.dumps({"status": "error", "error": str(e)}))]
@@ -880,7 +884,11 @@ class ProceduralHandlersMixin:
                 "execution_time_ms": result.execution_time_ms,
                 "violations": result.violations,
             }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
         except Exception as e:
             return [
                 TextContent(
@@ -912,7 +920,11 @@ class ProceduralHandlersMixin:
                 "confidence_score": result.get("confidence_score", 0.0),
                 "validation_result": result.get("validation_result", {}),
             }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
         except Exception as e:
             return [
                 TextContent(
@@ -936,7 +948,11 @@ class ProceduralHandlersMixin:
                 "status": "success",
                 "context": context.to_dict() if context else None,
             }
-            return [TextContent(type="text", text=json.dumps(response, indent=2))]
+            result = StructuredResult.success(
+                data=response,
+                metadata={"operation": "handler", "schema": "operation_response"}
+            )
+            return [result.as_optimized_content(schema_name="operation_response")]
         except Exception as e:
             return [
                 TextContent(

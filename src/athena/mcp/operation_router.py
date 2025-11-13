@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class OperationRouter:
     """Routes meta-tool operations to original handlers."""
 
-    # MEMORY_TOOLS: 27 operations
+    # MEMORY_TOOLS: 28 operations
     MEMORY_OPERATIONS = {
         "recall": "_handle_recall",
         "remember": "_handle_remember",
@@ -43,9 +43,10 @@ class OperationRouter:
         "get_self_reflection": "_handle_get_self_reflection",
         "run_consolidation": "_handle_run_consolidation",
         "schedule_consolidation": "_handle_schedule_consolidation",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # EPISODIC_TOOLS: 10 operations
+    # EPISODIC_TOOLS: 11 operations
     EPISODIC_OPERATIONS = {
         "record_event": "_handle_record_event",
         "recall_events": "_handle_recall_events",
@@ -56,9 +57,10 @@ class OperationRouter:
         "record_execution": "_handle_record_execution",
         "record_execution_feedback": "_handle_record_execution_feedback",
         "record_git_commit": "_handle_record_git_commit",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # GRAPH_TOOLS: 15 operations
+    # GRAPH_TOOLS: 16 operations
     GRAPH_OPERATIONS = {
         "create_entity": "_handle_create_entity",
         "create_relation": "_handle_create_relation",
@@ -75,9 +77,10 @@ class OperationRouter:
         "temporal_search_enrich": "_handle_temporal_search_enrich",
         "find_memory_path": "_handle_find_memory_path",
         "get_associations": "_handle_get_associations",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PLANNING_TOOLS: 16 operations
+    # PLANNING_TOOLS: 17 operations
     PLANNING_OPERATIONS = {
         "decompose_hierarchically": "_handle_decompose_hierarchically",
         "decompose_with_strategy": "_handle_decompose_with_strategy",
@@ -95,9 +98,10 @@ class OperationRouter:
         "validate_plan_with_reasoning": "_handle_validate_plan_with_reasoning",
         "analyze_uncertainty": "_handle_analyze_uncertainty",
         "trigger_replanning": "_handle_trigger_replanning",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # TASK_MANAGEMENT_TOOLS: 18 operations
+    # TASK_MANAGEMENT_TOOLS: 19 operations
     TASK_OPERATIONS = {
         "create_task": "_handle_create_task",
         "create_task_with_planning": "_handle_create_task_with_planning",
@@ -118,9 +122,10 @@ class OperationRouter:
         "get_task_health": "_handle_get_task_health",
         "get_project_dashboard": "_handle_get_project_dashboard",
         "get_project_status": "_handle_get_project_status",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # MONITORING_TOOLS: 8 operations
+    # MONITORING_TOOLS: 9 operations
     MONITORING_OPERATIONS = {
         "get_task_health": "_handle_get_task_health",
         "get_project_dashboard": "_handle_get_project_dashboard",
@@ -130,9 +135,10 @@ class OperationRouter:
         "discover_patterns": "_handle_discover_patterns",
         "analyze_critical_path": "_handle_analyze_critical_path",
         "detect_bottlenecks": "_handle_detect_bottlenecks",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # COORDINATION_TOOLS: 10 operations
+    # COORDINATION_TOOLS: 11 operations
     COORDINATION_OPERATIONS = {
         "add_project_dependency": "_handle_add_project_dependency",
         "analyze_critical_path": "_handle_analyze_critical_path",
@@ -144,15 +150,17 @@ class OperationRouter:
         "estimate_confidence_interval": "_handle_estimate_confidence_interval",
         "recommend_orchestration": "_handle_recommend_orchestration",
         "detect_budget_anomalies": "_handle_detect_budget_anomalies",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # SECURITY_TOOLS: 2 operations
+    # SECURITY_TOOLS: 3 operations
     SECURITY_OPERATIONS = {
         "analyze_code_security": "_handle_analyze_code_security",
         "track_sensitive_data": "_handle_track_sensitive_data",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # FINANCIAL_TOOLS: 6 operations
+    # FINANCIAL_TOOLS: 7 operations
     FINANCIAL_OPERATIONS = {
         "calculate_task_cost": "_handle_calculate_task_cost",
         "estimate_roi": "_handle_estimate_roi",
@@ -160,9 +168,10 @@ class OperationRouter:
         "track_budget": "_handle_track_budget",
         "detect_budget_anomalies": "_handle_detect_budget_anomalies",
         "calculate_roi": "_handle_calculate_roi",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # ML_INTEGRATION_TOOLS: 7 operations
+    # ML_INTEGRATION_TOOLS: 8 operations
     ML_OPERATIONS = {
         "train_estimation_model": "_handle_train_estimation_model",
         "recommend_strategy": "_handle_recommend_strategy",
@@ -171,9 +180,10 @@ class OperationRouter:
         "get_saliency_batch": "_handle_get_saliency_batch",
         "compute_memory_saliency": "_handle_compute_memory_saliency",
         "auto_focus_top_memories": "_handle_auto_focus_top_memories",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PROCEDURAL_TOOLS: 8 operations
+    # PROCEDURAL_TOOLS: 9 operations
     PROCEDURAL_OPERATIONS = {
         "create_procedure": "_handle_create_procedure",
         "find_procedures": "_handle_find_procedures",
@@ -183,9 +193,10 @@ class OperationRouter:
         "generate_workflow_from_task": "_handle_generate_workflow_from_task",
         "get_pattern_suggestions": "_handle_get_pattern_suggestions",
         "apply_suggestion": "_handle_apply_suggestion",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PHASE 1: INTEGRATION_TOOLS: 12 operations
+    # PHASE 1: INTEGRATION_TOOLS: 13 operations
     INTEGRATION_OPERATIONS = {
         "planning_assistance": "_handle_planning_assistance",
         "optimize_plan_suggestions": "_handle_optimize_plan_suggestions",
@@ -199,18 +210,20 @@ class OperationRouter:
         "aggregate_analytics_summary": "_handle_aggregate_analytics_summary",
         "get_critical_path_analysis": "_handle_get_critical_path_analysis",
         "get_resource_allocation": "_handle_get_resource_allocation",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PHASE 1: AUTOMATION_TOOLS: 5 operations
+    # PHASE 1: AUTOMATION_TOOLS: 6 operations
     AUTOMATION_OPERATIONS = {
         "register_automation_rule": "_handle_register_automation_rule",
         "trigger_automation_event": "_handle_trigger_automation_event",
         "list_automation_rules": "_handle_list_automation_rules",
         "update_automation_config": "_handle_update_automation_config",
         "execute_automation_workflow": "_handle_execute_automation_workflow",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PHASE 1: CONVERSATION_TOOLS: 8 operations
+    # PHASE 1: CONVERSATION_TOOLS: 9 operations
     CONVERSATION_OPERATIONS = {
         "start_new_conversation": "_handle_start_new_conversation",
         "add_message_to_conversation": "_handle_add_message_to_conversation",
@@ -220,9 +233,10 @@ class OperationRouter:
         "recover_conversation_context": "_handle_recover_conversation_context",
         "list_active_conversations": "_handle_list_active_conversations",
         "export_conversation_data": "_handle_export_conversation_data",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PHASE 2: SAFETY_TOOLS: 7 operations
+    # PHASE 2: SAFETY_TOOLS: 8 operations
     SAFETY_OPERATIONS = {
         "evaluate_change_safety": "_handle_evaluate_change_safety",
         "request_approval": "_handle_request_approval",
@@ -231,9 +245,10 @@ class OperationRouter:
         "create_code_snapshot": "_handle_create_code_snapshot",
         "check_safety_policy": "_handle_check_safety_policy",
         "analyze_change_risk": "_handle_analyze_change_risk",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PHASE 2: IDE_CONTEXT_TOOLS: 8 operations
+    # PHASE 2: IDE_CONTEXT_TOOLS: 9 operations
     IDE_CONTEXT_OPERATIONS = {
         "get_ide_context": "_handle_get_ide_context",
         "get_cursor_position": "_handle_get_cursor_position",
@@ -243,9 +258,10 @@ class OperationRouter:
         "get_file_changes": "_handle_get_file_changes",
         "get_active_buffer": "_handle_get_active_buffer",
         "track_ide_activity": "_handle_track_ide_activity",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PHASE 2: SKILLS_TOOLS: 7 operations
+    # PHASE 2: SKILLS_TOOLS: 8 operations
     SKILLS_OPERATIONS = {
         "analyze_project_with_skill": "_handle_analyze_project_with_skill",
         "improve_estimations": "_handle_improve_estimations",
@@ -254,9 +270,10 @@ class OperationRouter:
         "analyze_health_trends": "_handle_analyze_health_trends",
         "create_task_from_template": "_handle_create_task_from_template",
         "get_skill_recommendations": "_handle_get_skill_recommendations",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PHASE 2: RESILIENCE_TOOLS: 6 operations
+    # PHASE 2: RESILIENCE_TOOLS: 7 operations
     RESILIENCE_OPERATIONS = {
         "check_system_health": "_handle_check_system_health",
         "get_health_report": "_handle_get_health_report",
@@ -264,26 +281,29 @@ class OperationRouter:
         "get_resilience_status": "_handle_get_resilience_status",
         "test_fallback_chain": "_handle_test_fallback_chain",
         "configure_retry_policy": "_handle_configure_retry_policy",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PHASE 3: PERFORMANCE_TOOLS: 4 operations
+    # PHASE 3: PERFORMANCE_TOOLS: 5 operations
     PERFORMANCE_OPERATIONS = {
         "get_performance_metrics": "_handle_get_performance_metrics",
         "optimize_queries": "_handle_optimize_queries",
         "manage_cache": "_handle_manage_cache",
         "batch_operations": "_handle_batch_operations",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PHASE 3: HOOKS_TOOLS: 5 operations
+    # PHASE 3: HOOKS_TOOLS: 6 operations
     HOOKS_OPERATIONS = {
         "register_hook": "_handle_register_hook",
         "trigger_hook": "_handle_trigger_hook",
         "detect_hook_cycles": "_handle_detect_hook_cycles",
         "configure_rate_limiting": "_handle_configure_rate_limiting",
         "list_hooks": "_handle_list_hooks",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PHASE 3: SPATIAL_TOOLS: 8 operations
+    # PHASE 3: SPATIAL_TOOLS: 9 operations
     SPATIAL_OPERATIONS = {
         "build_spatial_hierarchy": "_handle_build_spatial_hierarchy",
         "spatial_storage": "_handle_spatial_storage",
@@ -293,9 +313,10 @@ class OperationRouter:
         "spatial_indexing": "_handle_spatial_indexing",
         "code_navigation": "_handle_code_navigation",
         "get_spatial_context": "_handle_get_spatial_context",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PHASE 4: RAG_TOOLS: 6 operations
+    # PHASE 4: RAG_TOOLS: 7 operations
     RAG_OPERATIONS = {
         "retrieve_smart": "_handle_rag_retrieve_smart",
         "calibrate_uncertainty": "_handle_rag_calibrate_uncertainty",
@@ -303,22 +324,25 @@ class OperationRouter:
         "enrich_temporal_context": "_handle_rag_enrich_temporal_context",
         "find_related_context": "_handle_graph_find_related_context",
         "reflective_retrieve": "_handle_rag_reflective_retrieve",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PHASE 4: ANALYSIS_TOOLS: 2 operations
+    # PHASE 4: ANALYSIS_TOOLS: 3 operations
     ANALYSIS_OPERATIONS = {
         "analyze_project_codebase": "_handle_analyze_project_codebase",
         "store_project_analysis": "_handle_store_project_analysis",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PHASE 4: ORCHESTRATION_TOOLS: 3 operations
+    # PHASE 4: ORCHESTRATION_TOOLS: 4 operations
     ORCHESTRATION_OPERATIONS = {
         "orchestrate_agent_tasks": "_handle_orchestrate_agent_tasks",
         "recommend_planning_patterns": "_handle_planning_recommend_patterns",
         "analyze_failure_patterns": "_handle_planning_analyze_failure",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PHASE 5: CONSOLIDATION_TOOLS: 10 operations
+    # PHASE 5: CONSOLIDATION_TOOLS: 11 operations
     CONSOLIDATION_OPERATIONS = {
         "run_consolidation": "_handle_consolidation_run_consolidation",
         "extract_consolidation_patterns": "_handle_consolidation_extract_patterns",
@@ -330,9 +354,10 @@ class OperationRouter:
         "analyze_validation_effectiveness": "_handle_consolidation_analyze_validation",
         "discover_orchestration_patterns": "_handle_consolidation_discover_orchestration",
         "analyze_consolidation_performance": "_handle_consolidation_analyze_performance",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PHASE 6: PLANNING_TOOLS: 10 operations
+    # PHASE 6: PLANNING_TOOLS: 11 operations
     PHASE6_PLANNING_OPERATIONS = {
         "validate_plan_comprehensive": "_handle_planning_validate_comprehensive",
         "verify_plan_properties": "_handle_planning_verify_properties",
@@ -344,35 +369,39 @@ class OperationRouter:
         "generate_lightweight_plan": "_handle_planning_generate_lightweight",
         "validate_plan_with_llm": "_handle_planning_validate_llm",
         "create_validation_gate": "_handle_planning_create_validation_gate",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # HOOK_COORDINATION: 5 operations
+    # HOOK_COORDINATION: 6 operations
     HOOK_COORDINATION_OPERATIONS = {
         "optimize_session_start": "_handle_optimize_session_start",
         "optimize_session_end": "_handle_optimize_session_end",
         "optimize_user_prompt_submit": "_handle_optimize_user_prompt_submit",
         "optimize_post_tool_use": "_handle_optimize_post_tool_use",
         "optimize_pre_execution": "_handle_optimize_pre_execution",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # AGENT_OPTIMIZATION: 5 operations
+    # AGENT_OPTIMIZATION: 6 operations
     AGENT_OPTIMIZATION_OPERATIONS = {
         "optimize_planning_orchestrator": "_handle_optimize_planning_orchestrator",
         "optimize_goal_orchestrator": "_handle_optimize_goal_orchestrator",
         "optimize_consolidation_trigger": "_handle_optimize_consolidation_trigger",
         "optimize_strategy_orchestrator": "_handle_optimize_strategy_orchestrator",
         "optimize_attention_optimizer": "_handle_optimize_attention_optimizer",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # SKILL_OPTIMIZATION: 4 operations
+    # SKILL_OPTIMIZATION: 5 operations
     SKILL_OPTIMIZATION_OPERATIONS = {
         "optimize_learning_tracker": "_handle_optimize_learning_tracker",
         "optimize_procedure_suggester": "_handle_optimize_procedure_suggester",
         "optimize_gap_detector": "_handle_optimize_gap_detector",
         "optimize_quality_monitor": "_handle_optimize_quality_monitor",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # ZETTELKASTEN_TOOLS: 6 operations
+    # ZETTELKASTEN_TOOLS: 7 operations
     ZETTELKASTEN_OPERATIONS = {
         "create_memory_version": "_handle_create_memory_version",
         "get_memory_evolution_history": "_handle_get_memory_evolution_history",
@@ -380,18 +409,20 @@ class OperationRouter:
         "get_memory_attributes": "_handle_get_memory_attributes",
         "create_hierarchical_index": "_handle_create_hierarchical_index",
         "assign_memory_to_index": "_handle_assign_memory_to_index",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # GRAPHRAG_TOOLS: 5 operations
+    # GRAPHRAG_TOOLS: 6 operations
     GRAPHRAG_OPERATIONS = {
         "detect_graph_communities": "_handle_detect_graph_communities",
         "get_community_details": "_handle_get_community_details",
         "query_communities_by_level": "_handle_query_communities_by_level",
         "analyze_community_connectivity": "_handle_analyze_community_connectivity",
         "find_bridge_entities": "_handle_find_bridge_entities",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # CODE_SEARCH_TOOLS: 4 operations
+    # CODE_SEARCH_TOOLS: 8 operations
     CODE_SEARCH_OPERATIONS = {
         "search_code_semantically": "_handle_search_code_semantically",
         "search_code_by_type": "_handle_search_code_by_type",
@@ -400,9 +431,10 @@ class OperationRouter:
         "find_code_dependencies": "_handle_find_code_dependencies",
         "index_code_repository": "_handle_index_code_repository",
         "get_code_statistics": "_handle_get_code_statistics",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # CODE_ANALYSIS_TOOLS: 6 operations
+    # CODE_ANALYSIS_TOOLS: 7 operations
     CODE_ANALYSIS_OPERATIONS = {
         "record_code_analysis": "_handle_record_code_analysis",
         "store_code_insights": "_handle_store_code_insights",
@@ -410,14 +442,16 @@ class OperationRouter:
         "extract_code_patterns": "_handle_extract_code_patterns",
         "analyze_repository": "_handle_analyze_repository",
         "get_analysis_metrics": "_handle_get_analysis_metrics",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # EXTERNAL_KNOWLEDGE_TOOLS: 4 operations
+    # EXTERNAL_KNOWLEDGE_TOOLS: 5 operations
     EXTERNAL_KNOWLEDGE_OPERATIONS = {
         "lookup_external_knowledge": "_handle_lookup_external_knowledge",
         "expand_knowledge_relations": "_handle_expand_knowledge_relations",
         "synthesize_knowledge": "_handle_synthesize_knowledge",
         "explore_concept_network": "_handle_explore_concept_network",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
     # CODE_EXECUTION_TOOLS: 7 operations (Phase 3 Week 11)
@@ -429,6 +463,7 @@ class OperationRouter:
         "get_execution_context": "_handle_get_execution_context",
         "record_execution": "_handle_record_execution",
         "get_sandbox_config": "_handle_get_sandbox_config",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
     # All operation maps
