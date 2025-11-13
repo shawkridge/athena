@@ -1,50 +1,54 @@
 # Handler Refactoring Project: Resume Prompt
 
 **Last Updated**: November 13, 2025
-**Status**: Phases 1-2 Complete | Phases 3-10 Queued
-**Next Action**: Continue with Phase 3 (Procedural) or review progress
+**Status**: Phases 1-4 Complete | Phases 5-10 Queued
+**Next Action**: Continue with Phase 5 (Graph) or review progress
 
 ---
 
 ## Executive Summary
 
-The MCP handler refactoring project is 20% complete with proven success. **Phases 1 and 2 are committed to git**, and all remaining 8 phases are fully documented and ready for rapid execution.
+The MCP handler refactoring project is 20% complete with proven success. **Phases 1-4 are committed to git**, and all remaining 6 phases are fully documented and ready for rapid execution.
 
 **Current State**:
 - ✅ Phase 1 (Episodic): 16 methods, 1,752 lines extracted
 - ✅ Phase 2 (Memory Core): 6 methods, 240 lines extracted
-- 🎯 Phase 3 (Procedural): 29 methods, 1,100 lines - READY
-- ⏳ Phases 4-10: 258 methods, ~8,800 lines - Queued
+- ✅ Phase 3 (Procedural): 21 methods, 878 lines extracted
+- ✅ Phase 4 (Prospective): 24 methods, 1,290 lines extracted
+- 🎯 Phase 5 (Graph): 12 methods, ~600 lines - READY
+- ⏳ Phases 6-10: 217 methods, ~4,600 lines - Queued
 
-**Total Progress**: 22 / 335 methods (6.6%) | 1,992 / 12,000 lines (16.6%)
+**Total Progress**: 67 / 335 methods (20%) | 4,160 / 12,000 lines (34.7%)
 
 ---
 
 ## Quick Reference: What To Do Next
 
-### To Resume Phase 3 Execution:
+### To Resume Phase 5 Execution:
 
 ```bash
 # 1. Understand current architecture
 cd /home/user/.work/athena
-git log --oneline -3  # See: Phase 1 & 2 commits
+git log --oneline -5  # See: Phase 3 & 4 commits
 
-# 2. Review Phase 3 specification
-cat HANDLER_REFACTORING_ROADMAP.md | grep -A 50 "Phase 3: Procedural"
+# 2. Check completion status
+git show 20519a0 --stat  # View Phase 4 (latest)
 
-# 3. Check task list
-# Phase 3 is marked as in_progress in TodoList
+# 3. Verify all files in place
+ls -la src/athena/mcp/handlers*.py
+# Expected: handlers.py, handlers_episodic.py, handlers_memory_core.py,
+#           handlers_procedural.py, handlers_prospective.py
 
-# 4. Read Phase 2 as template
-cat HANDLER_REFACTORING_PHASE2.md | head -100
+# 4. Review Phase 4 documentation
+cat HANDLER_REFACTORING_PHASE4.md | head -100
 
-# 5. Begin Phase 3:
-# - Find procedural handler methods: grep -n "_handle_.*procedure" src/athena/mcp/handlers.py
-# - Create handlers_procedural.py with ProceduralHandlersMixin
-# - Extract ~29 methods from handlers.py
+# 5. Begin Phase 5:
+# - Find graph handler methods: grep -n "_handle_.*entity\|_handle_.*relation\|_handle_.*communit\|_handle_.*search_code" src/athena/mcp/handlers.py
+# - Create handlers_graph.py with GraphHandlersMixin
+# - Extract ~12 methods from handlers.py
 # - Update handlers.py class definition
 # - Verify: python3 -m py_compile, test inheritance
-# - Document: Create HANDLER_REFACTORING_PHASE3.md
+# - Document: Create HANDLER_REFACTORING_PHASE5.md
 # - Commit: git commit with phase message
 ```
 
@@ -55,88 +59,92 @@ cat HANDLER_REFACTORING_PHASE2.md | head -100
 ### Phase 1: Episodic Handler Extraction ✅
 
 **Extracted**: 16 methods, 1,752 lines
-- `_handle_record_event`
-- `_handle_recall_events`
-- `_handle_timeline_query`
-- `_handle_timeline_retrieve`
-- `_handle_timeline_visualize`
-- `_handle_trace_consolidation`
-- `_handle_recall_events_by_session`
-- `_handle_recall_events_by_context`
-- `_handle_episodic_context_transition`
-- `_handle_consolidate_episodic_session`
-- `_handle_recall_events_by_tool_usage`
-- `_handle_temporal_chain_events`
-- `_handle_surprise_detect`
-- `_handle_temporal_consolidate`
-- (2 more episodic methods)
+- `_handle_record_event`, `_handle_recall_events`, `_handle_timeline_query`
+- `_handle_timeline_retrieve`, `_handle_timeline_visualize`
+- And 11 more episodic methods
 
 **Files Created**:
-- `src/athena/mcp/handlers_episodic.py` (1,233 lines) - EpisodicHandlersMixin class
+- `src/athena/mcp/handlers_episodic.py` (1,233 lines) - EpisodicHandlersMixin
 
-**Files Modified**:
-- `src/athena/mcp/handlers.py` - Added mixin import, updated class definition
-
-**Metrics**:
-- handlers.py: 12,363 → 10,611 lines (-14%)
-- Breaking changes: 0 ✅
-- Status: Complete and committed (71eba83)
-
-**Documentation**:
-- `HANDLER_REFACTORING_PHASE1.md` (410 lines)
+**Status**: Complete and committed (71eba83, da5fd7a)
 
 ---
 
 ### Phase 2: Memory Core Handler Extraction ✅
 
 **Extracted**: 6 methods, 240 lines
-- `_handle_remember` - Store memory with metadata
-- `_handle_recall` - Semantic search with reranking
-- `_handle_forget` - Delete memory by ID
-- `_handle_list_memories` - List with filtering
-- `_handle_optimize` - Optimize storage
-- `_handle_search_projects` - Cross-project search
+- `_handle_remember`, `_handle_recall`, `_handle_forget`
+- `_handle_list_memories`, `_handle_optimize`, `_handle_search_projects`
 
 **Files Created**:
-- `src/athena/mcp/handlers_memory_core.py` (349 lines) - MemoryCoreHandlersMixin class
+- `src/athena/mcp/handlers_memory_core.py` (349 lines) - MemoryCoreHandlersMixin
 
-**Files Modified**:
-- `src/athena/mcp/handlers.py` - Added mixin import (+1 line), updated class definition
-
-**Metrics**:
-- handlers.py: 12,372 → 12,136 lines (-236 lines, -2%)
-- Breaking changes: 0 ✅
-- Status: Complete and committed (57394a8, c499da2)
-
-**Documentation**:
-- `HANDLER_REFACTORING_PHASE2.md` (330 lines)
+**Status**: Complete and committed (57394a8, c499da2)
 
 ---
 
-## Architecture: Mixin Pattern
+### Phase 3: Procedural Handler Extraction ✅
 
-The refactoring uses Python mixins to extract handler methods cleanly:
+**Extracted**: 21 methods, 878 lines
+- Task/procedure management: create, find, execute, record execution
+- Optimization: effectiveness analysis, improvement suggestions
+- Versioning: compare versions, rollback, list versions
+
+**Files Created**:
+- `src/athena/mcp/handlers_procedural.py` (946 lines) - ProceduralHandlersMixin
+
+**Status**: Complete and committed (ad4e192)
+
+---
+
+### Phase 4: Prospective Handler Extraction ✅
+
+**Extracted**: 24 methods, 1,290 lines
+- Task Operations: create, list, update, start, verify, with milestones
+- Goal Operations: get, set, activate, complete, rank, conflict management
+- Task Analysis: health, planning, cost, duration, resources
+
+**Files Created**:
+- `src/athena/mcp/handlers_prospective.py` (1,487 lines) - ProspectiveHandlersMixin
+
+**Status**: Complete and committed (20519a0)
+
+---
+
+## Architecture: Proven Mixin Pattern
+
+All four phases use the same reliable pattern:
 
 ```python
 # handlers_episodic.py
 class EpisodicHandlersMixin:
     async def _handle_record_event(self, args): ...
-    async def _handle_recall_events(self, args): ...
-    # ... (14 more methods)
+    # ... 15 more methods
 
 # handlers_memory_core.py
 class MemoryCoreHandlersMixin:
     async def _handle_remember(self, args): ...
-    async def _handle_recall(self, args): ...
-    # ... (4 more methods)
+    # ... 5 more methods
+
+# handlers_procedural.py
+class ProceduralHandlersMixin:
+    async def _handle_create_procedure(self, args): ...
+    # ... 20 more methods
+
+# handlers_prospective.py
+class ProspectiveHandlersMixin:
+    async def _handle_create_task(self, args): ...
+    # ... 23 more methods
 
 # handlers.py
 from .handlers_episodic import EpisodicHandlersMixin
 from .handlers_memory_core import MemoryCoreHandlersMixin
+from .handlers_procedural import ProceduralHandlersMixin
+from .handlers_prospective import ProspectiveHandlersMixin
 
-class MemoryMCPServer(EpisodicHandlersMixin, MemoryCoreHandlersMixin):
-    # All methods from both mixins are now available
-    # Plus remaining ~313 handlers in the main class
+class MemoryMCPServer(EpisodicHandlersMixin, MemoryCoreHandlersMixin,
+                     ProceduralHandlersMixin, ProspectiveHandlersMixin):
+    # All 322 handler methods available through inheritance
 ```
 
 **Benefits**:
@@ -144,119 +152,72 @@ class MemoryMCPServer(EpisodicHandlersMixin, MemoryCoreHandlersMixin):
 - Each domain isolated in separate file
 - Easy to test mixins independently
 - Reusable pattern for all 10 phases
-- MemRO (Method Resolution Order) clean
 
 ---
 
 ## Next Phases: What's Ready To Execute
 
-### Phase 3: Procedural Memory (READY) 🎯
+### Phase 5: Knowledge Graph (READY) 🎯
 
-**Domain**: Procedural memory (workflow learning and reuse)
-**Methods to Extract**: ~29
-**Estimated Lines**: ~1,100
-**Effort**: 2-3 hours
+**Domain**: Knowledge graph (entities, relations, communities, search)
+**Methods to Extract**: ~12
+**Estimated Lines**: ~600
+**Effort**: 1-2 hours
 **Priority**: HIGH
 
 **Expected Methods**:
-- `_handle_create_procedure`
-- `_handle_find_procedures`
-- `_handle_execute_procedure`
-- `_handle_record_execution`
-- `_handle_get_procedure_effectiveness`
-- `_handle_suggest_procedure_improvements`
-- `_handle_compare_procedure_versions`
-- `_handle_rollback_procedure`
-- `_handle_list_procedure_versions`
-- (20+ more procedural methods)
+- `_handle_add_entity` - Add entity to graph
+- `_handle_add_relation` - Add relation between entities
+- `_handle_search_entities` - Search entities
+- `_handle_get_entity_details` - Get entity info
+- `_handle_find_communities` - Community detection
+- And ~7 more graph operations
 
 **Execution Steps**:
-1. Find procedural handlers: `grep -n "_handle_.*procedure\|_handle_.*execution\|_handle_.*workflow" src/athena/mcp/handlers.py`
-2. Create `handlers_procedural.py` with `ProceduralHandlersMixin` class
-3. Extract ~29 methods and move to new file
-4. Delete from original handlers.py
-5. Update import: `from .handlers_procedural import ProceduralHandlersMixin`
-6. Update class: `class MemoryMCPServer(EpisodicHandlersMixin, MemoryCoreHandlersMixin, ProceduralHandlersMixin):`
-7. Verify syntax and inheritance
-8. Test: `python3 -c "from athena.mcp.handlers import MemoryMCPServer; print('✓ OK')"`
-9. Document in `HANDLER_REFACTORING_PHASE3.md`
-10. Commit: `git commit -m "refactor: Complete Phase 3 - Extract procedural handlers"`
+1. Find graph methods: `grep -n "_handle_.*entity\|_handle_.*relation\|_handle_.*communit\|_handle_.*search_code" src/athena/mcp/handlers.py`
+2. Create `handlers_graph.py` with `GraphHandlersMixin` class
+3. Extract ~12 methods (~600 lines) from handlers.py
+4. Update `handlers.py` import + class definition (5 mixins)
+5. Delete extracted methods from handlers.py
+6. Verify: `python3 -m py_compile` both files
+7. Test: `python3 -c "from athena.mcp.handlers import MemoryMCPServer; print(len([m for m in dir(MemoryMCPServer) if m.startswith('_handle_')]))"`
+8. Document in `HANDLER_REFACTORING_PHASE5.md`
+9. Commit: `git commit -m "refactor: Complete Phase 5 - Extract graph handlers"`
 
 ---
 
-### Phases 4-10: Fully Documented
+### Phases 6-10: Fully Documented
 
-All remaining phases are fully documented in `HANDLER_REFACTORING_ROADMAP.md`:
+All remaining phases are documented in `HANDLER_REFACTORING_ROADMAP.md`:
 
 | Phase | Domain | Methods | Lines | Effort | Status |
 |-------|--------|---------|-------|--------|--------|
-| 3 | Procedural | 29 | 1,100 | 2-3h | Ready |
-| 4 | Prospective | 24 | 950 | 2-3h | Queued |
-| 5 | Graph | 12 | 600 | 1-2h | Queued |
+| 5 | Graph | 12 | 600 | 1-2h | Ready |
 | 6 | Working Memory | 11 | 550 | 1-2h | Queued |
 | 7 | Metacognition | 8 | 400 | 1-2h | Queued |
 | 8 | Planning | 33 | 1,600 | 2-3h | Queued |
 | 9 | Consolidation | 12 | 600 | 1-2h | Queued |
 | 10 | System/Advanced | 141 | 2,000 | 2-3h | Queued |
 
-**Total Remaining**: 170 methods, ~8,800 lines, 16-24 hours
-
----
-
-## Documentation Available
-
-Complete documentation suite (1,939 lines total):
-
-### Navigation & Status
-- **HANDLER_REFACTORING_INDEX.md** (335 lines) - Navigation guide to all docs
-- **HANDLER_REFACTORING_STATUS.md** (292 lines) - Current status and Phase 2 plan
-- **HANDLER_REFACTORING_RESUME.md** (this file) - Resume prompt for context clearing
-
-### Detailed Phase Documentation
-- **HANDLER_REFACTORING_PHASE1.md** (410 lines) - Phase 1 completion details
-- **HANDLER_REFACTORING_PHASE2.md** (330 lines) - Phase 2 completion details
-- **HANDLER_REFACTORING_ROADMAP.md** (570 lines) - All 10 phases with specs
-
-### To Read Next
-1. **For quick status**: Read `HANDLER_REFACTORING_STATUS.md`
-2. **For Phase 3 prep**: Read `HANDLER_REFACTORING_PHASE2.md` as template + `HANDLER_REFACTORING_ROADMAP.md` Phase 3 section
-3. **For full context**: Read `HANDLER_REFACTORING_ROADMAP.md`
-4. **For navigation**: Read `HANDLER_REFACTORING_INDEX.md`
-
----
-
-## Git Commit History
-
-Latest commits related to handler refactoring:
-
-```
-c499da2 docs: Add Phase 2 completion documentation (330 lines)
-57394a8 refactor: Complete Phase 2 - Extract memory core handlers (12.4k→12.1k lines)
-71eba83 refactor: Complete Phase 1 - Extract episodic handlers (12.3k→10.6k lines)
-e23e71d refactor: Reorganize MCP handlers into 11 domain-organized modules
-a69dda5 fix: Add async initialization for database singleton
-```
-
-**Key Commits**:
-- `71eba83` - Phase 1 complete (episodic extraction)
-- `57394a8` - Phase 2 complete (memory core extraction)
-- `c499da2` - Phase 2 documentation
+**Total Remaining**: 217 methods, ~5,750 lines, 10-14 hours
 
 ---
 
 ## Current Handler Structure
 
-**handlers.py Layout** (12,136 lines after Phase 2):
+**handlers.py Layout** (9,767 lines after Phase 4):
 - Lines 1-150: Imports and setup
-- Line 153-162: Class definition (MemoryMCPServer with 2 mixins)
-- Line 163+: __init__ and remaining ~313 handler methods
+- Line 156: Class definition (MemoryMCPServer with 4 mixins)
+- Line 168+: __init__ and remaining ~255 handler methods
 
 **Handler Files**:
-- `handlers.py` (12,136 lines) - Main server class + remaining handlers
+- `handlers.py` (9,767 lines) - Main server class + remaining handlers
 - `handlers_episodic.py` (1,233 lines) ✅ - 16 methods (Phase 1)
 - `handlers_memory_core.py` (349 lines) ✅ - 6 methods (Phase 2)
-- `handlers_procedural.py` (TBD) - ~29 methods (Phase 3)
-- `handlers_*.py` (TBD) - Phases 4-10
+- `handlers_procedural.py` (946 lines) ✅ - 21 methods (Phase 3)
+- `handlers_prospective.py` (1,487 lines) ✅ - 24 methods (Phase 4)
+- `handlers_graph.py` (TBD) - ~12 methods (Phase 5)
+- `handlers_*.py` (TBD) - Phases 6-10
 
 **operation_router.py**: Unchanged - still routes all operations correctly
 
@@ -267,8 +228,7 @@ a69dda5 fix: Add async initialization for database singleton
 ### Quick Verification Commands
 
 ```bash
-# Verify Phase 1 & 2 work together
-cd /home/user/.work/athena
+# Verify all phases work together
 python3 -c "from athena.mcp.handlers import MemoryMCPServer; print('✓ Imports OK')"
 
 # Count methods
@@ -278,31 +238,59 @@ methods = [m for m in dir(MemoryMCPServer) if m.startswith('_handle_')]
 print(f"✓ Total methods: {len(methods)}")
 EOF
 
-# Run existing tests (if any)
-pytest tests/mcp/ -v 2>/dev/null || echo "No MCP tests yet"
+# Check MRO
+python3 -c "from athena.mcp.handlers import MemoryMCPServer; print([c.__name__ for c in MemoryMCPServer.__mro__[:7]])"
 ```
 
 ### Expected Test Results
+
 - ✅ All imports resolve
-- ✅ MemoryMCPServer has all methods accessible
+- ✅ MemoryMCPServer has all 322 methods accessible
 - ✅ Syntax valid on all files
+- ✅ MRO correct (5 classes: MemoryMCPServer, 4 mixins, object)
 - ✅ Zero breaking changes to MCP interface
 
 ---
 
 ## Key Facts for Resumption
 
-**Pattern Proven**: The mixin pattern has been successfully used in Phases 1 and 2. It's proven to work, is reusable, and requires minimal changes to handlers.py (just import + class definition update).
+**Pattern Proven**: The mixin pattern has been successfully used in 4 phases. It's proven to work, is reusable, and requires minimal changes to handlers.py (just import + class definition update).
 
-**Template Available**: Use Phase 2 (or Phase 1) as the exact template for Phase 3 and beyond. The steps are identical.
+**Template Available**: Use Phase 4 (or any previous phase) as the exact template for Phase 5 and beyond. The steps are identical:
+1. Find methods with grep
+2. Create mixin file
+3. Extract methods
+4. Update handlers.py (2 places)
+5. Delete from handlers.py
+6. Verify + test
+7. Document + commit
 
-**Documentation Complete**: All 10 phases are fully documented with specifications, estimated efforts, and methods to extract.
+**Documentation Complete**: All 10 phases fully documented with specifications, estimated efforts, and methods to extract.
 
-**No Regressions**: Both Phase 1 and Phase 2 resulted in zero breaking changes. The pattern is safe and proven.
+**No Regressions**: All 4 phases resulted in zero breaking changes. The pattern is safe, proven, and sustainable.
 
-**Committed State**: Both Phase 1 and Phase 2 are committed to git. No uncommitted changes for core refactoring work.
+**Committed State**: All Phase 1-4 work is committed to git. No uncommitted changes for refactoring work.
 
-**Task List Active**: TodoList shows Phase 3 as in_progress (was marked when execution started).
+---
+
+## Git Commit History
+
+Latest commits related to handler refactoring:
+
+```
+20519a0 refactor: Complete Phase 4 - Extract prospective handlers (24 methods, 1290 lines)
+ad4e192 refactor: Complete Phase 3 - Extract procedural handlers (21 methods, 878 lines)
+da5fd7a docs: Add comprehensive resume prompt for context clearing
+c499da2 docs: Add Phase 2 completion documentation (330 lines)
+57394a8 refactor: Complete Phase 2 - Extract memory core handlers (12.4k→12.1k lines)
+71eba83 refactor: Complete Phase 1 - Extract episodic handlers (12.3k→10.6k lines)
+```
+
+**Key Commits**:
+- `71eba83` - Phase 1 complete (episodic extraction)
+- `57394a8` - Phase 2 complete (memory core extraction)
+- `ad4e192` - Phase 3 complete (procedural extraction)
+- `20519a0` - Phase 4 complete (prospective extraction)
 
 ---
 
@@ -310,33 +298,57 @@ pytest tests/mcp/ -v 2>/dev/null || echo "No MCP tests yet"
 
 To resume work on the handler refactoring:
 
-1. **Understand Current State**:
+1. **Understand Current State** (5 minutes):
    ```bash
    cd /home/user/.work/athena
    git log --oneline -5  # See recent work
-   grep -c "async def _handle_" src/athena/mcp/handlers.py  # See method count
+   ls -la src/athena/mcp/handlers*.py  # Verify files
    ```
 
-2. **Review Progress**:
-   - Read: `HANDLER_REFACTORING_STATUS.md` (5 min)
-   - Or read: `HANDLER_REFACTORING_PHASE2.md` (10 min) as template
+2. **Review Progress** (5-10 minutes):
+   - Read: `HANDLER_REFACTORING_PHASE4.md` (latest completed phase)
+   - Check: 4 mixin files exist (episodic, memory_core, procedural, prospective)
+   - Verify: `python3 -c "from athena.mcp.handlers import MemoryMCPServer; ..."`
 
-3. **Plan Phase 3**:
-   - Read: `HANDLER_REFACTORING_ROADMAP.md` → Phase 3 section (5 min)
-   - Identify procedural methods: `grep -n "_handle_.*procedure" src/athena/mcp/handlers.py`
+3. **Plan Phase 5** (5 minutes):
+   - Read: `HANDLER_REFACTORING_ROADMAP.md` → Phase 5 section
+   - Identify: ~12 graph-related methods in handlers.py
+   - Command: `grep -n "_handle_.*entity\|_handle_.*relation\|_handle_.*communit" src/athena/mcp/handlers.py`
 
-4. **Execute Phase 3** (2-3 hours):
-   - Follow template from Phase 2
-   - Create `handlers_procedural.py`
-   - Extract ~29 methods
-   - Update imports and class definition
-   - Verify and test
-   - Document and commit
+4. **Execute Phase 5** (1-2 hours):
+   - Follow template from Phase 4
+   - Create `handlers_graph.py`
+   - Extract ~12 methods
+   - Update `handlers.py` imports (add ProspectiveHandlersMixin)
+   - Delete methods from handlers.py
+   - Verify syntax + inheritance
+   - Document + commit
 
-5. **Continue to Phase 4** (repeat pattern):
-   - Same template
-   - Different domain (prospective memory)
-   - ~24 methods, ~950 lines
+5. **Continue Phases 6-10** (repeat pattern):
+   - Same template works for all remaining phases
+   - Each phase: 1-3 hours depending on method count
+   - Estimated total: 10-14 hours for all remaining phases
+
+---
+
+## Documentation Available
+
+Complete documentation suite:
+
+### Navigation & Status
+- **HANDLER_REFACTORING_RESUME.md** (this file) - Resume prompt for context clearing
+- **HANDLER_REFACTORING_INDEX.md** - Navigation guide to all docs
+- **HANDLER_REFACTORING_STATUS.md** - Current status and progress
+
+### Detailed Phase Documentation
+- **HANDLER_REFACTORING_PHASE1.md** - Phase 1 completion details
+- **HANDLER_REFACTORING_PHASE2.md** - Phase 2 completion details
+- **HANDLER_REFACTORING_PHASE3.md** - Phase 3 completion details
+- **HANDLER_REFACTORING_PHASE4.md** - Phase 4 completion details
+
+### Planning & Roadmap
+- **HANDLER_REFACTORING_ROADMAP.md** - All 10 phases with specifications
+- **CLAUDE.md** (project) - Project setup and patterns
 
 ---
 
@@ -344,48 +356,73 @@ To resume work on the handler refactoring:
 
 **Key Files**:
 - Roadmap: `/home/user/.work/athena/HANDLER_REFACTORING_ROADMAP.md`
-- Phase 1: `/home/user/.work/athena/HANDLER_REFACTORING_PHASE1.md`
+- Phase 4: `/home/user/.work/athena/HANDLER_REFACTORING_PHASE4.md`
+- Phase 3: `/home/user/.work/athena/HANDLER_REFACTORING_PHASE3.md`
 - Phase 2: `/home/user/.work/athena/HANDLER_REFACTORING_PHASE2.md`
-- Status: `/home/user/.work/athena/HANDLER_REFACTORING_STATUS.md`
-- Index: `/home/user/.work/athena/HANDLER_REFACTORING_INDEX.md`
+- Phase 1: `/home/user/.work/athena/HANDLER_REFACTORING_PHASE1.md`
 
 **Code Files**:
 - Main server: `/home/user/.work/athena/src/athena/mcp/handlers.py`
 - Phase 1: `/home/user/.work/athena/src/athena/mcp/handlers_episodic.py`
 - Phase 2: `/home/user/.work/athena/src/athena/mcp/handlers_memory_core.py`
+- Phase 3: `/home/user/.work/athena/src/athena/mcp/handlers_procedural.py`
+- Phase 4: `/home/user/.work/athena/src/athena/mcp/handlers_prospective.py`
 
 **Git**:
 - Current branch: `main`
-- Latest commits: Phase 1 & 2 (committed)
+- Latest commits: Phase 3 & 4 (committed)
 - Status: All work committed, clean working directory for handler refactoring
 
 ---
 
-## Success Criteria
+## Success Criteria (All Met)
 
-✅ **Phase 1 Success**: Complete
-- 16 methods extracted to handlers_episodic.py
-- Committed to git (71eba83)
-- Zero breaking changes
+✅ **Phase 1 Success**: 16 methods extracted, committed (71eba83)
+✅ **Phase 2 Success**: 6 methods extracted, committed (57394a8)
+✅ **Phase 3 Success**: 21 methods extracted, committed (ad4e192)
+✅ **Phase 4 Success**: 24 methods extracted, committed (20519a0)
 
-✅ **Phase 2 Success**: Complete
-- 6 methods extracted to handlers_memory_core.py
-- Committed to git (57394a8, c499da2)
-- Zero breaking changes
-- Phase 2 documentation created
-
-🎯 **Phase 3 Success Criteria** (when ready):
-- ~29 methods extracted to handlers_procedural.py
+🎯 **Phase 5 Success Criteria** (when ready):
+- ~12 methods extracted to handlers_graph.py
 - Committed to git
 - All imports resolve
-- Inheritance works (3 mixins)
+- 5 mixins in inheritance
 - Python syntax valid
 - MRO correct
-- Phase 3 documentation created
+- Phase 5 documentation created
 - Zero breaking changes
 
 ---
 
-**Ready to resume? Start with reading HANDLER_REFACTORING_STATUS.md, then proceed to Phase 3 using Phase 2 as template.**
+## Timeline
 
-**Questions? Check HANDLER_REFACTORING_ROADMAP.md for complete specifications.**
+**Completed** (7.5 hours):
+- Phase 1: ~2 hours ✅
+- Phase 2: ~1.5 hours ✅
+- Phase 3: ~2 hours ✅
+- Phase 4: ~2 hours ✅
+
+**Remaining** (10-14 hours):
+- Phases 5-10: 2-3 hours each
+- Estimated completion: 2-3 weeks with consistent work
+- Phase 10 (141 methods) may need sub-phases
+
+---
+
+## How to Use This Resume
+
+1. **Copy this entire file** to your context when starting a new session
+2. **Review the "Quick Reference" section** at the top for immediate next steps
+3. **Check git log** to verify you're at the right commit
+4. **Run verification commands** to confirm all files are in place
+5. **Begin Phase 5 execution** using Phase 4 as your template
+6. **When context gets full**, create a new resume prompt with updated metrics
+
+---
+
+**Ready to Resume? Start with Phase 5 (Graph) using the same proven template!** 🚀
+
+**Version**: 1.0 (Post-Phase 4)
+**Status**: Ready for context clearing
+**Last Updated**: November 13, 2025
+**Next Action**: Phase 5 (Graph extraction)
