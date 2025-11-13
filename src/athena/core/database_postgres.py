@@ -501,7 +501,8 @@ class PostgresDatabase:
                 surprise_score FLOAT,
                 confidence FLOAT DEFAULT 1.0,
                 consolidation_status VARCHAR(50) DEFAULT 'unconsolidated',
-                consolidated_at TIMESTAMP
+                consolidated_at TIMESTAMP,
+                embedding vector(768)
             )
         """)
 
@@ -770,6 +771,17 @@ class PostgresDatabase:
             CREATE INDEX IF NOT EXISTS idx_decision_status
             ON planning_decisions(validation_status)
         """)
+
+        # Create IVFFlat index for fast semantic search with pgvector
+        try:
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS episodic_events_embedding_ivfflat
+                ON episodic_events USING ivfflat (embedding vector_cosine_ops)
+                WITH (lists = 100)
+            """)
+        except Exception:
+            # Index may already exist or pgvector may not be installed
+            pass
 
     # ===========================================================================
     # PROJECT OPERATIONS

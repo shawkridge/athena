@@ -122,11 +122,41 @@ class EmbeddingService:
             # Generate query embedding
             embedding = await self.embed(query)
             if not embedding:
+                logger.debug("Failed to generate embedding, using keyword search")
                 return self._keyword_search(query, project_id, db, limit)
 
-            # Search database (would use pgvector here in production)
-            # For now, fallback to keyword search
-            results = self._keyword_search(query, project_id, db, limit)
+            # Search using pgvector cosine similarity
+            cursor = db.get_cursor()
+
+            # Convert embedding to pgvector string format
+            embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
+
+            cursor.execute("""
+                SELECT
+                    id, content, event_type, timestamp,
+                    1 - (embedding <-> %s::vector) as similarity_score
+                FROM episodic_events
+                WHERE project_id = %s AND embedding IS NOT NULL
+                ORDER BY similarity_score DESC
+                LIMIT %s
+            """, (embedding_str, project_id, limit))
+
+            rows = cursor.fetchall()
+
+            if not rows:
+                logger.debug("No semantic search results, falling back to keyword search")
+                return self._keyword_search(query, project_id, db, limit)
+
+            # Convert results to dict format
+            results = []
+            for row in rows:
+                results.append({
+                    "id": row[0],
+                    "content": row[1],
+                    "event_type": row[2],
+                    "timestamp": row[3],
+                    "relevance_score": row[4]  # Similarity (0-1, higher = more similar)
+                })
 
             logger.debug(f"Semantic search found {len(results)} results")
             return results

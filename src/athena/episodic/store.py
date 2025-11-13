@@ -244,15 +244,24 @@ class EpisodicStore(BaseStore):
             event.outcome.value if isinstance(event.outcome, EventOutcome) else event.outcome
         ) if event.outcome else None
 
+        # Generate embedding before insert (for pgvector)
+        embedding = None
+        try:
+            embedding = self._generate_embedding(event.content)
+        except Exception as e:
+            import logging
+            logging.debug(f"Failed to generate embedding: {e}")
+
         cursor = self.execute(
             """
             INSERT INTO episodic_events (
                 project_id, session_id, timestamp, event_type, content, outcome,
                 context_cwd, context_files, context_task, context_phase,
                 duration_ms, files_changed, lines_added, lines_deleted,
-                learned, confidence, surprise_score, surprise_normalized, surprise_coherence
+                learned, confidence, surprise_score, surprise_normalized, surprise_coherence,
+                embedding
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
             (
                 event.project_id,
@@ -274,27 +283,11 @@ class EpisodicStore(BaseStore):
                 surprise_score,
                 surprise_normalized,
                 surprise_coherence,
+                self.serialize_json(embedding) if embedding else None,
             ),
         )
 
         event_id = cursor.lastrowid
-
-        # Generate and store embedding (using cached model)
-        try:
-            embedding_model = self._get_embedding_model()  # Use cached model
-            embedding = embedding_model.embed(event.content)
-
-            # Store in vector table (rowid must match event_id)
-            self.execute("""
-                INSERT INTO event_vectors (rowid, embedding)
-                VALUES (%s, %s)
-            """, (event_id, self.serialize_json(embedding)))
-
-        except Exception as e:
-            # Log but don't fail - embeddings are optional enhancement
-            import logging
-            logging.warning(f"Failed to generate embedding for event {event_id}: {e}")
-
         self.commit()
         return event_id
 
@@ -1574,6 +1567,37 @@ class EpisodicStore(BaseStore):
                 "unique_files": len(all_files),
             },
         }
+
+    def _generate_embedding(self, text: str) -> Optional[List[float]]:
+        """Generate embedding for text using llamacpp service.
+
+        Args:
+            text: Text to embed
+
+        Returns:
+            768-dimensional embedding vector or None if unavailable
+        """
+        if not text:
+            return None
+
+        try:
+            import requests
+            response = requests.post(
+                "http://localhost:8001/embeddings",
+                json={"input": text},
+                timeout=10
+            )
+            if response.status_code == 200:
+                data = response.json()
+                embedding = data.get("embedding")
+                if embedding:
+                    return embedding
+        except Exception as e:
+            # Log but don't fail - embeddings are optional
+            import logging
+            logging.debug(f"Embedding generation failed: {e}")
+
+        return None
 
     def delete_event(self, event_id: int) -> bool:
         """Delete a single event and its associated data.
