@@ -140,23 +140,50 @@ Athena is built on a neuroscience-inspired 8-layer architecture where each layer
 **Location**: `src/athena/graph/`
 
 ### Layer 6: Meta-Memory
-**Purpose**: Knowledge about knowledge quality and attention
+**Purpose**: Knowledge about knowledge quality and attention (7±2 working memory)
 
-- **Quality Metrics**:
-  - Compression ratio (size reduction)
-  - Recall accuracy (how often remembered correctly)
-  - Consistency (coherence across retrievals)
+#### Quality Metrics
+- **Compression ratio**: Size reduction vs. raw events
+- **Recall accuracy**: How often memories are retrieved correctly
+- **Consistency**: Coherence across multiple retrievals
+- **Usefulness score**: 0-1 based on access frequency and usefulness feedback
 
-- **Expertise Tracking**: Domain-based knowledge levels
+#### Domain Coverage Analysis
+- **Memory count**: Total memories per domain
+- **Episodic coverage**: Event-based knowledge
+- **Procedural coverage**: Learned workflows
+- **Entity coverage**: Semantic entities
+- **Expertise levels**: BEGINNER → INTERMEDIATE → ADVANCED → EXPERT
 
-- **Attention Management**:
-  - Working memory: 7±2 items in focus
-  - Salience: Priority scoring
-  - Focus: Active attention tracking
+#### Attention Budget & Working Memory (Session 5 Enhancement)
+**Baddeley's Model Implementation**:
+- **Capacity**: 7 ± 2 items (cognitive constraint)
+- **Salience scoring**: 40% recency + 35% importance + 25% relevance
+- **Activation levels**: How recently/frequently accessed (0-1)
+- **Decay dynamics**: Exponential decay of activation (10% per hour default)
+- **Overflow handling**: Automatic removal of lowest-salience items when over capacity
 
-- **Cognitive Load**: Baddeley's model implementation
+**Attention Budget**:
+- **Focus allocation**: Distribution across (coding, debugging, learning, planning, reviewing)
+- **Mental energy**: Decreases with activity (0-1)
+- **Fatigue tracking**: Accumulates with intensive focus
+- **Context switches**: Tracked for productivity analysis
+- **Session management**: Tracks focused time per session (Pomodoro-like)
 
-**Location**: `src/athena/meta/`
+**Attention Items**:
+- **Item types**: goal | task | entity | memory | observation
+- **Salience calculation**: Weighted formula from recency, importance, relevance
+- **Context tracking**: Why each item is in focus
+- **Access tracking**: Count and timestamps for decay modeling
+
+#### MCP Tools Added
+- `/add-to-attention` - Add item to working memory
+- `/list-attention` - Show all items in focus
+- `/get-working-memory` - Check 7±2 capacity status
+- `/set-focus` - Allocate attention to focus area
+- `/get-attention-budget` - View attention distribution
+
+**Location**: `src/athena/meta/` + `src/athena/meta/attention.py`
 
 ### Layer 7: Consolidation
 **Purpose**: Sleep-like pattern extraction and integration

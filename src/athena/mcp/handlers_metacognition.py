@@ -1220,3 +1220,199 @@ class MetacognitionHandlersMixin:
         from . import handlers_skill_optimization
         return await handlers_skill_optimization.handle_optimize_gap_detector(self, args)
 
+    # ===== ATTENTION BUDGET & WORKING MEMORY (Layer 6 Enhancement) =====
+
+    async def _handle_add_to_attention(self, args: dict) -> list[TextContent]:
+        """Add an item to attention (working memory).
+
+        Args:
+            item_type: Type (goal|task|entity|memory|observation)
+            item_id: ID in respective layer
+            importance: Importance score (0-1)
+            relevance: Relevance score (0-1)
+            context: Optional context string
+
+        Returns:
+            Confirmation with item details
+        """
+        try:
+            from ..meta.attention import AttentionManager
+
+            project = self.project_manager.get_or_create_project()
+            attention_mgr = AttentionManager(self.db)
+
+            item_type = args.get("item_type", "task")
+            item_id = args.get("item_id")
+            importance = float(args.get("importance", 0.5))
+            relevance = float(args.get("relevance", 0.5))
+            context = args.get("context", "")
+
+            if not item_id:
+                return [TextContent(type="text", text="Error: item_id is required")]
+
+            added_id = attention_mgr.add_attention_item(
+                project_id=project.id,
+                item_type=item_type,
+                item_id=item_id,
+                importance=importance,
+                relevance=relevance,
+                context=context,
+            )
+
+            # Enforce working memory constraint
+            items = attention_mgr.get_attention_items(project.id, limit=10)
+
+            response = f"✅ Added '{item_type}' (ID: {item_id}) to attention\n\n"
+            response += f"Salience: {items[0].salience_score:.2f}\n"
+            response += f"Importance: {importance:.2f}\n"
+            response += f"Relevance: {relevance:.2f}\n"
+            response += f"\nCurrent focus items: {len(items)}/9\n"
+
+            return [TextContent(type="text", text=response)]
+        except Exception as e:
+            logger.error(f"Error adding to attention: {e}")
+            return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+    async def _handle_list_attention(self, args: dict) -> list[TextContent]:
+        """List all items in current attention (working memory).
+
+        Args:
+            limit: Maximum items to return (default: 10)
+            min_salience: Minimum salience threshold (default: 0.0)
+
+        Returns:
+            Formatted list of attention items
+        """
+        try:
+            from ..meta.attention import AttentionManager
+
+            project = self.project_manager.get_or_create_project()
+            attention_mgr = AttentionManager(self.db)
+
+            limit = min(int(args.get("limit", 10)), 50)
+            min_salience = float(args.get("min_salience", 0.0))
+
+            items = attention_mgr.get_attention_items(project.id, limit=limit, min_salience=min_salience)
+
+            if not items:
+                return [TextContent(type="text", text="No items in attention (working memory is empty)")]
+
+            response = f"📌 Attention Items ({len(items)} in focus):\n\n"
+            for i, item in enumerate(items, 1):
+                response += f"{i}. [{item.item_type}] ID:{item.item_id}\n"
+                response += f"   Salience: {item.salience_score:.2f} | Importance: {item.importance:.2f}\n"
+                response += f"   Relevance: {item.relevance:.2f} | Activation: {item.activation_level:.2f}\n"
+                if item.context:
+                    response += f"   Context: {item.context}\n"
+                response += "\n"
+
+            return [TextContent(type="text", text=response)]
+        except Exception as e:
+            logger.error(f"Error listing attention items: {e}")
+            return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+    async def _handle_get_working_memory(self, args: dict) -> list[TextContent]:
+        """Get working memory state (7±2 constraint status).
+
+        Returns:
+            Working memory metrics and capacity status
+        """
+        try:
+            from ..meta.attention import AttentionManager
+
+            project = self.project_manager.get_or_create_project()
+            attention_mgr = AttentionManager(self.db)
+
+            wm = attention_mgr.get_working_memory(project.id)
+            if not wm:
+                wm = attention_mgr.create_working_memory(project.id)
+
+            items = attention_mgr.get_attention_items(project.id, limit=20)
+
+            response = "🧠 Working Memory Status (Baddeley's Model):\n\n"
+            response += f"Capacity: {wm.capacity} ± {wm.capacity_variance} items\n"
+            response += f"Current Load: {len(items)}/{wm.capacity + wm.capacity_variance} items\n"
+            response += f"Cognitive Load: {wm.cognitive_load * 100:.1f}%\n"
+
+            if wm.cognitive_load >= wm.overflow_threshold:
+                response += f"\n⚠️ ATTENTION SATURATION ({wm.cognitive_load * 100:.1f}% >= {wm.overflow_threshold * 100:.1f}%)\n"
+                response += "Recommendation: Consolidate or remove lower-priority items\n"
+
+            response += f"\nDecay Rate: {wm.item_decay_rate * 100:.0f}% per hour\n"
+            response += f"Refresh Threshold: {wm.refresh_threshold:.2f}\n"
+
+            return [TextContent(type="text", text=response)]
+        except Exception as e:
+            logger.error(f"Error getting working memory: {e}")
+            return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+    async def _handle_set_focus(self, args: dict) -> list[TextContent]:
+        """Set current focus area and allocate attention budget.
+
+        Args:
+            focus_area: Focus area (coding|debugging|learning|planning|reviewing)
+            focus_level: Focus intensity (0-1)
+
+        Returns:
+            Confirmation with attention metrics
+        """
+        try:
+            from ..meta.attention import AttentionManager
+
+            project = self.project_manager.get_or_create_project()
+            attention_mgr = AttentionManager(self.db)
+
+            focus_area = args.get("focus_area", "coding")
+            focus_level = float(args.get("focus_level", 0.8))
+
+            attention_mgr.set_focus(project.id, focus_area, focus_level)
+
+            budget = attention_mgr.get_attention_budget(project.id)
+            if not budget:
+                budget = attention_mgr.create_attention_budget(project.id, focus_area)
+
+            response = f"🎯 Focus Set: {focus_area.upper()}\n\n"
+            response += f"Focus Level: {focus_level * 100:.0f}%\n"
+            response += f"Mental Energy: {budget.mental_energy * 100:.0f}%\n"
+            response += f"Fatigue Level: {budget.fatigue_level * 100:.0f}%\n"
+            response += f"Context Switches: {budget.context_switches}\n"
+
+            return [TextContent(type="text", text=response)]
+        except Exception as e:
+            logger.error(f"Error setting focus: {e}")
+            return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+    async def _handle_get_attention_budget(self, args: dict) -> list[TextContent]:
+        """Get current attention budget allocation.
+
+        Returns:
+            Focus allocation and current metrics
+        """
+        try:
+            from ..meta.attention import AttentionManager
+
+            project = self.project_manager.get_or_create_project()
+            attention_mgr = AttentionManager(self.db)
+
+            budget = attention_mgr.get_attention_budget(project.id)
+            if not budget:
+                budget = attention_mgr.create_attention_budget(project.id)
+
+            response = "💡 Attention Budget Allocation:\n\n"
+            response += f"Current Focus: {budget.current_focus}\n"
+            response += f"Focus Level: {budget.current_focus_level * 100:.0f}%\n\n"
+
+            response += "Budget Distribution:\n"
+            for focus_type, allocation in budget.focus_allocation.items():
+                response += f"  {focus_type.capitalize()}: {allocation * 100:.0f}%\n"
+
+            response += f"\nMental Energy: {budget.mental_energy * 100:.0f}%\n"
+            response += f"Fatigue: {budget.fatigue_level * 100:.0f}%\n"
+            response += f"Context Switches: {budget.context_switches}\n"
+            response += f"Optimal Session: {budget.optimal_session_length_minutes} min\n"
+
+            return [TextContent(type="text", text=response)]
+        except Exception as e:
+            logger.error(f"Error getting attention budget: {e}")
+            return [TextContent(type="text", text=f"Error: {str(e)}")]
+
