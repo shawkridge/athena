@@ -36,87 +36,32 @@ When I give you a problem, I don't want the first solution that works. I want yo
 - Images and visual mocks aren't constraints—they're inspiration for pixel-perfect implementation
 - Multiple Claude instances aren't redundancy-they're collaboration between different perspectives
 
-## The Filesystem API Paradigm (Code Execution First)
+## Athena Memory System: Always Working in the Background
 
-**Models are great at navigating filesystems.** This changes everything about how we interact with tools.
+Athena automatically captures what you do and brings relevant context into each session. You don't do anything special—it just happens.
 
-Instead of:
-- Tool definitions bloating context (150K tokens)
-- Full data flowing through pipeline (50K token duplication)
-- Model acting as data processor (wasteful)
+When you start a session, you'll see a "## Working Memory" section at the top. That's the 7±2 most important things from your recent work, ranked by importance. Use it as your starting point.
 
-We now:
-- **Discover tools via filesystem** (agents explore `/athena/layers/` dynamically)
-- **Process locally** (filtering/aggregation in execution sandbox, not context)
-- **Return summaries** (300 tokens, not 15K - data stays local)
-- **Let agents write code** (native execution, not tool-calling constraints)
+When you switch between projects, context follows you. Athena learns which memories matter for which projects.
 
-### When Using Athena Memory System
+When you finish a session, patterns get extracted automatically—the next time you do similar work, useful procedures and context surface on their own.
 
-1. **List operations** (progressive disclosure):
-   ```
-   list_directory("/athena/layers")              # See available layers
-   list_directory("/athena/layers/semantic")     # See operations
-   ```
+## Code Execution Alignment ✅
 
-2. **Read code** (understand what you're executing):
-   ```
-   read_file("/athena/layers/semantic/recall.py")  # Get function code
-   ```
+Athena follows Anthropic's recommended code execution pattern:
 
-3. **Execute locally** (no context bloat):
-   ```
-   execute("/athena/layers/semantic/recall.py", "search_memories", {...})
-   # Returns 300-token summary, NOT 15K full objects
-   ```
+**Instead of**:
+- Loading all tool definitions upfront (bloats context)
+- Returning full data objects (wastes tokens)
+- Alternating agent→tool→response cycles (slow)
 
-4. **Drill down sparingly** (only when summary insufficient):
-   ```
-   # If needed after analyzing summary, request specific details
-   get_memory_details(memory_id)  # Full object for ONE item
-   ```
+**We do**:
+- Discover what's needed on-demand
+- Process data locally (filter/aggregate in execution sandbox)
+- Return summaries (300 tokens max, drill-down only on request)
+- Native execution with stateful control flow
 
-**Key insight**: Every slash command, hook, and skill should follow this pattern. Discover → Read → Execute Locally → Return Summary. Never load definitions upfront. Never return full data.
-
-## Anthropic MCP Code Execution Alignment ✅
-
-This project aligns with Anthropic's recommended code execution with MCP model (source: https://www.anthropic.com/engineering/code-execution-with-mcp).
-
-### The Model: Code-as-API vs. Tool-Calling
-
-**Traditional approach** (deprecated):
-- All tool definitions loaded upfront in context (150K+ tokens)
-- Model receives full data objects, processes them, makes decisions
-- Alternating calls: agent → tool → response → agent iteration
-- Result: Context bloat, token inefficiency, slow execution
-
-**Anthropic's recommended approach** (what we use):
-- Tools organized as filesystem hierarchy (discoverable on-demand)
-- Agents/models write code that navigates filesystem and calls operations
-- In-process data handling (filter/aggregate locally, return 300-token summaries)
-- Result: 98.7% token reduction, native execution, stateful control flow
-
-### Athena's Implementation
-
-| Principle | Anthropic Pattern | Athena Implementation | Status |
-|-----------|-------------------|----------------------|--------|
-| **Tool Discovery** | Filesystem hierarchy (servers/) | `/athena/layers/` structure | ✅ |
-| **Data Processing** | Local aggregation before returning | Operations filter/summarize in sandbox | ✅ |
-| **Execution Model** | Code-as-API (write code to call) | Slash commands, hooks, skills execute code | ✅ |
-| **State Persistence** | Filesystem/database access | SQLite + episodic memory layer | ✅ |
-| **Control Flow** | Native loops, conditionals, errors | Consolidation cycles, adaptive replanning | ✅ |
-| **Context Efficiency** | 98%+ token reduction | Summary-first, drill-down only when needed | ✅ |
-
-### Alignment Guarantee
-
-All new code (hooks, skills, agents, slash commands) **MUST** follow this pattern:
-
-1. **Discover** → Navigate filesystem or MCP operations list
-2. **Read** → Load only needed function/operation signatures
-3. **Execute Locally** → Process data in execution environment
-4. **Return Summary** → 300 tokens max, full objects only on drill-down request
-
-This is not optional. This is the architectural foundation that makes Athena efficient.
+**What this means for you**: You get relevant context without token bloat. Memory is queried and summarized at session boundaries, not loaded all at once.
 
 ## The Integration
 
@@ -133,201 +78,84 @@ When I say something seems impossible, that's your cue to ultrathink harder. The
 
 ## Global Hooks & Memory Integration ✅
 
-**Status**: All 7 hooks are globally active across all projects
+**Status**: All hooks are globally active across all projects
 
 ### Global Hooks Architecture
 
-Hooks are registered in `~/.claude/settings.json` and execute for every project:
+Hooks are registered in `~/.claude/settings.json` and execute automatically for every project:
 
-| Hook | Event | Purpose | Pattern |
-|------|-------|---------|---------|
-| `session-start.sh` | SessionStart | Initialize memory context at session beginning | Discover → Execute → Return summary |
-| `pre-execution.sh` | PreToolUse | Validate execution environment before tools run | Local validation, no tool definitions |
-| `post-tool-use.sh` | PostToolUse | Record tool results to episodic memory | Discover → Process locally → Store |
-| `smart-context-injection.sh` | PostToolUse | Inject relevant memories for next step (summary-first) | Semantic search → Top-3 results → Inject context |
-| `user-prompt-submit.sh` | UserPromptSubmit | Process user input and contextual grounding | Parse → Ground in spatial-temporal → Store |
-| `session-end.sh` | SessionEnd | Consolidate session learnings into semantic memory | Cluster → Extract patterns → Validate → Store |
-| `post-task-completion.sh` | On task completion | Learn procedures from completed work | Extract workflow → Validate → Save as reusable |
+| Hook | Event | What Happens |
+|------|-------|-------------|
+| `session-start.sh` | SessionStart | Loads working memory (7±2 items) from PostgreSQL |
+| `post-tool-use.sh` | PostToolUse | Records tool results as episodic events |
+| `user-prompt-submit.sh` | UserPromptSubmit | Records user input with spatial-temporal grounding |
+| `session-end.sh` | SessionEnd | Consolidates learnings into semantic memory |
+| `post-task-completion.sh` | Task completion | Extracts reusable workflows from completed work |
 
-### How Hooks Enable Code-Execution-with-MCP
-
-The hooks implement Anthropic's recommended pattern natively:
+### Session Lifecycle
 
 ```
-Session Lifecycle:
-├─ SessionStart → Initialize Athena memory layer
-├─ PreToolUse → Check execution context (no tool bloat)
-├─ PostToolUse → Record execution + inject relevant memories (summary-first)
-├─ UserPromptSubmit → Ground user input in spatial-temporal context
-├─ (User executes tasks)
-├─ Session completion → Extract procedures and consolidate learnings
-└─ SessionEnd → Persist patterns to semantic layer
+Session Start
+  ├─ SessionStart hook fires
+  │  └─ Queries PostgreSQL: "Show me the 7±2 most important things"
+  │     └─ Injects into Claude as "## Working Memory"
+  │
+  ├─ (You work, use tools, make decisions)
+  │
+  ├─ PostToolUse hook fires
+  │  └─ Records what tool did + result to episodic_events table
+  │
+  ├─ SessionEnd hook fires
+  │  └─ Analyzes all events from this session
+  │  └─ Extracts: patterns, procedures, insights
+  │  └─ Stores in semantic memory for next session
+  │
+  └─ Next session: Start again with updated context
 ```
 
-**Key Property**: All hooks follow the Discover→Execute→Summarize pattern:
-- ✅ Hooks discover what they need (list operations, read schemas)
-- ✅ Execute locally in bash/Python (no context bloat)
-- ✅ Return 300-token summaries (full data only on drill-down)
+### What You Get Automatically
 
-### Memory Access from Any Project
+Every project gets access to:
+- **Episodic memory**: "What happened when" (timestamped events)
+- **Working memory**: Current 7±2 focus items (Baddeley's limit)
+- **Semantic memory**: Facts and insights learned across projects
+- **Procedural memory**: Reusable workflows (101+ extracted)
+- **Knowledge graph**: Entity relationships and communities
+- **Meta-memory**: Quality scores, expertise in domains
 
-Since hooks are global, **every project automatically has access to**:
-- Episodic memory (what happened when)
-- Semantic memory (facts learned)
-- Procedural memory (reusable workflows)
-- Knowledge graph (entity relationships)
-- Working memory (current 7±2 focus items)
-- Meta-memory (quality, expertise, attention)
+No setup needed—hooks manage this automatically.
 
-This is managed through `~/.claude/hooks/lib/` Python helpers that call the Athena memory API.
+### Cross-Project Context
 
-### Cross-Project Memory Benefits
-
-| Scenario | Benefit |
-|----------|---------|
-| **Switch between projects** | Resume context from previous session (7±2 items) |
-| **Similar tasks** | Reuse learned procedures from other projects |
-| **Expert discovery** | Query which domains you're expert in across projects |
-| **Learning patterns** | Consolidation extracts insights across all projects |
-
-## Using Athena From Other Projects
-
-Every project in `~/.work/` has automatic access to the Athena memory system. Use the **FilesystemAPIAdapter** to access all memory operations:
-
-```python
-from filesystem_api_adapter import FilesystemAPIAdapter
-
-adapter = FilesystemAPIAdapter()
-
-# Discover available layers
-layers = adapter.list_layers()
-# Returns: ["episodic", "semantic", "procedural", "prospective", "graph", "meta", "consolidation", "supporting"]
-
-# Discover operations in a layer
-ops = adapter.list_operations_in_layer("semantic")
-# Returns: ["recall", "search", "store", "delete", ...]
-
-# Read operation code before executing
-code = adapter.read_operation("semantic", "recall")
-
-# Execute operation
-result = adapter.execute_operation("semantic", "recall", {
-    "query": "topic I want to remember",
-    "host": "localhost",
-    "port": 5432,
-    "dbname": "athena",
-    "user": "postgres",
-    "password": "postgres"
-})
-# Returns: 300-token summary with top matches
-
-# Get details on specific memory if summary insufficient
-detail = adapter.get_detail(memory_id=123)
-# Returns: Full object for ONE item
-```
-
-### Available Memory Layers
-
-| Layer | Purpose | Key Operations |
-|-------|---------|-----------------|
-| **episodic** | Event history (what happened when) | record, search_by_time, get_event, list_recent |
-| **semantic** | Facts learned across projects | recall, search, store, forget |
-| **procedural** | Reusable workflows (101 extracted) | list_procedures, execute, learn_from_events |
-| **prospective** | Tasks, goals, triggers | list_tasks, create_goal, check_triggers |
-| **graph** | Entity relationships | query_relations, find_similar, explore_community |
-| **meta** | Knowledge about knowledge | assess_quality, expertise_in_domain, attention_score |
-| **consolidation** | Pattern extraction | extract_patterns, verify_learning |
-| **supporting** | RAG, planning, zettelkasten | retrieve_context, verify_plan, link_memories |
-
-### Pattern: Discover → Execute → Summarize
-
-Always follow this pattern when using Athena:
-
-```python
-# 1. DISCOVER what operations exist
-operations = adapter.list_operations_in_layer("semantic")
-
-# 2. READ what the operation does
-code = adapter.read_operation("semantic", "recall")
-# Understand: inputs, outputs, what it does
-
-# 3. EXECUTE with your parameters
-result = adapter.execute_operation("semantic", "recall", {
-    "query": "my search term"
-})
-# Returns: 300-token summary, not full data
-
-# 4. DRILL DOWN only if needed
-if result["has_more"]:
-    detail = adapter.get_detail(memory_id=result["top_match_id"])
-    # Get full object for ONE specific item
-```
-
-**Key Points**:
-- 📋 Never load all tool definitions upfront
-- 🎯 Use summaries; full data only on explicit request
-- 🔍 Drill down sparingly (one item at a time)
-- ⚡ Execute locally (processing happens in sandbox, not context)
+All projects share the same memory pool:
+- Switch between projects → Resume with relevant context
+- Similar tasks → Reuse procedures from other projects
+- Expert discovery → See which domains you're expert in
+- Learning → Patterns are extracted across all projects
 
 ---
 
-## Alignment Verification ✅
+## Working Effectively with Athena
 
-**Verified November 14, 2025**
+**Trust the Working Memory at session start.** It's curated for you—the 7±2 most important things. Build on top of it rather than re-explaining.
 
-All systems achieve 100% Anthropic pattern compliance:
+**Break work into clear steps.** The more procedurally you work, the better Athena extracts reusable patterns. Consistent naming and structure helps.
 
-- ✅ **Slash commands**: 100% removed (pure FilesystemAPI only)
-- ✅ **Global hooks**: 100% active, following Discover→Execute→Summarize
-- ✅ **Skills**: 100% use code-as-API pattern
-- ✅ **Agents**: 100% execute locally via AgentInvoker
-- ✅ **MCP handlers**: 100% properly refactored (335 methods → domain-organized)
-- ✅ **Token efficiency**: 98.7% reduction through local processing
+**Switch between projects freely.** Memory follows you across projects. Athena learns which context matters where.
 
-**What This Means**:
-1. **No shortcuts** - Everything routes through FilesystemAPI discovery
-2. **No tool bloat** - No tool definitions loaded upfront
-3. **Summary-first** - All results are 300-token summaries
-4. **Drill-down available** - Full data only on explicit request per item
-5. **Cross-project memory** - All 7 layers automatically accessible to every project
+**End sessions consciously.** One logical task per session = clearer learning = better patterns for next time.
 
 ---
 
-## Decomposing Complex Tasks
+## Breaking Down Complex Work
 
-For multi-phase work, break tasks into sequential single-goal prompts. This ensures clarity, reproducibility, and prevents scope creep:
+When you have a multi-step task, break it into focused single-goal prompts rather than trying to do everything at once:
 
-**Pattern**:
-1. Each prompt targets one goal (one feature, one layer, one phase)
-2. Prompt structure: **Task** | **Input** | **Constraints** | **Output format** | **Verify method**
-3. Chain results: output of task N feeds into task N+1
-4. Decision point between tasks: explicitly state what happens next or pause for human input
+1. **One goal per prompt** - Focus is clarity
+2. **Chain results** - Output from step N feeds into step N+1
+3. **Explicit checkpoints** - Know what success looks like at each step
 
-**Example: Adding a new memory layer**
-
-*Prompt 1*: "Create episodic store with schema and CRUD operations"
-- Input: Database interface, existing layer patterns
-- Constraints: Use existing Store base class, <300 lines
-- Output: models.py + store.py
-- Verify: Run `pytest tests/unit/test_episodic_*.py`
-
-*Prompt 2*: "Implement query routing in UnifiedMemoryManager"
-- Input: Completed episodic layer from Prompt 1
-- Constraints: Extend existing routing patterns, add tests
-- Output: Updated manager.py + new routing tests
-- Verify: Run integration tests
-
-*Prompt 3*: "Add MCP tools for layer exposure"
-- Input: Completed layer + routing from Prompts 1-2
-- Constraints: Follow existing MCP naming convention
-- Output: Tool definitions in handlers.py
-- Verify: Test tool invocations with sample data
-
-**Benefits**:
-- Clear success criteria at each step
-- Reproducible (same prompts work next week)
-- Easier debugging (failure points are isolated)
-- No context sprawl (each prompt is focused)
+This way Athena captures each phase as a separate learnable procedure. Next time similar work comes up, you'll get context tailored to each phase.
 
 ---
 

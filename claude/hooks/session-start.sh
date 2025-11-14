@@ -26,6 +26,39 @@ log_context() {
     echo -e "${CYAN}[CONTEXT]${NC} $1" >&2
 }
 
+log "Checking PostgreSQL health..."
+
+# Check PostgreSQL health first
+python3 << 'HEALTH_CHECK_EOF'
+import sys
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
+
+try:
+    from postgres_health_check import PostgreSQLHealthCheck
+
+    checker = PostgreSQLHealthCheck(verbose=False)
+    health = checker.get_full_status()
+
+    if not health.healthy:
+        print(f"⚠️  PostgreSQL Health Check Failed", file=sys.stderr)
+        print(f"   Status: {health.status.value}", file=sys.stderr)
+        if health.error:
+            print(f"   Error: {health.error}", file=sys.stderr)
+        if health.recommendations:
+            print(f"", file=sys.stderr)
+            print(f"   Recommendations:", file=sys.stderr)
+            for rec in health.recommendations:
+                print(f"   → {rec}", file=sys.stderr)
+        print(f"", file=sys.stderr)
+        print(f"   Session will continue, but memory recording may not work", file=sys.stderr)
+    else:
+        print(f"✓ PostgreSQL is healthy", file=sys.stderr)
+
+except Exception as e:
+    print(f"⚠️  Could not check PostgreSQL health: {str(e)}", file=sys.stderr)
+
+HEALTH_CHECK_EOF
+
 log "Loading session context from memory..."
 
 # Load working memory and active goals using direct PostgreSQL bridge

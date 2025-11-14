@@ -61,18 +61,43 @@ sys.path.insert(0, '/home/user/.claude/hooks/lib')
 
 try:
     from memory_bridge import MemoryBridge
+    from tool_validator import validate_tool_name, validate_tool_status, validate_execution_time
 
     # Read tool context from environment (with fallback handling)
-    tool_name = os.environ.get('TOOL_NAME', 'unknown')
-    tool_status = os.environ.get('TOOL_STATUS', 'unknown')
-    duration_ms = int(os.environ.get('EXECUTION_TIME_MS', '0'))
+    tool_name_raw = os.environ.get('TOOL_NAME', None)
+    tool_status_raw = os.environ.get('TOOL_STATUS', None)
+    duration_raw = os.environ.get('EXECUTION_TIME_MS', None)
 
-    # Build content with available information
-    if tool_name != 'unknown':
-        content_str = f"Tool: {tool_name} | Status: {tool_status} | Duration: {duration_ms}ms"
+    # Validate each component
+    tool_result = validate_tool_name(tool_name_raw)
+    status_result = validate_tool_status(tool_status_raw)
+    time_valid, time_ms, time_error = validate_execution_time(duration_raw)
+
+    # Build content with validated information
+    validation_passed = tool_result.valid and status_result.valid and time_valid
+
+    if validation_passed:
+        # All context validated and present
+        # For status, extract the validated value from the raw input (it's already validated)
+        validated_status = tool_status_raw.strip().lower() if tool_status_raw else "unknown"
+        content_str = f"Tool: {tool_result.tool_name} | Status: {validated_status} | Duration: {time_ms}ms"
+        outcome = validated_status
     else:
-        # Fallback: note that context was missing
-        content_str = "Tool execution (context not provided by Claude Code - Environment: TOOL_NAME not set)"
+        # Log validation errors and use fallback
+        validation_errors = []
+        if not tool_result.valid:
+            validation_errors.append(f"tool_name: {tool_result.error}")
+            print(f"⚠ Invalid TOOL_NAME: {tool_result.message}", file=sys.stderr)
+        if not status_result.valid:
+            validation_errors.append(f"tool_status: {status_result.error}")
+            print(f"⚠ Invalid TOOL_STATUS: {status_result.message}", file=sys.stderr)
+        if not time_valid:
+            validation_errors.append(f"execution_time: {time_error}")
+            print(f"⚠ Invalid EXECUTION_TIME_MS: {time_error}", file=sys.stderr)
+
+        # Fallback content
+        content_str = "Tool execution (context validation failed - see warnings above)"
+        outcome = "context_validation_failed"
 
     with MemoryBridge() as bridge:
         project = bridge.get_project_by_path(os.getcwd())
@@ -81,15 +106,15 @@ try:
                 project_id=project['id'],
                 event_type="tool_execution",
                 content=content_str,
-                outcome=tool_status if tool_status != 'unknown' else 'unspecified'
+                outcome=outcome
             )
 
             if event_id:
-                if tool_name != 'unknown':
-                    print(f"✓ Tool execution recorded: {tool_name} (ID: {event_id})", file=sys.stderr)
+                if validation_passed:
+                    print(f"✓ Tool execution recorded: {tool_result.tool_name} (Status: {validated_status}, Duration: {time_ms}ms, ID: {event_id})", file=sys.stderr)
                 else:
-                    print(f"⚠ Tool execution recorded but tool context missing (ID: {event_id})", file=sys.stderr)
-                    print(f"  Note: Claude Code should set TOOL_NAME, TOOL_STATUS env vars", file=sys.stderr)
+                    print(f"⚠ Tool execution recorded with validation issues (ID: {event_id})", file=sys.stderr)
+                    print(f"  Run: python3 ~/.claude/hooks/lib/tool_validator.py for validation details", file=sys.stderr)
             else:
                 print(f"⚠ Event recording may have failed (returned None)", file=sys.stderr)
         else:
@@ -108,11 +133,11 @@ try:
     tool_buffer_file = Path(f"/tmp/.claude_tool_buffer_{os.getpid()}.json")
 
     execution_record = {
-        "tool_name": tool_name,
-        "tool_status": tool_status,
-        "execution_time_ms": duration_ms,
+        "tool_name": tool_result.tool_name if validation_passed else (tool_name_raw or "unknown"),
+        "tool_status": validated_status if validation_passed else (tool_status_raw or "unknown"),
+        "execution_time_ms": time_ms if validation_passed else 0,
         "timestamp": datetime.utcnow().isoformat(),
-        "success": tool_status == "success"
+        "success": (validated_status == "success") if validation_passed else False
     }
 
     # Append to buffer (create if not exists)

@@ -278,6 +278,58 @@ src/athena/mcp/
 
 ---
 
+## Memory Storage and Hook Integration
+
+### Where Memory Actually Lives
+
+**Database**: PostgreSQL on `localhost:5432` (or `ATHENA_POSTGRES_HOST:ATHENA_POSTGRES_PORT`)
+
+**Tables** (created automatically by MCP server):
+- `episodic_events`: Individual events (tool use, user input, outputs)
+- `prospective_tasks`: Goals, tasks, triggers
+- `projects`: Project contexts
+- `semantic_memories`: Learned facts and insights
+- `knowledge_graph_*`: Entities, relations, communities
+- `procedural_skills`: Learned workflows
+- `meta_*`: Quality scores, expertise, attention
+
+### How Hooks Access Memory
+
+1. **Hook fires** (e.g., `PostToolUse` after a tool runs)
+2. **Hook loads** `memory_bridge.py` (direct PostgreSQL connection)
+3. **Hook queries** episodic_events, prospective_tasks tables
+4. **Hook formats** results using `session_context_manager.py`
+5. **Hook prints to stdout** (injected into Claude as "Working Memory")
+
+**Example workflow**:
+```
+User submits input → PostToolUse fires
+  ↓
+Hook calls memory_bridge.get_active_memories(project_id, limit=7)
+  ↓
+Returns top 7 working memory items from PostgreSQL
+  ↓
+Hook formats with session_context_manager (includes importance scores)
+  ↓
+Prints to stdout: "## Working Memory" section
+  ↓
+Claude receives as context for next response
+```
+
+### If Hooks Aren't Injecting Memory
+
+**Most likely cause**: PostgreSQL not accessible to hook processes.
+
+**Verify**:
+1. PostgreSQL is running: `psql -h localhost -U postgres -d athena -c "SELECT 1"`
+2. Tables exist: `psql -h localhost -U postgres -d athena -c "\dt"`
+3. Check environment vars: `env | grep ATHENA_POSTGRES`
+4. Watch hook execution: Add `DEBUG=1` to see hook logs (stderr)
+
+If hooks fail silently, check `~/.claude/hooks/` shell scripts - they catch exceptions and log to stderr.
+
+---
+
 ## Anthropic Pattern Enforcement
 
 All code **MUST** follow the pattern:
@@ -318,11 +370,26 @@ return {"count": len(results), "top_matches": summary[:3]}  # 300 tokens max
 3. Check schemas: Tables created on first use
 4. Enable debug: `DEBUG=1 memory-mcp`
 
+### PostgreSQL Connection Failing
+
+The memory system requires PostgreSQL to be running. The hooks use this to access memory.
+
+1. Check if PostgreSQL is running: `psql -h localhost -U postgres -d athena -c "SELECT 1"`
+2. Verify environment variables are set (or use defaults):
+   ```bash
+   echo "ATHENA_POSTGRES_HOST=${ATHENA_POSTGRES_HOST:-localhost}"
+   echo "ATHENA_POSTGRES_PORT=${ATHENA_POSTGRES_PORT:-5432}"
+   echo "ATHENA_POSTGRES_DB=${ATHENA_POSTGRES_DB:-athena}"
+   echo "ATHENA_POSTGRES_USER=${ATHENA_POSTGRES_USER:-postgres}"
+   ```
+3. If tables don't exist, MCP server will create them on first run: `memory-mcp`
+4. Check hook logs: `/home/user/.claude/hooks/` scripts run on SessionStart and PostToolUse events
+
 ### Memory Database Growing Large
 
-1. Run consolidation: Extract patterns to compress
-2. Monitor usage: Query episodic_events directly
-3. Monitor size: `du -h ~/.claude/memory.db`
+1. Monitor usage: Query episodic_events directly via `psql`
+2. Run consolidation: Extract patterns to compress episodic events
+3. Check database size: `psql -h localhost -U postgres -d athena -c "SELECT pg_size_pretty(pg_database_size('athena'))"`
 
 ---
 
@@ -365,21 +432,55 @@ docs: Update documentation
 
 ## Configuration
 
-**Environment variables** (PostgreSQL):
+### PostgreSQL Setup (Required for Hooks)
+
+Hooks require PostgreSQL to be running and accessible. Set these environment variables (or use defaults):
+
 ```bash
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=athena
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_MIN_POOL_SIZE=2
-DB_MAX_POOL_SIZE=10
+# Used by hooks (memory_bridge.py)
+export ATHENA_POSTGRES_HOST=localhost         # default: localhost
+export ATHENA_POSTGRES_PORT=5432              # default: 5432
+export ATHENA_POSTGRES_DB=athena              # default: athena
+export ATHENA_POSTGRES_USER=postgres          # default: postgres
+export ATHENA_POSTGRES_PASSWORD=postgres      # default: postgres
+
+# Used by MCP server and core system (config.py)
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_NAME=athena
+export DB_USER=postgres
+export DB_PASSWORD=postgres
+export DB_MIN_POOL_SIZE=2
+export DB_MAX_POOL_SIZE=10
 ```
 
+**Critical**: Hooks will fail silently if PostgreSQL is not accessible. Check with:
+```bash
+psql -h ${ATHENA_POSTGRES_HOST:-localhost} -U postgres -d athena -c "SELECT 1"
+```
+
+### LLM Provider Configuration
+
 **Embedding provider** (src/athena/core/config.py):
-- `"ollama"` (local, fast)
-- `"anthropic"` (cloud, requires API key)
-- `"mock"` (testing)
+- `"ollama"` (local, requires Ollama running on http://localhost:11434)
+- `"llamacpp"` (HTTP servers for embeddings + reasoning)
+- `"claude"` (Anthropic API, requires ANTHROPIC_API_KEY)
+- `"mock"` (testing only)
+
+### Hook Environment
+
+Hooks are configured in `~/.claude/settings.json` and execute in response to:
+- `SessionStart`: Load working memory at session beginning
+- `PreToolUse`: Validate execution environment
+- `PostToolUse`: Record tool results to episodic memory
+- `UserPromptSubmit`: Ground user input in spatial-temporal context
+- `SessionEnd`: Consolidate session learnings
+
+Hook helper libraries in `~/.claude/hooks/lib/`:
+- `memory_bridge.py`: Direct PostgreSQL access for hooks
+- `session_context_manager.py`: Format memory for Claude injection
+- `advanced_context_intelligence.py`: Smart context selection
+- `consolidation_helper.py`: Pattern extraction helpers
 
 ---
 
