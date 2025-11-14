@@ -70,19 +70,15 @@ async def search_memories(
     """
     try:
         conn = await AsyncConnection.connect(
-            host=host,
-            port=port,
-            dbname=dbname,
-            user=user,
-            password=password
+            f"dbname={dbname} user={user} password={password} host={host} port={port}"
         )
 
-        # Build query
+        # Build query using memory_vectors table (replacement for semantic_memories)
         where_clauses = ["1=1"]
         params = []
 
-        # Search in content (would use FTS in production)
-        where_clauses.append("(content ILIKE %s OR tags ILIKE %s)")
+        # Search in content using text search
+        where_clauses.append("(content ILIKE %s OR tags::text ILIKE %s)")
         params.extend([f"%{query}%", f"%{query}%"])
 
         if domain_filter:
@@ -90,7 +86,7 @@ async def search_memories(
             params.append(domain_filter)
 
         if memory_type_filter:
-            where_clauses.append("type = %s")
+            where_clauses.append("memory_type = %s")
             params.append(memory_type_filter)
 
         where_clause = " AND ".join(where_clauses)
@@ -99,8 +95,8 @@ async def search_memories(
         async with conn.cursor() as cursor:
             await cursor.execute(
                 f"""
-                SELECT id, type, domain, confidence, usefulness_score
-                FROM semantic_memories
+                SELECT id, memory_type, domain, confidence, usefulness_score
+                FROM memory_vectors
                 WHERE {where_clause}
                 LIMIT %s
                 """,
@@ -135,10 +131,10 @@ async def search_memories(
             domain = mem.get("domain", "unknown")
             domain_dist[domain] = domain_dist.get(domain, 0) + 1
 
-        # Count by type
+        # Count by type (memory_type in memory_vectors table)
         type_dist = {}
         for mem in high_conf:
-            mtype = mem.get("type", "unknown")
+            mtype = mem.get("memory_type", "unknown")
             type_dist[mtype] = type_dist.get(mtype, 0) + 1
 
         return {
@@ -149,7 +145,7 @@ async def search_memories(
             "confidence_range": (min(confidences), max(confidences)) if confidences else (None, None),
             "avg_usefulness": sum(usefulness_scores) / len(usefulness_scores) if usefulness_scores else 0,
             "domain_distribution": domain_dist,
-            "type_distribution": type_dist,
+            "memory_type_distribution": type_dist,
             "top_5_ids": [m.get("id") for m in high_conf[:5]],
             "percentiles": {
                 "p10": sorted(confidences)[len(confidences)//10] if confidences else None,

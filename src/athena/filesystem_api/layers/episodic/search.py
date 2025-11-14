@@ -61,19 +61,25 @@ async def search_events(
         - event_types: Distribution of event types
     """
     try:
-        conn = await AsyncConnection.connect(db_path)
+        conn = await AsyncConnection.connect(
+            f"dbname={dbname} user={user} password={password} host={host} port={port}"
+        )
         # PostgreSQL returns dicts
         cursor = conn.cursor()
 
         # Search for events matching query
+        # Search in content column and context fields (context_task, context_cwd, context_phase, context_branch)
         await cursor.execute(
             """
             SELECT id, timestamp, event_type, outcome, confidence
             FROM episodic_events
-            WHERE content ILIKE ? OR context ILIKE ?
-            LIMIT ?
+            WHERE content ILIKE %s
+               OR context_task ILIKE %s
+               OR context_phase ILIKE %s
+               OR context_branch ILIKE %s
+            LIMIT %s
             """,
-            (f"%{query}%", f"%{query}%", limit)
+            (f"%{query}%", f"%{query}%", f"%{query}%", f"%{query}%", limit)
         )
 
         all_events = [dict(row) for row in await cursor.fetchall()]
