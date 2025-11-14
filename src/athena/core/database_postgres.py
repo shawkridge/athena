@@ -113,16 +113,24 @@ class SyncCursor:
         """Execute query asynchronously against PostgreSQL.
 
         Query must use PostgreSQL syntax with %s placeholders (not SQLite ?).
-        Returns dict-like rows for SELECT queries.
+        Returns dict-like rows for SELECT queries and queries with RETURNING.
         """
         async def _exec():
             # Query should be in PostgreSQL format
             pg_query = query.strip()
+            query_upper = pg_query.upper()
+
+            # Determine if query can return results
+            # SELECT, INSERT/UPDATE/DELETE with RETURNING, and some other queries can return rows
+            returns_rows = (
+                query_upper.startswith("SELECT") or
+                "RETURNING" in query_upper  # Handle INSERT/UPDATE/DELETE with RETURNING
+            )
 
             # Use context manager to properly handle connection lifecycle
             async with self.db.get_connection() as conn:
-                # For SELECT queries, use dict_row factory to get dict-like rows
-                if pg_query.upper().startswith("SELECT"):
+                # For queries that return rows, use dict_row factory to get dict-like rows
+                if returns_rows:
                     cursor = conn.cursor(row_factory=dict_row)
                 else:
                     cursor = conn.cursor()
@@ -132,11 +140,11 @@ class SyncCursor:
                 else:
                     await cursor.execute(pg_query)
 
-                # For SELECT queries, fetch results as dicts. For others, just get row count
-                if pg_query.upper().startswith("SELECT"):
+                # For queries that can return rows, fetch results as dicts. For others, just get row count
+                if returns_rows:
                     self._results = await cursor.fetchall()
                 else:
-                    # For non-SELECT queries, don't try to fetch
+                    # For non-returning queries, don't try to fetch
                     self._results = []
 
                 self._row_index = 0

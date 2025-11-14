@@ -93,11 +93,20 @@ class E2EEvaluation:
 
             if result:
                 from athena.core.models import Project
-                self.project = Project(
-                    id=result[0],
-                    name=result[1],
-                    path=result[2]
-                )
+                # Result is now a dict due to dict_row factory
+                if isinstance(result, dict):
+                    self.project = Project(
+                        id=result['id'],
+                        name=result['name'],
+                        path=result['path']
+                    )
+                else:
+                    # Fallback for tuple access
+                    self.project = Project(
+                        id=result[0],
+                        name=result[1],
+                        path=result[2]
+                    )
                 print(f"✅ Project created: {self.project.name} (ID: {self.project.id})")
             else:
                 raise Exception(f"Failed to create project")
