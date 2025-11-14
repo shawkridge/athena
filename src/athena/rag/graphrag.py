@@ -81,7 +81,7 @@ class GraphRAGManager:
 
     # ========== Global Search ==========
 
-    def global_search(self, query: str, top_k: int = 5) -> RetrievalResult:
+    def global_search(self, query: str, top_k: int = 5, project_id: int = 1) -> RetrievalResult:
         """Answer high-level questions using community summaries.
 
         Approach:
@@ -93,11 +93,12 @@ class GraphRAGManager:
         Args:
             query: User question
             top_k: Number of top communities to use (default: 5)
+            project_id: Project context for memory objects (default: 1)
 
         Returns:
             RetrievalResult with global perspective
         """
-        logger.info(f"Global search: {query[:80]}")
+        logger.info(f"Global search: {query[:80]} (project={project_id})")
 
         # Get all community summaries (lazy-load if needed)
         summaries = self._get_all_summaries()
@@ -127,7 +128,7 @@ class GraphRAGManager:
         for i, summary in enumerate(ranked_summaries):
             memory = Memory(
                 id=f"community_{summary.community_id}",
-                project_id=1,  # TODO: use actual project_id
+                project_id=project_id,
                 content=summary.summary_text,
                 memory_type="summary",
                 tags=[summary.name, "community_summary", "global"]

@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any, Callable, Coroutine
 from enum import Enum
 from datetime import datetime
+from abc import ABC, abstractmethod
 import asyncio
 import logging
 import uuid
@@ -74,7 +75,7 @@ class SubAgentTask:
     context: Dict[str, Any] = field(default_factory=dict)
 
 
-class SubAgent:
+class SubAgent(ABC):
     """Base class for specialized agents."""
 
     def __init__(self, agent_type: SubAgentType):
@@ -133,13 +134,14 @@ class SubAgent:
                 error=str(e),
             )
 
+    @abstractmethod
     async def _do_work(self, task: SubAgentTask) -> Dict[str, Any]:
         """
         Implement agent-specific work.
 
         Must be overridden by subclasses.
         """
-        raise NotImplementedError
+        pass
 
     def get_success_rate(self) -> float:
         """Get success rate of this agent."""

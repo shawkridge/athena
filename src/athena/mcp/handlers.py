@@ -354,11 +354,11 @@ class MemoryMCPServer(
 
         # Planner agent (optional - StrategyAwarePlanner has graceful fallback when None)
         # In production, can be connected to agents/planner.py for advanced planning
-        # For now, fallback generates basic 5-step plans (Analyze → Plan → Implement → Verify → Document)
-        self.mock_planner_agent = None
+        # When None, fallback generates basic 5-step plans (Analyze → Plan → Implement → Verify → Document)
+        self.optional_planner_agent = None
 
         self.strategy_aware_planner = StrategyAwarePlanner(
-            planner_agent=self.mock_planner_agent,
+            planner_agent=self.optional_planner_agent,
             orchestration_bridge=self.orchestration_bridge,
         )
 

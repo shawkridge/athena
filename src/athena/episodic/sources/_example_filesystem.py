@@ -72,7 +72,8 @@ class FilesystemEventSource(BaseEventSource):
         branch: str = 'main',
         max_commits: int = 100,
         cursor: Optional[Dict[str, Any]] = None,
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
+        project_id: int = 1
     ):
         """Initialize filesystem source.
 
@@ -83,6 +84,7 @@ class FilesystemEventSource(BaseEventSource):
             max_commits: Maximum commits to extract
             cursor: Optional cursor for incremental sync
             logger: Optional logger
+            project_id: Project context ID (default: 1)
         """
         super().__init__(
             source_id=source_id,
@@ -99,6 +101,7 @@ class FilesystemEventSource(BaseEventSource):
         self.root_dir = root_dir
         self.branch = branch
         self.max_commits = max_commits
+        self.project_id = project_id
 
         # Cursor state for incremental sync
         self._cursor = cursor or {}
@@ -374,7 +377,7 @@ class FilesystemEventSource(BaseEventSource):
 
         # Create event
         return EpisodicEvent(
-            project_id=1,  # TODO: Get from config or factory
+            project_id=self.project_id,
             session_id=session_id,
             timestamp=commit_data['date'],
             event_type=EventType.FILE_CHANGE,

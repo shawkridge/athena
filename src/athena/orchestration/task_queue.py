@@ -44,6 +44,7 @@ class TaskQueue:
         priority: str = "medium",
         requirements: Optional[List[str]] = None,
         dependencies: Optional[List[str]] = None,
+        project_id: int = 1,
     ) -> str:
         """Create task, return task_id.
 
@@ -53,6 +54,7 @@ class TaskQueue:
             priority: low, medium, high
             requirements: Required agent capabilities
             dependencies: Task IDs this depends on
+            project_id: Project context ID (default: 1)
 
         Returns:
             task_id (UUID string)
@@ -62,7 +64,7 @@ class TaskQueue:
 
         # Create episodic event for task creation
         event = EpisodicEvent(
-            project_id=0,  # TODO: Get from context manager
+            project_id=project_id,
             session_id="orchestration",
             event_type=EventType.ACTION,
             content=content,

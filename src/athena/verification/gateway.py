@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Any, Callable
 from enum import Enum
 from datetime import datetime
+from abc import ABC, abstractmethod
 import logging
 
 logger = logging.getLogger(__name__)
@@ -71,7 +72,7 @@ class GateResult:
         return any(v.severity == GateSeverity.ERROR for v in self.violations)
 
 
-class Gate:
+class Gate(ABC):
     """Base class for verification gates."""
 
     def __init__(self, gate_type: GateType, severity_threshold: GateSeverity = GateSeverity.ERROR):
@@ -99,12 +100,13 @@ class Gate:
 
         return violation
 
+    @abstractmethod
     def _check(self, operation_data: Dict[str, Any]) -> Optional[GateViolation]:
         """
         Implement gate-specific check.
         Must be overridden by subclasses.
         """
-        raise NotImplementedError
+        pass
 
     def get_success_rate(self) -> float:
         """Get success rate of this gate."""
