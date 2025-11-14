@@ -64,10 +64,10 @@ class ConsolidationQualityMetrics:
 
             # Count tokens in semantic memories from this session
             # Get all memories from session (query via database directly)
-            cursor = self.semantic_store.db.conn.cursor()
+            cursor = self.semantic_store.db.get_cursor()
+            # Use CURRENT_TIMESTAMP - INTERVAL for PostgreSQL
             cursor.execute(
-                "SELECT content FROM memories WHERE created_at >= ? LIMIT 1000",
-                (int(__import__('time').time()) - 86400,)  # Last 24 hours
+                "SELECT content FROM memory_vectors WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours' LIMIT 1000"
             )
             semantic_memories = cursor.fetchall()
             semantic_tokens = sum(len(row[0].split()) if row[0] else 0 for row in semantic_memories)
@@ -77,7 +77,9 @@ class ConsolidationQualityMetrics:
             return max(0.0, min(1.0, compression))  # Clamp to [0, 1]
 
         except Exception as e:
+            import traceback
             print(f"Error measuring compression ratio: {e}")
+            traceback.print_exc()
             return 0.0
 
     def measure_retrieval_recall(self, session_id: str) -> Dict[str, float]:
@@ -167,9 +169,9 @@ class ConsolidationQualityMetrics:
             event_entropy = self._calculate_event_entropy(episodic_events)
 
             # Get semantic memories (patterns) for this session via database
-            cursor = self.semantic_store.db.conn.cursor()
+            cursor = self.semantic_store.db.get_cursor()
             cursor.execute(
-                "SELECT id, usefulness_score FROM memories ORDER BY created_at DESC LIMIT 100"
+                "SELECT id, usefulness_score FROM memory_vectors ORDER BY created_at DESC LIMIT 100"
             )
             semantic_memories = cursor.fetchall()
 
@@ -179,8 +181,18 @@ class ConsolidationQualityMetrics:
             # Estimate pattern likelihood
             pattern_likelihood = 0.0
             for memory_row in semantic_memories:
-                # memory_row is (id, usefulness_score)
-                usefulness = memory_row[1] if len(memory_row) > 1 else 0.5
+                # Handle both dict-like Row objects and tuples
+                try:
+                    # Try dict-like access first (works with psycopg Row objects)
+                    usefulness = float(memory_row.get("usefulness_score", 0.5))
+                except (AttributeError, TypeError):
+                    # Fall back to tuple access
+                    try:
+                        row_tuple = tuple(memory_row) if not isinstance(memory_row, tuple) else memory_row
+                        usefulness = float(row_tuple[1]) if len(row_tuple) > 1 else 0.5
+                    except (ValueError, IndexError):
+                        usefulness = 0.5
+
                 confidence = max(0.1, usefulness)  # Use usefulness as confidence proxy
                 pattern_likelihood += confidence * math.log(confidence + 1e-10)
 
@@ -193,7 +205,9 @@ class ConsolidationQualityMetrics:
             return max(0.0, min(1.0, consistency))
 
         except Exception as e:
+            import traceback
             print(f"Error measuring pattern consistency: {e}")
+            traceback.print_exc()
             return 0.5
 
     def measure_information_density(self, session_id: str) -> Dict[str, float]:
@@ -212,9 +226,9 @@ class ConsolidationQualityMetrics:
         """
         try:
             # Get recent semantic memories from database
-            cursor = self.semantic_store.db.conn.cursor()
+            cursor = self.semantic_store.db.get_cursor()
             cursor.execute(
-                "SELECT id, content, usefulness_score FROM memories ORDER BY created_at DESC LIMIT 1000"
+                "SELECT id, content, usefulness_score FROM memory_vectors ORDER BY created_at DESC LIMIT 1000"
             )
             semantic_memories = cursor.fetchall()
 
@@ -228,9 +242,20 @@ class ConsolidationQualityMetrics:
 
             densities = []
             for memory_row in semantic_memories:
-                # memory_row is (id, content, usefulness_score)
-                content = memory_row[1]
-                usefulness_score = memory_row[2] if len(memory_row) > 2 else 0.5
+                # Handle both dict-like Row objects and tuples
+                try:
+                    # Try dict-like access first (works with psycopg Row objects)
+                    content = memory_row.get("content")
+                    usefulness_score = float(memory_row.get("usefulness_score", 0.5))
+                except (AttributeError, TypeError):
+                    # Fall back to tuple access
+                    try:
+                        row_tuple = tuple(memory_row) if not isinstance(memory_row, tuple) else memory_row
+                        content = row_tuple[1] if len(row_tuple) > 1 else None
+                        usefulness_score = float(row_tuple[2]) if len(row_tuple) > 2 else 0.5
+                    except (ValueError, IndexError):
+                        content = None
+                        usefulness_score = 0.5
 
                 # Get tokens in memory
                 tokens = len(content.split()) if content else 0
@@ -265,7 +290,9 @@ class ConsolidationQualityMetrics:
             }
 
         except Exception as e:
+            import traceback
             print(f"Error measuring information density: {e}")
+            traceback.print_exc()
             return {
                 "avg_density": 0.0,
                 "max_density": 0.0,
@@ -357,9 +384,9 @@ class ConsolidationQualityMetrics:
                     answerable += 1
             except Exception:
                 # Fallback: check via database directly
-                cursor = self.semantic_store.db.conn.cursor()
+                cursor = self.semantic_store.db.get_cursor()
                 cursor.execute(
-                    "SELECT content FROM memories WHERE content LIKE ? LIMIT 1",
+                    "SELECT content FROM memory_vectors WHERE content ILIKE %s LIMIT 1",
                     (f"%{query}%",)
                 )
                 if cursor.fetchone():

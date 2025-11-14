@@ -743,7 +743,23 @@ class ConsolidationSystem:
                     "avg_information_density": 0.0,
                 }
 
-            session_id = result[0]
+            # Handle both tuple and Row object access
+            try:
+                session_id = result["session_id"] if isinstance(result, dict) else result[0]
+            except (KeyError, IndexError, TypeError):
+                # Try accessing by column name using tuple() conversion
+                try:
+                    session_id = tuple(result)[0] if result else None
+                except (TypeError, IndexError):
+                    session_id = None
+
+            if not session_id:
+                return {
+                    "compression_ratio": 0.0,
+                    "retrieval_recall": 0.0,
+                    "pattern_consistency": 0.0,
+                    "avg_information_density": 0.0,
+                }
 
             # Measure all metrics
             compression = quality_metrics.measure_compression_ratio(session_id)
@@ -771,7 +787,9 @@ class ConsolidationSystem:
             return metrics
 
         except Exception as e:
+            import traceback
             print(f"Error measuring consolidation metrics: {e}")
+            traceback.print_exc()
             return {
                 "compression_ratio": 0.0,
                 "retrieval_recall": 0.0,

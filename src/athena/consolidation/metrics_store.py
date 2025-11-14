@@ -94,39 +94,23 @@ class ConsolidationMetricsStore(BaseStore[ConsolidationRun]):
             )
 
             # Store in database (using BaseStore.execute() helper)
+            # Note: consolidation_runs schema only has metric columns, not target_met columns
             self.execute(
                 """
                 UPDATE consolidation_runs
-                SET compression_ratio = ?,
-                    compression_target_met = ?,
-                    retrieval_recall = ?,
-                    recall_target_met = ?,
-                    pattern_consistency = ?,
-                    consistency_target_met = ?,
-                    avg_information_density = ?,
-                    density_target_met = ?,
-                    overall_quality_score = ?,
-                    quality_metrics_json = ?
-                WHERE id = ?
+                SET compression_ratio = %s,
+                    retrieval_recall = %s,
+                    pattern_consistency = %s,
+                    avg_information_density = %s,
+                    overall_quality_score = %s
+                WHERE id = %s
                 """,
                 (
                     compression_ratio,
-                    targets_met["compression_ratio"],
                     retrieval_recall,
-                    targets_met["retrieval_recall"],
                     pattern_consistency,
-                    targets_met["pattern_consistency"],
                     avg_information_density,
-                    targets_met["avg_information_density"],
                     overall_score,
-                    self.serialize_json({
-                        "compression_ratio": compression_ratio,
-                        "retrieval_recall": retrieval_recall,
-                        "pattern_consistency": pattern_consistency,
-                        "avg_information_density": avg_information_density,
-                        "overall_quality_score": overall_score,
-                        "targets_met": targets_met,
-                    }),
                     run_id,
                 ),
             )
