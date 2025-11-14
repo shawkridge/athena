@@ -209,11 +209,11 @@ class E2EMemoryTest:
                 project_id=self.project.id
             )
 
-            passed = run_result is not None
+            passed = run_result is not None and isinstance(run_result, int) and run_result > 0
             print_result(
                 "Run consolidation (via public API)",
                 passed,
-                f"Consolidation completed (run_id: {run_result.id if passed else 'N/A'})"
+                f"Consolidation completed (run_id: {run_result if passed else 'N/A'})"
             )
 
             self.results.append(("Consolidation", passed))
