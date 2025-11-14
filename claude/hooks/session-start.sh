@@ -33,7 +33,7 @@ python3 << 'PYTHON_EOF'
 import sys
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 
 # Suppress verbose logging
@@ -64,11 +64,57 @@ try:
         mem_result = bridge.get_active_memories(project_id, limit=7)
         active_items = mem_result.get('items', [])
 
+        # Import session managers
+        from session_context_manager import SessionContextManager  # Phase 3: Token efficiency
+        from advanced_context_intelligence import AdvancedContextIntelligence, CrossSessionContinuity  # Phase 4: Advanced intelligence
+
+        session_mgr = SessionContextManager()
+
+        # Phase 4: Initialize cross-session continuity for smart resumption
+        continuity = CrossSessionContinuity(session_id="session_start", project_id=project_id)
+
+        # Phase 4: Check for session gap and format resumption context
+        last_session_time = bridge.get_last_session_time(project_id)
+        if last_session_time:
+            gap_analysis = continuity.analyze_session_gap(datetime.utcnow(), last_session_time)
+            gap_type = gap_analysis.get("gap_type")
+            gap_readable = gap_analysis.get("human_readable", "some time ago")
+
+            # Log gap for debugging
+            if gap_type != "first_session":
+                print(f"  ✓ Session resumed after {gap_readable} ({gap_type})", file=sys.stderr)
+
+        # INJECT TO CLAUDE: Working memory (stdout)
         if active_items:
+            # Convert to session manager format
+            memories = [
+                {
+                    "id": f"mem_working_{i}",
+                    "title": item['content'][:50],
+                    "content": item['content'],
+                    "type": item['type'],
+                    "timestamp": item.get('timestamp'),
+                    "importance": item.get('importance', 0.5),
+                    "composite_score": item.get('importance', 0.5),
+                }
+                for i, item in enumerate(active_items[:5])
+            ]
+
+            # Use adaptive formatting with token budget
+            formatted, injected_ids, tokens_used = session_mgr.format_context_adaptive(
+                memories=memories,
+                max_tokens=350  # Phase 3+4: Session start with advanced features
+            )
+
+            if formatted:
+                print("## Working Memory (Resuming)")
+                print(formatted)
+
+            # User log (stderr)
             print(f"  ✓ {len(active_items)} active memory items (7±2 capacity):", file=sys.stderr)
-            for i, item in enumerate(active_items[:5], 1):
+            for i, item in enumerate(active_items[:3], 1):
                 content_preview = item['content'][:40] + "..." if len(item['content']) > 40 else item['content']
-                importance = item['importance']
+                importance = item.get('importance', 0.5)
                 print(f"    {i}. [{item['type']}] {content_preview} (importance: {importance:.1%})", file=sys.stderr)
         else:
             print(f"  No previous context found", file=sys.stderr)
@@ -79,11 +125,37 @@ try:
         goals_result = bridge.get_active_goals(project_id, limit=5)
         goals = goals_result.get('goals', [])
 
+        # INJECT TO CLAUDE: Active goals (stdout)
         if goals:
+            # Convert to session manager format
+            goal_memories = [
+                {
+                    "id": f"goal_{i}",
+                    "title": goal['title'],
+                    "content": f"Status: {goal.get('status', 'unknown')}, Priority: {goal.get('priority', 'normal')}",
+                    "type": "goal",
+                    "timestamp": goal.get('created_at'),
+                    "importance": 0.8 if goal.get('status') == 'active' else 0.5,
+                    "composite_score": 0.8 if goal.get('status') == 'active' else 0.5,
+                }
+                for i, goal in enumerate(goals[:3])
+            ]
+
+            # Use adaptive formatting
+            formatted_goals, goal_ids, goal_tokens = session_mgr.format_context_adaptive(
+                memories=goal_memories,
+                max_tokens=200
+            )
+
+            if formatted_goals:
+                print("## Active Goals")
+                print(formatted_goals)
+
+            # User log (stderr)
             print(f"  ✓ {len(goals)} active goals:", file=sys.stderr)
             for i, goal in enumerate(goals[:3], 1):
                 title_preview = goal['title'][:40] + "..." if len(goal['title']) > 40 else goal['title']
-                print(f"    {i}. [{goal['status']}] {title_preview}", file=sys.stderr)
+                print(f"    {i}. [{goal.get('status', 'unknown')}] {title_preview}", file=sys.stderr)
         else:
             print(f"  No active goals found", file=sys.stderr)
 

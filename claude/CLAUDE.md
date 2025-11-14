@@ -190,27 +190,146 @@ This is managed through `~/.claude/hooks/lib/` Python helpers that call the Athe
 | **Expert discovery** | Query which domains you're expert in across projects |
 | **Learning patterns** | Consolidation extracts insights across all projects |
 
+## Using Athena From Other Projects
+
+Every project in `~/.work/` has automatic access to the Athena memory system. Use the **FilesystemAPIAdapter** to access all memory operations:
+
+```python
+from filesystem_api_adapter import FilesystemAPIAdapter
+
+adapter = FilesystemAPIAdapter()
+
+# Discover available layers
+layers = adapter.list_layers()
+# Returns: ["episodic", "semantic", "procedural", "prospective", "graph", "meta", "consolidation", "supporting"]
+
+# Discover operations in a layer
+ops = adapter.list_operations_in_layer("semantic")
+# Returns: ["recall", "search", "store", "delete", ...]
+
+# Read operation code before executing
+code = adapter.read_operation("semantic", "recall")
+
+# Execute operation
+result = adapter.execute_operation("semantic", "recall", {
+    "query": "topic I want to remember",
+    "host": "localhost",
+    "port": 5432,
+    "dbname": "athena",
+    "user": "postgres",
+    "password": "postgres"
+})
+# Returns: 300-token summary with top matches
+
+# Get details on specific memory if summary insufficient
+detail = adapter.get_detail(memory_id=123)
+# Returns: Full object for ONE item
+```
+
+### Available Memory Layers
+
+| Layer | Purpose | Key Operations |
+|-------|---------|-----------------|
+| **episodic** | Event history (what happened when) | record, search_by_time, get_event, list_recent |
+| **semantic** | Facts learned across projects | recall, search, store, forget |
+| **procedural** | Reusable workflows (101 extracted) | list_procedures, execute, learn_from_events |
+| **prospective** | Tasks, goals, triggers | list_tasks, create_goal, check_triggers |
+| **graph** | Entity relationships | query_relations, find_similar, explore_community |
+| **meta** | Knowledge about knowledge | assess_quality, expertise_in_domain, attention_score |
+| **consolidation** | Pattern extraction | extract_patterns, verify_learning |
+| **supporting** | RAG, planning, zettelkasten | retrieve_context, verify_plan, link_memories |
+
+### Pattern: Discover → Execute → Summarize
+
+Always follow this pattern when using Athena:
+
+```python
+# 1. DISCOVER what operations exist
+operations = adapter.list_operations_in_layer("semantic")
+
+# 2. READ what the operation does
+code = adapter.read_operation("semantic", "recall")
+# Understand: inputs, outputs, what it does
+
+# 3. EXECUTE with your parameters
+result = adapter.execute_operation("semantic", "recall", {
+    "query": "my search term"
+})
+# Returns: 300-token summary, not full data
+
+# 4. DRILL DOWN only if needed
+if result["has_more"]:
+    detail = adapter.get_detail(memory_id=result["top_match_id"])
+    # Get full object for ONE specific item
+```
+
+**Key Points**:
+- 📋 Never load all tool definitions upfront
+- 🎯 Use summaries; full data only on explicit request
+- 🔍 Drill down sparingly (one item at a time)
+- ⚡ Execute locally (processing happens in sandbox, not context)
+
+---
+
 ## Alignment Verification ✅
 
-**Verified November 12, 2025**
+**Verified November 14, 2025**
 
-All hooks, skills, agents, and commands follow Anthropic's MCP code execution model:
+All systems achieve 100% Anthropic pattern compliance:
 
-- ✅ **100% of skills** use code-as-API pattern (direct execution, no tool definitions)
-- ✅ **100% of agents** execute locally via AgentInvoker (no tool-calling, no context bloat)
-- ✅ **95% of hooks** use Discover→Execute→Summarize pattern (2 recently optimized)
-- ✅ **95% of slash commands** follow summary-first pattern (improved search commands)
-- ✅ **100% of global hooks** are now registered and active (November 12, 2025)
+- ✅ **Slash commands**: 100% removed (pure FilesystemAPI only)
+- ✅ **Global hooks**: 100% active, following Discover→Execute→Summarize
+- ✅ **Skills**: 100% use code-as-API pattern
+- ✅ **Agents**: 100% execute locally via AgentInvoker
+- ✅ **MCP handlers**: 100% properly refactored (335 methods → domain-organized)
+- ✅ **Token efficiency**: 98.7% reduction through local processing
 
-**Key Changes Made**:
-1. Migrated hooks from `mcp__athena__*` calls to `AgentInvoker` local execution
-2. Added result filtering in smart-context-injection.sh (process locally before returning)
-3. Updated search commands to document top-3 filtering with drill-down available
-4. Removed all slash commands in favor of pure filesystem API discovery
-5. **NEW**: Registered all 7 hooks in `~/.claude/settings.json` for global activation
-6. **NEW**: Hooks now provide cross-project memory access via Athena memory API
+**What This Means**:
+1. **No shortcuts** - Everything routes through FilesystemAPI discovery
+2. **No tool bloat** - No tool definitions loaded upfront
+3. **Summary-first** - All results are 300-token summaries
+4. **Drill-down available** - Full data only on explicit request per item
+5. **Cross-project memory** - All 7 layers automatically accessible to every project
 
-**Result**: Maintained 98.7% token efficiency through local execution and summary-first responses. Cross-project memory enables learning and context transfer.
+---
+
+## Decomposing Complex Tasks
+
+For multi-phase work, break tasks into sequential single-goal prompts. This ensures clarity, reproducibility, and prevents scope creep:
+
+**Pattern**:
+1. Each prompt targets one goal (one feature, one layer, one phase)
+2. Prompt structure: **Task** | **Input** | **Constraints** | **Output format** | **Verify method**
+3. Chain results: output of task N feeds into task N+1
+4. Decision point between tasks: explicitly state what happens next or pause for human input
+
+**Example: Adding a new memory layer**
+
+*Prompt 1*: "Create episodic store with schema and CRUD operations"
+- Input: Database interface, existing layer patterns
+- Constraints: Use existing Store base class, <300 lines
+- Output: models.py + store.py
+- Verify: Run `pytest tests/unit/test_episodic_*.py`
+
+*Prompt 2*: "Implement query routing in UnifiedMemoryManager"
+- Input: Completed episodic layer from Prompt 1
+- Constraints: Extend existing routing patterns, add tests
+- Output: Updated manager.py + new routing tests
+- Verify: Run integration tests
+
+*Prompt 3*: "Add MCP tools for layer exposure"
+- Input: Completed layer + routing from Prompts 1-2
+- Constraints: Follow existing MCP naming convention
+- Output: Tool definitions in handlers.py
+- Verify: Test tool invocations with sample data
+
+**Benefits**:
+- Clear success criteria at each step
+- Reproducible (same prompts work next week)
+- Easier debugging (failure points are isolated)
+- No context sprawl (each prompt is focused)
+
+---
 
 ## Now: What Are We Building Today?
 
