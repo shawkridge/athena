@@ -626,6 +626,7 @@ class ConsolidationSystem:
             INSERT INTO consolidation_runs (
                 project_id, started_at, status, consolidation_type
             ) VALUES (%s, %s, %s, %s)
+            RETURNING id
         """, (
             run.project_id,
             int(run.started_at.timestamp()),
@@ -634,7 +635,20 @@ class ConsolidationSystem:
         ))
 
         # commit handled by cursor context
-        return cursor.lastrowid
+        result = cursor.fetchone()
+        if not result:
+            return 0
+
+        # Handle both dict-like Row objects and tuples
+        try:
+            # Try accessing by column name (works with psycopg Row objects)
+            return result.get("id") if hasattr(result, "get") else result["id"]
+        except (KeyError, TypeError, AttributeError):
+            # Fall back to tuple access
+            try:
+                return tuple(result)[0] if result else 0
+            except (TypeError, IndexError):
+                return 0
 
     def _complete_run(
         self,
