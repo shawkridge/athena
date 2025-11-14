@@ -231,7 +231,7 @@ class E2EEvaluation:
         try:
             # Use MemoryStore to list memories (public API, not SQL)
             memories = self.memory_store.list_memories(
-                project_id=self.project.id,
+                self.project.id,
                 limit=10
             )
 
@@ -265,8 +265,7 @@ class E2EEvaluation:
         try:
             # Use ProceduralStore to list procedures (public API, not SQL)
             procedures = self.procedural_store.list_procedures(
-                project_id=self.project.id,
-                limit=10
+                limit=100
             )
 
             # Filter for procedures created by consolidation
@@ -305,7 +304,7 @@ class E2EEvaluation:
             search_results = self.memory_store.recall_with_reranking(
                 query="database query optimization",
                 project_id=self.project.id,
-                limit=5
+                k=5
             )
 
             passed = len(search_results) > 0
@@ -357,7 +356,7 @@ class E2EEvaluation:
             checks.append(("Memories persisted", len(memories) > 0))
 
             # Check 3: Procedures extracted
-            procedures = self.procedural_store.list_procedures(self.project.id, limit=100)
+            procedures = self.procedural_store.list_procedures(limit=100)
             consolidation_procs = [p for p in procedures if p.created_by == "consolidation"]
             checks.append(("Procedures extracted", len(consolidation_procs) > 0))
 
@@ -365,7 +364,7 @@ class E2EEvaluation:
             search_results = self.memory_store.recall_with_reranking(
                 query="test",
                 project_id=self.project.id,
-                limit=10
+                k=10
             )
             checks.append(("Search enabled", len(search_results) > 0))
 
