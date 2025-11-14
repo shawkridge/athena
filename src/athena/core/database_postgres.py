@@ -1087,9 +1087,13 @@ class PostgresDatabase:
             # Build WHERE clause parts (will be inserted later in correct position)
             where_parts = [
                 "m.project_id = %s",
-                "m.consolidation_state = %s",
             ]
-            where_params = [project_id, consolidation_state]
+            where_params = [project_id]
+
+            # Only filter by consolidation_state if provided (not None)
+            if consolidation_state is not None:
+                where_parts.append("m.consolidation_state = %s")
+                where_params.append(consolidation_state)
 
             if memory_types:
                 where_parts.append("m.memory_type = ANY(%s)")
