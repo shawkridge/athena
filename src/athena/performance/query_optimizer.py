@@ -134,9 +134,9 @@ class QueryOptimizer:
         }
 
         try:
-            # Get table statistics
+            # Get table statistics (PostgreSQL)
             cursor.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+                "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name NOT LIKE 'pg_%'"
             )
             tables = cursor.fetchall()
 
@@ -146,15 +146,11 @@ class QueryOptimizer:
                     cursor.execute(f"SELECT COUNT(*) FROM {table}")
                     row_count = cursor.fetchone()[0]
 
-                    # Get approximate size using PRAGMA page_count
+                    # Get table size in PostgreSQL
                     try:
-                        cursor.execute("PRAGMA page_count()")
-                        page_count_row = cursor.fetchone()
-                        page_count = page_count_row[0] if page_count_row else 0
-                        cursor.execute("PRAGMA page_size()")
-                        page_size_row = cursor.fetchone()
-                        page_size = page_size_row[0] if page_size_row else 4096
-                        size_kb = (page_count * page_size) // 1024
+                        cursor.execute(f"SELECT pg_total_relation_size('{table}') / 1024")
+                        size_kb_row = cursor.fetchone()
+                        size_kb = size_kb_row[0] if size_kb_row else 0
                     except:
                         size_kb = 0
 
@@ -165,9 +161,9 @@ class QueryOptimizer:
                 except Exception as e:
                     print(f"Error analyzing table {table}: {e}")
 
-            # Get index statistics
+            # Get index statistics (PostgreSQL)
             cursor.execute(
-                "SELECT name, tbl_name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'"
+                "SELECT indexname, tablename FROM pg_indexes WHERE schemaname='public' AND indexname NOT LIKE 'pg_%'"
             )
             indexes = cursor.fetchall()
 
@@ -308,24 +304,21 @@ class QueryOptimizer:
         stats = {}
 
         try:
-            # Get page statistics
-            cursor.execute("PRAGMA page_count()")
-            page_count = cursor.fetchone()[0]
+            # Get database size (PostgreSQL)
+            cursor.execute("SELECT pg_database_size(current_database()) / (1024 * 1024)")
+            database_size_mb = cursor.fetchone()[0]
 
-            cursor.execute("PRAGMA page_size()")
-            page_size = cursor.fetchone()[0]
+            stats["database_size_mb"] = database_size_mb
 
-            stats["database_size_mb"] = (page_count * page_size) / (1024 * 1024)
-
-            # Get index count
+            # Get index count (PostgreSQL)
             cursor.execute(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'"
+                "SELECT COUNT(*) FROM pg_indexes WHERE schemaname='public' AND indexname NOT LIKE 'pg_%'"
             )
             stats["index_count"] = cursor.fetchone()[0]
 
-            # Get table count
+            # Get table count (PostgreSQL)
             cursor.execute(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_name NOT LIKE 'pg_%'"
             )
             stats["table_count"] = cursor.fetchone()[0]
 

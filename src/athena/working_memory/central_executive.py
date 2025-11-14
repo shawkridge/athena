@@ -52,8 +52,8 @@ class CentralExecutive:
         with self.db.conn:
             # Check if active_goals table exists
             result = self.db.conn.execute("""
-                SELECT name FROM sqlite_master
-                WHERE type='table' AND name='active_goals'
+                SELECT table_name FROM information_schema.tables
+                WHERE table_schema='public' AND table_name='active_goals'
             """).fetchone()
 
             if not result:

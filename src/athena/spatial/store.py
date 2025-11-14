@@ -145,9 +145,9 @@ class SpatialStore:
             )
         """)
 
-        # Add columns to spatial_nodes if they don't exist
-        cursor.execute("PRAGMA table_info(spatial_nodes)")
-        columns = {row[1] for row in cursor.fetchall()}
+        # Add columns to spatial_nodes if they don't exist (PostgreSQL)
+        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='spatial_nodes' AND table_schema='public'")
+        columns = {row[0] for row in cursor.fetchall()}
         if "language" not in columns:
             cursor.execute("ALTER TABLE spatial_nodes ADD COLUMN language TEXT")
         if "symbol_kind" not in columns:

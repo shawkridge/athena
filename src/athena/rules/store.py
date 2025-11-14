@@ -37,8 +37,8 @@ class RulesStore(BaseStore):
 
         # Check if tables already exist
         cursor.execute("""
-            SELECT name FROM sqlite_master
-            WHERE type='table' AND name='project_rules'
+            SELECT table_name FROM information_schema.tables
+            WHERE table_schema='public' AND table_name='project_rules'
         """)
         if cursor.fetchone() is None:
             logger.warning(

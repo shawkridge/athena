@@ -197,7 +197,7 @@ class HealthCheckTool(BaseTool):
                     cursor = db.conn.cursor()
 
                     # Count tables
-                    cursor.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table'")
+                    cursor.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'")
                     table_count = cursor.fetchone()[0]
 
                     # Get episodic events count
@@ -237,14 +237,15 @@ class HealthCheckTool(BaseTool):
                     except:
                         pass
 
-                    # Database integrity check if requested
+                    # Database integrity check if requested (PostgreSQL)
                     if check_db:
                         try:
-                            cursor.execute("PRAGMA integrity_check")
-                            result_text = cursor.fetchone()[0]
-                            db_integrity = "ok" if result_text == "ok" else "degraded"
+                            # For PostgreSQL, verify database is accessible
+                            cursor.execute("SELECT 1")
+                            cursor.fetchone()
+                            db_integrity = "ok"  # If query succeeds, database is healthy
                         except:
-                            db_integrity = "unknown"
+                            db_integrity = "error"
 
                 except Exception as db_err:
                     logging.warning(f"Database health check partial failure: {db_err}")

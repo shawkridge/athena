@@ -1,6 +1,6 @@
 """Data loader for querying Athena memory database."""
 
-import sqlite3
+import psycopg
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 import logging
@@ -11,24 +11,23 @@ logger = logging.getLogger(__name__)
 
 
 class DataLoader:
-    """Load data from Athena memory database."""
+    """Load data from Athena memory database (PostgreSQL-only)."""
 
-    def __init__(self, db_path: str = settings.ATHENA_DB_PATH):
+    def __init__(self, connection_string: str = settings.DATABASE_URL):
         """Initialize data loader.
 
         Args:
-            db_path: Path to Athena memory database
+            connection_string: PostgreSQL connection string
         """
-        self.db_path = db_path
-        self.conn: Optional[sqlite3.Connection] = None
+        self.connection_string = connection_string
+        self.conn: Optional[psycopg.Connection] = None
 
     def connect(self) -> None:
         """Connect to database."""
         try:
-            self.conn = sqlite3.connect(self.db_path)
-            self.conn.row_factory = sqlite3.Row
-            logger.info(f"Connected to Athena database: {self.db_path}")
-        except sqlite3.Error as e:
+            self.conn = psycopg.connect(self.connection_string)
+            logger.info(f"Connected to Athena database: PostgreSQL")
+        except psycopg.Error as e:
             logger.error(f"Failed to connect to database: {e}")
             raise
 
@@ -47,11 +46,16 @@ class DataLoader:
             cursor = self.conn.cursor()
             cursor.execute(sql, params)
             rows = cursor.fetchall()
-            return [dict(row) for row in rows]
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e):
-                logger.warning(f"Table not found, returning empty results: {e}")
-                return []
+            # Convert psycopg rows to dicts
+            if cursor.description:
+                columns = [desc[0] for desc in cursor.description]
+                return [dict(zip(columns, row)) for row in rows]
+            return []
+        except psycopg.errors.UndefinedTable as e:
+            logger.warning(f"Table not found, returning empty results: {e}")
+            return []
+        except psycopg.Error as e:
+            logger.error(f"Database error: {e}")
             raise
 
     # ========================================================================
@@ -71,7 +75,7 @@ class DataLoader:
             SELECT id, event_type, content, context, timestamp
             FROM episodic_events
             ORDER BY timestamp DESC
-            LIMIT ?
+            LIMIT %s
         """
         return self._query(sql, (limit,))
 
@@ -89,7 +93,7 @@ class DataLoader:
         sql = """
             SELECT id, event_type, content, timestamp
             FROM episodic_events
-            WHERE event_type = ? AND timestamp > ?
+            WHERE event_type = %s AND timestamp > %s
             ORDER BY timestamp DESC
         """
         return self._query(sql, (event_type, cutoff.isoformat()))
@@ -169,7 +173,7 @@ class DataLoader:
             SELECT name, description, usage_count, success_rate, effectiveness_score
             FROM procedures
             ORDER BY effectiveness_score DESC
-            LIMIT ?
+            LIMIT %s
         """
         return self._query(sql, (limit,))
 
@@ -191,8 +195,7 @@ class DataLoader:
             """
             result = self._query(sql)
             return dict(result[0]) if result else None
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e):
+        except psycopg.errors.UndefinedTable as e:
                 logger.warning(f"consolidation_runs table not available: {e}")
                 return None
             raise
@@ -203,7 +206,7 @@ class DataLoader:
         sql = """
             SELECT timestamp, events_processed, patterns_extracted, quality_score
             FROM consolidation_runs
-            WHERE timestamp > ?
+            WHERE timestamp > %s
             ORDER BY timestamp DESC
         """
         return self._query(sql, (cutoff.isoformat(),))
@@ -224,8 +227,7 @@ class DataLoader:
                 ORDER BY freshness DESC
             """
             return self._query(sql)
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e):
+        except psycopg.errors.UndefinedTable as e:
                 logger.warning(f"working_memory table not available: {e}")
                 return []
             raise
@@ -239,8 +241,7 @@ class DataLoader:
             sql = "SELECT COUNT(*) as count FROM working_memory"
             result = self._query(sql)
             return result[0]["count"] if result else 0
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e):
+        except psycopg.errors.UndefinedTable as e:
                 logger.warning(f"working_memory table not available: {e}")
                 return 0
             raise
@@ -265,17 +266,15 @@ class DataLoader:
         """
         try:
             if gap_type:
-                sql = "SELECT COUNT(*) as count FROM knowledge_gaps WHERE gap_type = ?"
+                sql = "SELECT COUNT(*) as count FROM knowledge_gaps WHERE gap_type = %s"
                 result = self._query(sql, (gap_type,))
             else:
                 sql = "SELECT COUNT(*) as count FROM knowledge_gaps"
                 result = self._query(sql)
             return result[0]["count"] if result else 0
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e):
-                logger.warning(f"knowledge_gaps table not available: {e}")
-                return 0
-            raise
+        except psycopg.errors.UndefinedTable as e:
+            logger.warning(f"knowledge_gaps table not available: {e}")
+            return 0
 
     def get_domain_coverage(self) -> Dict[str, float]:
         """Get coverage percentage per domain.
@@ -290,8 +289,7 @@ class DataLoader:
             """
             results = self._query(sql)
             return {row["domain"]: row["coverage_percent"] for row in results}
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e):
+        except psycopg.errors.UndefinedTable as e:
                 logger.warning(f"domain_coverage table not available: {e}")
                 return {}
             raise
@@ -313,11 +311,9 @@ class DataLoader:
                 ORDER BY priority DESC
             """
             return self._query(sql)
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e):
-                logger.warning(f"goals table not available: {e}")
-                return []
-            raise
+        except psycopg.errors.UndefinedTable as e:
+            logger.warning(f"goals table not available: {e}")
+            return []
 
     def get_active_tasks(self) -> List[Dict[str, Any]]:
         """Get active tasks.
@@ -332,11 +328,9 @@ class DataLoader:
                 ORDER BY deadline ASC
             """
             return self._query(sql)
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e):
-                logger.warning(f"tasks table not available: {e}")
-                return []
-            raise
+        except psycopg.errors.UndefinedTable as e:
+            logger.warning(f"tasks table not available: {e}")
+            return []
 
     def get_project_stats(self) -> Dict[str, Any]:
         """Get aggregate project statistics.
@@ -353,11 +347,9 @@ class DataLoader:
             """
             result = self._query(sql)
             return dict(result[0]) if result else {}
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e):
-                logger.warning(f"projects table not available: {e}")
-                return {}
-            raise
+        except psycopg.errors.UndefinedTable as e:
+            logger.warning(f"projects table not available: {e}")
+            return {}
 
     # ========================================================================
     # EXECUTION EVENT QUERIES
@@ -376,15 +368,13 @@ class DataLoader:
                     SUM(CASE WHEN success THEN 1 ELSE 0 END) as success_count,
                     AVG(duration_ms) as avg_latency
                 FROM tool_executions
-                WHERE timestamp > ?
+                WHERE timestamp > %s
             """
             result = self._query(sql, (cutoff.isoformat(),))
             return dict(result[0]) if result else {}
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e):
-                logger.warning(f"tool_executions table not available: {e}")
-                return {}
-            raise
+        except psycopg.errors.UndefinedTable as e:
+            logger.warning(f"tool_executions table not available: {e}")
+            return {}
 
     def get_hook_executions(self, hours: int = 24) -> List[Dict[str, Any]]:
         """Get hook executions in timeframe.
@@ -396,16 +386,14 @@ class DataLoader:
             sql = """
                 SELECT hook_name, COUNT(*) as count, AVG(duration_ms) as avg_latency
                 FROM hook_executions
-                WHERE timestamp > ?
+                WHERE timestamp > %s
                 GROUP BY hook_name
                 ORDER BY count DESC
             """
             return self._query(sql, (cutoff.isoformat(),))
-        except sqlite3.OperationalError as e:
-            if "no such table" in str(e):
-                logger.warning(f"hook_executions table not available: {e}")
-                return []
-            raise
+        except psycopg.errors.UndefinedTable as e:
+            logger.warning(f"hook_executions table not available: {e}")
+            return []
 
     # ========================================================================
     # CONTEXT MANAGER

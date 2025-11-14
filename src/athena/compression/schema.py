@@ -64,15 +64,15 @@ class CompressionSchema:
 
             # Check semantic_memories table exists
             cursor.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='semantic_memories'"
+                "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name='semantic_memories'"
             )
             if not cursor.fetchone():
                 conn.close()
                 return False, ["semantic_memories table does not exist"]
 
             # Get actual columns in semantic_memories
-            cursor.execute("PRAGMA table_info(semantic_memories)")
-            actual_columns = {row[1] for row in cursor.fetchall()}
+            cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='semantic_memories' AND table_schema='public'")
+            actual_columns = {row[0] for row in cursor.fetchall()}
 
             # Check temporal decay columns
             for col in CompressionSchema.REQUIRED_COLUMNS['temporal_decay']:
@@ -86,7 +86,7 @@ class CompressionSchema:
 
             # Check indices
             cursor.execute(
-                "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='semantic_memories'"
+                "SELECT indexname FROM pg_indexes WHERE schemaname='public' AND tablename='semantic_memories'"
             )
             actual_indices = {row[0] for row in cursor.fetchall()}
 
@@ -100,7 +100,7 @@ class CompressionSchema:
 
             # Check consolidation_metrics table
             cursor.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='consolidation_metrics'"
+                "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name='consolidation_metrics'"
             )
             if not cursor.fetchone():
                 missing.append("consolidation: missing table 'consolidation_metrics'")
@@ -142,9 +142,9 @@ class CompressionSchema:
             # PostgreSQL connection should be used instead
             cursor = conn.cursor()
 
-            # Get column info
-            cursor.execute("PRAGMA table_info(semantic_memories)")
-            all_columns = {row[1]: row[2] for row in cursor.fetchall()}  # name: type
+            # Get column info (PostgreSQL)
+            cursor.execute("SELECT column_name, data_type FROM information_schema.columns WHERE table_name='semantic_memories' AND table_schema='public'")
+            all_columns = {row[0]: row[1] for row in cursor.fetchall()}  # name: type
 
             # Check temporal decay columns
             for col in CompressionSchema.REQUIRED_COLUMNS['temporal_decay']:
@@ -158,7 +158,7 @@ class CompressionSchema:
 
             # Get indices
             cursor.execute(
-                "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='semantic_memories'"
+                "SELECT indexname FROM pg_indexes WHERE schemaname='public' AND tablename='semantic_memories'"
             )
             all_indices = {row[0] for row in cursor.fetchall()}
 
@@ -174,7 +174,7 @@ class CompressionSchema:
 
             # Check consolidation_metrics table
             cursor.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='consolidation_metrics'"
+                "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name='consolidation_metrics'"
             )
             if cursor.fetchone():
                 info['consolidation']['tables'] = ['consolidation_metrics']
