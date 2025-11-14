@@ -79,7 +79,7 @@ class ConsolidationHelper:
 
                 class LlamaCppEmbeddingService:
                     def __init__(self, host: str = "localhost", port: int = 8001):
-                        self.url = f"http://{host}:{port}/v1/embeddings"
+                        self.url = f"http://{host}:{port}/embeddings"
 
                     def embed(self, text: str) -> Optional[List[float]]:
                         """Generate embedding using llamacpp service."""
@@ -95,8 +95,8 @@ class ConsolidationHelper:
 
                             if response.status_code == 200:
                                 data = response.json()
-                                if "data" in data and len(data["data"]) > 0:
-                                    return data["data"][0].get("embedding")
+                                if "embedding" in data:
+                                    return data.get("embedding")
                         except Exception as e:
                             logger.debug(f"Llamacpp embedding failed: {e}")
 
