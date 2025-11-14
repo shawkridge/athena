@@ -79,7 +79,7 @@ class E2EMemoryTest:
             # Reset database for clean state
             reset_database()
 
-            # Get database instance
+            # Get database instance and initialize connection pool
             self.db = get_database(
                 dbname="athena_e2e_test",
                 host="localhost",
@@ -87,6 +87,8 @@ class E2EMemoryTest:
                 user="postgres",
                 password="postgres",
             )
+            # Initialize the async connection pool - critical for transaction isolation
+            await self.db.initialize()
             print("✅ Database connection established")
 
             # Initialize memory stores (public interfaces)

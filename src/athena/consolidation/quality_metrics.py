@@ -70,7 +70,11 @@ class ConsolidationQualityMetrics:
                 "SELECT content FROM memory_vectors WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours' LIMIT 1000"
             )
             semantic_memories = cursor.fetchall()
-            semantic_tokens = sum(len(row[0].split()) if row[0] else 0 for row in semantic_memories)
+            # Handle both dict-like rows (psycopg3) and tuple rows
+            semantic_tokens = sum(
+                len((row.get('content') if isinstance(row, dict) else row[0] or "").split())
+                for row in semantic_memories
+            )
 
             # Compression = 1 - (semantic / episodic)
             compression = 1.0 - (semantic_tokens / max(episodic_tokens, 1))

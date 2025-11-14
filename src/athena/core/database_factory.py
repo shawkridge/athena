@@ -149,21 +149,22 @@ class DatabaseFactory:
 
 # Convenience function for quick database creation
 def get_database(**kwargs) -> PostgresDatabase:
-    """Get a PostgreSQL database instance.
+    """Get a PostgreSQL database instance (singleton pattern).
 
-    This is a convenience function that wraps DatabaseFactory.create().
+    Returns the global singleton instance, or creates one if needed.
+    This ensures all code uses the same database connection pool.
 
     Args:
         **kwargs: PostgreSQL-specific configuration (optional, uses hardcoded Docker defaults)
 
     Returns:
-        PostgresDatabase instance
+        PostgresDatabase singleton instance
 
     Example:
         # Use localhost defaults
         db = get_database()
 
-        # Custom configuration
+        # Custom configuration (only affects first call)
         db = get_database(
             host='localhost',
             port=5432,
@@ -171,5 +172,13 @@ def get_database(**kwargs) -> PostgresDatabase:
             user='postgres',
             password='postgres'
         )
+
+        # Subsequent calls return same instance, ignoring kwargs
+        db2 = get_database()
+        assert db is db2
     """
-    return DatabaseFactory.create(**kwargs)
+    # Import singleton from main database module to ensure consistency
+    from . import database as db_module
+    # Remove backend parameter (PostgreSQL only, so it's ignored)
+    kwargs.pop('backend', None)
+    return db_module.get_database(**kwargs)
