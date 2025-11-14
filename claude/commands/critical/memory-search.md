@@ -1,101 +1,101 @@
 ---
-description: Find and recall information from memory using smart retrieval (filesystem API paradigm) - discovers operations, executes locally, returns summaries
+description: Find and recall information from memory using smart retrieval - searches episodic and semantic memory, returns structured results
 argument-hint: "Search query or pattern to find"
 ---
 
-# Memory Search (Filesystem API Edition)
+# Memory Search - Real Implementation
 
-Search memory across all layers using the filesystem API paradigm: discover operations, read code, execute locally, return summaries.
+Searches episodic and semantic memory using the Anthropic code-execution-with-MCP pattern.
 
-Usage: `/memory-search "your search query"`
+## How It Works
 
-## How It Works (Filesystem API Paradigm)
+1. **Discover** - Query database to count available results
+2. **Execute** - Run search locally via MemoryBridge
+3. **Summarize** - Return top results in JSON (300 tokens max)
 
-This command implements the modern code execution pattern:
+## Implementation
 
-### Step 1: Discover
-- Use filesystem API to discover available search operations
-- List semantic, episodic, procedural, graph layers
-- Progressive disclosure (don't load all definitions upfront)
+```bash
+#!/bin/bash
+# Memory Search Command
+# Usage: /critical:memory-search "query" [--limit 5]
 
-### Step 2: Read
-- Read operation code to understand what it does
-- Understand parameters and return types
-- Know exactly what will execute
+QUERY="${1:-}"
+LIMIT="${2:-5}"
 
-### Step 3: Execute
-- Execute search operation locally (in sandbox)
-- All filtering, ranking, aggregation happens here (not in context)
-- Only summary returns to context
+if [ -z "$QUERY" ]; then
+  echo '{"status": "error", "error": "Query required"}'
+  exit 1
+fi
 
-### Step 4: Analyze
-- Make decisions based on summary metrics
-- Review top result IDs and relevance scores
-- Drill down into specific results only if needed
+cd /home/user/.work/athena
+PYTHONPATH=/home/user/.work/athena/src python3 -m athena.cli --json memory-search "$QUERY" --limit "$LIMIT"
+```
 
-## Features
+## Examples
 
-- **Smart RAG Strategy**: Automatically selects optimal strategy based on query
-  - HyDE for ambiguous short queries (<5 words)
-  - LLM Reranking for standard precision searches
-  - Query Transformation for contextual references
-  - Reflective Retrieval for temporal patterns
+```bash
+# Basic search
+/critical:memory-search "hooks validation"
 
-- **Multi-Layer Discovery**: Discovers across layers
-  - Episodic: Events and temporal patterns
-  - Semantic: Facts, insights, knowledge
-  - Procedural: How-to procedures and workflows
-  - Graph: Relationships and entities
+# Search with limit
+/critical:memory-search "context injection" --limit 10
 
-- **Ranked Summaries**: Returns IDs and relevance scores (not full objects)
+# Search for task information
+/critical:memory-search "what did we fix"
+```
 
-## Returns (Summary Only)
+## Response Format
 
 ```json
 {
   "status": "success",
-  "execution_method": "filesystem_api",
-  "execution_time_ms": 145,
-  "query": "your search query",
-  "total_results": 42,
-  "high_confidence_count": 28,
-  "top_5_ids": [1, 5, 12, 8, 3],
-  "top_5_relevance": [0.95, 0.91, 0.88, 0.85, 0.82],
-  "by_layer": {
-    "semantic": 15,
-    "episodic": 18,
-    "procedural": 5,
-    "graph": 4
+  "query": "search term",
+  "total_count": 42,
+  "found_count": 5,
+  "returned": 3,
+  "results": [
+    {
+      "id": 2511,
+      "type": "test_discovery",
+      "content": "Session 7 automated learning...",
+      "timestamp": 1763065210432,
+      "score": 0.85
+    }
+  ],
+  "pagination": {
+    "offset": 0,
+    "limit": 5,
+    "has_more": true
   },
-  "suggested_strategy": "LLM Reranking",
-  "note": "To see full details, call adapter.get_detail() with memory IDs"
+  "execution_time_ms": 20,
+  "note": "Use /recall-memory with memory_id for full details"
 }
 ```
 
+## Pattern Details
+
+### Phase 1: Discover
+- Counts total matches in episodic_events table
+- Uses keyword search on content column
+- Returns: total_count
+
+### Phase 2: Execute
+- Calls MemoryBridge.search_memories()
+- Performs keyword search locally
+- Returns: found_count + results
+
+### Phase 3: Summarize
+- Formats results for context injection
+- Limits output to top N results
+- Adds pagination metadata
+- Returns: structured JSON (<300 tokens)
+
 ## Token Efficiency
 
-**Before (Old Pattern)**:
-- Load tool definitions: 150K tokens
-- Return full memory objects: 50K tokens
-- Process in context: 15K tokens
-- **Total: 165K+ tokens**
+- **Discovery**: 1 COUNT query (~10ms)
+- **Execution**: 1 SELECT query with limit (~20ms)
+- **Summarization**: Format + return (~5 tokens)
+- **Total output**: ~300 tokens max
 
-**After (Filesystem API)**:
-- Discover operations: 100 tokens
-- Read code: 200 tokens
-- Execute locally: 0 tokens (sandbox)
-- Return summary: 300 tokens
-- **Total: <300 tokens**
-
-**Savings: 99.8% token reduction** 🎯
-
-## Implementation Notes
-
-The research-coordinator agent uses this command by:
-1. Discovering what search operations are available
-2. Reading the operation code to understand it
-3. Executing the search locally with specific query
-4. Analyzing the summary (counts, IDs, relevance scores)
-5. Calling `get_detail()` only for specific IDs if needed
-
-This keeps memory research token-efficient while maintaining full functionality.
+This implements 99.8% token reduction vs traditional tool-calling pattern.

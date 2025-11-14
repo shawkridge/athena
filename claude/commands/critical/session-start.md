@@ -1,113 +1,121 @@
 ---
-description: Load context at session start (filesystem API) - primes memory with active goals, health checks, discovers operations
+description: Load context at session start - initializes memory, loads active goals and recent events, checks system health
 argument-hint: Optional project name to focus on specific project
 ---
 
-# Session Initialization (Filesystem API Edition)
+# Session Start - Session Initialization
 
-Load and display session context using filesystem API paradigm - discover, execute locally, return summaries.
-
-This command primes your memory at session start by:
-1. **Discovering** available operations across memory layers
-2. **Executing** health checks, goal status, cognitive load (all locally)
-3. **Returning summaries** only (not full data)
-4. **Identifying** critical gaps or blockers
-5. **Recommending** optimal session focus
+Loads session context from memory at startup, including active memories, goals, and recent events.
 
 ## How It Works
 
-### Step 1: Discover Operations
-- List available operations across all layers
-- Show what's available (semantic, episodic, prospective, meta)
-- Progressive disclosure - only load what's needed
+1. **Discover** - Count available memories, goals, and events
+2. **Execute** - Load active context (7±2 cognitive limit)
+3. **Summarize** - Return session state with recommendations
 
-### Step 2: Execute Initialization Sequence
-- Health check (cross-layer operation)
-- Goal status (prospective layer)
-- Cognitive load (meta layer)
-- Memory quality (meta layer)
-- Recent critical memories (episodic layer)
+## Implementation
 
-All execution happens locally in sandbox - no full data in context.
+```bash
+#!/bin/bash
+# Session Start Command
+# Usage: /critical:session-start [--project /path/to/project]
 
-### Step 3: Return Summaries
-Return only summary metrics:
-- Goal count, priority, progress percentages
-- Memory quality score (not full data)
-- Cognitive load capacity (not working memory contents)
-- Gap count and types (not detailed analysis)
-- Alert count by severity (not full alerts)
+PROJECT="${1:-}"
 
-### Step 4: Recommend Action
-Based on summaries, recommend session focus and priorities.
+cd /home/user/.work/athena
+PYTHONPATH=/home/user/.work/athena/src python3 -m athena.cli --json session-start ${PROJECT:+--project "$PROJECT"}
+```
 
-## Output (Summary Only)
+## Examples
+
+```bash
+# Load session context for current project
+/critical:session-start
+
+# Load context for specific project
+/critical:session-start --project /home/user/.work/athena
+
+# Load context and see what's active
+/critical:session-start
+```
+
+## Response Format
 
 ```json
 {
-  "session_status": "ready",
-  "execution_method": "filesystem_api",
-  "execution_time_ms": 234,
-
-  "goals": {
-    "total": 12,
-    "active": 8,
-    "blocked": 2,
-    "high_priority_count": 3,
-    "completion_progress": {
-      "in_progress": 5,
-      "on_track": 6,
-      "at_risk": 2,
-      "blocked": 2
-    }
+  "status": "success",
+  "project": "athena",
+  "project_id": 2,
+  "session_initialized": true,
+  "active_memory": {
+    "count": 7,
+    "items": [
+      {
+        "id": 4816,
+        "type": "tool_execution",
+        "content": "Memory item...",
+        "timestamp": 1763123149297,
+        "importance": 0.9
+      }
+    ]
   },
-
-  "memory_health": {
-    "overall_score": 0.87,
-    "quality": {
-      "semantic": 0.89,
-      "episodic": 0.85,
-      "procedural": 0.91,
-      "graph": 0.83
-    },
-    "database_size_mb": 37,
-    "database_efficiency": 0.78
+  "active_goals": {
+    "count": 3,
+    "items": [
+      {
+        "id": 42,
+        "title": "Implement context injection",
+        "status": "in_progress",
+        "priority": 1
+      }
+    ]
   },
-
-  "cognitive_load": {
-    "current_usage": 6,
-    "capacity": 9,
-    "utilization_percent": 67,
-    "status": "healthy"
+  "recent_events": {
+    "count": 5,
+    "events": [
+      {
+        "id": 4816,
+        "type": "tool_execution",
+        "content": "Memory event...",
+        "time": "2025-11-14T14:25:49Z"
+      }
+    ]
   },
-
-  "gaps_and_alerts": {
-    "knowledge_gaps_count": 3,
-    "contradictions": 1,
-    "critical_alerts": 0,
-    "warnings": 2
-  },
-
-  "recommendations": [
-    "Consolidate episodic events (overdue, 200+ pending)",
-    "Resolve 1 contradiction in authentication approach",
-    "Review 2 at-risk goals (architecture redesign, performance)"
-  ]
+  "ready_for_work": true,
+  "execution_time_ms": 45
 }
 ```
 
-## Token Efficiency
+## Pattern Details
 
-**Old Pattern**: Load full goals, memories, metrics = 15K+ tokens
-**New Pattern**: Summary metrics only = <300 tokens
-**Savings**: 99%+ token reduction
+### Phase 1: Discover
+- Gets project context from current directory
+- Counts active memories (7±2)
+- Counts active goals (prospective tasks)
+- Counts recent events (episodic layer)
+- Returns: count summary
 
-## Implementation Notes
+### Phase 2: Execute
+- Loads top 7 active memories by importance
+- Loads active goals by priority
+- Loads 5 most recent events
+- Returns: detailed context
 
-The session-initializer agent uses this by:
-1. Calling this command at session start
-2. Analyzing summary metrics for critical issues
-3. If detail needed, calling `adapter.get_detail()` for specific IDs only
-4. Setting session focus based on summaries and recommendations
+### Phase 3: Summarize
+- Formats context for session display
+- Indicates readiness for work
+- Returns structured JSON (<500 tokens)
 
-This keeps session initialization efficient while providing all necessary context.
+## Context Layers Loaded
+
+- **Active Memory (7±2)**: High-importance recent events
+- **Active Goals**: Prospective tasks (in_progress or active status)
+- **Recent Events**: Last 5 episodic events for temporal context
+- **Project Info**: Current project name and ID
+
+## Cognitive Load
+
+Session initialization respects Miller's 7±2 cognitive limit:
+- Max 7 active memory items
+- Max 5 active goals recommended
+- Max 5 recent events for context

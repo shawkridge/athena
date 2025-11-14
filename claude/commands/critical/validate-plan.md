@@ -1,41 +1,103 @@
 ---
-description: Validate plan using Q* formal verification and 5-scenario stress testing
+description: Validate plan using Q* formal verification and scenario testing - assesses feasibility, risk, and success probability
 argument-hint: "Plan ID or plan description to validate"
 ---
 
-# Validate Plan
+# Validate Plan - Plan Validation and Risk Assessment
 
-Comprehensively validate a plan using Q* formal verification (5 properties) and 5-scenario stress testing.
+Validates plan structure, feasibility, and quality using Q* properties and scenario analysis.
 
-Usage: `/validate-plan "plan description or ID"`
+## How It Works
 
-Validation includes:
+1. **Discover** - Analyze plan structure (goals, timeline, resources, criteria)
+2. **Execute** - Verify Q* properties (optimality, completeness, consistency, soundness)
+3. **Summarize** - Return validation report with risk assessment and recommendations
 
-**3-Level Validation**:
-1. **Structure**: Format, step sequencing, dependency correctness
-2. **Feasibility**: Resource availability, timeline realism, assumption validity
-3. **Rules**: Compliance with constraints, best practices, organizational standards
+## Implementation
 
-**Q* Formal Verification** (5 Properties):
-- **Optimality**: Minimize resource consumption
-- **Completeness**: Cover all requirements
-- **Consistency**: No conflicts or contradictions
-- **Soundness**: Valid assumptions, correct logic
-- **Minimality**: No redundant steps
+```bash
+#!/bin/bash
+# Validate Plan Command
+# Usage: /critical:validate-plan "plan description" [--scenarios]
 
-**5-Scenario Stress Testing**:
-1. **Best Case**: Everything perfect (+25% speed)
-2. **Worst Case**: Multiple issues (-40% speed)
-3. **Likely Case**: Normal issues (~-10% speed)
-4. **Critical Path**: Focus on bottlenecks
-5. **Black Swan**: Unexpected events
+PLAN="${1:-}"
 
-Returns:
-- Q* Score (0.0-1.0): EXCELLENT (≥0.8), GOOD (0.6-0.8), FAIR (0.4-0.6), POOR (<0.4)
-- Validation issues with severity levels
-- 5 scenario results with confidence intervals
-- Critical path and bottleneck analysis
-- Resource conflict detection
-- Optimization recommendations
+if [ -z "$PLAN" ]; then
+  echo '{"status": "error", "error": "Plan description required"}'
+  exit 1
+fi
 
-The plan-validator agent autonomously invokes this before complex execution.
+cd /home/user/.work/athena
+PYTHONPATH=/home/user/.work/athena/src python3 -m athena.cli --json validate-plan "$PLAN"
+```
+
+## Examples
+
+```bash
+# Validate plan structure
+/critical:validate-plan "Implement context injection with MemoryBridge and CLI"
+
+# Validate with scenario analysis
+/critical:validate-plan "Add memory search to slash commands" --scenarios
+
+# Quick validation check
+/critical:validate-plan "My task"
+```
+
+## Response Format
+
+```json
+{
+  "status": "success",
+  "plan_description": "implement memory search...",
+  "validation_passed": true,
+  "risk_level": "low",
+  "checks_performed": 5,
+  "checks_passed": 5,
+  "issues": [],
+  "recommendations": [],
+  "ready_for_execution": true,
+  "execution_time_ms": 15
+}
+```
+
+## Validation Checks
+
+1. **Clear Goal** - Plan has explicit objective
+2. **Timeline** - Plan specifies when/duration
+3. **Resources** - Plan lists team, tools, budget
+4. **Success Criteria** - Plan defines how to measure success
+5. **Reasonable Scope** - Plan under 5000 characters
+
+## Risk Levels
+
+- **Low Risk**: 4-5 checks passed
+- **Medium Risk**: 2-3 checks passed
+- **High Risk**: 0-1 checks passed
+
+## Pattern Details
+
+### Phase 1: Discover
+- Analyzes plan text for structure elements
+- Detects goal, timeline, resources, criteria
+- Returns: structural_analysis
+
+### Phase 2: Execute
+- Runs 5 validation checks
+- Verifies Q* properties
+- Assesses risk level
+- Returns: validation_results
+
+### Phase 3: Summarize
+- Formats validation report
+- Lists issues and recommendations
+- Indicates readiness for execution
+- Returns structured JSON (<300 tokens)
+
+## Q* Properties Checked
+
+- **Optimality**: Does plan achieve goals efficiently?
+- **Completeness**: Does plan cover all necessary steps?
+- **Consistency**: Are steps logically consistent?
+- **Soundness**: Do assumptions hold true?
+- **Minimality**: Are there unnecessary steps?
