@@ -262,6 +262,7 @@ class EpisodicStore(BaseStore):
                 embedding
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         """,
             (
                 event.project_id,
@@ -287,7 +288,26 @@ class EpisodicStore(BaseStore):
             ),
         )
 
-        event_id = cursor.lastrowid
+        # Get the ID from RETURNING clause
+        event_id = None
+        try:
+            # Try to fetch the result from cursor if it has fetchone
+            if hasattr(cursor, 'fetchone'):
+                row = cursor.fetchone()
+                if row:
+                    # Handle both dict-like Row objects and tuples
+                    if hasattr(row, 'get'):
+                        event_id = row.get('id')
+                    else:
+                        # Try tuple access
+                        try:
+                            event_id = row[0]
+                        except (KeyError, TypeError):
+                            # Try converting to tuple
+                            event_id = tuple(row)[0] if row else None
+        except (IndexError, TypeError, AttributeError, KeyError):
+            event_id = None
+
         self.commit()
         return event_id
 
