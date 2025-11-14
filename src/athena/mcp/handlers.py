@@ -206,12 +206,12 @@ class MemoryMCPServer(
         """Initialize MCP server.
 
         Args:
-            db_path: Path to SQLite database (ignored for PostgreSQL Docker deployment)
+            db_path: Ignored - PostgreSQL is the only database backend
             enable_advanced_rag: If True, enable advanced RAG features (HyDE, LLM reranking, temporal enrichment)
                 Works with both Ollama (local) and Claude LLM (API-based)
         """
-        # Use PostgreSQL in Docker, SQLite locally
-        # db_path is ignored for PostgreSQL
+        # PostgreSQL-only backend (SQLite removed)
+        # db_path parameter is ignored for PostgreSQL
         self.store = MemoryStore(db_path=db_path, backend='postgres')
         self.project_manager = ProjectManager(self.store)
 

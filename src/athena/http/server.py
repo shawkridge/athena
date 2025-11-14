@@ -68,10 +68,10 @@ class AthenaHTTPServer:
 
     def _setup_middleware(self):
         """Setup CORS and other middleware."""
-        # CORS - allow localhost and Docker network
+        # CORS - allow localhost and loopback addresses
         self.app.add_middleware(
             CORSMiddleware,
-            allow_origins=["http://localhost:*", "http://127.0.0.1:*", "http://host.docker.internal:*"],
+            allow_origins=["http://localhost:*", "http://127.0.0.1:*"],
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],

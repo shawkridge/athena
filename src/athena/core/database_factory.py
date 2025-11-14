@@ -1,6 +1,6 @@
 """Database factory for PostgreSQL backend only.
 
-Docker-only configuration: PostgreSQL is the only supported backend.
+PostgreSQL-only configuration: PostgreSQL is the only supported backend.
 No SQLite fallback.
 """
 
@@ -17,12 +17,12 @@ except ImportError:
 class DatabaseFactory:
     """Factory for creating PostgreSQL database instances.
 
-    Local configuration (no Docker):
-    - ATHENA_POSTGRES_HOST: localhost (local Postgres)
-    - ATHENA_POSTGRES_PORT: 5432
-    - ATHENA_POSTGRES_DB: athena
-    - ATHENA_POSTGRES_USER: postgres (default Postgres user)
-    - ATHENA_POSTGRES_PASSWORD: postgres (default Postgres password)
+    Configuration:
+    - DB_HOST: localhost (default) or remote PostgreSQL server
+    - DB_PORT: 5432 (default PostgreSQL port)
+    - DB_NAME: athena (database name)
+    - DB_USER: postgres (default Postgres user)
+    - DB_PASSWORD: postgres (default Postgres password)
 
     Usage:
         # Automatic creation with localhost defaults
@@ -80,8 +80,8 @@ class DatabaseFactory:
 
         Configuration priority:
         1. Explicit kwargs (passed to method)
-        2. Environment variables (for host-based development)
-        3. Docker defaults (fallback)
+        2. Environment variables (for local or remote setup)
+        3. Default values (fallback)
 
         Environment variables:
         - ATHENA_POSTGRES_HOST: PostgreSQL host (default: "localhost")
@@ -98,7 +98,6 @@ class DatabaseFactory:
         """
 
         # Configuration with proper priority: kwargs > env > defaults
-        # Defaults changed from Docker (postgres/athena) to localhost Postgres (localhost/postgres)
         config = {
             'host': kwargs.get(
                 'host',
