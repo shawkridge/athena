@@ -254,7 +254,7 @@ class ProceduralStore(BaseStore[Procedure]):
                 """
                 SELECT * FROM procedures
                 WHERE category = %s
-                ORDER BY usage_count DESC, success_rate DESC
+                ORDER BY execution_count DESC, success_rate DESC
                 LIMIT %s
             """,
                 (category_str, limit),
@@ -264,7 +264,7 @@ class ProceduralStore(BaseStore[Procedure]):
             rows = self.execute(
                 """
                 SELECT * FROM procedures
-                ORDER BY usage_count DESC, success_rate DESC
+                ORDER BY execution_count DESC, success_rate DESC
                 LIMIT %s
             """,
                 (limit,),

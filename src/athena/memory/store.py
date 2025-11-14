@@ -147,7 +147,8 @@ class MemoryStore(BaseStore):
         Returns:
             List of memories
         """
-        return self.db.list_memories(project_id, limit, sort_by)
+        # Use sync wrapper to avoid blocking event loops
+        return self.db.list_memories_sync(project_id, limit, 0, sort_by)
 
     def create_project(self, name: str, path: str) -> Project:
         """Create a new project.

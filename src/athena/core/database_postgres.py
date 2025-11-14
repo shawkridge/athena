@@ -1481,7 +1481,7 @@ class PostgresDatabase:
         offset: int = 0,
         sort_by: str = "created_at",
     ) -> list:
-        """List memories for a project.
+        """List memories for a project (async).
 
         Args:
             project_id: Project ID to filter by
@@ -1531,6 +1531,28 @@ class PostgresDatabase:
             })
 
         return result
+
+    def list_memories_sync(
+        self,
+        project_id: int,
+        limit: int = 100,
+        offset: int = 0,
+        sort_by: str = "created_at",
+    ) -> list:
+        """List memories for a project (sync wrapper for async method).
+
+        Args:
+            project_id: Project ID to filter by
+            limit: Maximum results to return
+            offset: Number of results to skip
+            sort_by: Column to sort by ('useful', 'recent', 'accessed', 'created_at')
+
+        Returns:
+            List of memory records as dicts
+        """
+        from .async_utils import run_async
+
+        return run_async(self.list_memories(project_id, limit, offset, sort_by))
 
     # ===========================================================================
     # TRANSACTION SUPPORT
