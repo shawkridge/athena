@@ -507,6 +507,8 @@ class PostgresDatabase:
                 lines_deleted INT DEFAULT 0,
                 learned TEXT,
                 surprise_score FLOAT,
+                surprise_normalized FLOAT,
+                surprise_coherence FLOAT,
                 confidence FLOAT DEFAULT 1.0,
                 consolidation_status VARCHAR(50) DEFAULT 'unconsolidated',
                 consolidated_at TIMESTAMP,
@@ -629,6 +631,27 @@ class PostgresDatabase:
                 probability FLOAT,
                 testing_status VARCHAR(50) DEFAULT 'not_tested',
                 created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+        # 11. Procedures (learned workflows)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS procedures (
+                id BIGSERIAL PRIMARY KEY,
+                project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                name VARCHAR(255) NOT NULL,
+                category VARCHAR(100),
+                description TEXT,
+                steps TEXT,
+                inputs TEXT[],
+                outputs TEXT[],
+                success_rate FLOAT DEFAULT 0.0,
+                execution_count INT DEFAULT 0,
+                last_executed TIMESTAMP,
+                created_by VARCHAR(50) DEFAULT 'manual',
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE(project_id, name)
             )
         """)
 

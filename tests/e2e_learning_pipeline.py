@@ -51,6 +51,7 @@ class E2EEvaluation:
         self.procedural_store = None
         self.project = None
         self.results = []
+        self.session_id = "session_001"  # Track the session we use for events
 
     def setup(self):
         """Initialize test environment."""
@@ -125,28 +126,66 @@ class E2EEvaluation:
             traceback.print_exc()
             return False
 
-    def test_event_capture(self):
+    def _consolidate_events_to_memories(self):
+        """Run consolidation hook to convert events to memories (simulates background consolidation)."""
+        try:
+            # Set database environment variables to point to test database
+            import os
+            os.environ["ATHENA_POSTGRES_DB"] = "athena_test"
+            os.environ["ATHENA_POSTGRES_HOST"] = "localhost"
+            os.environ["ATHENA_POSTGRES_PORT"] = "5432"
+            os.environ["ATHENA_POSTGRES_USER"] = "postgres"
+            os.environ["ATHENA_POSTGRES_PASSWORD"] = "postgres"
+
+            # Import the consolidation helper that hooks use
+            import sys
+            sys.path.insert(0, os.path.expanduser('~/.claude/hooks/lib'))
+
+            from consolidation_helper import ConsolidationHelper
+
+            # Create consolidation helper and run consolidation
+            # This simulates what the session-end hook would do
+            consolidation = ConsolidationHelper()
+            result = consolidation.consolidate_session(
+                project_id=self.project.id,
+                session_id=self.session_id  # Consolidate the session we stored events in
+            )
+
+            # Result should include created memories and procedures
+            print(f"  DEBUG: Consolidation result: {result}")
+            if result and result.get("status") == "success":
+                print(f"  Consolidation completed: {result.get('summary', '')}")
+            elif result:
+                print(f"  Consolidation status: {result.get('status')}, Error: {result.get('error')}")
+
+        except Exception as e:
+            import logging
+            import traceback
+            logging.warning(f"Failed to consolidate events: {e}")
+            traceback.print_exc()
+
+    def test_and_consolidate(self):
         """Test 1: Episodic event capture."""
         print_section("TEST 1: Event Capture (Episodic Memory)")
 
         try:
-            # Create test events
+            # Create test events using valid EventTypes
             events = [
                 {
                     "content": "Analyzed database schema for performance issues",
-                    "event_type": "analysis",
+                    "event_type": "debugging",  # Changed from 'analysis' to valid EventType
                     "session_id": "session_001",
                     "context_cwd": "/project/src",
                 },
                 {
                     "content": "Fixed N+1 query by adding index on user_id",
-                    "event_type": "code_change",
+                    "event_type": "file_change",  # Changed from 'code_change' to valid EventType
                     "session_id": "session_001",
                     "context_cwd": "/project/src",
                 },
                 {
                     "content": "Discovered memory leak in websocket handler",
-                    "event_type": "discovery",
+                    "event_type": "error",  # Changed from 'discovery' to valid EventType
                     "session_id": "session_001",
                     "context_cwd": "/project/src",
                 },
@@ -190,35 +229,24 @@ class E2EEvaluation:
         print_section("TEST 2: Semantic Memory Persistence")
 
         try:
-            # Query memory_vectors table
-            cursor = self.db.get_cursor()
-            cursor.execute(
-                """
-                SELECT id, content, memory_type, consolidation_state, embedding
-                FROM memory_vectors
-                WHERE project_id = %s
-                ORDER BY created_at DESC
-                LIMIT 10
-                """,
-                (self.project.id,)
+            # Use MemoryStore to list memories (public API, not SQL)
+            memories = self.memory_store.list_memories(
+                project_id=self.project.id,
+                limit=10
             )
-
-            memories = cursor.fetchall()
 
             passed = len(memories) > 0
             print_result(
                 "Semantic memories created and stored",
                 passed,
-                f"Found {len(memories)} memories in memory_vectors table"
+                f"Found {len(memories)} memories"
             )
 
             if memories:
                 for i, mem in enumerate(memories[:3]):  # Show first 3
-                    mem_id, content, mem_type, consol_state, embedding = mem
-                    has_embedding = embedding is not None
-                    print(f"  Memory {i+1}: ID={mem_id}, type={mem_type}, state={consol_state}, has_embedding={has_embedding}")
-                    if content:
-                        print(f"             Content: {str(content)[:60]}...")
+                    print(f"  Memory {i+1}: type={mem.memory_type}, tags={mem.tags}")
+                    if mem.content:
+                        print(f"             Content: {str(mem.content)[:60]}...")
 
             self.results.append(("Semantic Memory", passed))
             return passed
@@ -235,33 +263,27 @@ class E2EEvaluation:
         print_section("TEST 3: Procedure Extraction")
 
         try:
-            # Query procedures table
-            cursor = self.db.get_cursor()
-            cursor.execute(
-                """
-                SELECT id, name, category, description, created_by
-                FROM procedures
-                WHERE created_by = 'consolidation'
-                ORDER BY created_at DESC
-                LIMIT 10
-                """
+            # Use ProceduralStore to list procedures (public API, not SQL)
+            procedures = self.procedural_store.list_procedures(
+                project_id=self.project.id,
+                limit=10
             )
 
-            procedures = cursor.fetchall()
+            # Filter for procedures created by consolidation
+            consolidation_procs = [p for p in procedures if p.created_by == "consolidation"]
 
-            passed = len(procedures) > 0
+            passed = len(consolidation_procs) > 0
             print_result(
                 "Procedures extracted and stored",
                 passed,
-                f"Found {len(procedures)} procedures created by consolidation"
+                f"Found {len(consolidation_procs)} procedures created by consolidation"
             )
 
-            if procedures:
-                for i, proc in enumerate(procedures[:3]):  # Show first 3
-                    proc_id, name, category, description, created_by = proc
-                    print(f"  Procedure {i+1}: ID={proc_id}, name={name}, category={category}")
-                    if description:
-                        print(f"               Description: {description[:60]}...")
+            if consolidation_procs:
+                for i, proc in enumerate(consolidation_procs[:3]):  # Show first 3
+                    print(f"  Procedure {i+1}: name={proc.name}, category={proc.category}")
+                    if proc.description:
+                        print(f"               Description: {proc.description[:60]}...")
 
             self.results.append(("Procedure Extraction", passed))
             return passed
@@ -278,62 +300,34 @@ class E2EEvaluation:
         print_section("TEST 4: Search Ranking (Relevance Scoring)")
 
         try:
-            # Test keyword search with relevance scoring
-            cursor = self.db.get_cursor()
-            cursor.execute(
-                """
-                SELECT id, content, consolidation_state
-                FROM memory_vectors
-                WHERE project_id = %s
-                ORDER BY created_at DESC
-                LIMIT 5
-                """,
-                (self.project.id,)
+            # Use MemoryStore.recall_with_reranking to search with relevance ranking
+            # This tests the public search API, not raw SQL
+            search_results = self.memory_store.recall_with_reranking(
+                query="database query optimization",
+                project_id=self.project.id,
+                limit=5
             )
 
-            results = cursor.fetchall()
-
-            # Calculate relevance scores (simplified version)
-            scored_results = []
-
-            for result in results:
-                mem_id, content, consol_state = result
-                if not content:
-                    continue
-
-                content_lower = str(content).lower()
-
-                # Simple term matching for demo
-                term_score = 0.3 if any(term in content_lower for term in ["database", "query", "optimization"]) else 0.1
-
-                # Recency bonus
-                recency_score = 0.2
-
-                # Type bonus (assumption)
-                type_bonus = 0.1
-
-                relevance_score = min(1.0, term_score + recency_score + type_bonus)
-
-                scored_results.append({
-                    "id": mem_id,
-                    "content": str(content)[:60],
-                    "relevance": max(0.1, relevance_score)
-                })
-
-            # Sort by relevance
-            scored_results.sort(key=lambda x: x["relevance"], reverse=True)
-
-            passed = len(scored_results) > 0
+            passed = len(search_results) > 0
             print_result(
                 "Search with relevance ranking",
                 passed,
-                f"Found {len(scored_results)} results"
+                f"Found {len(search_results)} results"
             )
 
-            if scored_results:
-                for i, result in enumerate(scored_results[:3]):
-                    print(f"  Result {i+1}: relevance={result['relevance']:.2f}")
-                    print(f"           Content: {result['content']}...")
+            if search_results:
+                for i, result in enumerate(search_results[:3]):
+                    # result should be a tuple of (memory, score) or a Memory object
+                    if isinstance(result, tuple):
+                        mem, score = result
+                        print(f"  Result {i+1}: relevance={score:.2f}")
+                        if mem.content:
+                            print(f"           Content: {str(mem.content)[:60]}...")
+                    else:
+                        # If it's just a memory object
+                        print(f"  Result {i+1}: type={result.memory_type}")
+                        if result.content:
+                            print(f"           Content: {str(result.content)[:60]}...")
 
             self.results.append(("Search Ranking", passed))
             return passed
@@ -350,7 +344,8 @@ class E2EEvaluation:
         print_section("TEST 5: End-to-End Flow Verification")
 
         try:
-            # Verify all components are working together
+            # Verify all components are working together using public APIs
+
             checks = []
 
             # Check 1: Events exist
@@ -358,33 +353,21 @@ class E2EEvaluation:
             checks.append(("Events captured", len(events) > 0))
 
             # Check 2: Memories created
-            cursor = self.db.get_cursor()
-            cursor.execute(
-                "SELECT COUNT(*) FROM memory_vectors WHERE project_id = %s",
-                (self.project.id,)
-            )
-            result = cursor.fetchone()
-            memory_count = result[0] if result else 0
-            checks.append(("Memories persisted", memory_count > 0))
+            memories = self.memory_store.list_memories(self.project.id, limit=100)
+            checks.append(("Memories persisted", len(memories) > 0))
 
             # Check 3: Procedures extracted
-            cursor = self.db.get_cursor()
-            cursor.execute(
-                "SELECT COUNT(*) FROM procedures WHERE created_by = 'consolidation'"
-            )
-            result = cursor.fetchone()
-            procedure_count = result[0] if result else 0
-            checks.append(("Procedures extracted", procedure_count > 0))
+            procedures = self.procedural_store.list_procedures(self.project.id, limit=100)
+            consolidation_procs = [p for p in procedures if p.created_by == "consolidation"]
+            checks.append(("Procedures extracted", len(consolidation_procs) > 0))
 
             # Check 4: Search works
-            cursor = self.db.get_cursor()
-            cursor.execute(
-                "SELECT COUNT(*) FROM memory_vectors WHERE project_id = %s",
-                (self.project.id,)
+            search_results = self.memory_store.recall_with_reranking(
+                query="test",
+                project_id=self.project.id,
+                limit=10
             )
-            result = cursor.fetchone()
-            searchable_count = result[0] if result else 0
-            checks.append(("Search enabled", searchable_count > 0))
+            checks.append(("Search enabled", len(search_results) > 0))
 
             # Print results
             all_passed = True
@@ -447,7 +430,8 @@ class E2EEvaluation:
             return False
 
         # Run all tests
-        self.test_event_capture()
+        self.test_and_consolidate()  # Capture events
+        self._consolidate_events_to_memories()  # Run consolidation once after event capture
         self.test_semantic_memories()
         self.test_procedure_extraction()
         self.test_search_ranking()

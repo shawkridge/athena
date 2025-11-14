@@ -1605,6 +1605,99 @@ class EpisodicStore(BaseStore):
 
         return None
 
+    def store_event(
+        self,
+        project_id: int,
+        content: str,
+        event_type: str,
+        session_id: str,
+        outcome: Optional[str] = None,
+        context_cwd: Optional[str] = None,
+        context_files: Optional[list] = None,
+        context_task: Optional[str] = None,
+        context_phase: Optional[str] = None,
+        duration_ms: Optional[int] = None,
+        learned: Optional[str] = None,
+        confidence: float = 1.0,
+    ) -> int:
+        """Store an event with individual parameters (convenience method).
+
+        This is a wrapper around record_event() for easier integration.
+
+        Args:
+            project_id: Project ID
+            content: Event content/description
+            event_type: Type of event (action, decision, discovery, error)
+            session_id: Session ID for grouping related events
+            outcome: Outcome of the event (success, failure, unknown)
+            context_cwd: Current working directory
+            context_files: List of involved files
+            context_task: Task being performed
+            context_phase: Development phase (design, coding, testing, etc.)
+            duration_ms: Duration in milliseconds
+            learned: What was learned from this event
+            confidence: Confidence score (0.0-1.0)
+
+        Returns:
+            ID of stored event
+        """
+        # Create EpisodicEvent model from parameters
+        event = EpisodicEvent(
+            project_id=project_id,
+            session_id=session_id,
+            timestamp=datetime.now(),
+            event_type=EventType(event_type) if event_type else EventType.ACTION,
+            content=content,
+            outcome=EventOutcome(outcome) if outcome else None,
+            context=EventContext(
+                cwd=context_cwd,
+                files=context_files or [],
+                task=context_task,
+                phase=context_phase,
+            ),
+            duration_ms=duration_ms,
+            learned=learned,
+            confidence=confidence,
+        )
+
+        return self.record_event(event)
+
+    def list_events(
+        self,
+        project_id: int,
+        limit: int = 100,
+        offset: int = 0,
+        order_by: str = "timestamp DESC"
+    ) -> List[EpisodicEvent]:
+        """List events for a project with pagination.
+
+        Args:
+            project_id: Project ID
+            limit: Maximum events to return
+            offset: Offset for pagination
+            order_by: Order clause (e.g., 'timestamp DESC')
+
+        Returns:
+            List of EpisodicEvent instances
+        """
+        query = f"""
+            SELECT * FROM episodic_events
+            WHERE project_id = %s
+            ORDER BY {order_by}
+            LIMIT %s OFFSET %s
+        """
+
+        rows = self.execute(
+            query,
+            (project_id, limit, offset),
+            fetch_all=True
+        )
+
+        if not rows:
+            return []
+
+        return [self._row_to_model(row) for row in rows]
+
     def delete_event(self, event_id: int) -> bool:
         """Delete a single event and its associated data.
 
