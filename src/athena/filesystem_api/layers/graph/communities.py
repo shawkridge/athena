@@ -13,7 +13,7 @@ except ImportError:
     raise ImportError("PostgreSQL required: pip install psycopg[binary]")
 
 
-def detect_communities(
+async def detect_communities(
     host: str,
     port: int,
     dbname: str,
@@ -28,7 +28,11 @@ def detect_communities(
     Returns summary of communities, not full membership.
 
     Args:
-        db_path: Path to database
+        host: PostgreSQL host
+        port: PostgreSQL port
+        dbname: Database name
+        user: PostgreSQL user
+        password: PostgreSQL password
         min_size: Minimum community size
         resolution: Resolution parameter for clustering
 
@@ -41,8 +45,7 @@ def detect_communities(
         - entity_distribution: How entities spread across communities
     """
     try:
-        conn = await AsyncConnection.connect(db_path)
-        # PostgreSQL returns dicts
+        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
         cursor = conn.cursor()
 
         # Get all entities and relations
@@ -103,17 +106,16 @@ async def get_community_info(
     Returns entity counts and relation counts, not members.
     """
     try:
-        conn = await AsyncConnection.connect(db_path)
-        # PostgreSQL returns dicts
+        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
         cursor = conn.cursor()
 
         # Get community members (from some membership table)
         await cursor.execute(
-            "SELECT entity_id FROM community_members WHERE community_id = ?",
+            "SELECT entity_id FROM community_members WHERE community_id = %s",
             (community_id,)
         )
 
-        member_ids = [row["entity_id"] for row in await cursor.fetchall()]
+        member_ids = [row[0] for row in await cursor.fetchall()]
 
         if not member_ids:
             return {
@@ -123,13 +125,13 @@ async def get_community_info(
             }
 
         # Count entity types in community
-        placeholders = ",".join("?" * len(member_ids))
+        placeholders = ",".join("%s" * len(member_ids))
         await cursor.execute(
             f"SELECT type, COUNT(*) as count FROM graph_entities WHERE id IN ({placeholders}) GROUP BY type",
             member_ids
         )
 
-        type_dist = {row["type"]: row["count"] for row in await cursor.fetchall()}
+        type_dist = {row[0]: row[1] for row in await cursor.fetchall()}
 
         # Count internal relations
         await cursor.execute(
@@ -140,7 +142,7 @@ async def get_community_info(
             member_ids + member_ids
         )
 
-        internal_relations = await cursor.fetchone()["count"]
+        internal_relations = (await cursor.fetchone())[0]
 
         # Count external relations
         await cursor.execute(
@@ -152,7 +154,7 @@ async def get_community_info(
             member_ids + member_ids + member_ids + member_ids
         )
 
-        external_relations = await cursor.fetchone()["count"]
+        external_relations = (await cursor.fetchone())[0]
 
         await conn.close()
 

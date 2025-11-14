@@ -27,7 +27,11 @@ async def search_entities(
     Search entities in knowledge graph with summary results.
 
     Args:
-        db_path: Path to database
+        host: PostgreSQL host
+        port: PostgreSQL port
+        dbname: Database name
+        user: PostgreSQL user
+        password: PostgreSQL password
         query: Entity search query
         limit: Max entities to return
         max_depth: Max depth for relationship traversal
@@ -36,8 +40,7 @@ async def search_entities(
         Summary with entity counts, relation counts, connectivity metrics
     """
     try:
-        conn = await AsyncConnection.connect(db_path)
-        # PostgreSQL returns dicts
+        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
         cursor = conn.cursor()
 
         # Search entities
@@ -45,8 +48,8 @@ async def search_entities(
             """
             SELECT id, type, name, confidence
             FROM graph_entities
-            WHERE name ILIKE ? OR description ILIKE ?
-            LIMIT ?
+            WHERE name ILIKE %s OR description ILIKE %s
+            LIMIT %s
             """,
             (f"%{query}%", f"%{query}%", limit)
         )
@@ -63,7 +66,7 @@ async def search_entities(
         entity_ids = [e["id"] for e in entities]
 
         # Count relations for these entities
-        placeholders = ",".join("?" * len(entity_ids))
+        placeholders = ",".join("%s" * len(entity_ids))
         await cursor.execute(
             f"""
             SELECT COUNT(*) as relation_count
@@ -73,7 +76,7 @@ async def search_entities(
             entity_ids + entity_ids
         )
 
-        relation_count = await cursor.fetchone()["relation_count"]
+        relation_count = (await cursor.fetchone())[0]
 
         # Get relation type distribution
         await cursor.execute(
@@ -86,7 +89,7 @@ async def search_entities(
             entity_ids + entity_ids
         )
 
-        rel_dist = {row["relation_type"]: row["count"] for row in await cursor.fetchall()}
+        rel_dist = {row[0]: row[1] for row in await cursor.fetchall()}
 
         # Entity type distribution
         type_dist = {}
@@ -130,15 +133,14 @@ async def get_entity_neighbors(
     Returns counts and types, not full entities.
     """
     try:
-        conn = await AsyncConnection.connect(db_path)
-        # PostgreSQL returns dicts
+        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
         cursor = conn.cursor()
 
-        where_clause = "(source_id = ? OR target_id = %s)"
+        where_clause = "(source_id = %s OR target_id = %s)"
         params = [entity_id, entity_id]
 
         if relation_type:
-            where_clause += " AND relation_type = ?"
+            where_clause += " AND relation_type = %s"
             params.append(relation_type)
 
         await cursor.execute(
@@ -146,7 +148,7 @@ async def get_entity_neighbors(
             params
         )
 
-        total_relations = await cursor.fetchone()["count"]
+        total_relations = (await cursor.fetchone())[0]
 
         # Get relation type distribution
         await cursor.execute(
@@ -159,7 +161,7 @@ async def get_entity_neighbors(
             params
         )
 
-        rel_dist = {row["relation_type"]: row["count"] for row in await cursor.fetchall()}
+        rel_dist = {row[0]: row[1] for row in await cursor.fetchall()}
 
         # Get neighbor entity types
         await cursor.execute(
@@ -173,7 +175,7 @@ async def get_entity_neighbors(
             params
         )
 
-        neighbor_types = {row["type"]: row["count"] for row in await cursor.fetchall()}
+        neighbor_types = {row[0]: row[1] for row in await cursor.fetchall()}
 
         await conn.close()
 

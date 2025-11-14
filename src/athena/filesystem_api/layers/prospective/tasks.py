@@ -32,19 +32,18 @@ async def list_tasks(
     Token cost: ~200 tokens vs 12,000 for full tasks.
     """
     try:
-        conn = await AsyncConnection.connect(db_path)
-        # PostgreSQL returns dicts
+        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
         cursor = conn.cursor()
 
         where_clauses = []
         params = []
 
         if status_filter:
-            where_clauses.append("status = ?")
+            where_clauses.append("status = %s")
             params.append(status_filter)
 
         if priority_filter:
-            where_clauses.append("priority = ?")
+            where_clauses.append("priority = %s")
             params.append(priority_filter)
 
         where_clause = " AND ".join(where_clauses) if where_clauses else "1=1"
@@ -54,7 +53,7 @@ async def list_tasks(
             SELECT id, status, priority, estimated_effort
             FROM tasks
             WHERE {where_clause}
-            LIMIT ?
+            LIMIT %s
             """,
             params + [limit]
         )
@@ -95,22 +94,24 @@ async def list_tasks(
         return {"error": str(e), "error_type": type(e).__name__}
 
 
-async def get_task_summary(host: str,
+async def get_task_summary(
+    host: str,
     port: int,
     dbname: str,
     user: str,
-    password: str, task_id: str) -> Dict[str, Any]:
+    password: str,
+    task_id: str
+) -> Dict[str, Any]:
     """Get task summary (not full data)."""
     try:
-        conn = await AsyncConnection.connect(db_path)
-        # PostgreSQL returns dicts
+        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
         cursor = conn.cursor()
 
         await cursor.execute(
             """
             SELECT id, title, status, priority, estimated_effort, deadline
             FROM tasks
-            WHERE id = ?
+            WHERE id = %s
             """,
             (task_id,)
         )

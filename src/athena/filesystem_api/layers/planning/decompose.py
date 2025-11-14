@@ -14,7 +14,7 @@ except ImportError:
 from datetime import datetime
 
 
-def decompose_task(
+async def decompose_task(
     host: str,
     port: int,
     dbname: str,
@@ -91,12 +91,11 @@ async def get_task_structure(
 ) -> Dict[str, Any]:
     """Get task structure summary."""
     try:
-        conn = await AsyncConnection.connect(db_path)
-        # PostgreSQL returns dicts
+        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
         cursor = conn.cursor()
 
         await cursor.execute(
-            "SELECT * FROM tasks WHERE id = ?",
+            "SELECT * FROM tasks WHERE id = %s",
             (task_id,)
         )
 
@@ -104,10 +103,11 @@ async def get_task_structure(
 
         if include_subtasks:
             await cursor.execute(
-                "SELECT COUNT(*) as count FROM tasks WHERE parent_task_id = ?",
+                "SELECT COUNT(*) as count FROM tasks WHERE parent_task_id = %s",
                 (task_id,)
             )
-            subtask_count = await cursor.fetchone()["count"]
+            row = await cursor.fetchone()
+            subtask_count = row[0] if row else 0
             task["subtask_count"] = subtask_count
 
         await conn.close()
@@ -131,42 +131,41 @@ async def get_dependency_graph(
 ) -> Dict[str, Any]:
     """Get dependency graph summary."""
     try:
-        conn = await AsyncConnection.connect(db_path)
-        # PostgreSQL returns dicts
+        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
         cursor = conn.cursor()
 
         # Get dependencies
         await cursor.execute(
             """
             SELECT COUNT(*) as count FROM task_dependencies
-            WHERE task_id = ? OR depends_on = ?
+            WHERE task_id = %s OR depends_on = %s
             """,
             (task_id, task_id)
         )
 
-        dep_count = await cursor.fetchone()["count"]
+        dep_count = (await cursor.fetchone())[0]
 
         # Get blocking dependencies
         await cursor.execute(
             """
             SELECT COUNT(*) as count FROM task_dependencies
-            WHERE task_id = ? AND dependency_type = 'blocks'
+            WHERE task_id = %s AND dependency_type = 'blocks'
             """,
             (task_id,)
         )
 
-        blocking_count = await cursor.fetchone()["count"]
+        blocking_count = (await cursor.fetchone())[0]
 
         # Get blocked by
         await cursor.execute(
             """
             SELECT COUNT(*) as count FROM task_dependencies
-            WHERE depends_on = ? AND dependency_type = 'blocks'
+            WHERE depends_on = %s AND dependency_type = 'blocks'
             """,
             (task_id,)
         )
 
-        blocked_by_count = await cursor.fetchone()["count"]
+        blocked_by_count = (await cursor.fetchone())[0]
 
         await conn.close()
 

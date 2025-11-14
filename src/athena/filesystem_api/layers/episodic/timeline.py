@@ -31,7 +31,11 @@ async def get_event_timeline(
     Buckets events by time period and returns counts only.
 
     Args:
-        db_path: Path to Athena memory database
+        host: PostgreSQL host
+        port: PostgreSQL port
+        dbname: Database name
+        user: PostgreSQL user
+        password: PostgreSQL password
         start_date: ISO date string (inclusive)
         end_date: ISO date string (inclusive)
         event_type: Filter by specific event type
@@ -41,24 +45,28 @@ async def get_event_timeline(
         Timeline summary with event counts per bucket
     """
     try:
-        conn = await AsyncConnection.connect(db_path)
+        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
         cursor = conn.cursor()
 
         # Build query
         where_clauses = ["timestamp IS NOT NULL"]
         params = []
+        param_count = 1
 
         if start_date:
-            where_clauses.append("timestamp >= ?")
+            where_clauses.append(f"timestamp >= %s")
             params.append(start_date)
+            param_count += 1
 
         if end_date:
-            where_clauses.append("timestamp <= ?")
+            where_clauses.append(f"timestamp <= %s")
             params.append(end_date)
+            param_count += 1
 
         if event_type:
-            where_clauses.append("event_type = ?")
+            where_clauses.append(f"event_type = %s")
             params.append(event_type)
+            param_count += 1
 
         where_clause = " AND ".join(where_clauses)
 
@@ -120,7 +128,11 @@ async def get_event_causality(
     Returns summary of nearby events, not full event data.
 
     Args:
-        db_path: Path to database
+        host: PostgreSQL host
+        port: PostgreSQL port
+        dbname: Database name
+        user: PostgreSQL user
+        password: PostgreSQL password
         event_id: Event to analyze
         window_minutes: Time window before/after
 
@@ -128,20 +140,19 @@ async def get_event_causality(
         Summary of causally-nearby events
     """
     try:
-        conn = await AsyncConnection.connect(db_path)
-        # PostgreSQL returns dicts
+        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
         cursor = conn.cursor()
 
         # Get target event timestamp
         await cursor.execute(
-            "SELECT timestamp FROM episodic_events WHERE id = ?",
+            "SELECT timestamp FROM episodic_events WHERE id = %s",
             (event_id,)
         )
         target_row = await cursor.fetchone()
         if not target_row:
             return {"error": f"Event not found: {event_id}"}
 
-        target_time = datetime.fromisoformat(target_row["timestamp"])
+        target_time = datetime.fromisoformat(target_row[0])
 
         # Find events within window
         window_start = target_time - timedelta(minutes=window_minutes)
@@ -151,8 +162,8 @@ async def get_event_causality(
             """
             SELECT id, timestamp, event_type, outcome
             FROM episodic_events
-            WHERE timestamp BETWEEN ? AND ? AND id != ?
-            ORDER BY ABS(CAST((julianday(timestamp) - julianday(%s)) AS INTEGER))
+            WHERE timestamp >= %s AND timestamp <= %s AND id != %s
+            ORDER BY ABS(EXTRACT(EPOCH FROM (timestamp - %s)))
             LIMIT 10
             """,
             (window_start.isoformat(), window_end.isoformat(), event_id, target_time.isoformat())

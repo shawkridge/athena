@@ -33,7 +33,11 @@ async def extract_patterns(
     Token cost: ~250 tokens vs 20,000 for full patterns.
 
     Args:
-        db_path: Path to database
+        host: PostgreSQL host
+        port: PostgreSQL port
+        dbname: Database name
+        user: PostgreSQL user
+        password: PostgreSQL password
         time_window_hours: Look back window
         min_support: Minimum pattern support (0-1)
         confidence_threshold: Minimum confidence
@@ -46,8 +50,7 @@ async def extract_patterns(
         - top_patterns_by_confidence: Top 5 pattern summaries (IDs only)
     """
     try:
-        conn = await AsyncConnection.connect(db_path)
-        # PostgreSQL returns dicts
+        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
         cursor = conn.cursor()
 
         # Get recent events
@@ -56,7 +59,7 @@ async def extract_patterns(
             """
             SELECT id, event_type, outcome, confidence, timestamp
             FROM episodic_events
-            WHERE timestamp >= ?
+            WHERE timestamp >= %s
             ORDER BY timestamp DESC
             """,
             (cutoff_time.isoformat(),)
@@ -122,12 +125,11 @@ async def get_pattern_details(
 ) -> Dict[str, Any]:
     """Get details for a specific pattern (use sparingly)."""
     try:
-        conn = await AsyncConnection.connect(db_path)
-        # PostgreSQL returns dicts
+        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
         cursor = conn.cursor()
 
         await cursor.execute(
-            "SELECT * FROM patterns WHERE id = ?",
+            "SELECT * FROM patterns WHERE id = %s",
             (pattern_id,)
         )
 

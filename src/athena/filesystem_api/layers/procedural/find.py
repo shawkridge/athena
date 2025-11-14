@@ -32,17 +32,16 @@ async def find_procedures(
     Token cost: ~200 tokens vs 5,000 for full procedures.
     """
     try:
-        conn = await AsyncConnection.connect(db_path)
-        # PostgreSQL returns dicts
+        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
         cursor = conn.cursor()
 
         await cursor.execute(
             """
             SELECT id, name, effectiveness_score, success_count, execution_count
             FROM procedures
-            WHERE name ILIKE ? OR description ILIKE ?
-            AND effectiveness_score >= ?
-            LIMIT ?
+            WHERE (name ILIKE %s OR description ILIKE %s)
+            AND effectiveness_score >= %s
+            LIMIT %s
             """,
             (f"%{query}%", f"%{query}%", effectiveness_threshold, limit)
         )
@@ -83,8 +82,7 @@ async def get_procedure_summary(
 ) -> Dict[str, Any]:
     """Get procedure summary (not full code)."""
     try:
-        conn = await AsyncConnection.connect(db_path)
-        # PostgreSQL returns dicts
+        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
         cursor = conn.cursor()
 
         await cursor.execute(
@@ -92,7 +90,7 @@ async def get_procedure_summary(
             SELECT id, name, description, effectiveness_score,
                    execution_count, success_count, last_used
             FROM procedures
-            WHERE id = ?
+            WHERE id = %s
             """,
             (procedure_id,)
         )
