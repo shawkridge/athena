@@ -87,7 +87,21 @@ class CodeExecutor:
             merged_kwargs = kwargs or {}
             merged_kwargs.update(args)
 
-            result = func(**merged_kwargs)
+            # Handle both async and sync functions
+            import asyncio
+            import inspect
+
+            if inspect.iscoroutinefunction(func):
+                # For async functions, run in event loop
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    result = loop.run_until_complete(func(**merged_kwargs))
+                finally:
+                    loop.close()
+            else:
+                # For sync functions, call directly
+                result = func(**merged_kwargs)
 
             return ExecutionResult(
                 success=True,

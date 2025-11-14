@@ -394,9 +394,34 @@ class FilesystemAPIAdapter:
         return "No docstring found"
 
     def _get_function_name(self, layer: str, operation: str) -> str:
-        """Determine main function name in operation file."""
-        # By convention, function name matches operation name or is first function
-        # Try common patterns: operation_name, search_*, get_*
+        """Determine main function name in operation file.
+
+        Extracts the actual function name from the module by reading the file
+        and finding the first function definition (async or sync).
+        """
+        import re
+
+        if layer == "operations":
+            op_file = self.athena_root / "operations" / f"{operation}.py"
+        else:
+            op_file = self.athena_root / "layers" / layer / f"{operation}.py"
+
+        if not op_file.exists():
+            # Fallback to convention
+            return operation.replace("-", "_")
+
+        try:
+            with open(op_file) as f:
+                content = f.read()
+
+            # Find first async or sync function definition
+            match = re.search(r'(async\s+)?def\s+(\w+)\s*\(', content)
+            if match:
+                return match.group(2)
+        except:
+            pass
+
+        # Fallback to convention
         return operation.replace("-", "_")
 
     def get_api_schema(self) -> Dict[str, Any]:
