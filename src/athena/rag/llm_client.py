@@ -173,13 +173,36 @@ class LocalLLMClientSync(LLMClient):
             Generated text
         """
         import asyncio
+        from concurrent.futures import ThreadPoolExecutor
 
         try:
-            # Create event loop for sync wrapper
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            # Check if there's an active event loop
             try:
-                result = loop.run_until_complete(
+                loop = asyncio.get_running_loop()
+                # We're in an async context
+                in_async_context = True
+            except RuntimeError:
+                # No running loop
+                in_async_context = False
+
+            if in_async_context:
+                # We're in an async context, run the async function in a thread pool
+                # to avoid nested event loop issues
+                def run_in_thread():
+                    return asyncio.run(
+                        self.local_client.reason(
+                            prompt=prompt,
+                            max_tokens=max_tokens,
+                            temperature=temperature,
+                        )
+                    )
+
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    result = executor.submit(run_in_thread).result(timeout=30)
+                    return result.text
+            else:
+                # No active event loop, use asyncio.run() normally
+                result = asyncio.run(
                     self.local_client.reason(
                         prompt=prompt,
                         max_tokens=max_tokens,
@@ -187,8 +210,6 @@ class LocalLLMClientSync(LLMClient):
                     )
                 )
                 return result.text
-            finally:
-                loop.close()
         except Exception as e:
             logger.error(f"Local reasoning generation failed: {e}")
             raise
