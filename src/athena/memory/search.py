@@ -185,9 +185,10 @@ class SemanticSearch:
         Returns:
             List of search results
         """
-        # Use asyncio.run() to bridge sync/async gap
-        # This is safe because SemanticSearch is meant to be called from sync code
-        results = asyncio.run(
+        # Bridge sync/async gap using run_async utility
+        from ..core.async_utils import run_async
+
+        results = run_async(
             self._recall_postgres_async(
                 query_embedding, project_id, query_text, k, memory_types, min_similarity
             )

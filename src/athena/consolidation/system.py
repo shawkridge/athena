@@ -303,11 +303,9 @@ class ConsolidationSystem:
                 # Extract patterns within each surprise-based cluster
                 for cluster in event_clusters:
                     if len(cluster) >= 2:
-                        # Extract cluster-specific patterns
-                        cluster_pattern = self._extract_pattern_from_cluster(cluster)
+                        # Extract cluster-specific patterns with run_id
+                        cluster_pattern = self._extract_pattern_from_cluster(cluster, run_id)
                         if cluster_pattern:
-                            # Set the consolidation run ID
-                            cluster_pattern.consolidation_run_id = run_id
                             self._save_pattern(cluster_pattern)
                             patterns_found += 1
 
@@ -434,7 +432,7 @@ class ConsolidationSystem:
         # Return the shortest common content as template
         return min(contents, key=len)
 
-    def _extract_pattern_from_cluster(self, cluster: list) -> Optional[ExtractedPattern]:
+    def _extract_pattern_from_cluster(self, cluster: list, run_id: int) -> Optional[ExtractedPattern]:
         """Extract pattern from a surprise-based event cluster.
 
         Uses cluster context to extract more meaningful patterns than
@@ -442,6 +440,7 @@ class ConsolidationSystem:
 
         Args:
             cluster: List of events from a surprise-based cluster
+            run_id: Consolidation run ID
 
         Returns:
             ExtractedPattern if found, None otherwise
@@ -467,9 +466,9 @@ class ConsolidationSystem:
                 # Same event type - extract common template
                 pattern_content = self._extract_common_pattern(successful_events)
 
-            # Create pattern from cluster
+            # Create pattern from cluster with proper run_id
             pattern = ExtractedPattern(
-                consolidation_run_id=0,  # Will be set by caller
+                consolidation_run_id=run_id,
                 pattern_type=PatternType.WORKFLOW,
                 pattern_content=pattern_content,
                 confidence=min(1.0, len(successful_events) / 5.0),  # Confidence from cluster size
