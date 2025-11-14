@@ -1,0 +1,40 @@
+{
+  "timestamp": "2025-11-14T12:40:55.482861",
+  "summary": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0,
+    "skipped": 5,
+    "pass_rate": 100.0,
+    "duration": 3.586899995803833
+  },
+  "suites": [
+    {
+      "name": "Memory System",
+      "file": "e2e_memory_system.py",
+      "priority": 1,
+      "status": "passed",
+      "duration": 2.5368239879608154,
+      "returncode": 0,
+      "result": "All tests passed"
+    },
+    {
+      "name": "Working Memory",
+      "file": "e2e_working_memory.py",
+      "priority": 1,
+      "status": "passed",
+      "duration": 0.6762628555297852,
+      "returncode": 0,
+      "result": "All tests passed"
+    },
+    {
+      "name": "Knowledge Graph",
+      "file": "e2e_knowledge_graph.py",
+      "priority": 1,
+      "status": "passed",
+      "duration": 0.3731696605682373,
+      "returncode": 0,
+      "result": "All tests passed"
+    }
+  ]
+}

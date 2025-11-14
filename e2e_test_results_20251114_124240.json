@@ -1,0 +1,76 @@
+{
+  "timestamp": "2025-11-14T12:42:40.405668",
+  "summary": {
+    "total": 7,
+    "passed": 7,
+    "failed": 0,
+    "skipped": 1,
+    "pass_rate": 100.0,
+    "duration": 4.202215194702148
+  },
+  "suites": [
+    {
+      "name": "Memory System",
+      "file": "e2e_memory_system.py",
+      "priority": 1,
+      "status": "passed",
+      "duration": 1.8978230953216553,
+      "returncode": 0,
+      "result": "All tests passed"
+    },
+    {
+      "name": "Working Memory",
+      "file": "e2e_working_memory.py",
+      "priority": 1,
+      "status": "passed",
+      "duration": 0.60874342918396,
+      "returncode": 0,
+      "result": "All tests passed"
+    },
+    {
+      "name": "Planning & Verification",
+      "file": "e2e_planning.py",
+      "priority": 2,
+      "status": "passed",
+      "duration": 0.3110387325286865,
+      "returncode": 0,
+      "result": "All tests passed"
+    },
+    {
+      "name": "RAG System",
+      "file": "e2e_rag.py",
+      "priority": 2,
+      "status": "passed",
+      "duration": 0.29817938804626465,
+      "returncode": 0,
+      "result": "All tests passed"
+    },
+    {
+      "name": "Knowledge Graph",
+      "file": "e2e_knowledge_graph.py",
+      "priority": 1,
+      "status": "passed",
+      "duration": 0.3783423900604248,
+      "returncode": 0,
+      "result": "All tests passed"
+    },
+    {
+      "name": "Learning System",
+      "file": "e2e_learning.py",
+      "priority": 3,
+      "status": "passed",
+      "duration": 0.34664392471313477,
+      "returncode": 0,
+      "result": "All tests passed"
+    },
+    {
+      "name": "Automation/Triggers",
+      "file": "e2e_automation.py",
+      "priority": 3,
+      "status": "passed",
+      "duration": 0.3605844974517822,
+      "returncode": 0,
+      "result": "All tests passed"
+    }
+  ]
+}

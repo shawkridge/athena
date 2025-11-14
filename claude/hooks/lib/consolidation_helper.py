@@ -361,12 +361,13 @@ class ConsolidationHelper:
                     # Generate embedding for pattern
                     embedding = embedding_service.embed(content) if embedding_service else None
 
-                    # Convert embedding to pgvector format if available
-                    embedding_str = None
-                    if embedding:
-                        embedding_str = "[" + ",".join(f"{float(x):.6f}" for x in embedding) + "]"
+                    # Skip if no embedding available (required NOT NULL column)
+                    if not embedding:
+                        logger.debug(f"Skipping pattern memory: no embedding generated for content")
+                        continue
 
                     # Insert into memory_vectors table
+                    # Pass embedding list directly to psycopg - it handles vector conversion
                     cursor.execute("""
                         INSERT INTO memory_vectors (
                             project_id, content, memory_type,
@@ -381,7 +382,7 @@ class ConsolidationHelper:
                         "pattern",
                         pattern.get("domain", "general"),
                         [pattern["type"], pattern.get("cluster", "unclustered")],
-                        embedding_str,
+                        embedding,  # Pass list directly, not string
                         "pattern",
                         "consolidation_extracted",
                         0.8,
@@ -400,12 +401,13 @@ class ConsolidationHelper:
                 # Generate embedding for discovery
                 embedding = embedding_service.embed(content) if embedding_service else None
 
-                # Convert embedding to pgvector format if available
-                embedding_str = None
-                if embedding:
-                    embedding_str = "[" + ",".join(f"{float(x):.6f}" for x in embedding) + "]"
+                # Skip if no embedding available (required NOT NULL column)
+                if not embedding:
+                    logger.debug(f"Skipping discovery memory: no embedding generated for content")
+                    continue
 
                 # Insert into memory_vectors table
+                # Pass embedding list directly to psycopg - it handles vector conversion
                 cursor.execute("""
                     INSERT INTO memory_vectors (
                         project_id, content, memory_type,
@@ -420,7 +422,7 @@ class ConsolidationHelper:
                     discovery.get("type", "discovery"),
                     "discovery",
                     [discovery.get("type", "discovery"), discovery.get("category", "general")],
-                    embedding_str,
+                    embedding,  # Pass list directly, not string
                     "discovery",
                     "consolidation_extracted",
                     0.9,
