@@ -1,6 +1,7 @@
 #!/bin/bash
-# Healthcheck for Athena Memory MCP System
+# Healthcheck for Athena Memory System
 # Used by Docker HEALTHCHECK directive
+# Checks PostgreSQL + MCP HTTP endpoint
 
 set -e
 
@@ -10,7 +11,10 @@ set -e
 
 ATHENA_HOST="${ATHENA_HOST:-localhost}"
 ATHENA_PORT="${ATHENA_PORT:-8000}"
-DB_PATH="${HOME}/.athena/memory.db"
+DB_HOST="${DB_HOST:-localhost}"
+DB_PORT="${DB_PORT:-5432}"
+DB_NAME="${DB_NAME:-athena}"
+DB_USER="${DB_USER:-postgres}"
 TIMEOUT=5
 
 # Colors
@@ -34,24 +38,27 @@ check_http_health() {
     fi
 }
 
-# 2. Database Connectivity Check
+# 2. PostgreSQL Database Connectivity Check
 check_database() {
-    if [ ! -f "$DB_PATH" ]; then
-        echo -e "${RED}✗${NC} Database file not found: $DB_PATH"
-        return 1
-    fi
-
     if python3 -c "
-import sqlite3
+import psycopg
+import sys
 try:
-    conn = sqlite3.connect('$DB_PATH', timeout=$TIMEOUT)
+    conn = psycopg.connect(
+        host='$DB_HOST',
+        port=$DB_PORT,
+        database='$DB_NAME',
+        user='$DB_USER',
+        connect_timeout=$TIMEOUT
+    )
     cursor = conn.cursor()
     cursor.execute('SELECT 1')
+    cursor.close()
     conn.close()
     print('✓ Database OK')
 except Exception as e:
     print(f'✗ Database error: {e}')
-    exit(1)
+    sys.exit(1)
 " 2>&1; then
         return 0
     else

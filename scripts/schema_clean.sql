@@ -1,5 +1,5 @@
 CREATE TABLE projects (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 name TEXT UNIQUE NOT NULL,
                 path TEXT UNIQUE NOT NULL,
                 created_at INTEGER NOT NULL,
@@ -7,7 +7,7 @@ CREATE TABLE projects (
                 memory_count INTEGER DEFAULT 0
             , quota_enforced BOOLEAN DEFAULT 1, last_quota_check INTEGER);
 CREATE TABLE memories (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 content TEXT NOT NULL,
                 memory_type TEXT NOT NULL,
@@ -23,8 +23,8 @@ CREATE VIRTUAL TABLE memory_vectors USING vec0(
                 embedding FLOAT[768]
             );
 CREATE TABLE IF NOT EXISTS "memory_vectors_info" (key text primary key, value any);
-CREATE TABLE IF NOT EXISTS "memory_vectors_chunks"(chunk_id INTEGER PRIMARY KEY AUTOINCREMENT,size INTEGER NOT NULL,validity BLOB NOT NULL,rowids BLOB NOT NULL);
-CREATE TABLE IF NOT EXISTS "memory_vectors_rowids"(rowid INTEGER PRIMARY KEY AUTOINCREMENT,id,chunk_id INTEGER,chunk_offset INTEGER);
+CREATE TABLE IF NOT EXISTS "memory_vectors_chunks"(chunk_id SERIAL PRIMARY KEY,size INTEGER NOT NULL,validity BLOB NOT NULL,rowids BLOB NOT NULL);
+CREATE TABLE IF NOT EXISTS "memory_vectors_rowids"(rowid SERIAL PRIMARY KEY,id,chunk_id INTEGER,chunk_offset INTEGER);
 CREATE TABLE IF NOT EXISTS "memory_vectors_vector_chunks00"(rowid PRIMARY KEY,vectors BLOB NOT NULL);
 CREATE TABLE memory_relations (
                 from_memory_id INTEGER NOT NULL,
@@ -47,7 +47,7 @@ CREATE INDEX idx_memories_score ON memories(usefulness_score DESC);
 CREATE INDEX idx_memories_accessed ON memories(last_accessed DESC);
 CREATE INDEX idx_memories_type ON memories(memory_type);
 CREATE TABLE episodic_events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 session_id TEXT NOT NULL,
                 timestamp INTEGER NOT NULL,
@@ -73,7 +73,7 @@ CREATE TABLE episodic_events (
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             );
 CREATE TABLE event_outcomes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 event_id INTEGER NOT NULL,
                 metric_name TEXT NOT NULL,
                 metric_value TEXT NOT NULL,
@@ -92,8 +92,8 @@ CREATE VIRTUAL TABLE event_vectors USING vec0(
                 embedding FLOAT[768]
             );
 CREATE TABLE IF NOT EXISTS "event_vectors_info" (key text primary key, value any);
-CREATE TABLE IF NOT EXISTS "event_vectors_chunks"(chunk_id INTEGER PRIMARY KEY AUTOINCREMENT,size INTEGER NOT NULL,validity BLOB NOT NULL,rowids BLOB NOT NULL);
-CREATE TABLE IF NOT EXISTS "event_vectors_rowids"(rowid INTEGER PRIMARY KEY AUTOINCREMENT,id,chunk_id INTEGER,chunk_offset INTEGER);
+CREATE TABLE IF NOT EXISTS "event_vectors_chunks"(chunk_id SERIAL PRIMARY KEY,size INTEGER NOT NULL,validity BLOB NOT NULL,rowids BLOB NOT NULL);
+CREATE TABLE IF NOT EXISTS "event_vectors_rowids"(rowid SERIAL PRIMARY KEY,id,chunk_id INTEGER,chunk_offset INTEGER);
 CREATE TABLE IF NOT EXISTS "event_vectors_vector_chunks00"(rowid PRIMARY KEY,vectors BLOB NOT NULL);
 CREATE INDEX idx_events_timestamp ON episodic_events(timestamp DESC);
 CREATE INDEX idx_events_project ON episodic_events(project_id, timestamp DESC);
@@ -105,7 +105,7 @@ CREATE INDEX idx_events_symbol ON episodic_events(file_path, symbol_name);
 CREATE INDEX idx_events_language ON episodic_events(language);
 CREATE INDEX idx_events_git_commit ON episodic_events(git_commit);
 CREATE TABLE working_memory (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 content TEXT NOT NULL,
                 content_type TEXT NOT NULL DEFAULT 'verbal',
@@ -142,7 +142,7 @@ CREATE VIEW v_working_memory_current AS
                     CAST((julianday('now') - julianday(last_accessed)) * 86400 AS REAL)) as current_activation
             FROM working_memory;
 CREATE TABLE procedures (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL UNIQUE,
                 category TEXT NOT NULL,
                 description TEXT,
@@ -159,7 +159,7 @@ CREATE TABLE procedures (
                 created_by TEXT DEFAULT 'user'
             );
 CREATE TABLE procedure_params (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 procedure_id INTEGER NOT NULL,
                 param_name TEXT NOT NULL,
                 param_type TEXT NOT NULL,
@@ -169,7 +169,7 @@ CREATE TABLE procedure_params (
                 FOREIGN KEY (procedure_id) REFERENCES procedures(id) ON DELETE CASCADE
             );
 CREATE TABLE procedure_executions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 procedure_id INTEGER NOT NULL,
                 project_id INTEGER NOT NULL,
                 timestamp INTEGER NOT NULL,
@@ -184,7 +184,7 @@ CREATE INDEX idx_procedures_category ON procedures(category);
 CREATE INDEX idx_procedures_usage ON procedures(usage_count DESC);
 CREATE INDEX idx_executions_procedure ON procedure_executions(procedure_id);
 CREATE TABLE prospective_tasks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 content TEXT NOT NULL,
                 active_form TEXT NOT NULL,
@@ -199,7 +199,7 @@ CREATE TABLE prospective_tasks (
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             );
 CREATE TABLE task_triggers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 task_id INTEGER NOT NULL,
                 trigger_type TEXT NOT NULL,
                 trigger_value TEXT,
@@ -220,7 +220,7 @@ CREATE INDEX idx_tasks_status ON prospective_tasks(status);
 CREATE INDEX idx_tasks_priority ON prospective_tasks(priority);
 CREATE INDEX idx_tasks_due ON prospective_tasks(due_at);
 CREATE TABLE entities (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL,
                 entity_type TEXT NOT NULL,
                 project_id INTEGER,
@@ -231,7 +231,7 @@ CREATE TABLE entities (
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             );
 CREATE TABLE entity_relations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 from_entity_id INTEGER NOT NULL,
                 to_entity_id INTEGER NOT NULL,
                 relation_type TEXT NOT NULL,
@@ -245,7 +245,7 @@ CREATE TABLE entity_relations (
                 FOREIGN KEY (to_entity_id) REFERENCES entities(id) ON DELETE CASCADE
             );
 CREATE TABLE entity_observations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 entity_id INTEGER NOT NULL,
                 content TEXT NOT NULL,
                 observation_type TEXT,
@@ -264,7 +264,7 @@ CREATE INDEX idx_relations_to ON entity_relations(to_entity_id);
 CREATE INDEX idx_relations_type ON entity_relations(relation_type);
 CREATE INDEX idx_observations_entity ON entity_observations(entity_id);
 CREATE TABLE domain_coverage (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 domain TEXT UNIQUE NOT NULL,
                 category TEXT NOT NULL DEFAULT 'general',
 
@@ -284,7 +284,7 @@ CREATE TABLE domain_coverage (
                 expertise_level TEXT DEFAULT 'beginner'
             );
 CREATE TABLE knowledge_transfer (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 source_project_id INTEGER NOT NULL,
                 target_project_id INTEGER NOT NULL,
                 domain TEXT NOT NULL,
@@ -297,7 +297,7 @@ CREATE INDEX idx_coverage_domain ON domain_coverage(domain);
 CREATE INDEX idx_domain_category ON domain_coverage(category);
 CREATE INDEX idx_transfer_domain ON knowledge_transfer(domain);
 CREATE TABLE consolidation_runs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER,
                 started_at INTEGER NOT NULL,
                 completed_at INTEGER,
@@ -324,7 +324,7 @@ CREATE TABLE consolidation_runs (
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             );
 CREATE TABLE extracted_patterns (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 consolidation_run_id INTEGER NOT NULL,
                 pattern_type TEXT NOT NULL,
                 pattern_content TEXT NOT NULL,
@@ -337,7 +337,7 @@ CREATE TABLE extracted_patterns (
                 FOREIGN KEY (consolidation_run_id) REFERENCES consolidation_runs(id) ON DELETE CASCADE
             );
 CREATE TABLE memory_conflicts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 consolidation_run_id INTEGER NOT NULL,
                 memory1_id INTEGER NOT NULL,
                 memory2_id INTEGER NOT NULL,
@@ -349,7 +349,7 @@ CREATE TABLE memory_conflicts (
 CREATE INDEX idx_consolidation_runs_quality ON consolidation_runs(overall_quality_score DESC);
 CREATE INDEX idx_consolidation_runs_project_time ON consolidation_runs(project_id, started_at DESC);
 CREATE TABLE phases (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 task_id INTEGER NOT NULL,
                 phase_name TEXT NOT NULL,
@@ -381,7 +381,7 @@ CREATE TABLE memory_quality (
                 PRIMARY KEY (memory_id, memory_layer)
             );
 CREATE TABLE knowledge_transfers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 from_project_id INTEGER NOT NULL,
                 to_project_id INTEGER NOT NULL,
                 knowledge_item_id INTEGER NOT NULL,
@@ -393,7 +393,7 @@ CREATE INDEX idx_quality_layer ON memory_quality(memory_layer);
 CREATE INDEX idx_quality_usefulness ON memory_quality(usefulness_score);
 CREATE INDEX idx_transfer_from ON knowledge_transfers(from_project_id);
 CREATE TABLE planning_patterns (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 pattern_type TEXT NOT NULL,
                 name TEXT NOT NULL,
@@ -415,7 +415,7 @@ CREATE TABLE planning_patterns (
                 UNIQUE(project_id, name)
             );
 CREATE TABLE decomposition_strategies (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 strategy_name TEXT NOT NULL,
                 description TEXT NOT NULL,
@@ -436,7 +436,7 @@ CREATE TABLE decomposition_strategies (
                 UNIQUE(project_id, strategy_name)
             );
 CREATE TABLE orchestrator_patterns (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 pattern_name TEXT NOT NULL,
                 description TEXT NOT NULL,
@@ -457,7 +457,7 @@ CREATE TABLE orchestrator_patterns (
                 UNIQUE(project_id, pattern_name)
             );
 CREATE TABLE validation_rules (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 rule_name TEXT NOT NULL,
                 description TEXT NOT NULL,
@@ -480,7 +480,7 @@ CREATE TABLE validation_rules (
                 UNIQUE(project_id, rule_name)
             );
 CREATE TABLE execution_feedback (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 task_id INTEGER,
                 pattern_id INTEGER,
@@ -525,7 +525,7 @@ CREATE INDEX idx_feedback_created
             ON execution_feedback(project_id, created_at DESC)
         ;
 CREATE TABLE spatial_nodes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
                 full_path TEXT NOT NULL,
@@ -548,7 +548,7 @@ CREATE TABLE spatial_relations (
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             );
 CREATE TABLE symbol_nodes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
                 file_path TEXT NOT NULL,
@@ -594,7 +594,7 @@ CREATE TABLE sessions (
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             );
 CREATE TABLE conversations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 session_id TEXT NOT NULL,
                 thread_id TEXT UNIQUE NOT NULL,
@@ -607,7 +607,7 @@ CREATE TABLE conversations (
                 FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
             );
 CREATE TABLE messages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 role TEXT NOT NULL,
                 content TEXT NOT NULL,
                 tokens_estimate INTEGER DEFAULT 0,
@@ -616,7 +616,7 @@ CREATE TABLE messages (
                 created_at INTEGER NOT NULL
             );
 CREATE TABLE conversation_turns (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 conversation_id INTEGER NOT NULL,
                 turn_number INTEGER NOT NULL,
                 user_message_id INTEGER,
@@ -629,7 +629,7 @@ CREATE TABLE conversation_turns (
                 FOREIGN KEY (assistant_message_id) REFERENCES messages(id) ON DELETE SET NULL
             );
 CREATE TABLE conversation_metadata (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 conversation_id INTEGER NOT NULL,
                 turn_count INTEGER DEFAULT 0,
                 total_tokens INTEGER DEFAULT 0,
@@ -647,7 +647,7 @@ CREATE INDEX idx_conversations_status ON conversations(status);
 CREATE INDEX idx_turns_conversation ON conversation_turns(conversation_id);
 CREATE INDEX idx_messages_role ON messages(role);
 CREATE TABLE safety_policies (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
                 description TEXT,
@@ -674,7 +674,7 @@ CREATE TABLE safety_policies (
                 UNIQUE(project_id, name)
             );
 CREATE TABLE approval_requests (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 agent_id TEXT,
                 change_type TEXT NOT NULL,
@@ -702,7 +702,7 @@ CREATE TABLE approval_requests (
                 FOREIGN KEY (pre_snapshot_id) REFERENCES code_snapshots(id) ON DELETE SET NULL
             );
 CREATE TABLE audit_entries (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 timestamp INTEGER NOT NULL,
 
@@ -733,7 +733,7 @@ CREATE TABLE audit_entries (
                 FOREIGN KEY (post_snapshot_id) REFERENCES code_snapshots(id) ON DELETE SET NULL
             );
 CREATE TABLE code_snapshots (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 created_at INTEGER NOT NULL,
 
@@ -752,7 +752,7 @@ CREATE TABLE code_snapshots (
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             );
 CREATE TABLE change_recommendations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 approval_request_id INTEGER NOT NULL,
 
                 recommendation TEXT NOT NULL,  -- "approve" | "reject" | "request_changes" | "escalate"
@@ -780,7 +780,7 @@ CREATE TABLE schema_version (
                 migration_file TEXT
             );
 CREATE TABLE memory_updates (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 original_id INTEGER NOT NULL,
 updated_id INTEGER NOT NULL,
 update_reason TEXT,
@@ -794,7 +794,7 @@ CREATE INDEX idx_memory_updates_updated ON memory_updates(updated_id);
 CREATE INDEX idx_memories_consolidation_state ON memories(consolidation_state);
 CREATE INDEX idx_memories_last_retrieved ON memories(last_retrieved);
 CREATE TABLE active_goals (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER NOT NULL,
 goal_text TEXT NOT NULL,
 goal_type TEXT NOT NULL CHECK (goal_type IN ('primary', 'subgoal', 'maintenance')),
@@ -811,7 +811,7 @@ FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
 FOREIGN KEY (parent_goal_id) REFERENCES active_goals(id) ON DELETE SET NULL
 );
 CREATE TABLE attention_focus (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER NOT NULL,
 goal_id INTEGER,
 focus_target TEXT,
@@ -824,7 +824,7 @@ FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
 FOREIGN KEY (goal_id) REFERENCES active_goals(id) ON DELETE CASCADE
 );
 CREATE TABLE working_memory_decay_log (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 wm_id INTEGER NOT NULL,
 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 activation_level REAL CHECK (activation_level >= 0.0 AND activation_level <= 1.0),
@@ -832,7 +832,7 @@ access_count INTEGER DEFAULT 0,
 FOREIGN KEY (wm_id) REFERENCES working_memory(id) ON DELETE CASCADE
 );
 CREATE TABLE consolidation_routes (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 wm_id INTEGER NOT NULL,
 target_layer TEXT NOT NULL CHECK (target_layer IN ('semantic', 'episodic', 'procedural', 'prospective')),
 confidence REAL CHECK (confidence >= 0.0 AND confidence <= 1.0),
@@ -907,7 +907,7 @@ AVG(current_activation) as avg_activation
 FROM v_working_memory_current
 GROUP BY project_id;
 CREATE TABLE advisory_locks (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 lock_key TEXT NOT NULL UNIQUE,        -- Unique identifier for the lock
 owner TEXT NOT NULL,                  -- Who owns the lock (user/session ID)
 acquired_at INTEGER NOT NULL,         -- When lock was acquired
@@ -916,7 +916,7 @@ metadata TEXT,                        -- JSON metadata about the lock
 UNIQUE(lock_key)
 );
 CREATE TABLE resource_quotas (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER,                   -- NULL for global quotas
 resource_type TEXT NOT NULL,          -- memory_count|episodic_events|procedures|entities|storage_mb
 quota_limit INTEGER NOT NULL,         -- Maximum allowed
@@ -926,7 +926,7 @@ UNIQUE(project_id, resource_type),
 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 CREATE TABLE resource_usage_log (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER,
 resource_type TEXT NOT NULL,
 operation TEXT NOT NULL,              -- create|update|delete
@@ -943,7 +943,7 @@ CREATE INDEX idx_resource_quotas_type ON resource_quotas(resource_type);
 CREATE INDEX idx_resource_usage_project ON resource_usage_log(project_id);
 CREATE INDEX idx_resource_usage_time ON resource_usage_log(timestamp DESC);
 CREATE TABLE attention_salience (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER NOT NULL,
 memory_id INTEGER NOT NULL,
 memory_layer TEXT NOT NULL CHECK (memory_layer IN ('working', 'semantic', 'episodic', 'procedural', 'prospective', 'graph')),
@@ -957,7 +957,7 @@ conflicting_memory_id INTEGER,
 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 CREATE TABLE attention_state (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER NOT NULL,
 focus_memory_id INTEGER NOT NULL,
 focus_layer TEXT NOT NULL,
@@ -972,7 +972,7 @@ FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
 FOREIGN KEY (previous_focus_id) REFERENCES attention_state(id) ON DELETE SET NULL
 );
 CREATE TABLE attention_inhibition (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER NOT NULL,
 memory_id INTEGER NOT NULL,
 memory_layer TEXT NOT NULL,
@@ -984,7 +984,7 @@ expires_at TIMESTAMP,
 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 CREATE TABLE association_links (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER NOT NULL,
 from_memory_id INTEGER NOT NULL,
 to_memory_id INTEGER NOT NULL,
@@ -999,7 +999,7 @@ FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
 UNIQUE(project_id, from_memory_id, to_memory_id, from_layer, to_layer)
 );
 CREATE TABLE activation_state (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER NOT NULL,
 memory_id INTEGER NOT NULL,
 memory_layer TEXT NOT NULL,
@@ -1011,7 +1011,7 @@ FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
 UNIQUE(project_id, memory_id, memory_layer)
 );
 CREATE TABLE priming_state (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER NOT NULL,
 memory_id INTEGER NOT NULL,
 memory_layer TEXT NOT NULL,
@@ -1022,7 +1022,7 @@ FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
 UNIQUE(project_id, memory_id, memory_layer)
 );
 CREATE TABLE memory_access_log (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER NOT NULL,
 memory_id INTEGER NOT NULL,
 memory_layer TEXT NOT NULL,
@@ -1032,7 +1032,7 @@ context_goal_id INTEGER,  -- What goal was active during access
 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 CREATE TABLE hebbian_stats (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER NOT NULL,
 link_id INTEGER NOT NULL,
 strengthening_events INTEGER DEFAULT 0,
@@ -1198,7 +1198,7 @@ WHERE p.expires_at > CURRENT_TIMESTAMP
 ORDER BY current_boost DESC
 /* v_primed_memories(project_id,memory_id,memory_layer,priming_strength,primed_at,expires_at,remaining_seconds,current_boost) */;
 CREATE TABLE executive_goals (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER NOT NULL,
 parent_goal_id INTEGER,
 goal_text TEXT NOT NULL,
@@ -1215,7 +1215,7 @@ FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
 FOREIGN KEY (parent_goal_id) REFERENCES executive_goals(id) ON DELETE SET NULL
 );
 CREATE TABLE task_switches (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER NOT NULL,
 from_goal_id INTEGER,
 to_goal_id INTEGER NOT NULL,
@@ -1228,7 +1228,7 @@ FOREIGN KEY (from_goal_id) REFERENCES executive_goals(id) ON DELETE SET NULL,
 FOREIGN KEY (to_goal_id) REFERENCES executive_goals(id) ON DELETE CASCADE
 );
 CREATE TABLE progress_milestones (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 goal_id INTEGER NOT NULL,
 milestone_text TEXT NOT NULL,
 expected_progress REAL CHECK (expected_progress > 0.0 AND expected_progress <= 1.0),
@@ -1238,7 +1238,7 @@ completed_at TIMESTAMP,
 FOREIGN KEY (goal_id) REFERENCES executive_goals(id) ON DELETE CASCADE
 );
 CREATE TABLE strategy_recommendations (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 goal_id INTEGER NOT NULL,
 strategy_name TEXT NOT NULL CHECK (strategy_name IN (
 'top_down', 'bottom_up', 'spike', 'incremental', 'parallel',
@@ -1251,7 +1251,7 @@ outcome TEXT CHECK (outcome IS NULL OR outcome IN ('success', 'failure', 'pendin
 FOREIGN KEY (goal_id) REFERENCES executive_goals(id) ON DELETE CASCADE
 );
 CREATE TABLE executive_metrics (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER NOT NULL,
 metric_date DATE DEFAULT CURRENT_DATE,
 total_goals INTEGER DEFAULT 0,
@@ -1335,7 +1335,7 @@ CREATE INDEX idx_memories_has_executive
 ON memories(compression_generated_at)
 WHERE content_executive IS NOT NULL;
 CREATE TABLE consolidation_metrics (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 memory_id INTEGER NOT NULL,
 compression_ratio REAL NOT NULL,  -- compressed_length / full_length
 fidelity_score REAL NOT NULL CHECK (fidelity_score >= 0.0 AND fidelity_score <= 1.0),
@@ -1350,7 +1350,7 @@ ON consolidation_metrics(memory_id);
 CREATE INDEX idx_consolidation_metrics_fidelity
 ON consolidation_metrics(fidelity_score DESC);
 CREATE TABLE project_rules (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER NOT NULL,
 name TEXT NOT NULL,
 description TEXT NOT NULL,
@@ -1376,7 +1376,7 @@ CREATE INDEX idx_project_rules_project_id ON project_rules(project_id);
 CREATE INDEX idx_project_rules_category ON project_rules(category);
 CREATE INDEX idx_project_rules_enabled ON project_rules(enabled);
 CREATE TABLE rule_validation_history (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 task_id INTEGER NOT NULL,
 project_id INTEGER NOT NULL,
 timestamp INTEGER NOT NULL,
@@ -1393,7 +1393,7 @@ CREATE INDEX idx_validation_history_task ON rule_validation_history(task_id);
 CREATE INDEX idx_validation_history_project ON rule_validation_history(project_id);
 CREATE INDEX idx_validation_history_compliant ON rule_validation_history(is_compliant);
 CREATE TABLE rule_overrides (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER NOT NULL,
 rule_id INTEGER NOT NULL,
 task_id INTEGER NOT NULL,
@@ -1412,7 +1412,7 @@ CREATE INDEX idx_overrides_project ON rule_overrides(project_id);
 CREATE INDEX idx_overrides_rule ON rule_overrides(rule_id);
 CREATE INDEX idx_overrides_status ON rule_overrides(status);
 CREATE TABLE rule_templates (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 name TEXT NOT NULL UNIQUE,
 description TEXT NOT NULL,
 category TEXT NOT NULL,
@@ -1422,7 +1422,7 @@ created_at INTEGER NOT NULL
 );
 CREATE INDEX idx_templates_category ON rule_templates(category);
 CREATE TABLE project_rule_config (
-id INTEGER PRIMARY KEY AUTOINCREMENT,
+id SERIAL PRIMARY KEY,
 project_id INTEGER NOT NULL,
 enforcement_level TEXT DEFAULT 'warning',
 auto_suggest_compliant_alternatives INTEGER DEFAULT 1,
@@ -1443,7 +1443,7 @@ CREATE INDEX idx_rule_config_project ON project_rule_config(project_id);
 CREATE VIEW tasks AS SELECT * FROM prospective_tasks
 /* tasks(id,project_id,content,active_form,created_at,due_at,completed_at,status,priority,assignee,notes,blocked_reason,phase,plan_json,plan_created_at,phase_started_at,phase_metrics_json,actual_duration_minutes,lessons_learned,failure_reason) */;
 CREATE TABLE semantic_memories (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 content TEXT NOT NULL,
                 tags TEXT,
                 importance REAL DEFAULT 0.5,
@@ -1451,7 +1451,7 @@ CREATE TABLE semantic_memories (
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 CREATE TABLE knowledge_gaps (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 gap_type TEXT NOT NULL,
                 domain TEXT,
                 severity TEXT DEFAULT 'medium',

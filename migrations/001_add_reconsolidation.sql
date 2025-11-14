@@ -11,7 +11,7 @@ ALTER TABLE memories ADD COLUMN version INTEGER DEFAULT 1;
 
 -- Create memory updates table for tracking reconsolidation history
 CREATE TABLE IF NOT EXISTS memory_updates (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     original_id INTEGER NOT NULL,
     updated_id INTEGER NOT NULL,
     update_reason TEXT,

@@ -1,57 +1,49 @@
 #!/bin/bash
-# Docker entrypoint for Athena MCP server
-# Initializes databases before starting server
+# Docker entrypoint for Athena Memory System
+# Initializes PostgreSQL and starts server
 
 set -e
 
-DB_PATH="/root/.athena/memory.db"
-SCHEMA_FILE="/app/scripts/schema_clean.sql"
+# PostgreSQL connection configuration
+DB_HOST="${DB_HOST:-db}"
+DB_PORT="${DB_PORT:-5432}"
+DB_NAME="${DB_NAME:-athena}"
+DB_USER="${DB_USER:-postgres}"
 
-echo "Athena MCP Server Starting..."
+echo "Athena Memory System Starting..."
+echo "Database: $DB_HOST:$DB_PORT/$DB_NAME"
 
-# Initialize database if it doesn't exist
-if [[ ! -f "$DB_PATH" ]]; then
-    echo "First run detected - initializing databases..."
-
-    # Initialize SQLite
-    if [[ -f "$SCHEMA_FILE" ]]; then
-        echo "Initializing SQLite from schema..."
-        python3 /app/scripts/init_sqlite_with_vec.py "$DB_PATH" "$SCHEMA_FILE"
-
-        # Add dashboard views
-        sqlite3 "$DB_PATH" << 'EOF'
-CREATE VIEW IF NOT EXISTS tasks AS SELECT * FROM prospective_tasks;
-CREATE TABLE IF NOT EXISTS semantic_memories (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    content TEXT NOT NULL,
-    tags TEXT,
-    importance REAL DEFAULT 0.5,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE IF NOT EXISTS knowledge_gaps (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    gap_type TEXT NOT NULL,
-    domain TEXT,
-    severity TEXT DEFAULT 'medium',
-    description TEXT NOT NULL,
-    discovered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    resolved_at TIMESTAMP,
-    resolution_notes TEXT
-);
-EOF
-        echo "✓ SQLite initialized"
-    else
-        echo "⚠️  Schema file not found: $SCHEMA_FILE"
+# Wait for PostgreSQL to be ready
+echo "Waiting for PostgreSQL..."
+max_attempts=30
+attempt=0
+while ! psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1" >/dev/null 2>&1; do
+    attempt=$((attempt + 1))
+    if [ $attempt -gt $max_attempts ]; then
+        echo "❌ PostgreSQL not available after $max_attempts attempts"
+        exit 1
     fi
+    echo "  Attempt $attempt/$max_attempts..."
+    sleep 1
+done
 
-    # Initialize Qdrant (will auto-create collection on first use)
-    echo "✓ Qdrant will auto-initialize on first use"
-    echo "✓ Initialization complete"
-else
-    echo "Database already exists, skipping initialization"
-fi
+echo "✓ PostgreSQL is ready"
 
-# Start the MCP server
-echo "Starting MCP HTTP server on port 3000..."
-exec python3 src/athena/http/mcp_server.py
+# Run database migrations
+echo "Running database migrations..."
+python3 -c "
+import sys
+sys.path.insert(0, '/app/src')
+from athena.migrations.runner import MigrationRunner
+runner = MigrationRunner('postgresql://$DB_USER@$DB_HOST:$DB_PORT/$DB_NAME')
+runner.run_pending_migrations()
+"
+
+echo "✓ Database initialization complete"
+
+# Initialize Qdrant (will auto-create collection on first use)
+echo "✓ Qdrant will auto-initialize on first use"
+
+# Start the HTTP server
+echo "Starting HTTP server on port 8000..."
+exec python3 /app/src/athena/http/server.py

@@ -5,7 +5,7 @@
 
 -- Rule definitions table
 CREATE TABLE IF NOT EXISTS project_rules (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL,
 
     name TEXT NOT NULL,
@@ -40,7 +40,7 @@ CREATE INDEX IF NOT EXISTS idx_project_rules_enabled ON project_rules(enabled);
 
 -- Rule validation history table
 CREATE TABLE IF NOT EXISTS rule_validation_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     task_id INTEGER NOT NULL,
     project_id INTEGER NOT NULL,
     timestamp INTEGER NOT NULL,
@@ -63,7 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_validation_history_compliant ON rule_validation_h
 
 -- Rule overrides table
 CREATE TABLE IF NOT EXISTS rule_overrides (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL,
     rule_id INTEGER NOT NULL,
     task_id INTEGER NOT NULL,
@@ -89,7 +89,7 @@ CREATE INDEX IF NOT EXISTS idx_overrides_status ON rule_overrides(status);
 
 -- Rule templates table
 CREATE TABLE IF NOT EXISTS rule_templates (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     description TEXT NOT NULL,
     category TEXT NOT NULL,
@@ -102,7 +102,7 @@ CREATE INDEX IF NOT EXISTS idx_templates_category ON rule_templates(category);
 
 -- Project rule configuration table
 CREATE TABLE IF NOT EXISTS project_rule_config (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL,
 
     enforcement_level TEXT DEFAULT 'warning',

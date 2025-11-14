@@ -5,7 +5,7 @@
 
 -- Core goal hierarchy
 CREATE TABLE IF NOT EXISTS executive_goals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL,
     parent_goal_id INTEGER,
     goal_text TEXT NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS executive_goals (
 
 -- Task switching events
 CREATE TABLE IF NOT EXISTS task_switches (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL,
     from_goal_id INTEGER,
     to_goal_id INTEGER NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS task_switches (
 
 -- Progress milestones
 CREATE TABLE IF NOT EXISTS progress_milestones (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     goal_id INTEGER NOT NULL,
     milestone_text TEXT NOT NULL,
     expected_progress REAL CHECK (expected_progress > 0.0 AND expected_progress <= 1.0),
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS progress_milestones (
 
 -- Strategy recommendations
 CREATE TABLE IF NOT EXISTS strategy_recommendations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     goal_id INTEGER NOT NULL,
     strategy_name TEXT NOT NULL CHECK (strategy_name IN (
         'top_down', 'bottom_up', 'spike', 'incremental', 'parallel',
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS strategy_recommendations (
 
 -- Executive function metrics
 CREATE TABLE IF NOT EXISTS executive_metrics (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL,
     metric_date DATE DEFAULT CURRENT_DATE,
     total_goals INTEGER DEFAULT 0,

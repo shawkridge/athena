@@ -9,7 +9,7 @@
 
 -- Salience tracking (novelty, surprise, contradiction)
 CREATE TABLE IF NOT EXISTS attention_salience (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL,
     memory_id INTEGER NOT NULL,
     memory_layer TEXT NOT NULL CHECK (memory_layer IN ('working', 'semantic', 'episodic', 'procedural', 'prospective', 'graph')),
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS attention_salience (
 
 -- Attention state (what's currently focused)
 CREATE TABLE IF NOT EXISTS attention_state (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL,
     focus_memory_id INTEGER NOT NULL,
     focus_layer TEXT NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS attention_state (
 
 -- Inhibited memories (suppressed from retrieval)
 CREATE TABLE IF NOT EXISTS attention_inhibition (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL,
     memory_id INTEGER NOT NULL,
     memory_layer TEXT NOT NULL,
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS attention_inhibition (
 
 -- Associative links between memories
 CREATE TABLE IF NOT EXISTS association_links (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL,
     from_memory_id INTEGER NOT NULL,
     to_memory_id INTEGER NOT NULL,
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS association_links (
 
 -- Current activation levels (transient state)
 CREATE TABLE IF NOT EXISTS activation_state (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL,
     memory_id INTEGER NOT NULL,
     memory_layer TEXT NOT NULL,
@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS activation_state (
 
 -- Temporal priming state
 CREATE TABLE IF NOT EXISTS priming_state (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL,
     memory_id INTEGER NOT NULL,
     memory_layer TEXT NOT NULL,
@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS priming_state (
 
 -- Access history for Hebbian learning
 CREATE TABLE IF NOT EXISTS memory_access_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL,
     memory_id INTEGER NOT NULL,
     memory_layer TEXT NOT NULL,
@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS memory_access_log (
 
 -- Learning statistics
 CREATE TABLE IF NOT EXISTS hebbian_stats (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL,
     link_id INTEGER NOT NULL,
     strengthening_events INTEGER DEFAULT 0,

@@ -9,7 +9,7 @@
 
 -- Core working memory store (7±2 items max - Miller's law)
 CREATE TABLE IF NOT EXISTS working_memory (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL,
     content TEXT NOT NULL,
     content_type TEXT NOT NULL CHECK (content_type IN ('verbal', 'spatial', 'episodic', 'goal')),
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS working_memory (
 
 -- Active goals managed by Central Executive
 CREATE TABLE IF NOT EXISTS active_goals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL,
     goal_text TEXT NOT NULL,
     goal_type TEXT NOT NULL CHECK (goal_type IN ('primary', 'subgoal', 'maintenance')),
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS active_goals (
 
 -- Attention focus tracking
 CREATE TABLE IF NOT EXISTS attention_focus (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL,
     goal_id INTEGER,
     focus_target TEXT,
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS attention_focus (
 
 -- Decay history for psychological validation
 CREATE TABLE IF NOT EXISTS working_memory_decay_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     wm_id INTEGER NOT NULL,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     activation_level REAL CHECK (activation_level >= 0.0 AND activation_level <= 1.0),
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS working_memory_decay_log (
 
 -- Consolidation routing decisions (for ML training)
 CREATE TABLE IF NOT EXISTS consolidation_routes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     wm_id INTEGER NOT NULL,
     target_layer TEXT NOT NULL CHECK (target_layer IN ('semantic', 'episodic', 'procedural', 'prospective')),
     confidence REAL CHECK (confidence >= 0.0 AND confidence <= 1.0),

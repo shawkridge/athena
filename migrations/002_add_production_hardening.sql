@@ -5,7 +5,7 @@
 
 -- Advisory locks table for multi-user safety
 CREATE TABLE IF NOT EXISTS advisory_locks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     lock_key TEXT NOT NULL UNIQUE,        -- Unique identifier for the lock
     owner TEXT NOT NULL,                  -- Who owns the lock (user/session ID)
     acquired_at INTEGER NOT NULL,         -- When lock was acquired
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS advisory_locks (
 
 -- Resource quotas table
 CREATE TABLE IF NOT EXISTS resource_quotas (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER,                   -- NULL for global quotas
     resource_type TEXT NOT NULL,          -- memory_count|episodic_events|procedures|entities|storage_mb
     quota_limit INTEGER NOT NULL,         -- Maximum allowed
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS resource_quotas (
 
 -- Resource usage tracking
 CREATE TABLE IF NOT EXISTS resource_usage_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     project_id INTEGER,
     resource_type TEXT NOT NULL,
     operation TEXT NOT NULL,              -- create|update|delete

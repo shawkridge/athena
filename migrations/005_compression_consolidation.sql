@@ -34,7 +34,7 @@ WHERE content_executive IS NOT NULL;
 
 -- Optional: Create consolidation_metrics table for tracking compression quality
 CREATE TABLE IF NOT EXISTS consolidation_metrics (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     memory_id INTEGER NOT NULL,
     compression_ratio REAL NOT NULL,  -- compressed_length / full_length
     fidelity_score REAL NOT NULL CHECK (fidelity_score >= 0.0 AND fidelity_score <= 1.0),
