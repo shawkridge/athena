@@ -47,8 +47,8 @@ class ConsolidationSystem:
         self.episodic_store = episodic_store
         self.procedural_store = procedural_store
         self.meta_store = meta_store
-        # Schema is initialized centrally in database.py
-        #
+        # Ensure consolidation schema is created
+        self._ensure_schema()
     def _ensure_schema(self):
         """Ensure consolidation tables exist."""
         cursor = self.db.get_cursor()
@@ -89,9 +89,9 @@ class ConsolidationSystem:
 
                 source_events TEXT,
 
-                created_procedure BOOLEAN DEFAULT 0,
-                created_semantic_memory BOOLEAN DEFAULT 0,
-                updated_entity BOOLEAN DEFAULT 0,
+                created_procedure BOOLEAN DEFAULT FALSE,
+                created_semantic_memory BOOLEAN DEFAULT FALSE,
+                updated_entity BOOLEAN DEFAULT FALSE,
 
                 FOREIGN KEY (consolidation_run_id) REFERENCES consolidation_runs(id) ON DELETE CASCADE
             )
@@ -209,7 +209,7 @@ class ConsolidationSystem:
 
         # Get all memories
         if project_id:
-            cursor.execute("SELECT id, access_count, usefulness_score FROM memories WHERE project_id = ?", (project_id,))
+            cursor.execute("SELECT id, access_count, usefulness_score FROM memories WHERE project_id = %s", (project_id,))
         else:
             cursor.execute("SELECT id, access_count, usefulness_score FROM memories")
 
@@ -226,7 +226,7 @@ class ConsolidationSystem:
             new_score = min(1.0, current_score * 0.8 + (min(access_count, 10) / 10.0) * 0.2)
 
             cursor.execute(
-                "UPDATE memories SET usefulness_score = ? WHERE id = ?",
+                "UPDATE memories SET usefulness_score = %s WHERE id = %s",
                 (new_score, memory_id)
             )
 
@@ -244,12 +244,12 @@ class ConsolidationSystem:
         # Find low-value memories
         if project_id:
             cursor.execute(
-                "SELECT id FROM memories WHERE project_id = ? AND usefulness_score < ? AND access_count < 2",
+                "SELECT id FROM memories WHERE project_id = %s AND usefulness_score < %s AND access_count < 2",
                 (project_id, threshold)
             )
         else:
             cursor.execute(
-                "SELECT id FROM memories WHERE usefulness_score < ? AND access_count < 2",
+                "SELECT id FROM memories WHERE usefulness_score < %s AND access_count < 2",
                 (threshold,)
             )
 
@@ -445,7 +445,7 @@ class ConsolidationSystem:
                 SELECT m1.id as id1, m2.id as id2, m1.content as content1, m2.content as content2
                 FROM memories m1
                 JOIN memories m2 ON m1.project_id = m2.project_id AND m1.id < m2.id
-                WHERE m1.project_id = ? AND m1.content = m2.content
+                WHERE m1.project_id = %s AND m1.content = m2.content
             """, (project_id,))
         else:
             cursor.execute("""
@@ -459,7 +459,7 @@ class ConsolidationSystem:
         for row in cursor.fetchall():
             # Duplicate found - keep the one with higher usefulness
             cursor.execute(
-                "SELECT usefulness_score FROM memories WHERE id IN (?, ?)",
+                "SELECT usefulness_score FROM memories WHERE id IN (%s, %s)",
                 (row["id1"], row["id2"])
             )
             scores = cursor.fetchall()
@@ -482,7 +482,7 @@ class ConsolidationSystem:
             cursor.execute("""
                 UPDATE memories
                 SET usefulness_score = MIN(1.0, usefulness_score + 0.1)
-                WHERE project_id = ? AND access_count > 5
+                WHERE project_id = %s AND access_count > 5
             """, (project_id,))
         else:
             cursor.execute("""
@@ -500,7 +500,7 @@ class ConsolidationSystem:
 
         if project_id:
             cursor.execute(
-                "SELECT DISTINCT tags FROM memories WHERE project_id = ?",
+                "SELECT DISTINCT tags FROM memories WHERE project_id = %s",
                 (project_id,)
             )
         else:
@@ -515,7 +515,7 @@ class ConsolidationSystem:
 
         if project_id:
             cursor.execute(
-                "SELECT AVG(usefulness_score) as avg FROM memories WHERE project_id = ?",
+                "SELECT AVG(usefulness_score) as avg FROM memories WHERE project_id = %s",
                 (project_id,)
             )
         else:
@@ -529,7 +529,7 @@ class ConsolidationSystem:
         cursor = self.db.get_cursor()
 
         if project_id:
-            cursor.execute("SELECT COUNT(*) as count FROM memories WHERE project_id = ?", (project_id,))
+            cursor.execute("SELECT COUNT(*) as count FROM memories WHERE project_id = %s", (project_id,))
         else:
             cursor.execute("SELECT COUNT(*) as count FROM memories")
 
@@ -548,7 +548,7 @@ class ConsolidationSystem:
         cursor.execute("""
             INSERT INTO consolidation_runs (
                 project_id, started_at, status, consolidation_type
-            ) VALUES (?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s)
         """, (
             run.project_id,
             int(run.started_at.timestamp()),
@@ -590,15 +590,15 @@ class ConsolidationSystem:
 
         cursor.execute("""
             UPDATE consolidation_runs
-            SET completed_at = ?, status = ?,
-                memories_scored = ?, memories_pruned = ?,
-                patterns_extracted = ?, conflicts_resolved = ?,
-                avg_quality_before = ?, avg_quality_after = ?,
-                compression_ratio = ?, retrieval_recall = ?,
-                pattern_consistency = ?, avg_information_density = ?,
-                overall_quality_score = ?,
-                notes = ?
-            WHERE id = ?
+            SET completed_at = %s, status = %s,
+                memories_scored = %s, memories_pruned = %s,
+                patterns_extracted = %s, conflicts_resolved = %s,
+                avg_quality_before = %s, avg_quality_after = %s,
+                compression_ratio = %s, retrieval_recall = %s,
+                pattern_consistency = %s, avg_information_density = %s,
+                overall_quality_score = %s,
+                notes = %s
+            WHERE id = %s
         """, (
             int(time.time()),
             status,
@@ -649,7 +649,7 @@ class ConsolidationSystem:
             cursor = self.db.get_cursor()
             if project_id:
                 cursor.execute(
-                    "SELECT session_id FROM episodic_events WHERE project_id = ? ORDER BY timestamp DESC LIMIT 1",
+                    "SELECT session_id FROM episodic_events WHERE project_id = %s ORDER BY timestamp DESC LIMIT 1",
                     (project_id,)
                 )
             else:
@@ -716,7 +716,7 @@ class ConsolidationSystem:
             INSERT INTO extracted_patterns (
                 consolidation_run_id, pattern_type, pattern_content,
                 confidence, occurrences, source_events
-            ) VALUES (?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s)
         """, (
             pattern.consolidation_run_id,
             pattern_type_str,
@@ -734,7 +734,7 @@ class ConsolidationSystem:
 
         if project_id:
             cursor.execute(
-                "SELECT * FROM consolidation_runs WHERE project_id = ? ORDER BY started_at DESC LIMIT 1",
+                "SELECT * FROM consolidation_runs WHERE project_id = %s ORDER BY started_at DESC LIMIT 1",
                 (project_id,)
             )
         else:
