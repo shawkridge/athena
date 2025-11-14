@@ -1,11 +1,11 @@
 #!/bin/bash
-# Docker entrypoint for Athena Memory System
-# Initializes PostgreSQL and starts server
+# Application startup script for Athena Memory System
+# Initializes PostgreSQL and starts the application server
 
 set -e
 
 # PostgreSQL connection configuration
-DB_HOST="${DB_HOST:-db}"
+DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-5432}"
 DB_NAME="${DB_NAME:-athena}"
 DB_USER="${DB_USER:-postgres}"
@@ -33,7 +33,7 @@ echo "✓ PostgreSQL is ready"
 echo "Running database migrations..."
 python3 -c "
 import sys
-sys.path.insert(0, '/app/src')
+sys.path.insert(0, 'src')
 from athena.migrations.runner import MigrationRunner
 runner = MigrationRunner('postgresql://$DB_USER@$DB_HOST:$DB_PORT/$DB_NAME')
 runner.run_pending_migrations()
@@ -41,9 +41,6 @@ runner.run_pending_migrations()
 
 echo "✓ Database initialization complete"
 
-# Initialize Qdrant (will auto-create collection on first use)
-echo "✓ Qdrant will auto-initialize on first use"
-
 # Start the HTTP server
 echo "Starting HTTP server on port 8000..."
-exec python3 /app/src/athena/http/server.py
+exec python3 src/athena/http/server.py

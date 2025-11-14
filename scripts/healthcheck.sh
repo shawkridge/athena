@@ -1,7 +1,6 @@
 #!/bin/bash
 # Healthcheck for Athena Memory System
-# Used by Docker HEALTHCHECK directive
-# Checks PostgreSQL + MCP HTTP endpoint
+# Checks PostgreSQL + HTTP endpoint connectivity
 
 set -e
 

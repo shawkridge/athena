@@ -15,17 +15,9 @@
 set -e  # Exit on error
 
 # Determine paths
-if [[ "$1" == "--local" ]]; then
-    DB_HOST="${DB_HOST:-localhost}"
-    DB_PORT="${DB_PORT:-5432}"
-    QDRANT_URL="http://localhost:6333"
-    CONTEXT="local development"
-else
-    DB_HOST="${DB_HOST:-db}"
-    DB_PORT="${DB_PORT:-5432}"
-    QDRANT_URL="http://qdrant:6333"
-    CONTEXT="Docker container"
-fi
+DB_HOST="${DB_HOST:-localhost}"
+DB_PORT="${DB_PORT:-5432}"
+CONTEXT="local development"
 
 DB_NAME="${DB_NAME:-athena}"
 DB_USER="${DB_USER:-postgres}"
@@ -35,9 +27,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "======================================================================="
 echo "Athena PostgreSQL Database Initialization"
 echo "======================================================================="
-echo "Context:  $CONTEXT"
 echo "Database: postgresql://$DB_HOST:$DB_PORT/$DB_NAME"
-echo "Qdrant:   $QDRANT_URL"
 echo
 
 # Test PostgreSQL connection
@@ -73,29 +63,6 @@ for table in $CRITICAL_TABLES; do
     fi
 done
 
-# Initialize Qdrant (Python required)
-echo
-echo "Initializing Qdrant..."
-if command -v python3 &> /dev/null; then
-    python3 << 'PYEOF'
-import sys
-sys.path.insert(0, 'src')
-
-from athena.rag.qdrant_adapter import QdrantAdapter
-
-adapter = QdrantAdapter(url="http://localhost:6333")
-if adapter.health_check():
-    print(f"✓ Qdrant connected: {adapter.collection_name}")
-    print(f"✓ Embedding dimension: {adapter.embedding_dim}")
-    print(f"✓ Memory count: {adapter.count()}")
-else
-    print("⚠️  Qdrant not yet available")
-    print("   It will auto-initialize on first use")
-PYEOF
-else
-    echo "⚠️  Python3 not found, skipping Qdrant initialization"
-    echo "   Qdrant will auto-initialize on first use"
-fi
 
 # Report
 echo
@@ -103,12 +70,8 @@ echo "======================================================================="
 echo "✅ Initialization Complete!"
 echo "======================================================================="
 echo "PostgreSQL: postgresql://$DB_HOST:$DB_PORT/$DB_NAME"
-echo "Qdrant:     $QDRANT_URL"
 echo
-echo "Next steps:"
-if [[ "$1" == "--local" ]]; then
-    echo "  Start the application: python -m athena.http.server"
-else
-    echo "  Databases are ready for use"
-fi
+echo "Next step: Start the application"
+echo "  python -m athena.http.server"
+echo
 echo "======================================================================="

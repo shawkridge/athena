@@ -59,16 +59,6 @@ ENABLE_LLM_FEATURES = os.environ.get("ENABLE_LLM_FEATURES", "true").lower() == "
 
 
 # ============================================================================
-# Vector Database Configuration
-# ============================================================================
-
-# Qdrant Configuration
-QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
-QDRANT_COLLECTION = os.environ.get("QDRANT_COLLECTION", "semantic_memories")
-QDRANT_EMBEDDING_DIM = int(os.environ.get("QDRANT_EMBEDDING_DIM", "768"))
-
-
-# ============================================================================
 # RAG Configuration
 # ============================================================================
 
