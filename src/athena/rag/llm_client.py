@@ -127,6 +127,106 @@ Respond with ONLY a number between 0.0 and 1.0, nothing else."""
             return 0.5
 
 
+class LocalLLMClientSync(LLMClient):
+    """Synchronous wrapper around the async LocalLLMClient for local reasoning.
+
+    Uses the LocalLLMClient from athena.core for reasoning via localhost:8002
+    (Qwen2.5-7B-Instruct) with fallback to embedding-based text generation.
+
+    No external API dependencies - uses local llamacpp services.
+    """
+
+    def __init__(self, reasoning_url: Optional[str] = None, embedding_url: Optional[str] = None):
+        """Initialize LocalLLMClientSync.
+
+        Args:
+            reasoning_url: URL of llama.cpp reasoning server (default: localhost:8002)
+            embedding_url: URL of llama.cpp embedding server (default: localhost:8001)
+        """
+        try:
+            from athena.core.llm_client import LocalLLMClient
+            from athena.core import config
+        except ImportError as e:
+            raise ImportError(f"Failed to import LocalLLMClient from core: {e}")
+
+        reasoning_url = reasoning_url or config.LLAMACPP_REASONING_URL
+        embedding_url = embedding_url or config.LLAMACPP_EMBEDDINGS_URL
+
+        self.local_client = LocalLLMClient(
+            reasoning_url=reasoning_url,
+            embedding_url=embedding_url,
+            enable_compression=False,  # Disable compression for simplicity
+        )
+        logger.info(f"Initialized LocalLLMClientSync with reasoning at {reasoning_url}")
+
+    def generate(
+        self, prompt: str, max_tokens: int = 500, temperature: float = 0.7
+    ) -> str:
+        """Generate text using local reasoning service.
+
+        Args:
+            prompt: Input prompt
+            max_tokens: Maximum tokens to generate
+            temperature: Sampling temperature (0.0-1.0)
+
+        Returns:
+            Generated text
+        """
+        import asyncio
+
+        try:
+            # Create event loop for sync wrapper
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(
+                    self.local_client.reason(
+                        prompt=prompt,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                    )
+                )
+                return result.text
+            finally:
+                loop.close()
+        except Exception as e:
+            logger.error(f"Local reasoning generation failed: {e}")
+            raise
+
+    def score_relevance(self, query: str, document: str) -> float:
+        """Score relevance using local reasoning.
+
+        Args:
+            query: Search query
+            document: Document content
+
+        Returns:
+            Relevance score (0.0-1.0)
+        """
+        prompt = f"""Rate the relevance of this document to the query on a scale of 0.0 to 1.0.
+
+Query: {query}
+
+Document: {document}
+
+Consider:
+- Direct answer to query: High relevance (0.8-1.0)
+- Related context: Medium relevance (0.5-0.7)
+- Tangentially related: Low relevance (0.2-0.4)
+- Unrelated: 0.0-0.1
+
+Respond with ONLY a number between 0.0 and 1.0, nothing else."""
+
+        try:
+            response = self.generate(prompt, max_tokens=10, temperature=0.0)
+            score = float(response.strip())
+            # Clamp to valid range
+            return max(0.0, min(1.0, score))
+        except (ValueError, RuntimeError) as e:
+            logger.warning(f"Relevance scoring failed: {e}. Returning 0.0")
+            return 0.0
+
+
 class OllamaLLMClient(LLMClient):
     """Ollama local LLM client (free, local alternative)."""
 
@@ -228,15 +328,18 @@ Respond with ONLY a number between 0.0 and 1.0."""
 
 
 def create_llm_client(
-    provider: str = "claude",
+    provider: str = "auto",
     model: Optional[str] = None,
     api_key: Optional[str] = None,
     **kwargs,
 ) -> LLMClient:
     """Factory function to create LLM clients.
 
+    Prioritizes local services (llamacpp) over cloud APIs for independence and cost.
+
     Args:
-        provider: "claude" or "ollama"
+        provider: "auto" (default), "local", "claude", or "ollama"
+                 "auto" tries local first, then Claude as fallback
         model: Model name (optional, uses defaults)
         api_key: API key for Claude (optional, uses env var)
         **kwargs: Additional provider-specific arguments
@@ -245,29 +348,51 @@ def create_llm_client(
         Configured LLM client
 
     Raises:
-        ValueError: If provider is unknown
+        ValueError: If provider is unknown or no client available
 
     Examples:
-        >>> # Claude with API key
+        >>> # Auto-detect: tries local first, falls back to Claude
+        >>> client = create_llm_client()
+
+        >>> # Force local (localhost:8002)
+        >>> client = create_llm_client("local")
+
+        >>> # Force Claude with API key
         >>> client = create_llm_client("claude", api_key="sk-ant-...")
-
-        >>> # Ollama with custom model
-        >>> client = create_llm_client("ollama", model="mistral")
-
-        >>> # Auto-detect from environment
-        >>> client = create_llm_client()  # Uses ANTHROPIC_API_KEY if available
     """
     provider = provider.lower()
 
-    if provider == "claude":
+    # Auto mode: try local first, then Claude
+    if provider == "auto":
+        try:
+            logger.info("Trying local llamacpp reasoning service (localhost:8002)...")
+            return LocalLLMClientSync(**kwargs)
+        except Exception as e:
+            logger.warning(f"Local service unavailable: {e}. Falling back to Claude...")
+            if os.getenv("ANTHROPIC_API_KEY"):
+                model = model or "claude-sonnet-4"
+                return ClaudeLLMClient(api_key=api_key, model=model, **kwargs)
+            else:
+                raise RuntimeError(
+                    "No LLM service available. Either:\n"
+                    "1. Start llamacpp reasoning server on localhost:8002\n"
+                    "2. Set ANTHROPIC_API_KEY environment variable for Claude API"
+                )
+
+    elif provider == "local":
+        return LocalLLMClientSync(**kwargs)
+
+    elif provider == "claude":
         model = model or "claude-sonnet-4"
         return ClaudeLLMClient(api_key=api_key, model=model, **kwargs)
 
     elif provider == "ollama":
-        # Model defaults to config.OLLAMA_LLM_MODEL if not specified
+        # Keep for backward compatibility but warn users
+        logger.warning("Ollama provider is deprecated. Use 'local' for llamacpp instead.")
         return OllamaLLMClient(model=model, **kwargs)
 
     else:
         raise ValueError(
-            f"Unknown provider: {provider}. " f"Supported: 'claude', 'ollama'"
+            f"Unknown provider: {provider}. "
+            f"Supported: 'auto' (default), 'local', 'claude', 'ollama'"
         )
