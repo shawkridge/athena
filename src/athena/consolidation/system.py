@@ -397,8 +397,8 @@ class ConsolidationSystem:
                     pattern_type = pattern["pattern_type"]
                     tags = ["consolidation", f"pattern:{pattern_type}", "extracted"]
 
-                    # Store as semantic memory
-                    memory_id = self.memory_store.remember(
+                    # Store as semantic memory (use sync method to avoid async/sync mismatch)
+                    memory_id = self.memory_store.remember_sync(
                         content=pattern_content,
                         memory_type=MemoryType.PATTERN,
                         project_id=project_id,
