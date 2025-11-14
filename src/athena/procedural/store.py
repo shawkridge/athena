@@ -255,7 +255,7 @@ class ProceduralStore(BaseStore[Procedure]):
                 SELECT * FROM procedures
                 WHERE category = %s
                 ORDER BY usage_count DESC, success_rate DESC
-                LIMIT ?
+                LIMIT %s
             """,
                 (category_str, limit),
                 fetch_all=True,
@@ -265,7 +265,7 @@ class ProceduralStore(BaseStore[Procedure]):
                 """
                 SELECT * FROM procedures
                 ORDER BY usage_count DESC, success_rate DESC
-                LIMIT ?
+                LIMIT %s
             """,
                 (limit,),
                 fetch_all=True,

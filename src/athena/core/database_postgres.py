@@ -1474,6 +1474,64 @@ class PostgresDatabase:
             await conn.commit()
             return result[0]
 
+    async def list_memories(
+        self,
+        project_id: int,
+        limit: int = 100,
+        offset: int = 0,
+        sort_by: str = "created_at",
+    ) -> list:
+        """List memories for a project.
+
+        Args:
+            project_id: Project ID to filter by
+            limit: Maximum results to return
+            offset: Number of results to skip
+            sort_by: Column to sort by ('useful', 'recent', 'accessed', 'created_at')
+
+        Returns:
+            List of memory records as dicts
+        """
+        # Map sort_by parameter to actual column names
+        sort_columns = {
+            "useful": "usefulness_score DESC",
+            "recent": "created_at DESC",
+            "accessed": "last_accessed DESC",
+            "created_at": "created_at DESC",
+        }
+        sort_clause = sort_columns.get(sort_by, "created_at DESC")
+
+        async with self.get_connection() as conn:
+            cursor = await conn.execute(
+                f"""
+                SELECT id, project_id, content, memory_type, created_at,
+                       updated_at, last_accessed, usefulness_score, access_count
+                FROM memory_vectors
+                WHERE project_id = %s
+                ORDER BY {sort_clause}
+                LIMIT %s OFFSET %s
+                """,
+                (project_id, limit, offset),
+            )
+            rows = await cursor.fetchall()
+
+        # Convert to list of dicts for compatibility with MemoryStore
+        result = []
+        for row in (rows or []):
+            result.append({
+                "id": row[0],
+                "project_id": row[1],
+                "content": row[2],
+                "memory_type": row[3],
+                "created_at": row[4],
+                "updated_at": row[5],
+                "last_accessed": row[6],
+                "usefulness_score": row[7],
+                "access_count": row[8],
+            })
+
+        return result
+
     # ===========================================================================
     # TRANSACTION SUPPORT
     # ===========================================================================
