@@ -35,43 +35,54 @@ class ProceduralStore(BaseStore[Procedure]):
         """Convert database row to Procedure model.
 
         Args:
-            row: Database row as dict
+            row: Database row as dict or psycopg3 Row object
 
         Returns:
             Procedure instance
         """
-        # Parse JSON fields, ensuring lists remain lists
-        applicable_contexts = []
-        if row.get("applicable_contexts"):
-            parsed = self.deserialize_json(row.get("applicable_contexts"), [])
-            applicable_contexts = parsed if isinstance(parsed, list) else []
+        # Ensure row is a dict (psycopg3 Row objects can be converted to dict)
+        if not isinstance(row, dict):
+            row = dict(row) if hasattr(row, '__iter__') else row
 
+        # Parse steps if it's JSON string
         steps = []
         if row.get("steps"):
             parsed = self.deserialize_json(row.get("steps"), [])
             steps = parsed if isinstance(parsed, list) else []
 
-        examples = []
-        if row.get("examples"):
-            parsed = self.deserialize_json(row.get("examples"), [])
-            examples = parsed if isinstance(parsed, list) else []
+        # Handle inputs/outputs arrays from PostgreSQL
+        inputs = row.get("inputs") or []
+        outputs = row.get("outputs") or []
+
+        # Get category value safely
+        category_val = row.get("category")
+        category = None
+        if category_val:
+            try:
+                category = ProcedureCategory(category_val)
+            except (ValueError, KeyError):
+                # Invalid category value, skip
+                pass
+
+        # Use description as template if available, otherwise use name
+        template = row.get("description") or row.get("name") or "Unknown procedure"
 
         return Procedure(
             id=row.get("id"),
             name=row.get("name"),
-            category=ProcedureCategory(row.get("category")) if row.get("category") else None,
+            category=category,
             description=row.get("description"),
-            trigger_pattern=row.get("trigger_pattern"),
-            applicable_contexts=applicable_contexts,
-            template=row.get("template"),
+            trigger_pattern=None,  # Not in PostgreSQL schema
+            applicable_contexts=inputs if isinstance(inputs, list) else [],  # Map inputs to applicable_contexts
+            template=template,  # Use description as template
             steps=steps,
-            examples=examples,
-            success_rate=row.get("success_rate"),
-            usage_count=row.get("usage_count"),
-            avg_completion_time_ms=row.get("avg_completion_time_ms"),
-            created_at=self.from_timestamp(row.get("created_at")),
-            last_used=self.from_timestamp(row.get("last_used")) if row.get("last_used") else None,
-            created_by=row.get("created_by"),
+            examples=outputs if isinstance(outputs, list) else [],  # Map outputs to examples
+            success_rate=row.get("success_rate") or 0.0,
+            usage_count=row.get("execution_count") or 0,  # Map execution_count to usage_count
+            avg_completion_time_ms=None,  # Not in PostgreSQL schema
+            created_at=row.get("created_at") if isinstance(row.get("created_at"), datetime) else self.from_timestamp(row.get("created_at")),
+            last_used=row.get("last_executed"),  # Map last_executed to last_used
+            created_by=row.get("created_by") or "user",
         )
 
     def _ensure_schema(self):
@@ -165,33 +176,30 @@ class ProceduralStore(BaseStore[Procedure]):
         self.execute(
             """
             INSERT INTO procedures (
-                name, category, description,
-                trigger_pattern, applicable_contexts,
-                template, steps, examples,
-                success_rate, usage_count, avg_completion_time_ms,
-                created_at, last_used, created_by
+                project_id, name, category, description,
+                steps, inputs, outputs,
+                success_rate, execution_count,
+                last_executed, created_by
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
             (
+                1,  # Default project_id for global procedures
                 procedure.name,
                 category_str,
                 procedure.description,
-                procedure.trigger_pattern,
-                self.serialize_json(procedure.applicable_contexts),
-                procedure.template,
                 self.serialize_json(procedure.steps),
-                self.serialize_json(procedure.examples),
+                procedure.applicable_contexts,  # Map to inputs
+                procedure.examples,  # Map to outputs
                 procedure.success_rate,
-                procedure.usage_count,
-                procedure.avg_completion_time_ms,
-                int(procedure.created_at.timestamp()),
-                int(procedure.last_used.timestamp()) if procedure.last_used else None,
+                procedure.usage_count or 0,
+                procedure.last_used,
                 procedure.created_by,
             ),
         )
         self.commit()
-        result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
+        # PostgreSQL uses RETURNING clause
+        result = self.execute("SELECT currval(pg_get_serial_sequence('procedures', 'id'))", fetch_one=True)
         return result[0] if result else None
 
     def get_procedure(self, procedure_id: int) -> Optional[Procedure]:
@@ -208,9 +216,10 @@ class ProceduralStore(BaseStore[Procedure]):
         if not row:
             return None
 
-        col_names = ["id", "name", "category", "description", "trigger_pattern", "applicable_contexts",
-                     "template", "steps", "examples", "success_rate", "usage_count", "avg_completion_time_ms",
-                     "created_at", "last_used", "created_by"]
+        col_names = ["id", "project_id", "name", "category", "description",
+                     "steps", "inputs", "outputs",
+                     "success_rate", "execution_count", "last_executed",
+                     "created_by", "created_at", "updated_at"]
         return self._row_to_model(dict(zip(col_names, row)))
 
     def find_procedure(self, name: str) -> Optional[Procedure]:
@@ -227,9 +236,10 @@ class ProceduralStore(BaseStore[Procedure]):
         if not row:
             return None
 
-        col_names = ["id", "name", "category", "description", "trigger_pattern", "applicable_contexts",
-                     "template", "steps", "examples", "success_rate", "usage_count", "avg_completion_time_ms",
-                     "created_at", "last_used", "created_by"]
+        col_names = ["id", "project_id", "name", "category", "description",
+                     "steps", "inputs", "outputs",
+                     "success_rate", "execution_count", "last_executed",
+                     "created_by", "created_at", "updated_at"]
         return self._row_to_model(dict(zip(col_names, row)))
 
     def list_procedures(
@@ -244,9 +254,10 @@ class ProceduralStore(BaseStore[Procedure]):
         Returns:
             List of procedures
         """
-        col_names = ["id", "name", "category", "description", "trigger_pattern", "applicable_contexts",
-                     "template", "steps", "examples", "success_rate", "usage_count", "avg_completion_time_ms",
-                     "created_at", "last_used", "created_by"]
+        col_names = ["id", "project_id", "name", "category", "description",
+                     "steps", "inputs", "outputs",
+                     "success_rate", "execution_count", "last_executed",
+                     "created_by", "created_at", "updated_at"]
 
         if category:
             category_str = category.value if isinstance(category, ProcedureCategory) else category
@@ -271,7 +282,7 @@ class ProceduralStore(BaseStore[Procedure]):
                 fetch_all=True,
             )
 
-        return [self._row_to_model(dict(zip(col_names, row))) for row in (rows or [])]
+        return [self._row_to_model(row) for row in (rows or [])]
 
     def search_procedures(self, query: str, context: Optional[list[str]] = None) -> list[Procedure]:
         """Search procedures by name/description and context.
@@ -300,18 +311,19 @@ class ProceduralStore(BaseStore[Procedure]):
         sql = f"SELECT * FROM procedures WHERE ({' OR '.join(where_clauses)})"
 
         if context:
-            # Filter by applicable contexts (check if any context tag matches)
+            # Filter by inputs (context) - check if any context tag matches
             for ctx in context[:3]:  # Check up to 3 context tags
-                sql += " AND applicable_contexts LIKE %s"
+                sql += " AND inputs::text LIKE %s"
                 params.append(f"%{ctx}%")
 
-        sql += " ORDER BY usage_count DESC, success_rate DESC LIMIT 20"
+        sql += " ORDER BY execution_count DESC, success_rate DESC LIMIT 20"
 
         rows = self.execute(sql, params, fetch_all=True)
-        col_names = ["id", "name", "category", "description", "trigger_pattern", "applicable_contexts",
-                     "template", "steps", "examples", "success_rate", "usage_count", "avg_completion_time_ms",
-                     "created_at", "last_used", "created_by"]
-        return [self._row_to_model(dict(zip(col_names, row))) for row in (rows or [])]
+        col_names = ["id", "project_id", "name", "category", "description",
+                     "steps", "inputs", "outputs",
+                     "success_rate", "execution_count", "last_executed",
+                     "created_by", "created_at", "updated_at"]
+        return [self._row_to_model(row) for row in (rows or [])]
 
     def update_procedure_stats(
         self,
