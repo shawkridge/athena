@@ -157,6 +157,100 @@ PYTHON_EOF
 log "  ✓ Associations strengthened via Hebbian learning"
 log "  ✓ Related concepts linked"
 
+# Phase 4.5: Thread conversation turns for resume context
+log "Phase 4.5: Threading conversation context for resume..."
+
+python3 << 'PYTHON_EOF'
+import sys
+import os
+import json
+from pathlib import Path
+
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
+
+try:
+    from memory_bridge import MemoryBridge
+    from response_capture import ConversationMemoryBridge
+
+    # Initialize bridges
+    memory_bridge = MemoryBridge()
+    conv_bridge = ConversationMemoryBridge()
+
+    # Get project
+    project_path = os.getcwd()
+    project = memory_bridge.get_project_by_path(project_path)
+
+    if not project:
+        project = memory_bridge.get_project_by_path("/home/user/.work/default")
+
+    if project:
+        project_id = project['id']
+
+        # Try to load tool buffer from this session
+        tool_buffer_file = Path(f"/tmp/.claude_tool_buffer_{os.getpid()}.json")
+        tool_executions = []
+
+        if tool_buffer_file.exists():
+            try:
+                with open(tool_buffer_file, 'r') as f:
+                    tool_executions = json.load(f)
+                print(f"✓ Loaded {len(tool_executions)} tool executions for threading", file=sys.stderr)
+            except:
+                pass
+
+        # Get recent user questions
+        recent_questions = memory_bridge.search_memories(
+            project_id, "user_question", limit=5
+        )
+
+        if recent_questions['found'] > 0:
+            # Thread conversations: Question -> Response -> Tools
+            for i, question_rec in enumerate(recent_questions['results'][:3]):
+                question_id = question_rec.get('id', f'q_{i}')
+                question_text = question_rec.get('content', '')
+
+                # Create thread
+                conv_bridge.threader.start_thread(question_id, question_text)
+
+                # Add tool results to thread
+                if tool_executions:
+                    # Simple threading: link tools to question
+                    conv_bridge.threader.set_thread_outcome(
+                        outcome=f"Processed with {len(tool_executions)} tools",
+                        completed=True,
+                        result_summary=f"Used: {', '.join(set(t.get('tool_name', 'unknown') for t in tool_executions))}"
+                    )
+
+            # Store conversation threads as episodic events
+            events = conv_bridge.get_memory_events(conv_bridge.threader.threads)
+            for event in events:
+                memory_bridge.record_event(
+                    project_id=project_id,
+                    event_type=event['event_type'],
+                    content=event['content'],
+                    outcome=event.get('metadata', {}).get('tools_used', [])[0] if event.get('metadata', {}).get('tools_used') else 'completed'
+                )
+
+            print(f"✓ Threaded {len(conv_bridge.threader.threads)} conversation(s)", file=sys.stderr)
+        else:
+            print(f"ℹ No recent questions to thread", file=sys.stderr)
+
+        # Clean up tool buffer
+        if tool_buffer_file.exists():
+            tool_buffer_file.unlink()
+
+        memory_bridge.close()
+
+except Exception as e:
+    print(f"⚠ Conversation threading failed: {str(e)}", file=sys.stderr)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+
+PYTHON_EOF
+
+log "  ✓ Conversation turns threaded"
+log "  ✓ Tool executions linked to questions"
+
 # Phase 5: Quality assessment
 log "Phase 5: Assessing memory quality..."
 

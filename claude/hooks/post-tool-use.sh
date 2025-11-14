@@ -50,8 +50,7 @@ if [ -f "/home/user/.work/athena/.env.local" ]; then
 fi
 
 # Call Python directly to record episodic event using memory bridge
-# This stores tool execution details in memory for later consolidation
-# Note: If Claude Code doesn't provide tool context, we handle gracefully
+# This stores tool execution details in memory for later consolidation and response capture
 python3 << 'PYTHON_EOF'
 import sys
 import os
@@ -98,6 +97,40 @@ try:
 
 except Exception as e:
     print(f"⚠ Event recording failed: {str(e)}", file=sys.stderr)
+
+# Phase 5: Prepare tool execution for response capture threading
+# This will be used by session-end.sh to thread complete conversations
+try:
+    import json
+    from pathlib import Path
+
+    # Store tool execution in a session-local buffer for later threading
+    tool_buffer_file = Path(f"/tmp/.claude_tool_buffer_{os.getpid()}.json")
+
+    execution_record = {
+        "tool_name": tool_name,
+        "tool_status": tool_status,
+        "execution_time_ms": duration_ms,
+        "timestamp": datetime.utcnow().isoformat(),
+        "success": tool_status == "success"
+    }
+
+    # Append to buffer (create if not exists)
+    if tool_buffer_file.exists():
+        with open(tool_buffer_file, 'r') as f:
+            buffer = json.load(f)
+    else:
+        buffer = []
+
+    buffer.append(execution_record)
+
+    with open(tool_buffer_file, 'w') as f:
+        json.dump(buffer, f)
+
+    print(f"✓ Tool buffered for response threading", file=sys.stderr)
+
+except Exception as e:
+    print(f"⚠ Could not buffer tool for threading: {str(e)}", file=sys.stderr)
 PYTHON_EOF
 
 # Check for anomalies/errors
