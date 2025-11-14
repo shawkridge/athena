@@ -78,7 +78,7 @@ class DreamStore(BaseStore[DreamProcedure]):
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS dream_procedures (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 base_procedure_id INTEGER NOT NULL,
                 base_procedure_name TEXT NOT NULL,
                 dream_type TEXT NOT NULL,
@@ -113,7 +113,7 @@ class DreamStore(BaseStore[DreamProcedure]):
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS dream_generation_runs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 strategy TEXT NOT NULL,
                 timestamp INTEGER NOT NULL,
                 total_dreams_generated INTEGER,
@@ -131,7 +131,7 @@ class DreamStore(BaseStore[DreamProcedure]):
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS dream_metrics (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 timestamp INTEGER NOT NULL,
                 average_viability_score REAL,
                 tier1_count INTEGER,

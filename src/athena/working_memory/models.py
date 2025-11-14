@@ -102,7 +102,7 @@ class WorkingMemoryItem:
         """Create WorkingMemoryItem from database row.
 
         Args:
-            row: Database row dict from sqlite query
+            row: Database row dict from PostgreSQL query
 
         Returns:
             WorkingMemoryItem instance

@@ -33,7 +33,7 @@ class ProjectContextStore:
         # Project contexts table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS project_contexts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id TEXT UNIQUE NOT NULL,
                 name TEXT NOT NULL,
                 description TEXT,
@@ -51,7 +51,7 @@ class ProjectContextStore:
         # Decisions table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS project_decisions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id TEXT NOT NULL,
                 decision TEXT NOT NULL,
                 reasoning TEXT,
@@ -65,7 +65,7 @@ class ProjectContextStore:
         # Error patterns table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS project_errors (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id TEXT NOT NULL,
                 error_type TEXT NOT NULL,
                 frequency INTEGER DEFAULT 1,

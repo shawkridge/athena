@@ -60,7 +60,7 @@ class CentralExecutive:
                 # Create table for testing/standalone use
                 self.db.conn.execute("""
                     CREATE TABLE IF NOT EXISTS active_goals (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        id SERIAL PRIMARY KEY,
                         project_id INTEGER NOT NULL,
                         goal_text TEXT NOT NULL,
                         goal_type TEXT NOT NULL DEFAULT 'primary',

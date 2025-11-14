@@ -27,7 +27,7 @@ class CostOptimizationStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS resource_rates (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 organization_id INTEGER NOT NULL,
                 resource_type TEXT NOT NULL,
                 name TEXT NOT NULL,
@@ -47,7 +47,7 @@ class CostOptimizationStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS task_costs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 task_id INTEGER NOT NULL,
                 project_id INTEGER NOT NULL,
                 labor_cost REAL,
@@ -71,7 +71,7 @@ class CostOptimizationStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS budget_allocations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 total_budget REAL,
                 allocated_budget TEXT,
@@ -91,7 +91,7 @@ class CostOptimizationStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS roi_calculations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 task_id INTEGER NOT NULL,
                 project_id INTEGER NOT NULL,
                 total_cost REAL,
@@ -112,7 +112,7 @@ class CostOptimizationStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS cost_optimizations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 task_id INTEGER NOT NULL,
                 project_id INTEGER NOT NULL,
                 current_approach TEXT,
@@ -135,7 +135,7 @@ class CostOptimizationStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS cost_anomaly_alerts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 task_id INTEGER,
                 alert_type TEXT,

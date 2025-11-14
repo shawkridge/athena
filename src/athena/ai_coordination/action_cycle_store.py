@@ -42,7 +42,7 @@ class ActionCycleStore:
         # Action cycles table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS action_cycles (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 goal_id TEXT,
                 goal_description TEXT NOT NULL,
                 goal_priority REAL DEFAULT 5.0,
@@ -73,7 +73,7 @@ class ActionCycleStore:
         # Executions table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS cycle_executions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 cycle_id INTEGER NOT NULL,
                 attempt_number INTEGER NOT NULL,
                 execution_id TEXT,

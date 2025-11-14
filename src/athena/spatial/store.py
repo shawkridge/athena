@@ -81,7 +81,7 @@ class SpatialStore:
         # Spatial nodes table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS spatial_nodes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
                 full_path TEXT NOT NULL,
@@ -112,7 +112,7 @@ class SpatialStore:
         # Symbol nodes table (code-level symbols: functions, classes, methods)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS symbol_nodes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
                 file_path TEXT NOT NULL,

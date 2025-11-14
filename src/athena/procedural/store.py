@@ -88,7 +88,7 @@ class ProceduralStore(BaseStore[Procedure]):
         # Procedures table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS procedures (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL UNIQUE,
                 category TEXT NOT NULL,
                 description TEXT,
@@ -113,7 +113,7 @@ class ProceduralStore(BaseStore[Procedure]):
         # Procedure parameters
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS procedure_params (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 procedure_id INTEGER NOT NULL,
                 param_name TEXT NOT NULL,
                 param_type TEXT NOT NULL,
@@ -127,7 +127,7 @@ class ProceduralStore(BaseStore[Procedure]):
         # Execution history
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS procedure_executions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 procedure_id INTEGER NOT NULL,
                 project_id INTEGER NOT NULL,
                 timestamp INTEGER NOT NULL,

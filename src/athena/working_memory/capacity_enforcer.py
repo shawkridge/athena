@@ -69,7 +69,7 @@ class WorkingMemoryCapacityEnforcer:
             cursor = self.db.get_cursor()
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS working_memory (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY,
                     project_id INTEGER NOT NULL,
                     content TEXT NOT NULL,
                     content_type TEXT DEFAULT 'verbal',

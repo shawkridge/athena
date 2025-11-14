@@ -131,7 +131,7 @@ class ConversationStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS conversations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 session_id TEXT NOT NULL,
                 thread_id TEXT UNIQUE NOT NULL,
@@ -150,7 +150,7 @@ class ConversationStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS messages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 role TEXT NOT NULL,
                 content TEXT NOT NULL,
                 tokens_estimate INTEGER DEFAULT 0,
@@ -165,7 +165,7 @@ class ConversationStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS conversation_turns (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 conversation_id INTEGER NOT NULL,
                 turn_number INTEGER NOT NULL,
                 user_message_id INTEGER,
@@ -184,7 +184,7 @@ class ConversationStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS conversation_metadata (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 conversation_id INTEGER NOT NULL,
                 turn_count INTEGER DEFAULT 0,
                 total_tokens INTEGER DEFAULT 0,

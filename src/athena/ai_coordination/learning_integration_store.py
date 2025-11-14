@@ -42,7 +42,7 @@ class LearningIntegrationStore:
         # Lessons to procedures table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS lessons_to_procedures (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 lesson_id INTEGER NOT NULL,
                 lesson_text TEXT NOT NULL,
                 confidence REAL DEFAULT 0.5,
@@ -58,7 +58,7 @@ class LearningIntegrationStore:
         # Procedure candidates table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS procedure_candidates (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL,
                 pattern_type TEXT NOT NULL,
                 confidence REAL DEFAULT 0.5,
@@ -76,7 +76,7 @@ class LearningIntegrationStore:
         # Feedback updates table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS feedback_updates (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 update_type TEXT NOT NULL,
                 target_id TEXT,
                 action TEXT NOT NULL,
@@ -93,7 +93,7 @@ class LearningIntegrationStore:
         # Learning cycles table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS learning_cycles (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 action_cycle_id INTEGER NOT NULL,
                 session_id TEXT NOT NULL,
                 lessons_extracted INTEGER DEFAULT 0,

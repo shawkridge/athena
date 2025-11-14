@@ -28,7 +28,7 @@ class ContextAdapterStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS external_source_connections (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 source_type TEXT NOT NULL,
                 source_name TEXT NOT NULL,
@@ -52,7 +52,7 @@ class ContextAdapterStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS external_data_mappings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 source_id INTEGER NOT NULL,
                 external_id TEXT NOT NULL,
                 memory_id INTEGER,
@@ -71,7 +71,7 @@ class ContextAdapterStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS external_data_snapshots (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 source_id INTEGER NOT NULL,
                 external_id TEXT NOT NULL,
                 data_type TEXT,
@@ -88,7 +88,7 @@ class ContextAdapterStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS imported_data (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 source_id INTEGER NOT NULL,
                 data_type TEXT,
                 title TEXT,
@@ -109,7 +109,7 @@ class ContextAdapterStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS exported_insights (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 target_source_id INTEGER NOT NULL,
                 insight_type TEXT,
                 title TEXT,
@@ -129,7 +129,7 @@ class ContextAdapterStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS sync_conflicts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 source_id INTEGER NOT NULL,
                 external_id TEXT NOT NULL,
                 memory_id INTEGER,
@@ -150,7 +150,7 @@ class ContextAdapterStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS sync_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 source_id INTEGER NOT NULL,
                 sync_type TEXT,
                 direction TEXT,

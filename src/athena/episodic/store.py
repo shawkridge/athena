@@ -143,7 +143,7 @@ class EpisodicStore(BaseStore):
         # Events table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS episodic_events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 session_id TEXT NOT NULL,
                 timestamp INTEGER NOT NULL,
@@ -174,7 +174,7 @@ class EpisodicStore(BaseStore):
         # Event outcomes/metrics
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS event_outcomes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 event_id INTEGER NOT NULL,
                 metric_name TEXT NOT NULL,
                 metric_value TEXT NOT NULL,

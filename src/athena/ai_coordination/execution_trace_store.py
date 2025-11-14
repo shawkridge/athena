@@ -41,7 +41,7 @@ class ExecutionTraceStore:
         # Execution traces table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS execution_traces (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 goal_id TEXT,
                 task_id TEXT,
                 plan_id TEXT,

@@ -129,7 +129,7 @@ class PlanningStore:
         # Planning patterns table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS planning_patterns (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 pattern_type TEXT NOT NULL,
                 name TEXT NOT NULL,
@@ -155,7 +155,7 @@ class PlanningStore:
         # Decomposition strategies table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS decomposition_strategies (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 strategy_name TEXT NOT NULL,
                 description TEXT NOT NULL,
@@ -180,7 +180,7 @@ class PlanningStore:
         # Orchestrator patterns table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS orchestrator_patterns (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 pattern_name TEXT NOT NULL,
                 description TEXT NOT NULL,
@@ -205,7 +205,7 @@ class PlanningStore:
         # Validation rules table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS validation_rules (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 rule_name TEXT NOT NULL,
                 description TEXT NOT NULL,
@@ -232,7 +232,7 @@ class PlanningStore:
         # Execution feedback table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS execution_feedback (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 task_id INTEGER,
                 pattern_id INTEGER,

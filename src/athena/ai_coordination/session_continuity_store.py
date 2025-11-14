@@ -90,7 +90,7 @@ class SessionContinuityStore(BaseStore[SessionSnapshot]):
         # Session snapshots table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS session_snapshots (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 snapshot_id TEXT UNIQUE NOT NULL,
                 session_id TEXT NOT NULL,
                 version INTEGER DEFAULT 1,
@@ -113,7 +113,7 @@ class SessionContinuityStore(BaseStore[SessionSnapshot]):
         # Session metadata table (for quick lookup)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS session_metadata (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 snapshot_id TEXT UNIQUE NOT NULL,
                 project_id TEXT NOT NULL,
                 project_name TEXT NOT NULL,

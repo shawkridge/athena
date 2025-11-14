@@ -39,7 +39,7 @@ class AgentRegistry:
         cursor = self.db.get_cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS agents (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 agent_id TEXT UNIQUE NOT NULL,
                 capabilities TEXT NOT NULL,
                 success_rate REAL DEFAULT 1.0,

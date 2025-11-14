@@ -131,7 +131,7 @@ class SessionContextManager:
         # Session contexts table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS session_contexts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 session_id TEXT NOT NULL UNIQUE,
                 task TEXT,
@@ -146,7 +146,7 @@ class SessionContextManager:
         # Session context events table (audit trail)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS session_context_events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 session_id TEXT NOT NULL,
                 event_type TEXT NOT NULL,
                 event_data TEXT,

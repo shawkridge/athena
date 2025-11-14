@@ -56,7 +56,7 @@ class ConsolidationSystem:
         # Consolidation runs
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS consolidation_runs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER,
                 started_at INTEGER NOT NULL,
                 completed_at INTEGER,
@@ -80,7 +80,7 @@ class ConsolidationSystem:
         # Extracted patterns
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS extracted_patterns (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 consolidation_run_id INTEGER NOT NULL,
                 pattern_type TEXT NOT NULL,
                 pattern_content TEXT NOT NULL,
@@ -100,7 +100,7 @@ class ConsolidationSystem:
         # Memory conflicts
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS memory_conflicts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 discovered_at INTEGER NOT NULL,
                 resolved_at INTEGER,
                 status TEXT DEFAULT 'pending',

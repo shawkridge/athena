@@ -58,7 +58,7 @@ class SafetyStore(BaseStore):
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS safety_policies (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
                 description TEXT,
@@ -91,7 +91,7 @@ class SafetyStore(BaseStore):
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS approval_requests (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 agent_id TEXT,
                 change_type TEXT NOT NULL,
@@ -125,7 +125,7 @@ class SafetyStore(BaseStore):
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS audit_entries (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 timestamp INTEGER NOT NULL,
 
@@ -162,7 +162,7 @@ class SafetyStore(BaseStore):
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS code_snapshots (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 created_at INTEGER NOT NULL,
 
@@ -187,7 +187,7 @@ class SafetyStore(BaseStore):
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS change_recommendations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 approval_request_id INTEGER NOT NULL,
 
                 recommendation TEXT NOT NULL,  -- "approve" | "reject" | "request_changes" | "escalate"

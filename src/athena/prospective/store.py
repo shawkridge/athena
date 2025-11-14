@@ -58,7 +58,7 @@ class ProspectiveStore(BaseStore):
         # Tasks table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS prospective_tasks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER,
                 content TEXT NOT NULL,
                 active_form TEXT NOT NULL,
@@ -148,7 +148,7 @@ class ProspectiveStore(BaseStore):
         # Task triggers
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS task_triggers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 task_id INTEGER NOT NULL,
                 trigger_type TEXT NOT NULL,
                 trigger_condition TEXT NOT NULL,
@@ -173,7 +173,7 @@ class ProspectiveStore(BaseStore):
         # Task phases/milestones
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS phases (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 task_id INTEGER NOT NULL,
                 phase_name TEXT NOT NULL,

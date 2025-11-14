@@ -66,7 +66,7 @@ class ResearchStore(BaseStore):
         # Research tasks table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS research_tasks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER,
                 topic TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'pending',
@@ -85,7 +85,7 @@ class ResearchStore(BaseStore):
         # Research findings table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS research_findings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 research_task_id INTEGER NOT NULL,
                 source TEXT NOT NULL,
                 title TEXT NOT NULL,
@@ -102,7 +102,7 @@ class ResearchStore(BaseStore):
         # Agent progress tracking
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS agent_progress (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 research_task_id INTEGER NOT NULL,
                 agent_name TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'pending',

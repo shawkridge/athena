@@ -92,7 +92,7 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
         # Thinking traces table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS thinking_traces (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 problem TEXT NOT NULL,
                 problem_type TEXT NOT NULL,
                 problem_complexity INTEGER DEFAULT 5,

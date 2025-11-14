@@ -94,7 +94,7 @@ class WorkingMemoryAPI:
         # Working memory buffer
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS working_memory (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER,
                 event_id INTEGER NOT NULL UNIQUE,
                 added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -112,7 +112,7 @@ class WorkingMemoryAPI:
         # Consolidation triggers log
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS consolidation_triggers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER,
                 triggered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 trigger_type TEXT NOT NULL,

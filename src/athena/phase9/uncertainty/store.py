@@ -29,7 +29,7 @@ class UncertaintyStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS plan_alternatives (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 task_id INTEGER NOT NULL,
                 plan_type TEXT NOT NULL,
                 steps TEXT NOT NULL,
@@ -51,7 +51,7 @@ class UncertaintyStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS confidence_scores (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 task_id INTEGER NOT NULL,
                 aspect TEXT NOT NULL,
                 value REAL,
@@ -73,7 +73,7 @@ class UncertaintyStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS uncertainty_breakdowns (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 task_id INTEGER NOT NULL,
                 total_uncertainty REAL,
                 uncertainty_sources TEXT,
@@ -90,7 +90,7 @@ class UncertaintyStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS confidence_calibrations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 aspect TEXT NOT NULL,
                 predicted_confidence REAL,
@@ -107,7 +107,7 @@ class UncertaintyStore:
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS confidence_trends (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 aspect TEXT NOT NULL,
                 average_confidence REAL,

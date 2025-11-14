@@ -57,7 +57,7 @@ class GraphStore(BaseStore[Entity]):
         # Entities table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS entities (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL,
                 entity_type TEXT NOT NULL,
                 project_id INTEGER,
@@ -72,7 +72,7 @@ class GraphStore(BaseStore[Entity]):
         # Relations table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS entity_relations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 from_entity_id INTEGER NOT NULL,
                 to_entity_id INTEGER NOT NULL,
                 relation_type TEXT NOT NULL,
@@ -90,7 +90,7 @@ class GraphStore(BaseStore[Entity]):
         # Observations table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS entity_observations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 entity_id INTEGER NOT NULL,
                 content TEXT NOT NULL,
                 observation_type TEXT,
@@ -106,7 +106,7 @@ class GraphStore(BaseStore[Entity]):
         # Communities table (for Leiden clustering results)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS communities (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
                 entity_ids TEXT NOT NULL,
                 level INTEGER DEFAULT 0,

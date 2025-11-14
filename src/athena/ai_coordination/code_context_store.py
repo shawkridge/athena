@@ -45,7 +45,7 @@ class CodeContextStore:
         # Code contexts table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS code_contexts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 goal_id TEXT,
                 task_id TEXT,
                 session_id TEXT NOT NULL,
@@ -61,7 +61,7 @@ class CodeContextStore:
         # Relevant files table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS code_context_files (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 context_id INTEGER NOT NULL,
                 file_path TEXT NOT NULL,
                 relevance REAL DEFAULT 0.5,
@@ -76,7 +76,7 @@ class CodeContextStore:
         # Dependencies table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS code_dependencies (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 context_id INTEGER NOT NULL,
                 from_file TEXT NOT NULL,
                 to_file TEXT NOT NULL,
@@ -91,7 +91,7 @@ class CodeContextStore:
         # Recent changes table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS code_recent_changes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 context_id INTEGER NOT NULL,
                 file_path TEXT NOT NULL,
                 change_timestamp INTEGER NOT NULL,
@@ -106,7 +106,7 @@ class CodeContextStore:
         # Known issues table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS code_known_issues (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 context_id INTEGER NOT NULL,
                 file_path TEXT NOT NULL,
                 issue TEXT NOT NULL,

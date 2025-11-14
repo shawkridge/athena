@@ -70,7 +70,7 @@ class MetaMemoryStore(BaseStore):
         # Domain coverage table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS domain_coverage (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 domain TEXT UNIQUE NOT NULL,
                 category TEXT NOT NULL,
 
@@ -94,7 +94,7 @@ class MetaMemoryStore(BaseStore):
         # Knowledge transfer table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS knowledge_transfers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 from_project_id INTEGER NOT NULL,
                 to_project_id INTEGER NOT NULL,
                 knowledge_item_id INTEGER NOT NULL,
