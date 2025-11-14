@@ -334,6 +334,10 @@ class E2EMemoryTest:
         print_section("TEST 5: Search & Retrieval")
 
         try:
+            # First verify memories exist
+            all_memories = self.memory_store.list_memories(self.project.id, limit=100)
+            print(f"  Debug: Found {len(all_memories)} total memories for search")
+
             # Use memory store search API directly (public interface)
             search_results = self.memory_store.recall(
                 query="database optimization performance",
@@ -345,7 +349,7 @@ class E2EMemoryTest:
             print_result(
                 "Recall results",
                 passed,
-                f"Found {len(search_results)} results"
+                f"Found {len(search_results)} results (from {len(all_memories)} total)"
             )
 
             if search_results:

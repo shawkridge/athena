@@ -237,7 +237,7 @@ class SemanticSearch:
             limit=k,
             semantic_weight=0.7,
             keyword_weight=0.3,
-            consolidation_state="consolidated",
+            consolidation_state=None,  # Search all memories, not just consolidated
         )
 
         # Convert database results to MemorySearchResult objects
