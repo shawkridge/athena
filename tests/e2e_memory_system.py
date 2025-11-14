@@ -149,21 +149,41 @@ class E2EMemoryTest:
 
         try:
             # Store events using public API (no SQL calls)
+            # Note: Pattern extraction groups events by: event_type + content[:50]
+            # To trigger procedure creation, need 5+ events with same event_type + same first 50 chars
+            # First 50 chars: "Database connection error in production environm"
+            base_prefix = "Database connection error in production environm"  # exactly 50 chars
             events = [
+                # Group 1: Debugging events - all have same first 50 chars to group together
                 {
-                    "content": "Fixed critical bug in database connection pooling",
+                    "content": base_prefix + "ent - retry attempt 1",
                     "event_type": "debugging",
                     "context_cwd": "/project/src/db",
                 },
                 {
-                    "content": "Optimized query performance with compound indexes",
-                    "event_type": "file_change",
-                    "context_cwd": "/project/src/migrations",
+                    "content": base_prefix + "ent - retry attempt 2",
+                    "event_type": "debugging",
+                    "context_cwd": "/project/src/auth",
                 },
                 {
-                    "content": "Discovered memory leak in background worker",
-                    "event_type": "error",
+                    "content": base_prefix + "ent - retry attempt 3",
+                    "event_type": "debugging",
+                    "context_cwd": "/project/src/cache",
+                },
+                {
+                    "content": base_prefix + "ent - retry attempt 4",
+                    "event_type": "debugging",
+                    "context_cwd": "/project/src/api",
+                },
+                {
+                    "content": base_prefix + "ent - retry attempt 5",
+                    "event_type": "debugging",
                     "context_cwd": "/project/src/workers",
+                },
+                {
+                    "content": base_prefix + "ent - retry attempt 6",
+                    "event_type": "debugging",
+                    "context_cwd": "/project/src/db",
                 },
             ]
 
@@ -181,12 +201,12 @@ class E2EMemoryTest:
             # Verify events stored (using public API)
             stored_events = self.episodic_store.list_events(
                 project_id=self.project.id,
-                limit=10
+                limit=20
             )
 
-            passed = len(stored_events) >= 3
+            passed = len(stored_events) >= 6
             print_result(
-                "Store 3 episodic events",
+                "Store 6 episodic events",
                 passed,
                 f"Stored {len(stored_events)} events"
             )

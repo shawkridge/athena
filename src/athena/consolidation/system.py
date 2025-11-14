@@ -503,7 +503,7 @@ class ConsolidationSystem:
                 template=pattern.pattern_content,
                 success_rate=0.8,  # High confidence from repeated success
                 usage_count=pattern.occurrences,
-                created_by="learned",
+                created_by="consolidation",
             )
             try:
                 self.procedural_store.create_procedure(procedure)
