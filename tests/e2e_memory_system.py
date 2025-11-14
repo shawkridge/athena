@@ -220,13 +220,15 @@ class E2EMemoryTest:
             return passed
 
         except Exception as e:
-            # Note: This is expected to fail due to bugs in consolidation API (SQL parameter mismatch)
-            # but we're still using the PUBLIC API, not SQL directly
+            # Note: Show actual error for debugging
             print_result(
                 "Run consolidation (via public API)",
                 False,
-                f"Skipped - consolidation API has internal bug (not a test issue)"
+                f"Error: {str(e)[:100]}"
             )
+            import traceback
+            print("Traceback:")
+            traceback.print_exc()
             self.results.append(("Consolidation", False))
             return False
 

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from ..core.database import Database
+from ..core.models import MemoryType
 from ..episodic.store import EpisodicStore
 from ..memory.store import MemoryStore
 from ..meta.store import MetaMemoryStore
@@ -69,6 +70,12 @@ class ConsolidationSystem:
 
                 avg_quality_before REAL,
                 avg_quality_after REAL,
+
+                compression_ratio REAL,
+                retrieval_recall REAL,
+                pattern_consistency REAL,
+                avg_information_density REAL,
+                overall_quality_score REAL,
 
                 consolidation_type TEXT DEFAULT 'scheduled',
                 notes TEXT,
@@ -165,6 +172,9 @@ class ConsolidationSystem:
             # 3. Extract patterns from episodic events
             patterns_count = self._extract_patterns(project_id, run_id)
 
+            # 3.5. Convert patterns to semantic memories
+            memories_created = self._create_memories_from_patterns(project_id, run_id)
+
             # 4. Detect and resolve conflicts
             conflicts_count = self._resolve_conflicts(project_id)
 
@@ -209,9 +219,9 @@ class ConsolidationSystem:
 
         # Get all memories
         if project_id:
-            cursor.execute("SELECT id, access_count, usefulness_score FROM memories WHERE project_id = %s", (project_id,))
+            cursor.execute("SELECT id, access_count, usefulness_score FROM memory_vectors WHERE project_id = %s", (project_id,))
         else:
-            cursor.execute("SELECT id, access_count, usefulness_score FROM memories")
+            cursor.execute("SELECT id, access_count, usefulness_score FROM memory_vectors")
 
         total_score = 0.0
         count = 0
@@ -226,7 +236,7 @@ class ConsolidationSystem:
             new_score = min(1.0, current_score * 0.8 + (min(access_count, 10) / 10.0) * 0.2)
 
             cursor.execute(
-                "UPDATE memories SET usefulness_score = %s WHERE id = %s",
+                "UPDATE memory_vectors SET usefulness_score = %s WHERE id = %s",
                 (new_score, memory_id)
             )
 
@@ -244,12 +254,12 @@ class ConsolidationSystem:
         # Find low-value memories
         if project_id:
             cursor.execute(
-                "SELECT id FROM memories WHERE project_id = %s AND usefulness_score < %s AND access_count < 2",
+                "SELECT id FROM memory_vectors WHERE project_id = %s AND usefulness_score < %s AND access_count < 2",
                 (project_id, threshold)
             )
         else:
             cursor.execute(
-                "SELECT id FROM memories WHERE usefulness_score < %s AND access_count < 2",
+                "SELECT id FROM memory_vectors WHERE usefulness_score < %s AND access_count < 2",
                 (threshold,)
             )
 
@@ -349,6 +359,74 @@ class ConsolidationSystem:
             print(f"Warning: Pattern extraction failed: {e}")
             return 0
 
+    def _create_memories_from_patterns(self, project_id: Optional[int], run_id: int) -> int:
+        """Convert extracted patterns into semantic memories.
+
+        Creates semantic memories from patterns extracted during consolidation.
+        This bridges episodic patterns to persistent semantic knowledge.
+
+        Args:
+            project_id: Project ID (None for global)
+            run_id: Consolidation run ID
+
+        Returns:
+            Count of semantic memories created
+        """
+        if not project_id:
+            return 0  # Memory creation requires project context
+
+        try:
+            cursor = self.db.get_cursor()
+
+            # Get all patterns from this consolidation run
+            cursor.execute(
+                "SELECT id, pattern_type, pattern_content, confidence FROM extracted_patterns WHERE consolidation_run_id = %s",
+                (run_id,)
+            )
+
+            patterns = cursor.fetchall()
+            memories_created = 0
+
+            for pattern in patterns:
+                try:
+                    # Create semantic memory from pattern
+                    # Use PATTERN memory type since these are extracted patterns
+                    pattern_id = pattern["id"]
+                    pattern_content = pattern["pattern_content"]
+                    confidence = pattern["confidence"]
+
+                    # Generate tags from pattern type and content
+                    pattern_type = pattern["pattern_type"]
+                    tags = ["consolidation", f"pattern:{pattern_type}", "extracted"]
+
+                    # Store as semantic memory
+                    memory_id = self.memory_store.remember(
+                        content=pattern_content,
+                        memory_type=MemoryType.PATTERN,
+                        project_id=project_id,
+                        tags=tags
+                    )
+
+                    if memory_id:
+                        memories_created += 1
+
+                        # Mark pattern as having created memory
+                        cursor.execute(
+                            "UPDATE extracted_patterns SET created_semantic_memory = TRUE WHERE id = %s",
+                            (pattern_id,)
+                        )
+
+                except Exception as e:
+                    # Log but continue - don't fail entire consolidation
+                    print(f"Warning: Failed to create memory from pattern {pattern['id']}: {e}")
+                    continue
+
+            return memories_created
+
+        except Exception as e:
+            print(f"Warning: Failed to create memories from patterns: {e}")
+            return 0
+
     def _extract_common_pattern(self, events: list) -> str:
         """Extract common pattern from similar events."""
         # Simple heuristic: use the most common content
@@ -443,15 +521,15 @@ class ConsolidationSystem:
         if project_id:
             cursor.execute("""
                 SELECT m1.id as id1, m2.id as id2, m1.content as content1, m2.content as content2
-                FROM memories m1
-                JOIN memories m2 ON m1.project_id = m2.project_id AND m1.id < m2.id
+                FROM memory_vectors m1
+                JOIN memory_vectors m2 ON m1.project_id = m2.project_id AND m1.id < m2.id
                 WHERE m1.project_id = %s AND m1.content = m2.content
             """, (project_id,))
         else:
             cursor.execute("""
                 SELECT m1.id as id1, m2.id as id2, m1.content as content1, m2.content as content2
-                FROM memories m1
-                JOIN memories m2 ON m1.project_id = m2.project_id AND m1.id < m2.id
+                FROM memory_vectors m1
+                JOIN memory_vectors m2 ON m1.project_id = m2.project_id AND m1.id < m2.id
                 WHERE m1.content = m2.content
             """)
 
@@ -459,7 +537,7 @@ class ConsolidationSystem:
         for row in cursor.fetchall():
             # Duplicate found - keep the one with higher usefulness
             cursor.execute(
-                "SELECT usefulness_score FROM memories WHERE id IN (%s, %s)",
+                "SELECT usefulness_score FROM memory_vectors WHERE id IN (%s, %s)",
                 (row["id1"], row["id2"])
             )
             scores = cursor.fetchall()
@@ -480,14 +558,14 @@ class ConsolidationSystem:
 
         if project_id:
             cursor.execute("""
-                UPDATE memories
-                SET usefulness_score = MIN(1.0, usefulness_score + 0.1)
+                UPDATE memory_vectors
+                SET usefulness_score = LEAST(1.0, usefulness_score + 0.1)
                 WHERE project_id = %s AND access_count > 5
             """, (project_id,))
         else:
             cursor.execute("""
-                UPDATE memories
-                SET usefulness_score = MIN(1.0, usefulness_score + 0.1)
+                UPDATE memory_vectors
+                SET usefulness_score = LEAST(1.0, usefulness_score + 0.1)
                 WHERE access_count > 5
             """)
 
@@ -500,11 +578,11 @@ class ConsolidationSystem:
 
         if project_id:
             cursor.execute(
-                "SELECT DISTINCT tags FROM memories WHERE project_id = %s",
+                "SELECT DISTINCT tags FROM memory_vectors WHERE project_id = %s",
                 (project_id,)
             )
         else:
-            cursor.execute("SELECT DISTINCT tags FROM memories")
+            cursor.execute("SELECT DISTINCT tags FROM memory_vectors")
 
         # Note: Domain coverage updates would be done here if MetaMemoryStore.update_domain_coverage() existed
         # For now, we skip this step as the method is not implemented in MetaMemoryStore
@@ -515,11 +593,11 @@ class ConsolidationSystem:
 
         if project_id:
             cursor.execute(
-                "SELECT AVG(usefulness_score) as avg FROM memories WHERE project_id = %s",
+                "SELECT AVG(usefulness_score) as avg FROM memory_vectors WHERE project_id = %s",
                 (project_id,)
             )
         else:
-            cursor.execute("SELECT AVG(usefulness_score) as avg FROM memories")
+            cursor.execute("SELECT AVG(usefulness_score) as avg FROM memory_vectors")
 
         row = cursor.fetchone()
         return row["avg"] if row and row["avg"] else 0.0
@@ -529,9 +607,9 @@ class ConsolidationSystem:
         cursor = self.db.get_cursor()
 
         if project_id:
-            cursor.execute("SELECT COUNT(*) as count FROM memories WHERE project_id = %s", (project_id,))
+            cursor.execute("SELECT COUNT(*) as count FROM memory_vectors WHERE project_id = %s", (project_id,))
         else:
-            cursor.execute("SELECT COUNT(*) as count FROM memories")
+            cursor.execute("SELECT COUNT(*) as count FROM memory_vectors")
 
         return cursor.fetchone()["count"]
 
