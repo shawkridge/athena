@@ -157,16 +157,15 @@ class UnifiedMemoryManager:
         # Advanced RAG setup
         self.rag_manager = rag_manager
         if enable_advanced_rag and not rag_manager and RAG_AVAILABLE:
-            # Try to initialize RAG manager with available LLM
+            # Try to initialize RAG manager with local LLM only
             try:
-                # Try Ollama first (local, no API key needed)
+                # Use only local llamacpp (no cloud APIs or Ollama)
                 try:
-                    llm_client = create_llm_client(provider="ollama")  # type: ignore
-                    logger.info("RAG Manager: Trying Ollama LLM client")
-                except Exception as ollama_err:
-                    # Fall back to Claude if Ollama not available
-                    logger.debug(f"Ollama not available ({ollama_err}), trying Claude")
-                    llm_client = create_llm_client(provider="claude")  # type: ignore
+                    llm_client = create_llm_client(provider="local")  # type: ignore
+                    logger.info("RAG Manager: Initialized with local llamacpp LLM")
+                except Exception as local_err:
+                    logger.debug(f"Local LLM unavailable ({local_err}), RAG features will be disabled")
+                    llm_client = None
 
                 # Create temporal KG synthesis for temporal enrichment features
                 temporal_kg = TemporalKGSynthesis(

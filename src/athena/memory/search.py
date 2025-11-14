@@ -43,17 +43,14 @@ class SemanticSearch:
                 from ..rag.query_expansion import QueryExpander, QueryExpansionConfig
 
                 # Create LLM client from config
-                # Try Claude first, fall back to Ollama
+                # Use only local llamacpp (no cloud APIs)
                 try:
-                    llm_client = create_llm_client("claude")
-                    logger.info("Initialized QueryExpander with Claude")
-                except Exception:
-                    try:
-                        llm_client = create_llm_client("ollama")
-                        logger.info("Initialized QueryExpander with Ollama")
-                    except Exception as e:
-                        logger.warning(f"Failed to initialize LLM for query expansion: {e}")
-                        llm_client = None
+                    llm_client = create_llm_client("local")
+                    logger.info("Initialized QueryExpander with local llamacpp LLM")
+                except Exception as e:
+                    logger.warning(f"Local LLM unavailable: {e}")
+                    logger.info("Query expansion will be disabled - continuing with basic semantic search")
+                    llm_client = None
 
                 if llm_client:
                     # Configure expander from config
