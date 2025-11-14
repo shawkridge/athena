@@ -206,7 +206,7 @@ All hooks, skills, agents, and commands follow Anthropic's MCP code execution mo
 1. Migrated hooks from `mcp__athena__*` calls to `AgentInvoker` local execution
 2. Added result filtering in smart-context-injection.sh (process locally before returning)
 3. Updated search commands to document top-3 filtering with drill-down available
-4. Documented /recall-memory as drill-down companion to /search-knowledge
+4. Removed all slash commands in favor of pure filesystem API discovery
 5. **NEW**: Registered all 7 hooks in `~/.claude/settings.json` for global activation
 6. **NEW**: Hooks now provide cross-project memory access via Athena memory API
 

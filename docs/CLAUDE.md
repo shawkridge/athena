@@ -49,13 +49,34 @@ memory-mcp
 cargo install ast-grep  # or: brew install ast-grep
 ```
 
-**Memory Operations** (via MCP or CLI):
-```bash
-/memory-query "topic"          # Search memories with advanced RAG
-/memory-health                 # Check system health + quality metrics
-/consolidate                   # Extract patterns from episodic events
-/project-status               # Overview with goal rankings + metrics
+**Memory Operations** (via FilesystemAPI only):
+
+Use the FilesystemAPIAdapter to access all memory operations:
+
+```python
+from filesystem_api_adapter import FilesystemAPIAdapter
+
+adapter = FilesystemAPIAdapter()
+
+# Discover available operations
+layers = adapter.list_layers()
+ops = adapter.list_operations_in_layer("semantic")
+
+# Read operation code
+code = adapter.read_operation("semantic", "recall")
+
+# Execute operation
+result = adapter.execute_operation("semantic", "recall", {
+    "query": "topic",
+    "host": "localhost",
+    "port": 5432,
+    "dbname": "athena",
+    "user": "postgres",
+    "password": "postgres"
+})
 ```
+
+For detailed examples, see `docs/ANTHROPIC_PATTERN_IMPLEMENTATION.md`
 
 ## Anthropic Code Execution Pattern Alignment ✅
 
@@ -130,7 +151,7 @@ return StructuredResult.success(
         offset=offset,
         has_more=(offset + limit) < total_count,
     ),
-    summary=f"Returned {len(results)} of {total_count} items. Use /recall to drill into specific items."
+    summary=f"Returned {len(results)} of {total_count} items. Use adapter.get_detail() to drill into specific items."
 )
 ```
 
@@ -199,7 +220,7 @@ async def _handle_list_tasks(self, args: dict) -> StructuredResult:
             has_more=(offset + limit) < total_count,
         ),
         summary=f"Returned {len(tasks)} of {total_count} tasks. "
-                f"Use /recall-memory with task_id for full details."
+                f"Use adapter.get_detail() with task_id for full details."
     )
 ```
 
@@ -322,9 +343,10 @@ return results  # Context bloat!
 3. `post-task-completion.sh` - Removed MCP direct calls, workflow-learner handles creation
 4. `smart-context-injection.sh` - Added local result filtering via retrieval-specialist
 
-**Slash Commands Enhanced** (2 commands):
-1. `/search-knowledge` - Added summary pattern documentation, drill-down guidance
-2. `/recall-memory` - Documented as companion command with example flow
+**FilesystemAPI Operations** (All 10 operations now use filesystem discovery only):
+1. `semantic/recall` - Search memories using FilesystemAPI
+2. `episodic/search` - Search events using FilesystemAPI
+(Plus 8 more operations across 8 layers - see docs/ANTHROPIC_PATTERN_IMPLEMENTATION.md)
 
 ### Key Principles Enforced
 
@@ -980,8 +1002,10 @@ The hook system in `src/athena/hooks/` includes graceful degradation:
 ### Debugging Memory Layer Issues
 
 1. **Check memory health**:
-   ```bash
-   /memory-health --detail
+   ```python
+   from filesystem_api_adapter import FilesystemAPIAdapter
+   adapter = FilesystemAPIAdapter()
+   result = adapter.execute_operation("meta", "quality", {...})
    ```
 
 2. **Query the database directly** (PostgreSQL):
@@ -1208,8 +1232,8 @@ ast-grep --lang python -p 'try { $$$ } catch { pass }'  # Catches silent failure
 
 ### Memory Database Growing Too Large
 
-1. **Run consolidation**: `/consolidate` extracts patterns, reduces storage
-2. **Delete old events**: Use `/memory-forget ID` for low-value items
+1. **Run consolidation**: Use `adapter.execute_operation("consolidation", "extract", {...})` to extract patterns
+2. **Monitor usage**: Query episodic_events table directly or use `adapter.get_detail()` for specifics
 3. **Monitor size**: `du -h ~/.claude/memory-mcp/memory.db`
 
 ### MCP Tools Not Loading
