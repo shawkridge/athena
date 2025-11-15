@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     RELOAD: bool = True
 
     # Database
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/athena"
+    DATABASE_URL: str = "postgresql://athena:athena_dev@localhost:5432/athena"
     ATHENA_DB_PATH: str = str(
         Path.home() / ".athena" / "memory.db"
     )  # Athena memory database
