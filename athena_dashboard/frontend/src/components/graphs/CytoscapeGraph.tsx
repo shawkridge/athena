@@ -147,14 +147,6 @@ export const CytoscapeGraph = ({
           'opacity': 0.6,
         },
       },
-      {
-        selector: 'edge:hover',
-        style: {
-          'line-color': '#ffffff',
-          'opacity': 1,
-          'width': (ele: any) => Math.min((ele.data('weight') || 1) * 2, 5),
-        },
-      },
     ]
 
     // Initialize or update Cytoscape
@@ -206,6 +198,35 @@ export const CytoscapeGraph = ({
           if (evt.target === cyRef.current) {
             setSelectedNode(null)
           }
+        })
+
+        // Add hover effects for better interactivity
+        cyRef.current.on('mouseover', 'node', (evt) => {
+          const node = evt.target
+          node.style('opacity', 1)
+        })
+
+        cyRef.current.on('mouseout', 'node', (evt) => {
+          const node = evt.target
+          if (!node.selected()) {
+            node.style('opacity', 0.9)
+          }
+        })
+
+        cyRef.current.on('mouseover', 'edge', (evt) => {
+          const edge = evt.target
+          edge.style('line-color', '#ffffff')
+          edge.style('opacity', 1)
+        })
+
+        cyRef.current.on('mouseout', 'edge', (evt) => {
+          const edge = evt.target
+          edge.style('line-color', (ele: any) => {
+            const weight = ele.data('weight') || 1
+            const opacity = Math.min(weight / 5, 1)
+            return `rgba(107, 114, 128, ${opacity})`
+          })
+          edge.style('opacity', 0.6)
         })
       } catch (error) {
         console.error('Failed to initialize Cytoscape:', error)
