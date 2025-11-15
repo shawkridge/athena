@@ -1,55 +1,54 @@
-import { useState } from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { NavigationProvider } from './context/NavigationContext'
+import { MainLayout } from './components/layout/MainLayout'
+
+// Pages - Memory Layers
+import OverviewPage from './pages/OverviewPage'
+import EpisodicMemoryPage from './pages/EpisodicMemoryPage'
+import SemanticMemoryPage from './pages/SemanticMemoryPage'
+import ProceduralMemoryPage from './pages/ProceduralMemoryPage'
+import ProspectiveMemoryPage from './pages/ProspectiveMemoryPage'
+import KnowledgeGraphPage from './pages/KnowledgeGraphPage'
+import MetaMemoryPage from './pages/MetaMemoryPage'
+import ConsolidationPage from './pages/ConsolidationPage'
+
+// Pages - System Monitoring
+import SystemHealthPage from './pages/SystemHealthPage'
+import HookExecutionPage from './pages/HookExecutionPage'
+import WorkingMemoryPage from './pages/WorkingMemoryPage'
+import RAGPlanningPage from './pages/RAGPlanningPage'
+
+// Pages - Analytics & Settings
+import LearningAnalyticsPage from './pages/LearningAnalyticsPage'
 import ResearchPage from './pages/ResearchPage'
+import SettingsPage from './pages/SettingsPage'
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('research')
-
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-50">
-      {/* Header */}
-      <header className="border-b border-gray-700 bg-gray-800">
-        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500" />
-              <h1 className="text-2xl font-bold">Athena Dashboard</h1>
-            </div>
-            <nav className="flex gap-4">
-              <button
-                onClick={() => setCurrentPage('research')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  currentPage === 'research'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-300 hover:bg-gray-700'
-                }`}
-              >
-                Research
-              </button>
-              <button
-                onClick={() => setCurrentPage('memory')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  currentPage === 'memory'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-300 hover:bg-gray-700'
-                }`}
-              >
-                Memory
-              </button>
-            </nav>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {currentPage === 'research' && <ResearchPage />}
-        {currentPage === 'memory' && (
-          <div className="rounded-lg border border-gray-700 bg-gray-800 p-8 text-center">
-            <p className="text-gray-400">Memory Dashboard - Coming Soon</p>
-          </div>
-        )}
-      </main>
-    </div>
+    <BrowserRouter>
+      <NavigationProvider>
+        <Routes>
+          <Route element={<MainLayout />}>
+            <Route path="/" element={<OverviewPage />} />
+            <Route path="/overview" element={<OverviewPage />} />
+            <Route path="/episodic" element={<EpisodicMemoryPage />} />
+            <Route path="/semantic" element={<SemanticMemoryPage />} />
+            <Route path="/procedural" element={<ProceduralMemoryPage />} />
+            <Route path="/prospective" element={<ProspectiveMemoryPage />} />
+            <Route path="/knowledge-graph" element={<KnowledgeGraphPage />} />
+            <Route path="/meta-memory" element={<MetaMemoryPage />} />
+            <Route path="/consolidation" element={<ConsolidationPage />} />
+            <Route path="/system-health" element={<SystemHealthPage />} />
+            <Route path="/hooks" element={<HookExecutionPage />} />
+            <Route path="/working-memory" element={<WorkingMemoryPage />} />
+            <Route path="/rag-planning" element={<RAGPlanningPage />} />
+            <Route path="/learning-analytics" element={<LearningAnalyticsPage />} />
+            <Route path="/research" element={<ResearchPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Route>
+        </Routes>
+      </NavigationProvider>
+    </BrowserRouter>
   )
 }
 

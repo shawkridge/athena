@@ -3,14 +3,16 @@
  */
 
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
 
 interface HeaderProps {
-  title: string
+  title?: string
   subtitle?: string
   actions?: React.ReactNode
 }
 
-export const Header = ({ title, subtitle, actions }: HeaderProps) => {
+export const Header = ({ title = 'Athena Dashboard', subtitle, actions }: HeaderProps) => {
+  const location = useLocation()
   const [showNotifications, setShowNotifications] = useState(false)
 
   return (

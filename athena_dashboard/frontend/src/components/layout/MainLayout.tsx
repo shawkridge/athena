@@ -1,38 +1,27 @@
 /**
  * Main Dashboard Layout Wrapper
+ * Works with React Router's Outlet to provide consistent layout across all pages
  */
 
-import { ReactNode } from 'react'
+import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Header from './Header'
 
-interface MainLayoutProps {
-  title: string
-  subtitle?: string
-  children: ReactNode
-  actions?: ReactNode
-}
-
-export const MainLayout = ({
-  title,
-  subtitle,
-  children,
-  actions,
-}: MainLayoutProps) => {
+export const MainLayout = () => {
   return (
-    <div className="min-h-screen bg-gray-900">
-      {/* Sidebar */}
-      <Sidebar />
-
+    <div className="min-h-screen bg-gray-900 flex flex-col">
       {/* Header */}
-      <Header title={title} subtitle={subtitle} actions={actions} />
+      <Header />
 
-      {/* Main Content */}
-      <main className="ml-64 mt-16 p-6">
-        <div className="max-w-7xl">
-          {children}
-        </div>
-      </main>
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <Sidebar />
+
+        {/* Main Content */}
+        <main className="flex-1 overflow-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }

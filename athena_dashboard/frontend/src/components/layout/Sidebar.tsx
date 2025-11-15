@@ -21,36 +21,35 @@ const navSections: NavSection[] = [
   {
     name: 'Dashboard',
     items: [
-      { label: 'Home', href: '/dashboard', icon: '📊', section: 'home' },
+      { label: 'Overview', href: '/overview', icon: '📊' },
     ],
   },
   {
     name: 'Memory Layers',
     items: [
-      { label: 'Layer 1: Episodic', href: '/memory/episodic', icon: '📝' },
-      { label: 'Layer 2: Semantic', href: '/memory/semantic', icon: '🧠' },
-      { label: 'Layer 3: Procedural', href: '/memory/procedural', icon: '⚙️' },
-      { label: 'Layer 4: Prospective', href: '/memory/prospective', icon: '🎯' },
-      { label: 'Layer 5: Knowledge Graph', href: '/memory/graph', icon: '🕸️' },
-      { label: 'Layer 6: Meta-Memory', href: '/memory/meta', icon: '🔍' },
-      { label: 'Layer 7: Consolidation', href: '/memory/consolidation', icon: '📦' },
-      { label: 'Layer 8: RAG & Planning', href: '/memory/rag', icon: '🚀' },
+      { label: 'Layer 1: Episodic', href: '/episodic', icon: '📝' },
+      { label: 'Layer 2: Semantic', href: '/semantic', icon: '🧠' },
+      { label: 'Layer 3: Procedural', href: '/procedural', icon: '⚙️' },
+      { label: 'Layer 4: Prospective', href: '/prospective', icon: '🎯' },
+      { label: 'Layer 5: Knowledge Graph', href: '/knowledge-graph', icon: '🕸️' },
+      { label: 'Layer 6: Meta-Memory', href: '/meta-memory', icon: '🔍' },
+      { label: 'Layer 7: Consolidation', href: '/consolidation', icon: '📦' },
+      { label: 'Layer 8: RAG & Planning', href: '/rag-planning', icon: '🚀' },
     ],
   },
   {
     name: 'System',
     items: [
-      { label: 'Hook Execution', href: '/system/hooks', icon: '🔌' },
-      { label: 'Working Memory', href: '/system/working', icon: '🧠' },
-      { label: 'System Health', href: '/system/health', icon: '💚' },
+      { label: 'Hook Execution', href: '/hooks', icon: '🔌' },
+      { label: 'Working Memory', href: '/working-memory', icon: '💾' },
+      { label: 'System Health', href: '/system-health', icon: '💚' },
     ],
   },
   {
     name: 'Analytics',
     items: [
       { label: 'Research Console', href: '/research', icon: '🔬' },
-      { label: 'Learning Analytics', href: '/analytics/learning', icon: '📈' },
-      { label: 'Custom Dashboards', href: '/analytics/custom', icon: '📊' },
+      { label: 'Learning Analytics', href: '/learning-analytics', icon: '📈' },
     ],
   },
   {
