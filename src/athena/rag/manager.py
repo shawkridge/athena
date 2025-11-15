@@ -153,7 +153,7 @@ class RAGManager:
                     "(requires db, graph_store, temporal_kg)"
                 )
 
-    def retrieve(
+    async def retrieve(
         self,
         query: str,
         project_id: int,
@@ -190,28 +190,28 @@ class RAGManager:
         # Execute strategy
         try:
             if strategy == RAGStrategy.PLANNING:
-                return self._retrieve_planning(query, project_id, k)
+                return await self._retrieve_planning(query, project_id, k)
 
             elif strategy == RAGStrategy.HYDE:
-                return self._retrieve_hyde(query, project_id, k)
+                return await self._retrieve_hyde(query, project_id, k)
 
             elif strategy == RAGStrategy.RERANK:
-                return self._retrieve_rerank(query, project_id, k)
+                return await self._retrieve_rerank(query, project_id, k)
 
             elif strategy == RAGStrategy.TRANSFORM:
-                return self._retrieve_transform(query, project_id, k, conversation_history)
+                return await self._retrieve_transform(query, project_id, k, conversation_history)
 
             elif strategy == RAGStrategy.REFLECTIVE:
-                return self._retrieve_reflective(query, project_id, k)
+                return await self._retrieve_reflective(query, project_id, k)
 
             else:  # BASIC
-                return self._retrieve_basic(query, project_id, k)
+                return await self._retrieve_basic(query, project_id, k)
 
         except Exception as e:
             logger.error(f"Error in RAG retrieval (strategy={strategy}): {e}", exc_info=True)
             # Graceful degradation to basic search
             logger.info("Falling back to basic search due to error")
-            return self._retrieve_basic(query, project_id, k)
+            return await self._retrieve_basic(query, project_id, k)
 
     def _select_strategy(
         self, query: str, conversation_history: Optional[list[dict]] = None
@@ -352,7 +352,7 @@ Choose the SINGLE best strategy. Default to RERANK if unsure.
             logger.debug(f"LLM strategy analysis failed, falling back to heuristics: {e}")
             return "fallback"
 
-    def _retrieve_planning(self, query: str, project_id: int, k: int) -> list[MemorySearchResult]:
+    async def _retrieve_planning(self, query: str, project_id: int, k: int) -> list[MemorySearchResult]:
         """Planning-aware RAG retrieval."""
         if not self.planning_rag:
             raise ValueError("Planning RAG not available (no planning store)")
@@ -377,30 +377,30 @@ Choose the SINGLE best strategy. Default to RERANK if unsure.
             return results
         else:
             # Fallback to basic search
-            return self.store.recall(query, project_id, k)
+            return await self.store.recall(query, project_id, k)
 
-    def _retrieve_basic(self, query: str, project_id: int, k: int) -> list[MemorySearchResult]:
+    async def _retrieve_basic(self, query: str, project_id: int, k: int) -> list[MemorySearchResult]:
         """Basic vector search."""
-        return self.store.recall(query, project_id, k)
+        return await self.store.recall(query, project_id, k)
 
-    def _retrieve_hyde(self, query: str, project_id: int, k: int) -> list[MemorySearchResult]:
+    async def _retrieve_hyde(self, query: str, project_id: int, k: int) -> list[MemorySearchResult]:
         """HyDE-enhanced retrieval."""
         if not self.hyde:
             raise ValueError("HyDE not available (no LLM client)")
         return self.hyde.retrieve(query, project_id, k, use_hyde=True)
 
-    def _retrieve_rerank(self, query: str, project_id: int, k: int) -> list[MemorySearchResult]:
+    async def _retrieve_rerank(self, query: str, project_id: int, k: int) -> list[MemorySearchResult]:
         """Retrieval with LLM reranking."""
         if not self.reranker:
             raise ValueError("Reranker not available (no LLM client)")
 
         # Get more candidates for reranking
-        candidates = self.store.recall(query, project_id, k=k * 3, min_similarity=0.2)
+        candidates = await self.store.recall(query, project_id, k=k * 3, min_similarity=0.2)
 
         # Rerank with LLM
         return self.reranker.rerank(query, candidates, k)
 
-    def _retrieve_transform(
+    async def _retrieve_transform(
         self,
         query: str,
         project_id: int,
@@ -417,12 +417,12 @@ Choose the SINGLE best strategy. Default to RERANK if unsure.
 
         # Use transformed query for retrieval with reranking
         if self.reranker:
-            candidates = self.store.recall(transformed_query, project_id, k=k * 3, min_similarity=0.2)
+            candidates = await self.store.recall(transformed_query, project_id, k=k * 3, min_similarity=0.2)
             return self.reranker.rerank(transformed_query, candidates, k)
         else:
-            return self.store.recall(transformed_query, project_id, k)
+            return await self.store.recall(transformed_query, project_id, k)
 
-    def _retrieve_reflective(self, query: str, project_id: int, k: int) -> list[MemorySearchResult]:
+    async def _retrieve_reflective(self, query: str, project_id: int, k: int) -> list[MemorySearchResult]:
         """Reflective iterative retrieval."""
         if not self.reflective:
             raise ValueError("Reflective RAG not available (no LLM client)")

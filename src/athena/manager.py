@@ -279,7 +279,7 @@ class UnifiedMemoryManager:
 
         return results
 
-    def store(self, content: str, content_type: str, metadata: Optional[dict] = None) -> dict:
+    async def store(self, content: str, content_type: str, metadata: Optional[dict] = None) -> dict:
         """Store content in appropriate memory layers.
 
         Args:
@@ -299,7 +299,7 @@ class UnifiedMemoryManager:
         # Route based on content type
         if content_type in ["fact", "pattern", "decision", "context"]:
             # Semantic memory
-            memory_id = self.semantic.remember(
+            memory_id = await self.semantic.remember(
                 content=content,
                 memory_type=content_type,
                 project_id=project.id,
