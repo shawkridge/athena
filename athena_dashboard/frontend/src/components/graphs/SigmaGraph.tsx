@@ -164,11 +164,17 @@ const GraphControls: React.FC = () => {
   }, [sigma])
 
   const handleZoomIn = useCallback(() => {
-    sigma.getCamera().zoom(1.2)
+    const camera = sigma.getCamera()
+    const state = camera.getState()
+    const newZoom = Math.min(state.zoom * 1.2, 4)
+    camera.setState({ ...state, zoom: newZoom }, { duration: 300 })
   }, [sigma])
 
   const handleZoomOut = useCallback(() => {
-    sigma.getCamera().zoom(0.8)
+    const camera = sigma.getCamera()
+    const state = camera.getState()
+    const newZoom = Math.max(state.zoom * 0.8, 0.1)
+    camera.setState({ ...state, zoom: newZoom }, { duration: 300 })
   }, [sigma])
 
   return (
@@ -204,7 +210,7 @@ const GraphControls: React.FC = () => {
 interface GraphSearchProps {
   nodes: GraphNode[]
   onSearch?: (results: GraphNode[]) => void
-  onSelect?: (nodeId: string) => void
+  onSelect?: (nodeId: string, nodeLabel?: string) => void
 }
 
 const GraphSearch: React.FC<GraphSearchProps> = ({ nodes, onSearch, onSelect }) => {
@@ -231,7 +237,7 @@ const GraphSearch: React.FC<GraphSearchProps> = ({ nodes, onSearch, onSelect }) 
   const handleSelectResult = (node: GraphNode) => {
     setQuery(node.label)
     setShowResults(false)
-    onSelect?.(node.id)
+    onSelect?.(node.id, node.label)
   }
 
   return (
@@ -286,11 +292,22 @@ const SigmaGraphInner: React.FC<Omit<SigmaGraphProps, 'data'> & { data: GraphDat
 
   const handleNodeClick = useCallback((nodeId: string, nodeLabel: string) => {
     // Animate camera to node
-    const nodeAttrs = sigma.getGraph().getNodeAttributes(nodeId)
-    sigma.getCamera().animatedFrame({
-      nodes: [nodeId],
-      duration: 600,
-    })
+    const graph = sigma.getGraph()
+    const node = graph.getNodeAttributes(nodeId)
+
+    // Calculate zoom to fit the node in view
+    const camera = sigma.getCamera()
+    const state = camera.getState()
+    const padding = 0.5
+
+    camera.animate(
+      {
+        x: node.x || 0,
+        y: node.y || 0,
+        zoom: Math.max(state.zoom, 1),
+      },
+      { duration: 600 }
+    )
     onNodeClick?.(nodeId, nodeLabel)
   }, [sigma, onNodeClick])
 
