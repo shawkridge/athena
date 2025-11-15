@@ -47,8 +47,20 @@ try:
 except ImportError:
     FileSystemEventSource = None
 
+try:
+    from .github import GitHubEventSource
+except ImportError:
+    GitHubEventSource = None
+
+try:
+    from .slack import SlackEventSource
+except ImportError:
+    SlackEventSource = None
+
 __all__ = [
     'BaseEventSource',
     'EventSourceFactory',
     'FileSystemEventSource',
+    'GitHubEventSource',
+    'SlackEventSource',
 ]
