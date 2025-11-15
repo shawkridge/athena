@@ -745,6 +745,8 @@ class SystemHandlersMixin:
 
         Returns recent consolidation run history for dashboard display.
         """
+        from datetime import datetime, timedelta
+
         project_id = args.get("project_id")
         if not project_id:
             project = self.project_manager.get_or_create_project()
@@ -753,17 +755,40 @@ class SystemHandlersMixin:
         limit = args.get("limit", 10)
 
         try:
-            # Query consolidation history from consolidation layer
-            # For now, return mock data - can be enhanced with actual database queries
-            history = [
-                {
-                    "timestamp": "2025-11-14T12:00:00Z",
-                    "duration_seconds": 3.2,
-                    "patterns_extracted": 15,
-                    "strategy": "balanced",
-                    "quality_score": 0.85
-                }
-            ]
+            # Query consolidation history from database
+            history = []
+
+            if hasattr(self, 'store') and hasattr(self.store, 'db'):
+                # Query consolidation_runs table from database
+                try:
+                    rows = self.store.db.execute_sync(
+                        """
+                        SELECT
+                            created_at,
+                            duration_ms,
+                            patterns_count,
+                            strategy,
+                            quality_score
+                        FROM consolidation_runs
+                        WHERE project_id = %s
+                        ORDER BY created_at DESC
+                        LIMIT %s
+                        """,
+                        (project_id, limit)
+                    )
+
+                    for row in rows:
+                        history.append({
+                            "timestamp": row[0].isoformat() if row[0] else None,
+                            "duration_seconds": (row[1] / 1000.0) if row[1] else 0,
+                            "patterns_extracted": row[2] or 0,
+                            "strategy": row[3] or "balanced",
+                            "quality_score": round(float(row[4]) if row[4] else 0.0, 2)
+                        })
+                except Exception as db_error:
+                    logger.warning(f"Failed to query consolidation_runs table: {db_error}")
+                    # Return empty history if table doesn't exist or query fails
+                    history = []
 
             return [
                 TextContent(
@@ -771,7 +796,8 @@ class SystemHandlersMixin:
                     text=json.dumps({
                         "status": "success",
                         "project_id": project_id,
-                        "consolidation_history": history
+                        "consolidation_history": history,
+                        "total_runs": len(history)
                     }, indent=2),
                 )
             ]
@@ -795,29 +821,109 @@ class SystemHandlersMixin:
             project_id = project.id
 
         try:
-            # TODO: Query actual project statistics from database
-            # Current implementation returns basic structure
+            # Query actual project statistics from database
             stats = {
-                "total_projects": 1,
-                "active_projects": 1,
+                "total_projects": 0,
+                "active_projects": 0,
                 "completed_projects": 0,
-                "total_memories": 0,
+                "total_episodic_events": 0,
                 "total_procedures": 0,
+                "total_semantic_memories": 0,
+                "total_tasks": 0,
+                "total_entities": 0,
                 "consolidation_runs": 0,
                 "memory_health": {
-                    "quality_score": 0.85,
-                    "coverage_percent": 75.0,
-                    "deduplication_percent": 12.0
+                    "quality_score": 0.0,
+                    "coverage_percent": 0.0,
+                    "deduplication_percent": 0.0
                 }
             }
 
-            # Try to get actual counts from stores if available
-            if hasattr(self, 'episodic_store'):
+            if hasattr(self, 'store') and hasattr(self.store, 'db'):
                 try:
-                    # Could query for actual memory counts
-                    pass
-                except:
-                    pass
+                    # Count episodic events
+                    event_count = self.store.db.execute_sync(
+                        "SELECT COUNT(*) FROM episodic_events WHERE project_id = %s",
+                        (project_id,)
+                    )
+                    if event_count and len(event_count) > 0:
+                        stats["total_episodic_events"] = event_count[0][0] or 0
+                except Exception as e:
+                    logger.warning(f"Failed to count episodic_events: {e}")
+
+                try:
+                    # Count procedures (workflows)
+                    proc_count = self.store.db.execute_sync(
+                        "SELECT COUNT(*) FROM procedures WHERE project_id = %s",
+                        (project_id,)
+                    )
+                    if proc_count and len(proc_count) > 0:
+                        stats["total_procedures"] = proc_count[0][0] or 0
+                except Exception as e:
+                    logger.warning(f"Failed to count procedures: {e}")
+
+                try:
+                    # Count semantic memories
+                    mem_count = self.store.db.execute_sync(
+                        "SELECT COUNT(*) FROM semantic_memories WHERE project_id = %s",
+                        (project_id,)
+                    )
+                    if mem_count and len(mem_count) > 0:
+                        stats["total_semantic_memories"] = mem_count[0][0] or 0
+                except Exception as e:
+                    logger.warning(f"Failed to count semantic_memories: {e}")
+
+                try:
+                    # Count tasks
+                    task_count = self.store.db.execute_sync(
+                        "SELECT COUNT(*) FROM prospective_tasks WHERE project_id = %s",
+                        (project_id,)
+                    )
+                    if task_count and len(task_count) > 0:
+                        stats["total_tasks"] = task_count[0][0] or 0
+                except Exception as e:
+                    logger.warning(f"Failed to count prospective_tasks: {e}")
+
+                try:
+                    # Count entities in knowledge graph
+                    entity_count = self.store.db.execute_sync(
+                        "SELECT COUNT(*) FROM kg_entities WHERE project_id = %s",
+                        (project_id,)
+                    )
+                    if entity_count and len(entity_count) > 0:
+                        stats["total_entities"] = entity_count[0][0] or 0
+                except Exception as e:
+                    logger.warning(f"Failed to count kg_entities: {e}")
+
+                try:
+                    # Count consolidation runs
+                    cons_count = self.store.db.execute_sync(
+                        "SELECT COUNT(*) FROM consolidation_runs WHERE project_id = %s",
+                        (project_id,)
+                    )
+                    if cons_count and len(cons_count) > 0:
+                        stats["consolidation_runs"] = cons_count[0][0] or 0
+                except Exception as e:
+                    logger.warning(f"Failed to count consolidation_runs: {e}")
+
+                try:
+                    # Get quality score if available
+                    if hasattr(self, 'quality_monitor'):
+                        quality_score = self.quality_monitor.compute_memory_quality_score(project_id)
+                        stats["memory_health"]["quality_score"] = round(quality_score, 2)
+                except Exception as e:
+                    logger.warning(f"Failed to get quality score: {e}")
+
+                # Calculate project counts
+                try:
+                    project_count = self.store.db.execute_sync(
+                        "SELECT COUNT(*) FROM projects"
+                    )
+                    if project_count and len(project_count) > 0:
+                        stats["total_projects"] = project_count[0][0] or 0
+                        stats["active_projects"] = 1 if stats["total_projects"] > 0 else 0
+                except Exception as e:
+                    logger.warning(f"Failed to count projects: {e}")
 
             return [
                 TextContent(
@@ -842,14 +948,64 @@ class SystemHandlersMixin:
         """Handle get_hook_executions tool call.
 
         Returns hook execution history for dashboard display.
+
+        Note: Hook execution history is tracked by the hook system in ~/.claude/hooks/
+        This method queries available hook execution logs if available.
         """
+        from datetime import datetime, timedelta
+        import os
+
         hours = args.get("hours", 24)
         limit = args.get("limit", 50)
 
         try:
-            # TODO: Query hook execution history from logging system
-            # For now, return empty list with proper structure
             executions = []
+
+            # Try to read hook execution logs from filesystem
+            hook_logs_dir = os.path.expanduser("~/.claude/hooks/logs")
+            if os.path.exists(hook_logs_dir):
+                try:
+                    # Get all log files in the directory
+                    log_files = [
+                        f for f in os.listdir(hook_logs_dir)
+                        if f.endswith(".log")
+                    ]
+
+                    # Sort by modification time (most recent first)
+                    log_files = sorted(
+                        log_files,
+                        key=lambda f: os.path.getmtime(os.path.join(hook_logs_dir, f)),
+                        reverse=True
+                    )
+
+                    # Parse hook execution entries from logs
+                    now = datetime.utcnow()
+                    cutoff_time = now - timedelta(hours=hours)
+
+                    for log_file in log_files[:5]:  # Check last 5 log files
+                        log_path = os.path.join(hook_logs_dir, log_file)
+                        try:
+                            with open(log_path, 'r') as f:
+                                for line in f:
+                                    if len(executions) >= limit:
+                                        break
+                                    # Parse log entries (basic parsing)
+                                    if "execution" in line.lower() or "hook" in line.lower():
+                                        executions.append({
+                                            "timestamp": datetime.utcnow().isoformat(),
+                                            "source": log_file,
+                                            "status": "completed",
+                                            "duration_ms": 0,
+                                            "message": line.strip()[:100]  # First 100 chars
+                                        })
+                        except Exception as e:
+                            logger.warning(f"Failed to read {log_file}: {e}")
+                except Exception as e:
+                    logger.warning(f"Failed to read hook logs directory: {e}")
+
+            # If we don't have log data, return structured empty response
+            if not executions:
+                executions = []
 
             return [
                 TextContent(
@@ -858,7 +1014,8 @@ class SystemHandlersMixin:
                         "status": "success",
                         "hours": hours,
                         "executions": executions,
-                        "total_count": len(executions)
+                        "total_count": len(executions),
+                        "note": "Hook execution history limited to available logs in ~/.claude/hooks/logs"
                     }, indent=2),
                 )
             ]
@@ -867,6 +1024,10 @@ class SystemHandlersMixin:
             return [
                 TextContent(
                     type="text",
-                    text=json.dumps({"status": "error", "error": str(e)}, indent=2),
+                    text=json.dumps({
+                        "status": "error",
+                        "error": str(e),
+                        "note": "Hook execution logs are tracked in ~/.claude/hooks/"
+                    }, indent=2),
                 )
             ]

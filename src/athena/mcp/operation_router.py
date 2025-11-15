@@ -471,6 +471,19 @@ class OperationRouter:
         "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
+    # PHASE 3.1: RESEARCH_TOOLS: 5 operations (Multi-agent research coordination)
+    RESEARCH_OPERATIONS = {
+        "create": "_handle_research_task",
+        "get_status": "_handle_research_task",
+        "list_tasks": "_handle_research_task",
+        "cancel": "_handle_research_task",
+        "get_findings": "_handle_research_findings",
+        "get_agent_status": "_handle_research_agent_status",
+        "submit_feedback": "_handle_research_feedback",
+        "configure": "_handle_research_config",
+        "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
+    }
+
     # All operation maps
     OPERATION_MAPS = {
         "memory_tools": MEMORY_OPERATIONS,
@@ -508,6 +521,7 @@ class OperationRouter:
         "code_analysis_tools": CODE_ANALYSIS_OPERATIONS,
         "external_knowledge_tools": EXTERNAL_KNOWLEDGE_OPERATIONS,
         "code_execution_tools": CODE_EXECUTION_OPERATIONS,
+        "research_tools": RESEARCH_OPERATIONS,
     }
 
     def __init__(self, handler_instance: Any):

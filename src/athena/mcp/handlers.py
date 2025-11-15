@@ -113,6 +113,9 @@ from .handlers_planning import PlanningHandlersMixin
 from .handlers_metacognition import MetacognitionHandlersMixin
 from .handlers_system import SystemHandlersMixin
 
+# Phase 3.1: Research Coordination Handlers
+from .handlers_research import ResearchHandlersMixin
+
 # Phase 5-6 Advanced Features: Agent, Hook, Skill Optimization & Slash Commands
 from .handlers_agent_optimization import AgentOptimizationHandlersMixin
 from .handlers_hook_coordination import HookCoordinationHandlersMixin
@@ -176,6 +179,7 @@ class MemoryMCPServer(
     PlanningHandlersMixin,
     MetacognitionHandlersMixin,
     SystemHandlersMixin,
+    ResearchHandlersMixin,
     AgentOptimizationHandlersMixin,
     HookCoordinationHandlersMixin,
     SkillOptimizationHandlersMixin,
