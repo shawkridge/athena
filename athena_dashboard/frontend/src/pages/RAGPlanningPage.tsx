@@ -1,8 +1,7 @@
 import { useProject } from '@/context/ProjectContext'
-import { Card } from '@/components/common/Card'
-import { Stat } from '@/components/common/Stat'
+import { Card, Stat, RefreshButton } from '@/components/common'
 import { BarChartComponent } from '@/components/charts/BarChart'
-import { useAPI } from '@/hooks'
+import { useRealtimeData } from '@/hooks'
 
 interface RAGMetrics {
   avgQueryTime: number
@@ -21,18 +20,26 @@ export const RAGPlanningPage = () => {
   const apiUrl = selectedProject
     ? `/api/rag/metrics?project_id=${selectedProject.id}`
     : '/api/rag/metrics'
-  const { data, loading } = useAPI<RAGResponse>(apiUrl, [selectedProject?.id])
+  const { data, loading, refetch, isConnected } = useRealtimeData<RAGResponse>({
+    url: apiUrl,
+    dependencies: [selectedProject?.id],
+    pollInterval: 5000,
+    enabled: true,
+  })
 
   if (loading) return <div className="p-6 animate-pulse h-64 bg-gray-800 rounded" />
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-50">RAG & Planning</h1>
-        <p className="text-gray-400">
-          Retrieval quality and plan validation
-          {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-50">RAG & Planning</h1>
+          <p className="text-gray-400">
+            Retrieval quality and plan validation
+            {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
+          </p>
+        </div>
+        <RefreshButton onRefresh={refetch} isConnected={isConnected} isLoading={loading} />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

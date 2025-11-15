@@ -1,9 +1,9 @@
-import { Card } from '@/components/common/Card'
+import { Card, RefreshButton } from '@/components/common'
 import { BarChartComponent } from '@/components/charts/BarChart'
 import { PieChartComponent } from '@/components/charts/PieChart'
 import { Tabs, type Tab } from '@/components/common/Tabs'
 import { Stat } from '@/components/common/Stat'
-import { useAPI } from '@/hooks'
+import { useRealtimeData } from '@/hooks'
 import { useProject } from '@/context/ProjectContext'
 import { useState } from 'react'
 import { format } from 'date-fns'
@@ -41,10 +41,12 @@ export const ConsolidationPage = () => {
     ? `/api/consolidation/analytics?project_id=${selectedProject.id}`
     : '/api/consolidation/analytics'
 
-  const { data, loading, error } = useAPI<ConsolidationData>(
-    apiUrl,
-    [selectedProject?.id]
-  )
+  const { data, loading, error, refetch, isConnected } = useRealtimeData<ConsolidationData>({
+    url: apiUrl,
+    dependencies: [selectedProject?.id],
+    pollInterval: 3000,  // Poll frequently for live consolidation progress
+    enabled: true,
+  })
 
   if (loading) {
     return (
@@ -213,9 +215,15 @@ export const ConsolidationPage = () => {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-50">Layer 7: Consolidation</h1>
-        <p className="text-gray-400">Pattern extraction and dual-process reasoning</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-50">Layer 7: Consolidation</h1>
+          <p className="text-gray-400">
+            Pattern extraction and dual-process reasoning
+            {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
+          </p>
+        </div>
+        <RefreshButton onRefresh={refetch} isConnected={isConnected} isLoading={loading} />
       </div>
 
       <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />

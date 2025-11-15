@@ -1,8 +1,6 @@
-import { Card } from '@/components/common/Card'
-import { Stat } from '@/components/common/Stat'
-import { Badge } from '@/components/common/Badge'
+import { Card, Stat, Badge, RefreshButton } from '@/components/common'
 import { TimeSeriesChart } from '@/components/charts/TimeSeriesChart'
-import { useAPI } from '@/hooks'
+import { useRealtimeData } from '@/hooks'
 import { useProject } from '@/context/ProjectContext'
 
 interface HookStatus {
@@ -25,18 +23,26 @@ export const HookExecutionPage = () => {
     ? `/api/hooks/status?project_id=${selectedProject.id}`
     : '/api/hooks/status'
 
-  const { data, loading } = useAPI<HookResponse>(apiUrl, [selectedProject?.id])
+  const { data, loading, refetch, isConnected } = useRealtimeData<HookResponse>({
+    url: apiUrl,
+    dependencies: [selectedProject?.id],
+    pollInterval: 3000,
+    enabled: true,
+  })
 
   if (loading) return <div className="p-6 animate-pulse h-64 bg-gray-800 rounded" />
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-50">Hook Execution Monitor</h1>
-        <p className="text-gray-400">
-          Track hook status, latency, and success rates
-          {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-50">Hook Execution Monitor</h1>
+          <p className="text-gray-400">
+            Track hook status, latency, and success rates
+            {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
+          </p>
+        </div>
+        <RefreshButton onRefresh={refetch} isConnected={isConnected} isLoading={loading} />
       </div>
 
       <Card header={<h3 className="text-lg font-semibold text-gray-50">Performance Trends</h3>}>
