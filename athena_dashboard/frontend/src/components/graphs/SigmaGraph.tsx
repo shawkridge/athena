@@ -358,9 +358,6 @@ export const SigmaGraph: React.FC<SigmaGraphProps> = ({
           labelGridCellSize: 60,
           labelRenderedSizeThreshold: 8,
           enableEdgeEvents: false,
-          nodeProgramClasses: {
-            highlighted: 'https://cdn.jsdelivr.net/npm/sigma@2/rendering/webgl/programs/node.highlighted.ts' as any,
-          },
         }}
       >
         <SigmaGraphInner

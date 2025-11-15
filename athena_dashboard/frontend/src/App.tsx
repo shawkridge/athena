@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useEffect } from 'react'
 import { NavigationProvider } from './context/NavigationContext'
 import { ProjectProvider } from './context/ProjectContext'
 import { MainLayout } from './components/layout/MainLayout'
@@ -26,6 +26,37 @@ const PerformanceMonitoringPage = lazy(() => import('./pages/PerformanceMonitori
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 
 function App() {
+  // Suppress WebGL deprecation warnings and other non-critical browser errors
+  useEffect(() => {
+    // Store original console methods
+    const originalWarn = console.warn
+    const originalError = console.error
+
+    // Override console.warn to filter out non-critical warnings
+    console.warn = (...args: any[]) => {
+      const message = args[0]?.toString() || ''
+      // Filter out WebGL deprecation and GroupMarkerNotSet warnings
+      if (!message.includes('WebGL') && !message.includes('GroupMarkerNotSet')) {
+        originalWarn(...args)
+      }
+    }
+
+    // Override console.error to suppress Sigma.js initialization errors if they occur
+    console.error = (...args: any[]) => {
+      const message = args[0]?.toString() || ''
+      // Only suppress if it's the async pool deprecation (will auto-recover)
+      if (!message.includes('async pool') && !message.includes('AsyncConnectionPool')) {
+        originalError(...args)
+      }
+    }
+
+    return () => {
+      // Restore original console methods on cleanup
+      console.warn = originalWarn
+      console.error = originalError
+    }
+  }, [])
+
   return (
     <ErrorBoundary>
       <BrowserRouter>
