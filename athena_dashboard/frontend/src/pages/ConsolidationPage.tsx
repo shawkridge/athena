@@ -4,6 +4,7 @@ import { PieChartComponent } from '@/components/charts/PieChart'
 import { Tabs, type Tab } from '@/components/common/Tabs'
 import { Stat } from '@/components/common/Stat'
 import { useAPI } from '@/hooks'
+import { useProject } from '@/context/ProjectContext'
 import { useState } from 'react'
 import { format } from 'date-fns'
 
@@ -33,8 +34,16 @@ interface ConsolidationData {
 
 export const ConsolidationPage = () => {
   const [activeTab, setActiveTab] = useState('overview')
+  const { selectedProject } = useProject()
+
+  // Build URL with project_id if a project is selected
+  const apiUrl = selectedProject
+    ? `/api/consolidation/analytics?project_id=${selectedProject.id}`
+    : '/api/consolidation/analytics'
+
   const { data, loading, error } = useAPI<ConsolidationData>(
-    '/api/consolidation/analytics'
+    apiUrl,
+    [selectedProject?.id]
   )
 
   if (loading) {

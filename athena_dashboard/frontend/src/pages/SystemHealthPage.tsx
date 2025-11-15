@@ -2,6 +2,7 @@ import { Card } from '@/components/common/Card'
 import { GaugeChart } from '@/components/charts/GaugeChart'
 import { TimeSeriesChart } from '@/components/charts/TimeSeriesChart'
 import { useAPI } from '@/hooks'
+import { useProject } from '@/context/ProjectContext'
 
 interface LayerHealth {
   name: string
@@ -38,8 +39,16 @@ const getStatusColor = (status: string) => {
 }
 
 export const SystemHealthPage = () => {
+  const { selectedProject } = useProject()
+
+  // Build URL with project_id if a project is selected
+  const apiUrl = selectedProject
+    ? `/api/system/health?project_id=${selectedProject.id}`
+    : '/api/system/health'
+
   const { data, loading, error } = useAPI<SystemHealthResponse>(
-    '/api/system/health'
+    apiUrl,
+    [selectedProject?.id]
   )
 
   if (loading) {

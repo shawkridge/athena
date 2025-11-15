@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Suspense, lazy } from 'react'
 import { NavigationProvider } from './context/NavigationContext'
+import { ProjectProvider } from './context/ProjectContext'
 import { MainLayout } from './components/layout/MainLayout'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { LoadingSpinner } from './components/common/LoadingSpinner'
@@ -27,8 +28,9 @@ function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <NavigationProvider>
-          <Suspense fallback={<LoadingSpinner message="Loading dashboard..." />}>
-            <Routes>
+          <ProjectProvider>
+            <Suspense fallback={<LoadingSpinner message="Loading dashboard..." />}>
+              <Routes>
               <Route element={<MainLayout />}>
                 <Route path="/" element={<OverviewPage />} />
                 <Route path="/overview" element={<OverviewPage />} />
@@ -48,7 +50,8 @@ function App() {
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>
             </Routes>
-          </Suspense>
+            </Suspense>
+          </ProjectProvider>
         </NavigationProvider>
       </BrowserRouter>
     </ErrorBoundary>

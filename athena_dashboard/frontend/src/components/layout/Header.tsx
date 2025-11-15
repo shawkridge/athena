@@ -4,6 +4,7 @@
 
 import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
+import ProjectSelector from '../ProjectSelector'
 
 interface HeaderProps {
   title?: string
@@ -17,10 +18,15 @@ export const Header = ({ title = 'Athena Dashboard', subtitle, actions }: Header
 
   return (
     <header className="fixed top-0 right-0 left-64 h-16 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-6 z-30">
-      {/* Title */}
-      <div>
-        <h1 className="text-xl font-bold text-gray-50">{title}</h1>
-        {subtitle && <p className="text-sm text-gray-400">{subtitle}</p>}
+      {/* Title & Project Selector */}
+      <div className="flex items-center gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-gray-50">{title}</h1>
+          {subtitle && <p className="text-sm text-gray-400">{subtitle}</p>}
+        </div>
+        <div className="border-l border-gray-700 pl-4">
+          <ProjectSelector />
+        </div>
       </div>
 
       {/* Actions & Controls */}
