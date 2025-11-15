@@ -74,7 +74,9 @@ const GraphLoader: React.FC<{
         label: node.label,
         size,
         color,
-        type: nodeType,
+        // Store type info in metadata but don't set as 'type' (Sigma limitation)
+        // This prevents "could not find a suitable program for node type" errors
+        nodeType: nodeType,  // Custom property for filtering/styling in JS
         community: node.community || 0,
       })
     })

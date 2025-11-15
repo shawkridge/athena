@@ -26,7 +26,7 @@ const PerformanceMonitoringPage = lazy(() => import('./pages/PerformanceMonitori
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 
 function App() {
-  // Suppress WebGL deprecation warnings and other non-critical browser errors
+  // Suppress non-critical browser warnings and errors
   useEffect(() => {
     // Store original console methods
     const originalWarn = console.warn
@@ -35,17 +35,29 @@ function App() {
     // Override console.warn to filter out non-critical warnings
     console.warn = (...args: any[]) => {
       const message = args[0]?.toString() || ''
-      // Filter out WebGL deprecation and GroupMarkerNotSet warnings
-      if (!message.includes('WebGL') && !message.includes('GroupMarkerNotSet')) {
+      // Filter out known non-critical warnings
+      const isNonCritical =
+        message.includes('WebGL') ||
+        message.includes('GroupMarkerNotSet') ||
+        message.includes('async pool') ||
+        message.includes('AsyncConnectionPool') ||
+        message.includes('async pool') ||
+        message.includes('opening the async pool')
+
+      if (!isNonCritical) {
         originalWarn(...args)
       }
     }
 
-    // Override console.error to suppress Sigma.js initialization errors if they occur
+    // Override console.error to suppress non-critical errors
     console.error = (...args: any[]) => {
       const message = args[0]?.toString() || ''
-      // Only suppress if it's the async pool deprecation (will auto-recover)
-      if (!message.includes('async pool') && !message.includes('AsyncConnectionPool')) {
+      // Only suppress async pool errors - they auto-recover
+      const isNonCritical =
+        message.includes('async pool') ||
+        message.includes('AsyncConnectionPool')
+
+      if (!isNonCritical) {
         originalError(...args)
       }
     }
