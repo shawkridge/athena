@@ -446,18 +446,89 @@ class GoalDecompositionHandlersMixin:
         """
         Refine a decomposition based on feedback.
 
-        Placeholder for future iterative refinement.
-        Would re-run LLM with feedback to improve decomposition.
+        Takes user feedback on an existing decomposition and re-runs the
+        decomposition with the feedback incorporated as additional context.
+
+        Args:
+            decomposition_id: ID of decomposition to refine
+            feedback: User feedback describing desired changes
+
+        Returns:
+            Refined decomposition summary
         """
         if decomposition_id not in self.decomposition_cache:
             return {"error": f"Decomposition '{decomposition_id}' not found"}
 
-        # TODO: Implement iterative refinement
-        # Would call LLM again with feedback to improve decomposition
-        return {
-            "status": "not_yet_implemented",
-            "message": "Iterative refinement coming in next phase",
-        }
+        try:
+            # Get the original decomposition
+            original = self.decomposition_cache[decomposition_id]
+
+            # Re-run decomposition with feedback incorporated as context
+            goal = Goal(
+                id=decomposition_id,
+                title=original.goal_title,
+                description=original.goal_description,
+                context=f"{original.goal_context or ''}\n\nRefinement feedback: {feedback}",
+            )
+
+            logger.info(f"Refining decomposition {decomposition_id} with feedback: {feedback[:100]}...")
+
+            # Re-decompose with feedback in context
+            result = self.decomposition_service.decompose_goal(
+                goal,
+                max_depth=original.max_depth,
+                target_chunk_size=30
+            )
+
+            if not result.success:
+                return {
+                    "success": False,
+                    "error": result.error_message,
+                    "warnings": result.warnings,
+                }
+
+            # Store refined decomposition in cache (overwrites old version)
+            decomposed = result.decomposed_goal
+            self.decomposition_cache[decomposition_id] = decomposed
+
+            logger.info(f"Successfully refined decomposition {decomposition_id}")
+
+            # Return summary of refined decomposition
+            return {
+                "success": True,
+                "decomposition_id": decomposition_id,
+                "refined": True,
+                "feedback_applied": feedback,
+                "summary": {
+                    "goal_title": decomposed.goal_title,
+                    "num_tasks": decomposed.num_tasks,
+                    "num_subtasks": decomposed.num_subtasks,
+                    "max_depth": decomposed.max_depth,
+                    "total_estimated_effort": decomposed.total_estimated_effort,
+                    "avg_complexity": round(decomposed.avg_complexity, 1),
+                    "critical_path_length": decomposed.critical_path_length,
+                    "completeness_score": round(decomposed.completeness_score, 2),
+                    "clarity_score": round(decomposed.clarity_score, 2),
+                    "feasibility_score": round(decomposed.feasibility_score, 2),
+                },
+                "changes": {
+                    "previous_task_count": original.num_tasks,
+                    "new_task_count": decomposed.num_tasks,
+                    "task_change": decomposed.num_tasks - original.num_tasks,
+                    "complexity_change": round(decomposed.avg_complexity - original.avg_complexity, 2),
+                },
+                "next_action": "Call 'get_decomposition' to see full updated task hierarchy",
+                "execution_time_seconds": result.execution_time_seconds,
+                "warnings": result.warnings,
+            }
+
+        except Exception as e:
+            logger.error(f"Error refining decomposition {decomposition_id}: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e),
+                "decomposition_id": decomposition_id,
+            }
 
     # ========================================================================
     # HELPER: Convert to MCP Tool Calls (if server doesn't use mixin directly)
