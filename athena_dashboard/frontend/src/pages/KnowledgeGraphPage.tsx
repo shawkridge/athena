@@ -2,6 +2,7 @@ import { Card, Stat, RefreshButton } from '@/components/common'
 import { useRealtimeData } from '@/hooks'
 import { useProject } from '@/context/ProjectContext'
 import { useState } from 'react'
+import SigmaGraph, { GraphData } from '@/components/graphs/SigmaGraph'
 
 interface GraphStats {
   entities: number
@@ -26,6 +27,8 @@ interface VisualizationResponse {
 
 export const KnowledgeGraphPage = () => {
   const { selectedProject } = useProject()
+  const [selectedNode, setSelectedNode] = useState<{ id: string; label: string } | null>(null)
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null)
 
   // Fetch stats
   const statsUrl = selectedProject
@@ -44,10 +47,10 @@ export const KnowledgeGraphPage = () => {
     enabled: true,
   })
 
-  // Fetch visualization data
+  // Fetch visualization data with higher limit for better visualization
   const vizUrl = selectedProject
-    ? `/api/graph/visualization?project_id=${selectedProject.id}&limit=200`
-    : '/api/graph/visualization?limit=200'
+    ? `/api/graph/visualization?project_id=${selectedProject.id}&limit=500`
+    : '/api/graph/visualization?limit=500'
 
   const {
     data: vizData,
@@ -68,6 +71,15 @@ export const KnowledgeGraphPage = () => {
 
   const loading = statsLoading || vizLoading
   const isConnected = statsConnected && vizConnected
+
+  // Prepare graph data for Sigma.js
+  const graphData: GraphData | null = vizData
+    ? {
+        nodes: vizData.nodes,
+        edges: vizData.edges,
+        metadata: vizData.metadata,
+      }
+    : null
 
   if (loading && !statsData && !vizData) {
     return <div className="p-6 animate-pulse h-64 bg-gray-800 rounded" />
@@ -93,24 +105,58 @@ export const KnowledgeGraphPage = () => {
         <Stat label="Density" value={`${(statsData?.stats.density || 0).toFixed(2)}`} />
       </div>
 
-      <Card header={<h3 className="text-lg font-semibold text-gray-50">Graph Visualization</h3>}>
-        <div className="h-96 rounded-lg bg-gray-900 flex items-center justify-center text-gray-400 border border-gray-700 p-6">
-          <div className="text-center space-y-4">
-            <p className="text-lg">Interactive Graph Visualization</p>
-            <p className="text-sm text-gray-500">
-              Cytoscape integration is in development. The knowledge graph contains:
-            </p>
-            {vizData?.metadata && (
-              <div className="space-y-2 text-sm">
-                <p><strong>{vizData.metadata.total_nodes_in_graph}</strong> entities</p>
-                <p><strong>{vizData.metadata.total_edges_in_graph}</strong> relationships</p>
-              </div>
-            )}
-            <p className="text-xs text-gray-600 mt-4">
-              The backend API is ready at <code className="bg-gray-800 px-2 py-1 rounded">/api/graph/visualization</code>
-            </p>
+      {selectedNode && (
+        <div className="bg-blue-900 border border-blue-700 rounded p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-400">Selected Node</p>
+              <p className="text-lg font-semibold text-blue-300">{selectedNode.label}</p>
+              <p className="text-xs text-gray-500 mt-1">ID: {selectedNode.id}</p>
+            </div>
+            <button
+              onClick={() => setSelectedNode(null)}
+              className="text-gray-400 hover:text-gray-200"
+            >
+              ✕
+            </button>
           </div>
         </div>
+      )}
+
+      <Card header={<h3 className="text-lg font-semibold text-gray-50">Graph Visualization</h3>}>
+        {graphData && graphData.nodes.length > 0 ? (
+          <>
+            <SigmaGraph
+              data={graphData}
+              loading={loading}
+              onNodeClick={(nodeId, nodeLabel) => {
+                setSelectedNode({ id: nodeId, label: nodeLabel })
+              }}
+              onNodeHover={setHoveredNode}
+              height="600px"
+              colorByType={true}
+            />
+            <div className="mt-4 pt-4 border-t border-gray-700 text-xs text-gray-400">
+              <p>
+                Showing <strong>{graphData.nodes.length}</strong> of{' '}
+                <strong>{graphData.metadata?.total_nodes_in_graph || graphData.nodes.length}</strong> entities
+              </p>
+              <p>
+                Showing <strong>{graphData.edges.length}</strong> of{' '}
+                <strong>{graphData.metadata?.total_edges_in_graph || graphData.edges.length}</strong> relationships
+              </p>
+            </div>
+          </>
+        ) : (
+          <div className="h-96 rounded-lg bg-gray-900 flex items-center justify-center text-gray-400 border border-gray-700 p-6">
+            <div className="text-center space-y-4">
+              <p className="text-lg">No graph data available</p>
+              <p className="text-sm text-gray-500">
+                The knowledge graph will appear here once data is available.
+              </p>
+            </div>
+          </div>
+        )}
       </Card>
 
     </div>

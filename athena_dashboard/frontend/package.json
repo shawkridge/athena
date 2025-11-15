@@ -10,15 +10,20 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@react-sigma/core": "^5.0.4",
     "axios": "^1.13.2",
     "clsx": "^2.1.1",
     "cytoscape": "^3.33.1",
     "cytoscape-cose-bilkent": "^4.1.0",
     "date-fns": "^4.1.0",
+    "graphology": "^0.26.0",
+    "graphology-layout-forceatlas2": "^0.10.1",
+    "graphology-types": "^0.24.8",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^7.9.6",
-    "recharts": "^3.4.1"
+    "recharts": "^3.4.1",
+    "sigma": "^3.0.2"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
