@@ -366,46 +366,52 @@ async def get_episodic_events(
     offset: int = Query(0, ge=0),
     sort: str = Query("timestamp", regex="^(timestamp|type|source)$"),
     order: str = Query("desc", regex="^(asc|desc)$"),
+    project_id: Optional[int] = Query(None),
 ) -> Dict[str, Any]:
-    """Get episodic events with pagination and sorting."""
+    """Get episodic events with pagination and sorting.
+
+    Returns real data from episodic_events table.
+
+    Args:
+        limit: Number of events to return
+        offset: Pagination offset (TODO: implement)
+        sort: Field to sort by
+        order: Sort order (asc/desc)
+        project_id: Optional project ID to filter by
+
+    Returns:
+        Real episodic events from database
+    """
     try:
         loader = _services.get("data_loader")
         if not loader:
-            # Return mock data for testing
-            return {
-                "events": [
-                    {
-                        "id": f"evt_{1000-i}",
-                        "timestamp": (datetime.utcnow() - timedelta(hours=i)).isoformat() + "Z",
-                        "type": ["tool_execution", "learning", "error", "decision"][i % 4],
-                        "description": f"Event {1000-i}",
-                        "data": {}
-                    }
-                    for i in range(limit)
-                ],
-                "total": 8128,
-                "stats": {
-                    "totalEvents": 8128,
-                    "avgStorageSize": 2.5,
-                    "queryTimeMs": 45
-                }
-            }
+            raise HTTPException(status_code=503, detail="Data loader not initialized")
 
-        # Use actual data loader
-        events = loader.get_recent_events(limit=limit)
-        total = loader.count_events()
+        # Get real episodic events from database
+        events = loader.get_recent_events(limit=limit, project_id=project_id)
+        total = loader.count_events(project_id=project_id)
+
+        # Convert database format to API schema
+        result_events = []
+        for i, e in enumerate(events[:limit]):
+            # Convert timestamp from milliseconds if needed
+            ts = e.get("timestamp", 0)
+            if ts and ts > 1000000000000:  # Milliseconds
+                ts_iso = datetime.fromtimestamp(ts / 1000, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+            else:
+                ts_iso = datetime.fromtimestamp(ts, tz=timezone.utc).isoformat().replace("+00:00", "Z") if ts else datetime.utcnow().isoformat() + "Z"
+
+            result_events.append({
+                "id": str(e.get("id", i)),
+                "timestamp": ts_iso,
+                "type": e.get("event_type", "event"),
+                "description": e.get("content", "Event"),
+                "importance": e.get("importance_score", 0.5),
+                "project_id": e.get("project_id")
+            })
 
         return {
-            "events": [
-                {
-                    "id": e.get("id", f"evt_{i}"),
-                    "timestamp": e.get("timestamp", datetime.utcnow().isoformat() + "Z"),
-                    "type": e.get("type", "event"),
-                    "description": e.get("description", "Event"),
-                    "data": e.get("data", {})
-                }
-                for i, e in enumerate(events[:limit])
-            ],
+            "events": result_events,
             "total": total,
             "stats": {
                 "totalEvents": total,
@@ -415,25 +421,7 @@ async def get_episodic_events(
         }
     except Exception as e:
         logger.error(f"Error fetching episodic events: {e}")
-        # Fall back to mock data on error
-        return {
-            "events": [
-                {
-                    "id": f"evt_{1000-i}",
-                    "timestamp": (datetime.utcnow() - timedelta(hours=i)).isoformat() + "Z",
-                    "type": ["tool_execution", "learning", "error", "decision"][i % 4],
-                    "description": f"Event {1000-i}",
-                    "data": {}
-                }
-                for i in range(min(limit, 20))
-            ],
-            "total": 8128,
-            "stats": {
-                "totalEvents": 8128,
-                "avgStorageSize": 2.5,
-                "queryTimeMs": 45
-            }
-        }
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @episodic_router.get("/events/{event_id}")
@@ -579,39 +567,52 @@ async def get_procedural_skills(
     limit: int = Query(100, le=500),
     offset: int = Query(0, ge=0),
     sort: str = Query("effectiveness", regex="^(effectiveness|usage|timestamp)$"),
+    project_id: Optional[int] = Query(None),
 ) -> Dict[str, Any]:
-    """Get learned procedural skills. Matches API_INTEGRATION_GUIDE.md schema."""
+    """Get learned procedural skills from real database.
+
+    Returns actual skills stored in the database, ordered by effectiveness.
+
+    Args:
+        limit: Number of skills to return
+        offset: Pagination offset (TODO: implement)
+        sort: Sort field (effectiveness/usage/timestamp)
+        project_id: Optional project ID to filter by
+
+    Returns:
+        Real skills from database
+    """
     try:
         loader = _services.get("data_loader")
+        if not loader:
+            raise HTTPException(status_code=503, detail="Data loader not initialized")
 
-        if loader:
-            procedures = loader.get_top_procedures(limit=limit) or []
-            total = loader.count_procedures()
-        else:
-            procedures = []
-            total = 101
+        # Get real skills from database
+        procedures = loader.get_top_procedures(limit=limit, project_id=project_id) or []
+        total = loader.count_procedures(project_id=project_id)
 
         return {
             "skills": [
                 {
-                    "id": f"skill_{1000+i:03d}",
-                    "name": p.get("name", f"Skill {i+1}") if p else f"Web Scraping Skill {i+1}",
-                    "category": ["data-collection", "analysis", "automation", "testing"][i % 4],
-                    "effectiveness": p.get("success_rate", 85+i) if p else 85+i,
-                    "executions": p.get("execution_count", 100+i*10) if p else 100+i*10,
-                    "lastUsed": (datetime.utcnow() - timedelta(days=i)).isoformat() + "Z"
+                    "id": str(p.get("id", f"skill_{i}")),
+                    "name": p.get("name", f"Skill {i+1}"),
+                    "description": p.get("description", ""),
+                    "domain": p.get("domain", "general"),
+                    "effectiveness": int((p.get("quality_score", 0.5) or 0.5) * 100),  # Convert 0-1 to 0-100
+                    "executions": p.get("times_used", 0),
+                    "successRate": (p.get("success_rate", 1.0) or 1.0) * 100
                 }
-                for i, p in enumerate(procedures[:min(limit, 10)])
+                for i, p in enumerate(procedures[:limit])
             ],
             "stats": {
                 "totalSkills": total,
-                "avgEffectiveness": 87.5,
-                "totalExecutions": 8920
+                "avgEffectiveness": sum((p.get("quality_score", 0.5) or 0.5) for p in procedures) / len(procedures) * 100 if procedures else 0,
+                "totalExecutions": sum(p.get("times_used", 0) or 0 for p in procedures)
             }
         }
     except Exception as e:
         logger.error(f"Error in procedural skills: {e}")
-        return {"skills": [], "stats": {"totalSkills": 0, "avgEffectiveness": 0, "totalExecutions": 0}}
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @procedural_router.get("/skills/{skill_id}")
@@ -1243,31 +1244,50 @@ working_memory_router = APIRouter(prefix="/working-memory", tags=["working-memor
 
 
 @working_memory_router.get("/current")
-async def get_working_memory() -> Dict[str, Any]:
-    """Get current working memory items. Matches API_INTEGRATION_GUIDE.md schema."""
+async def get_working_memory(project_id: Optional[int] = Query(None)) -> Dict[str, Any]:
+    """Get current working memory items (7±2 most important recent events).
+
+    Optionally filtered by project. Working memory is powered by episodic events
+    with high importance scores.
+
+    Args:
+        project_id: Optional project ID to filter by. If None, returns global items.
+
+    Returns:
+        List of working memory items matching API_INTEGRATION_GUIDE.md schema.
+    """
     try:
         loader = _services.get("data_loader")
         working_items = []
         working_count = 0
 
         if loader:
-            working_items = loader.get_working_memory_items() or []
-            working_count = loader.get_working_memory_count() or 0
-        else:
-            working_count = 6
+            # Get real working memory items from episodic events
+            working_items = loader.get_working_memory_items(project_id=project_id, limit=7) or []
+            working_count = loader.get_working_memory_count(project_id=project_id) or 0
+
+        # Convert episodic events to working memory format
+        items = []
+        for i, item in enumerate(working_items[:7]):
+            # Convert timestamp from milliseconds to datetime if needed
+            ts = item.get("timestamp", 0)
+            if ts and ts > 1000000000000:  # Milliseconds
+                ts_ms = int(ts)
+            else:
+                ts_ms = int(ts * 1000) if ts else 0
+
+            items.append({
+                "id": f"mem_{item.get('id', i)}",
+                "title": item.get("title", f"Memory Item {i+1}"),
+                "type": item.get("type", "event"),
+                "importance": int(item.get("importance", 0.5) * 100),  # Convert 0-1 to 0-100
+                "timestamp": ts_ms
+            })
 
         return {
-            "items": [
-                {
-                    "id": f"item_{1000+i:03d}",
-                    "title": item.get("title", f"Working Memory Item {i+1}") if item else f"Memory Item {i+1}",
-                    "age": f"{i*2}m ago",
-                    "importance": max(0, 90 - (i * 12))
-                }
-                for i, item in enumerate(working_items[:7])
-            ],
+            "items": items,
             "cognitive": {
-                "load": min(working_count or 6, 9),
+                "load": min(working_count or len(items), 9),  # Baddeley's 7±2 limit
                 "capacity": 9
             }
         }

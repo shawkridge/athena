@@ -2,14 +2,18 @@ import { Card } from '@/components/common/Card'
 import { Stat } from '@/components/common/Stat'
 import { Badge } from '@/components/common/Badge'
 import { useAPI } from '@/hooks'
+import { useProject } from '@/context/ProjectContext'
 
 interface Skill {
   id: string
   name: string
-  category: string
+  category?: string
+  domain?: string
   effectiveness: number
-  executions: number
-  lastUsed: string
+  executions?: number
+  successRate?: number
+  description?: string
+  lastUsed?: string
 }
 
 interface ProceduralResponse {
@@ -22,7 +26,13 @@ interface ProceduralResponse {
 }
 
 export const ProceduralMemoryPage = () => {
-  const { data, loading } = useAPI<ProceduralResponse>('/api/procedural/skills')
+  const { selectedProject } = useProject()
+
+  const apiUrl = selectedProject
+    ? `/api/procedural/skills?project_id=${selectedProject.id}`
+    : '/api/procedural/skills'
+
+  const { data, loading } = useAPI<ProceduralResponse>(apiUrl, [selectedProject?.id])
 
   if (loading) {
     return (
@@ -36,7 +46,10 @@ export const ProceduralMemoryPage = () => {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-50">Layer 3: Procedural Memory</h1>
-        <p className="text-gray-400">Learned skills and workflows</p>
+        <p className="text-gray-400">
+          Learned skills and workflows
+          {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

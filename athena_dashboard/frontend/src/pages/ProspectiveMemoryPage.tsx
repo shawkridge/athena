@@ -2,6 +2,7 @@ import { Card } from '@/components/common/Card'
 import { Stat } from '@/components/common/Stat'
 import { Badge } from '@/components/common/Badge'
 import { useAPI } from '@/hooks'
+import { useProject } from '@/context/ProjectContext'
 
 interface Task {
   id: string
@@ -22,7 +23,13 @@ interface ProspectiveResponse {
 }
 
 export const ProspectiveMemoryPage = () => {
-  const { data, loading } = useAPI<ProspectiveResponse>('/api/prospective/tasks')
+  const { selectedProject } = useProject()
+
+  const apiUrl = selectedProject
+    ? `/api/prospective/tasks?project_id=${selectedProject.id}`
+    : '/api/prospective/tasks'
+
+  const { data, loading } = useAPI<ProspectiveResponse>(apiUrl, [selectedProject?.id])
 
   if (loading) return <div className="p-6 animate-pulse h-64 bg-gray-800 rounded" />
 
@@ -30,7 +37,10 @@ export const ProspectiveMemoryPage = () => {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-50">Layer 4: Prospective Memory</h1>
-        <p className="text-gray-400">Tasks, goals, and future intentions</p>
+        <p className="text-gray-400">
+          Tasks, goals, and future intentions
+          {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
+        </p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

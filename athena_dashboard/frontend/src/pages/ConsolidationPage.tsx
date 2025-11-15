@@ -114,6 +114,7 @@ export const ConsolidationPage = () => {
           </div>
 
           {/* Last Run Details */}
+          {data.lastRun && data.lastRun.status && (
           <Card
             header={<h3 className="text-lg font-semibold text-gray-50">Last Run</h3>}
           >
@@ -148,6 +149,7 @@ export const ConsolidationPage = () => {
               </div>
             </div>
           </Card>
+          )}
         </div>
       ),
     },

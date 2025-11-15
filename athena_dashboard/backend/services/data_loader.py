@@ -67,22 +67,33 @@ class DataLoader:
     # EPISODIC MEMORY QUERIES
     # ========================================================================
 
-    def get_recent_events(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_recent_events(self, limit: int = 50, project_id: Optional[int] = None) -> List[Dict[str, Any]]:
         """Get recent episodic events.
 
         Args:
             limit: Number of events to retrieve
+            project_id: Optional project ID to filter by
 
         Returns:
-            List of recent events
+            List of recent events from actual database
         """
-        sql = """
-            SELECT id, event_type, content, context, timestamp
-            FROM episodic_events
-            ORDER BY timestamp DESC
-            LIMIT %s
-        """
-        return self._query(sql, (limit,))
+        if project_id:
+            sql = """
+                SELECT id, event_type, content, timestamp, project_id, importance_score
+                FROM episodic_events
+                WHERE project_id = %s
+                ORDER BY timestamp DESC
+                LIMIT %s
+            """
+            return self._query(sql, (project_id, limit))
+        else:
+            sql = """
+                SELECT id, event_type, content, timestamp, project_id, importance_score
+                FROM episodic_events
+                ORDER BY timestamp DESC
+                LIMIT %s
+            """
+            return self._query(sql, (limit,))
 
     def get_events_by_type(self, event_type: str, hours: int = 24) -> List[Dict[str, Any]]:
         """Get events of specific type in timeframe.
@@ -195,19 +206,20 @@ class DataLoader:
             logger.warning(f"Failed to count procedures: {e}")
             return 0
 
-    def get_top_procedures(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get most effective procedures.
+    def get_top_procedures(self, limit: int = 10, project_id: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Get most effective procedures/skills from real database.
 
         Args:
             limit: Number of procedures to return
+            project_id: Optional project ID to filter by
 
         Returns:
-            List of top procedures
+            List of top procedures/skills
         """
         sql = """
-            SELECT name, description, usage_count, success_rate, effectiveness_score
-            FROM procedures
-            ORDER BY effectiveness_score DESC
+            SELECT id, name, description, domain, quality_score, times_used, success_rate
+            FROM skills
+            ORDER BY quality_score DESC, times_used DESC
             LIMIT %s
         """
         return self._query(sql, (limit,))
@@ -282,33 +294,72 @@ class DataLoader:
     # WORKING MEMORY QUERIES
     # ========================================================================
 
-    def get_working_memory_items(self) -> List[Dict[str, Any]]:
-        """Get current working memory items.
+    def get_working_memory_items(self, project_id: Optional[int] = None, limit: int = 7) -> List[Dict[str, Any]]:
+        """Get current working memory items (Baddeley's 7±2 limit).
 
-        Returns empty list if working_memory table doesn't exist (graceful fallback).
+        Uses the 7 most important/recent episodic events as working memory.
+
+        Args:
+            project_id: Optional project ID to filter by. If None, returns global items.
+            limit: Number of items to return (default 7 - Baddeley's cognitive limit)
+
+        Returns:
+            List of working memory items (episodic events sorted by importance)
         """
         try:
-            sql = """
-                SELECT id, content, item_type, freshness, priority, timestamp_added
-                FROM working_memory
-                ORDER BY freshness DESC
-            """
-            return self._query(sql)
-        except psycopg.errors.UndefinedTable as e:
-            logger.warning(f"working_memory table not available: {e}")
+            if project_id:
+                sql = """
+                    SELECT
+                        id,
+                        content as title,
+                        event_type as type,
+                        importance_score as importance,
+                        timestamp,
+                        project_id
+                    FROM episodic_events
+                    WHERE project_id = %s AND importance_score > 0.0
+                    ORDER BY importance_score DESC, timestamp DESC
+                    LIMIT %s
+                """
+                return self._query(sql, (project_id, limit))
+            else:
+                sql = """
+                    SELECT
+                        id,
+                        content as title,
+                        event_type as type,
+                        importance_score as importance,
+                        timestamp,
+                        project_id
+                    FROM episodic_events
+                    WHERE importance_score > 0.0
+                    ORDER BY importance_score DESC, timestamp DESC
+                    LIMIT %s
+                """
+                return self._query(sql, (limit,))
+        except psycopg.Error as e:
+            logger.error(f"Failed to get working memory items: {e}")
             return []
 
-    def get_working_memory_count(self) -> int:
-        """Get count of current working memory items.
+    def get_working_memory_count(self, project_id: Optional[int] = None) -> int:
+        """Get count of current working memory items (items with importance > 0).
 
-        Returns 0 if working_memory table doesn't exist (graceful fallback).
+        Args:
+            project_id: Optional project ID to filter by. If None, returns global count.
+
+        Returns:
+            Count of items that could be in working memory (up to 7)
         """
         try:
-            sql = "SELECT COUNT(*) as count FROM working_memory"
-            result = self._query(sql)
-            return result[0]["count"] if result else 0
-        except psycopg.errors.UndefinedTable as e:
-            logger.warning(f"working_memory table not available: {e}")
+            if project_id:
+                sql = "SELECT COUNT(*) as count FROM episodic_events WHERE project_id = %s AND importance_score > 0.0"
+                result = self._query(sql, (project_id,))
+            else:
+                sql = "SELECT COUNT(*) as count FROM episodic_events WHERE importance_score > 0.0"
+                result = self._query(sql)
+            return min(result[0]["count"] if result else 0, 9)  # Cap at 9 (Baddeley's max)
+        except psycopg.Error as e:
+            logger.error(f"Failed to count working memory items: {e}")
             return 0
 
     # ========================================================================

@@ -5,6 +5,7 @@ import { Pagination } from '@/components/common/Pagination'
 import { DateRange } from '@/components/common/DateRange'
 import { Stat } from '@/components/common/Stat'
 import { useAPI } from '@/hooks'
+import { useProject } from '@/context/ProjectContext'
 import { format } from 'date-fns'
 
 interface EpisodicEvent {
@@ -12,7 +13,9 @@ interface EpisodicEvent {
   timestamp: string
   type: string
   description: string
-  data: Record<string, any>
+  importance?: number
+  project_id?: number
+  data?: Record<string, any>
 }
 
 interface EpisodicResponse {
@@ -26,6 +29,7 @@ interface EpisodicResponse {
 }
 
 export const EpisodicMemoryPage = () => {
+  const { selectedProject } = useProject()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [startDate, setStartDate] = useState<Date | null>(null)
@@ -34,12 +38,15 @@ export const EpisodicMemoryPage = () => {
   const queryParams = new URLSearchParams({
     page: page.toString(),
     search,
+    limit: '50',
+    ...(selectedProject && { project_id: selectedProject.id.toString() }),
     ...(startDate && { startDate: format(startDate, 'yyyy-MM-dd') }),
     ...(endDate && { endDate: format(endDate, 'yyyy-MM-dd') }),
   })
 
   const { data, loading, error } = useAPI<EpisodicResponse>(
-    `/api/episodic/events?${queryParams}`
+    `/api/episodic/events?${queryParams}`,
+    [selectedProject?.id, page, search]
   )
 
   if (loading) {
@@ -73,7 +80,10 @@ export const EpisodicMemoryPage = () => {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-50">Layer 1: Episodic Memory</h1>
-        <p className="text-gray-400">Event timeline, filtering, and statistics</p>
+        <p className="text-gray-400">
+          Event timeline, filtering, and statistics
+          {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
+        </p>
       </div>
 
       {/* Statistics */}
@@ -115,7 +125,7 @@ export const EpisodicMemoryPage = () => {
                     {format(new Date(event.timestamp), 'MMM dd, HH:mm:ss')}
                   </span>
                 </div>
-                {Object.keys(event.data).length > 0 && (
+                {event.data && Object.keys(event.data).length > 0 && (
                   <details className="text-sm text-gray-400 cursor-pointer">
                     <summary>View details</summary>
                     <pre className="mt-2 p-2 bg-gray-900 rounded text-xs overflow-x-auto">

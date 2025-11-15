@@ -4,6 +4,7 @@ import { SearchBar } from '@/components/common/SearchBar'
 import { Filter, type FilterOption } from '@/components/common/Filter'
 import { Stat } from '@/components/common/Stat'
 import { useAPI } from '@/hooks'
+import { useProject } from '@/context/ProjectContext'
 import { Badge } from '@/components/common/Badge'
 
 interface SemanticMemory {
@@ -25,16 +26,19 @@ interface SemanticResponse {
 }
 
 export const SemanticMemoryPage = () => {
+  const { selectedProject } = useProject()
   const [search, setSearch] = useState('')
   const [domains, setDomains] = useState<string[]>([])
 
   const queryParams = new URLSearchParams({
     search,
+    ...(selectedProject && { project_id: selectedProject.id.toString() }),
     ...(domains.length > 0 && { domains: domains.join(',') }),
   })
 
   const { data, loading } = useAPI<SemanticResponse>(
-    `/api/semantic/search?${queryParams}`
+    `/api/semantic/search?${queryParams}`,
+    [selectedProject?.id, search]
   )
 
   if (loading) {
@@ -58,7 +62,10 @@ export const SemanticMemoryPage = () => {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-50">Layer 2: Semantic Memory</h1>
-        <p className="text-gray-400">Knowledge search and quality metrics</p>
+        <p className="text-gray-400">
+          Knowledge search and quality metrics
+          {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
