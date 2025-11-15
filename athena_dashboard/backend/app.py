@@ -18,6 +18,7 @@ from models.metrics import (
     LearningMetrics,
 )
 from routes.websocket_routes import initialize_websocket_routes
+from routes.api import api_router
 
 # Configure logging
 logging.basicConfig(
@@ -89,6 +90,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include main API router
+app.include_router(api_router)
+logger.info("Dashboard API routes registered")
 
 
 # ============================================================================

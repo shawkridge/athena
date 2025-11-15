@@ -1,0 +1,635 @@
+"""
+API router for all dashboard endpoints.
+
+Organized by memory layer and system components:
+- Episodic memory
+- Semantic memory
+- Procedural memory
+- Prospective memory
+- Knowledge graph
+- Meta-memory
+- Consolidation
+- RAG & Planning
+- Hook execution
+- Working memory
+- System health
+"""
+
+from fastapi import APIRouter, Query
+from typing import Optional, Dict, Any, List
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Create main API router
+api_router = APIRouter(prefix="/api", tags=["dashboard"])
+
+
+# ============================================================================
+# EPISODIC MEMORY ENDPOINTS (Layer 1)
+# ============================================================================
+
+episodic_router = APIRouter(prefix="/episodic", tags=["episodic"])
+
+
+@episodic_router.get("/events")
+async def get_episodic_events(
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    sort: str = Query("timestamp", regex="^(timestamp|type|source)$"),
+    order: str = Query("desc", regex="^(asc|desc)$"),
+) -> Dict[str, Any]:
+    """Get episodic events with pagination and sorting."""
+    # TODO: Implement - query episodic_events table
+    return {"events": [], "total": 0, "limit": limit, "offset": offset}
+
+
+@episodic_router.get("/events/{event_id}")
+async def get_episodic_event(event_id: int) -> Dict[str, Any]:
+    """Get detailed event information."""
+    # TODO: Implement
+    return {"event": None}
+
+
+@episodic_router.get("/timeline")
+async def get_episodic_timeline(
+    range: str = Query("24h", regex="^(1h|24h|7d|30d|all)$"),
+) -> List[Dict[str, Any]]:
+    """Get episodic events timeline."""
+    # TODO: Implement
+    return []
+
+
+@episodic_router.get("/stats")
+async def get_episodic_stats() -> Dict[str, Any]:
+    """Get episodic memory statistics."""
+    # TODO: Implement
+    return {
+        "total_events": 8128,
+        "events_per_hour": 0,
+        "event_types": {},
+        "oldest_event": None,
+        "newest_event": None,
+    }
+
+
+@episodic_router.get("/search")
+async def search_episodic(
+    query: str = Query(..., min_length=1),
+    limit: int = Query(50, ge=1, le=500),
+) -> Dict[str, Any]:
+    """Full-text search in episodic events."""
+    # TODO: Implement
+    return {"results": [], "query": query}
+
+
+# ============================================================================
+# SEMANTIC MEMORY ENDPOINTS (Layer 2)
+# ============================================================================
+
+semantic_router = APIRouter(prefix="/semantic", tags=["semantic"])
+
+
+@semantic_router.get("/memories")
+async def get_semantic_memories(
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    sort: str = Query("relevance", regex="^(relevance|quality|timestamp)$"),
+) -> Dict[str, Any]:
+    """Get semantic memories."""
+    # TODO: Implement
+    return {"memories": [], "total": 0}
+
+
+@semantic_router.get("/memories/{memory_id}")
+async def get_semantic_memory(memory_id: int) -> Dict[str, Any]:
+    """Get detailed semantic memory."""
+    # TODO: Implement
+    return {"memory": None}
+
+
+@semantic_router.post("/search")
+async def search_semantic(query: str = Query(...), limit: int = Query(20, le=100)) -> Dict[str, Any]:
+    """Semantic search in knowledge base."""
+    # TODO: Implement
+    return {"results": [], "query": query}
+
+
+@semantic_router.get("/domains")
+async def get_semantic_domains() -> List[str]:
+    """Get all knowledge domains."""
+    # TODO: Implement
+    return []
+
+
+@semantic_router.get("/quality/{domain}")
+async def get_domain_quality(domain: str) -> Dict[str, Any]:
+    """Get quality metrics for a domain."""
+    # TODO: Implement
+    return {"domain": domain, "quality_score": 0.0}
+
+
+@semantic_router.get("/stats")
+async def get_semantic_stats() -> Dict[str, Any]:
+    """Get semantic memory statistics."""
+    # TODO: Implement
+    return {
+        "total_memories": 2341,
+        "domains": 0,
+        "avg_quality": 0.0,
+        "search_hit_rate": 0.0,
+    }
+
+
+# ============================================================================
+# PROCEDURAL MEMORY ENDPOINTS (Layer 3)
+# ============================================================================
+
+procedural_router = APIRouter(prefix="/procedural", tags=["procedural"])
+
+
+@procedural_router.get("/skills")
+async def get_procedural_skills(
+    limit: int = Query(100, le=500),
+    offset: int = Query(0, ge=0),
+    sort: str = Query("effectiveness", regex="^(effectiveness|usage|timestamp)$"),
+) -> Dict[str, Any]:
+    """Get learned procedural skills."""
+    # TODO: Implement
+    return {"skills": [], "total": 101}
+
+
+@procedural_router.get("/skills/{skill_id}")
+async def get_procedural_skill(skill_id: int) -> Dict[str, Any]:
+    """Get detailed skill information."""
+    # TODO: Implement
+    return {"skill": None}
+
+
+@procedural_router.get("/skills/{skill_id}/history")
+async def get_skill_execution_history(skill_id: int, limit: int = Query(50, le=500)) -> List[Dict[str, Any]]:
+    """Get execution history for a skill."""
+    # TODO: Implement
+    return []
+
+
+@procedural_router.get("/effectiveness-ranking")
+async def get_effectiveness_ranking() -> List[Dict[str, Any]]:
+    """Get skills ranked by effectiveness."""
+    # TODO: Implement
+    return []
+
+
+@procedural_router.get("/stats")
+async def get_procedural_stats() -> Dict[str, Any]:
+    """Get procedural memory statistics."""
+    # TODO: Implement
+    return {
+        "total_skills": 101,
+        "avg_effectiveness": 0.0,
+        "usage_trend": [],
+        "success_rate": 0.0,
+    }
+
+
+# ============================================================================
+# PROSPECTIVE MEMORY ENDPOINTS (Layer 4)
+# ============================================================================
+
+prospective_router = APIRouter(prefix="/prospective", tags=["prospective"])
+
+
+@prospective_router.get("/goals")
+async def get_prospective_goals() -> List[Dict[str, Any]]:
+    """Get active goals."""
+    # TODO: Implement
+    return []
+
+
+@prospective_router.get("/tasks")
+async def get_prospective_tasks(
+    status: Optional[str] = Query(None, regex="^(pending|active|completed|blocked)$"),
+    limit: int = Query(100, le=500),
+) -> Dict[str, Any]:
+    """Get tasks, optionally filtered by status."""
+    # TODO: Implement
+    return {"tasks": [], "total": 0}
+
+
+@prospective_router.get("/tasks/{task_id}")
+async def get_prospective_task(task_id: int) -> Dict[str, Any]:
+    """Get detailed task information."""
+    # TODO: Implement
+    return {"task": None}
+
+
+@prospective_router.post("/tasks/{task_id}/complete")
+async def complete_task(task_id: int) -> Dict[str, Any]:
+    """Mark task as complete."""
+    # TODO: Implement
+    return {"success": True}
+
+
+@prospective_router.get("/stats")
+async def get_prospective_stats() -> Dict[str, Any]:
+    """Get prospective memory statistics."""
+    # TODO: Implement
+    return {
+        "active_goals": 0,
+        "total_tasks": 0,
+        "completion_rate": 0.0,
+        "overdue_tasks": 0,
+    }
+
+
+# ============================================================================
+# KNOWLEDGE GRAPH ENDPOINTS (Layer 5)
+# ============================================================================
+
+graph_router = APIRouter(prefix="/graph", tags=["knowledge-graph"])
+
+
+@graph_router.get("/entities")
+async def get_graph_entities(
+    limit: int = Query(100, le=500),
+    offset: int = Query(0, ge=0),
+) -> Dict[str, Any]:
+    """Get knowledge graph entities."""
+    # TODO: Implement
+    return {"entities": [], "total": 5426}
+
+
+@graph_router.get("/entities/{entity_id}")
+async def get_graph_entity(entity_id: int) -> Dict[str, Any]:
+    """Get detailed entity information."""
+    # TODO: Implement
+    return {"entity": None}
+
+
+@graph_router.get("/relationships")
+async def get_graph_relationships(limit: int = Query(100, le=500)) -> Dict[str, Any]:
+    """Get knowledge graph relationships."""
+    # TODO: Implement
+    return {"relationships": [], "total": 0}
+
+
+@graph_router.get("/communities")
+async def get_graph_communities() -> List[Dict[str, Any]]:
+    """Get detected communities in graph."""
+    # TODO: Implement
+    return []
+
+
+@graph_router.get("/visualization")
+async def get_graph_visualization() -> Dict[str, Any]:
+    """Get graph data for visualization."""
+    # TODO: Implement
+    return {"nodes": [], "edges": []}
+
+
+@graph_router.get("/stats")
+async def get_graph_stats() -> Dict[str, Any]:
+    """Get knowledge graph statistics."""
+    # TODO: Implement
+    return {
+        "total_entities": 5426,
+        "total_relationships": 0,
+        "communities": 0,
+        "density": 0.0,
+    }
+
+
+# ============================================================================
+# META-MEMORY ENDPOINTS (Layer 6)
+# ============================================================================
+
+meta_router = APIRouter(prefix="/meta", tags=["meta-memory"])
+
+
+@meta_router.get("/quality-scores")
+async def get_meta_quality_scores() -> Dict[str, Any]:
+    """Get overall quality scores by layer."""
+    # TODO: Implement
+    return {
+        "overall": 0.0,
+        "by_layer": {},
+    }
+
+
+@meta_router.get("/quality/{layer}")
+async def get_layer_quality(layer: str) -> Dict[str, Any]:
+    """Get quality metrics for specific layer."""
+    # TODO: Implement
+    return {"layer": layer, "quality": 0.0}
+
+
+@meta_router.get("/expertise")
+async def get_meta_expertise() -> Dict[str, Any]:
+    """Get expertise rankings by domain."""
+    # TODO: Implement
+    return {"expertise": {}}
+
+
+@meta_router.get("/attention")
+async def get_meta_attention() -> Dict[str, Any]:
+    """Get attention allocation across domains."""
+    # TODO: Implement
+    return {"attention": {}}
+
+
+@meta_router.get("/stats")
+async def get_meta_stats() -> Dict[str, Any]:
+    """Get meta-memory statistics."""
+    # TODO: Implement
+    return {
+        "overall_quality": 0.0,
+        "expertise_domains": 0,
+        "attention_focused": False,
+    }
+
+
+# ============================================================================
+# CONSOLIDATION ENDPOINTS (Layer 7)
+# ============================================================================
+
+consolidation_router = APIRouter(prefix="/consolidation", tags=["consolidation"])
+
+
+@consolidation_router.get("/runs")
+async def get_consolidation_runs(
+    limit: int = Query(50, le=500),
+    offset: int = Query(0, ge=0),
+) -> Dict[str, Any]:
+    """Get consolidation run history."""
+    # TODO: Implement
+    return {"runs": [], "total": 0}
+
+
+@consolidation_router.get("/runs/{run_id}")
+async def get_consolidation_run(run_id: int) -> Dict[str, Any]:
+    """Get detailed consolidation run results."""
+    # TODO: Implement
+    return {"run": None}
+
+
+@consolidation_router.get("/patterns")
+async def get_consolidation_patterns() -> List[Dict[str, Any]]:
+    """Get extracted patterns."""
+    # TODO: Implement
+    return []
+
+
+@consolidation_router.get("/progress")
+async def get_consolidation_progress() -> Dict[str, Any]:
+    """Get current consolidation progress."""
+    # TODO: Implement
+    return {
+        "percentage": 0,
+        "events_processed": 0,
+        "patterns_extracted": 0,
+    }
+
+
+@consolidation_router.get("/stats")
+async def get_consolidation_stats() -> Dict[str, Any]:
+    """Get consolidation statistics."""
+    # TODO: Implement
+    return {
+        "total_runs": 0,
+        "patterns_found": 0,
+        "avg_quality": 0.0,
+        "compression_ratio": 0.0,
+    }
+
+
+# ============================================================================
+# RAG & PLANNING ENDPOINTS (Layer 8)
+# ============================================================================
+
+rag_router = APIRouter(prefix="/rag", tags=["rag-planning"])
+
+
+@rag_router.get("/retrievals")
+async def get_retrievals(limit: int = Query(50, le=500)) -> Dict[str, Any]:
+    """Get query retrieval history."""
+    # TODO: Implement
+    return {"retrievals": [], "total": 0}
+
+
+@rag_router.get("/query-performance")
+async def get_query_performance() -> Dict[str, Any]:
+    """Get retrieval quality metrics."""
+    # TODO: Implement
+    return {
+        "precision": 0.0,
+        "recall": 0.0,
+        "avg_ranking": 0.0,
+    }
+
+
+@rag_router.post("/validate-plan")
+async def validate_plan(plan: Dict[str, Any]) -> Dict[str, Any]:
+    """Validate a plan using formal verification."""
+    # TODO: Implement
+    return {"valid": False, "errors": []}
+
+
+@rag_router.get("/verification-results")
+async def get_verification_results() -> List[Dict[str, Any]]:
+    """Get plan verification results."""
+    # TODO: Implement
+    return []
+
+
+@rag_router.get("/stats")
+async def get_rag_stats() -> Dict[str, Any]:
+    """Get RAG & Planning statistics."""
+    # TODO: Implement
+    return {
+        "total_retrievals": 0,
+        "avg_quality": 0.0,
+        "plans_verified": 0,
+    }
+
+
+# ============================================================================
+# HOOK EXECUTION ENDPOINTS
+# ============================================================================
+
+hooks_router = APIRouter(prefix="/hooks", tags=["hooks"])
+
+
+@hooks_router.get("/status")
+async def get_hooks_status() -> List[Dict[str, Any]]:
+    """Get status of all hooks."""
+    # TODO: Implement
+    return []
+
+
+@hooks_router.get("/{hook_name}/metrics")
+async def get_hook_metrics(hook_name: str) -> Dict[str, Any]:
+    """Get metrics for specific hook."""
+    # TODO: Implement
+    return {
+        "name": hook_name,
+        "latency_ms": 0.0,
+        "success_rate": 0.0,
+    }
+
+
+@hooks_router.get("/{hook_name}/history")
+async def get_hook_history(
+    hook_name: str,
+    limit: int = Query(100, le=500),
+) -> List[Dict[str, Any]]:
+    """Get execution history for a hook."""
+    # TODO: Implement
+    return []
+
+
+@hooks_router.get("/{hook_name}/latency-chart")
+async def get_hook_latency_chart(hook_name: str) -> List[Dict[str, Any]]:
+    """Get latency trend data for a hook."""
+    # TODO: Implement
+    return []
+
+
+@hooks_router.get("/stats")
+async def get_hooks_stats() -> Dict[str, Any]:
+    """Get hooks statistics."""
+    # TODO: Implement
+    return {
+        "total_hooks": 0,
+        "active_hooks": 0,
+        "avg_latency": 0.0,
+        "success_rate": 0.0,
+    }
+
+
+# ============================================================================
+# WORKING MEMORY ENDPOINTS
+# ============================================================================
+
+working_memory_router = APIRouter(prefix="/working-memory", tags=["working-memory"])
+
+
+@working_memory_router.get("/current")
+async def get_working_memory() -> Dict[str, Any]:
+    """Get current working memory (7±2 items)."""
+    # TODO: Implement
+    return {"items": [], "count": 0, "capacity": 7}
+
+
+@working_memory_router.get("/timeline")
+async def get_working_memory_timeline() -> List[Dict[str, Any]]:
+    """Get working memory changes over time."""
+    # TODO: Implement
+    return []
+
+
+@working_memory_router.get("/capacity")
+async def get_working_memory_capacity() -> Dict[str, Any]:
+    """Get working memory capacity metrics."""
+    # TODO: Implement
+    return {
+        "current": 0,
+        "max": 7,
+        "utilization": 0.0,
+    }
+
+
+@working_memory_router.get("/cognitive-load")
+async def get_cognitive_load() -> Dict[str, Any]:
+    """Get cognitive load metrics."""
+    # TODO: Implement
+    return {
+        "current_load": 0,
+        "threshold": 7,
+        "context_switches": 0,
+    }
+
+
+@working_memory_router.get("/stats")
+async def get_working_memory_stats() -> Dict[str, Any]:
+    """Get working memory statistics."""
+    # TODO: Implement
+    return {
+        "avg_load": 0.0,
+        "peak_load": 0,
+        "utilization_trend": [],
+    }
+
+
+# ============================================================================
+# SYSTEM HEALTH ENDPOINTS
+# ============================================================================
+
+system_router = APIRouter(prefix="/system", tags=["system"])
+
+
+@system_router.get("/health")
+async def get_system_health() -> Dict[str, Any]:
+    """Get overall system health status."""
+    # TODO: Implement
+    return {
+        "status": "healthy",
+        "layers": {},
+        "timestamp": None,
+    }
+
+
+@system_router.get("/performance")
+async def get_system_performance() -> Dict[str, Any]:
+    """Get system performance metrics."""
+    # TODO: Implement
+    return {
+        "api_response_time": 0.0,
+        "database_latency": 0.0,
+        "memory_usage": 0.0,
+        "cpu_usage": 0.0,
+    }
+
+
+@system_router.get("/alerts")
+async def get_system_alerts() -> List[Dict[str, Any]]:
+    """Get active system alerts."""
+    # TODO: Implement
+    return []
+
+
+@system_router.get("/database-size")
+async def get_database_size() -> Dict[str, Any]:
+    """Get database size and growth metrics."""
+    # TODO: Implement
+    return {
+        "total_size": 0,
+        "tables": {},
+    }
+
+
+@system_router.get("/stats")
+async def get_system_stats() -> Dict[str, Any]:
+    """Get system-wide statistics."""
+    # TODO: Implement
+    return {
+        "uptime": 0,
+        "total_requests": 0,
+        "error_rate": 0.0,
+    }
+
+
+# ============================================================================
+# INCLUDE ALL ROUTERS
+# ============================================================================
+
+api_router.include_router(episodic_router)
+api_router.include_router(semantic_router)
+api_router.include_router(procedural_router)
+api_router.include_router(prospective_router)
+api_router.include_router(graph_router)
+api_router.include_router(meta_router)
+api_router.include_router(consolidation_router)
+api_router.include_router(rag_router)
+api_router.include_router(hooks_router)
+api_router.include_router(working_memory_router)
+api_router.include_router(system_router)

@@ -5,6 +5,7 @@ from .data_loader import DataLoader
 from .cache_manager import CacheManager
 from .athena_http_loader import AthenaHTTPLoader
 from .streaming_service import StreamingService, StreamingUpdate, Finding, AgentProgress
+from .dashboard_data_service import DashboardDataService
 
 __all__ = [
     "MetricsAggregator",
@@ -15,4 +16,5 @@ __all__ = [
     "StreamingUpdate",
     "Finding",
     "AgentProgress",
+    "DashboardDataService",
 ]
