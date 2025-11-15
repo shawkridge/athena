@@ -196,9 +196,8 @@ class DataLoader:
             result = self._query(sql)
             return dict(result[0]) if result else None
         except psycopg.errors.UndefinedTable as e:
-                logger.warning(f"consolidation_runs table not available: {e}")
-                return None
-            raise
+            logger.warning(f"consolidation_runs table not available: {e}")
+            return None
 
     def get_consolidation_history(self, days: int = 7) -> List[Dict[str, Any]]:
         """Get consolidation history."""
@@ -228,9 +227,8 @@ class DataLoader:
             """
             return self._query(sql)
         except psycopg.errors.UndefinedTable as e:
-                logger.warning(f"working_memory table not available: {e}")
-                return []
-            raise
+            logger.warning(f"working_memory table not available: {e}")
+            return []
 
     def get_working_memory_count(self) -> int:
         """Get count of current working memory items.
