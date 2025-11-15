@@ -86,7 +86,8 @@ const GraphLoader: React.FC<{
       try {
         graph.addEdge(edge.source, edge.target, {
           weight: edge.weight || 1,
-          type: edge.type || 'default',
+          // Store edge type as custom property (not Sigma 'type' which has restrictions)
+          edgeType: edge.type || 'default',
         })
       } catch (e) {
         // Skip edges with missing nodes

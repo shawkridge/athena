@@ -134,31 +134,45 @@ export const TaskManagementPage = () => {
     : '/api/tasks/metrics'
 
   // Fetch data from Phase 3 endpoints
-  const { data: statusData, loading: statusLoading } = useAPI<TaskStatusResponse>(
+  const { data: statusData, loading: statusLoading, error: statusError } = useAPI<TaskStatusResponse>(
     statusUrl,
-    [selectedProject?.id],
-    { refetchInterval: autoRefresh ? 5000 : null } // Poll every 5s if auto-refresh enabled
+    [selectedProject?.id]
   )
 
-  const { data: predictionsData, loading: predictionsLoading } = useAPI<PredictionsResponse>(
+  const { data: predictionsData, loading: predictionsLoading, error: predictionsError } = useAPI<PredictionsResponse>(
     predictionsUrl,
-    [selectedProject?.id],
-    { refetchInterval: autoRefresh ? 5000 : null }
+    [selectedProject?.id]
   )
 
-  const { data: suggestionsData, loading: suggestionsLoading } = useAPI<SuggestionsResponse>(
+  const { data: suggestionsData, loading: suggestionsLoading, error: suggestionsError } = useAPI<SuggestionsResponse>(
     suggestionsUrl,
-    [selectedProject?.id],
-    { refetchInterval: autoRefresh ? 10000 : null } // Suggest less frequently
+    [selectedProject?.id]
   )
 
-  const { data: metricsData, loading: metricsLoading } = useAPI<MetricsResponse>(
+  const { data: metricsData, loading: metricsLoading, error: metricsError } = useAPI<MetricsResponse>(
     metricsUrl,
-    [selectedProject?.id],
-    { refetchInterval: autoRefresh ? 30000 : null } // Metrics every 30s
+    [selectedProject?.id]
   )
 
   const allLoading = statusLoading || predictionsLoading || suggestionsLoading || metricsLoading
+  const hasErrors = statusError || predictionsError || suggestionsError || metricsError
+
+  // If all data failed to load and we're not loading, show a message
+  if (!allLoading && !statusData && hasErrors) {
+    return (
+      <div className="p-6">
+        <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-blue-400 mb-2">Task Management</h2>
+          <p className="text-gray-300">
+            Task management endpoints are not yet available. The backend API for Phase 3 task tracking features is in development.
+          </p>
+          <p className="text-gray-400 text-sm mt-3">
+            These features include: real-time task status, AI-powered predictions, smart suggestions, and workflow analytics.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   if (allLoading && !statusData) {
     return <LoadingSpinner message="Loading task management data..." />
