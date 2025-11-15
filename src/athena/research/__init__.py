@@ -11,6 +11,7 @@ from .models import (
 )
 from .store import ResearchStore, ResearchFeedbackStore
 from .query_refinement import QueryRefinementEngine, QueryRefinement
+from .result_aggregator import ResultAggregator, StreamingResultCollector, AggregatedResult
 from .executor import ResearchAgentExecutor
 from .agents import (
     ResearchAgent,
@@ -46,6 +47,9 @@ __all__ = [
     "ResearchFeedbackStore",
     "QueryRefinementEngine",
     "QueryRefinement",
+    "ResultAggregator",
+    "StreamingResultCollector",
+    "AggregatedResult",
     "ResearchAgentExecutor",
     "ResearchAgent",
     "ResearchCoordinator",

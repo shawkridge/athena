@@ -485,6 +485,8 @@ class OperationRouter:
         # Phase 3.2: Interactive refinement
         "refine_query": "_handle_research_refine_query",
         "re_execute": "_handle_research_re_execute",
+        # Phase 3.2: Result aggregation and presentation
+        "aggregated_results": "_handle_research_aggregated_results",
         "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 

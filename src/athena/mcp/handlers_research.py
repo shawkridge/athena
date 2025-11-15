@@ -26,6 +26,8 @@ from ..research import (
     ResearchFeedbackStore,
     QueryRefinementEngine,
     QueryRefinement,
+    ResultAggregator,
+    AggregatedResult,
     ResearchTask,
     ResearchStatus,
     ResearchFinding,
@@ -720,5 +722,112 @@ class ResearchHandlersMixin:
         except Exception as e:
             logger.error(f"Error in _handle_research_re_execute: {e}", exc_info=True)
             result = StructuredResult.error(str(e), metadata={"operation": "research_re_execute"})
+
+        return [result.as_text_content()]
+
+    async def _handle_research_aggregated_results(self, args: dict) -> list[TextContent]:
+        """Handle aggregated results retrieval (Phase 3.2 - Phase C).
+
+        Get synthesized results from completed research with filtering and
+        formatting optimized for Claude consumption.
+
+        Args:
+            args: Dictionary with keys:
+                - task_id (int): Research task identifier
+                - quality_threshold (float, optional): Min credibility score (0-1)
+                - excluded_sources (list, optional): Sources to exclude
+                - focused_sources (list, optional): Sources to focus on
+                - limit (int, optional): Max findings to return (default 50)
+                - format (str, optional): 'json' or 'markdown' (default 'json')
+
+        Returns:
+            List containing TextContent with aggregated results
+        """
+        try:
+            task_id = args.get("task_id")
+            quality_threshold = float(args.get("quality_threshold", 0.5))
+            excluded_sources = args.get("excluded_sources", [])
+            focused_sources = args.get("focused_sources", [])
+            limit = min(int(args.get("limit", 50)), 100)
+            output_format = args.get("format", "json").lower()
+
+            if not task_id:
+                result = StructuredResult.error(
+                    "task_id is required",
+                    metadata={"operation": "research_aggregated_results"},
+                )
+                return [result.as_text_content()]
+
+            # Get the original task
+            task = self.research_store.get_task(task_id)
+            if not task:
+                result = StructuredResult.error(
+                    f"Research task {task_id} not found",
+                    metadata={"operation": "research_aggregated_results", "task_id": task_id},
+                )
+                return [result.as_text_content()]
+
+            # Build aggregator
+            aggregator = ResultAggregator(task_id, task.topic)
+
+            # Load findings from store
+            findings = self.research_store.get_task_findings(task_id, limit=1000)
+            for finding in findings:
+                aggregator.add_finding(finding, finding.source)
+
+            # Load applied feedback
+            if hasattr(self, 'research_feedback_store'):
+                feedback_list = self.research_feedback_store.get_task_feedback(task_id)
+                for feedback in feedback_list:
+                    if feedback.applied:
+                        aggregator.add_feedback(feedback)
+
+            # Mark complete if task is done
+            if task.status in [ResearchStatus.COMPLETED, ResearchStatus.FAILED]:
+                aggregator.mark_complete()
+
+            # Get filtered results
+            aggregated = aggregator.get_results(
+                quality_threshold=quality_threshold,
+                excluded_sources=excluded_sources if excluded_sources else None,
+                focused_sources=focused_sources if focused_sources else None,
+                limit=limit,
+            )
+
+            # Format output
+            if output_format == "markdown":
+                formatted_output = aggregator.export_for_claude()
+                result = StructuredResult.success(
+                    data={
+                        "task_id": task_id,
+                        "format": "markdown",
+                        "content": formatted_output,
+                    },
+                    metadata={
+                        "operation": "research_aggregated_results",
+                        "task_id": task_id,
+                        "findings_count": len(findings),
+                        "format": "markdown",
+                    },
+                )
+            else:
+                # Default JSON format
+                result = StructuredResult.success(
+                    data=aggregated,
+                    metadata={
+                        "operation": "research_aggregated_results",
+                        "task_id": task_id,
+                        "findings_count": len(findings),
+                    },
+                    pagination=PaginationMetadata(
+                        returned=len(aggregated["findings"]),
+                        limit=limit,
+                        total=len(findings),
+                    ),
+                )
+
+        except Exception as e:
+            logger.error(f"Error in _handle_research_aggregated_results: {e}", exc_info=True)
+            result = StructuredResult.error(str(e), metadata={"operation": "research_aggregated_results"})
 
         return [result.as_text_content()]
