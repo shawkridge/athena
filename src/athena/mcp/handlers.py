@@ -80,11 +80,14 @@ from ..consolidation.llm_clustering import LLMConsolidationClusterer
 from ..procedural.llm_workflow_generation import LLMWorkflowGenerator
 from ..research import (
     ResearchStore,
+    ResearchFeedbackStore,
     ResearchTask,
     ResearchStatus,
     ResearchFinding,
     AgentProgress,
     AgentStatus,
+    ResearchFeedback,
+    FeedbackType,
     ResearchAgentExecutor,
     ResearchMemoryIntegrator,
 )
@@ -308,6 +311,7 @@ class MemoryMCPServer(
 
         # Initialize research components
         self.research_store = ResearchStore(self.store.db)
+        self.research_feedback_store = ResearchFeedbackStore(self.store.db)
 
         # Initialize research memory integrator for semantic storage
         self.research_memory_integrator = ResearchMemoryIntegrator(

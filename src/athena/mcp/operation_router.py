@@ -471,8 +471,9 @@ class OperationRouter:
         "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 
-    # PHASE 3.1: RESEARCH_TOOLS: 5 operations (Multi-agent research coordination)
+    # PHASE 3.1-3.2: RESEARCH_TOOLS: Multi-agent research coordination + interactive refinement
     RESEARCH_OPERATIONS = {
+        # Phase 3.1: Basic research coordination
         "create": "_handle_research_task",
         "get_status": "_handle_research_task",
         "list_tasks": "_handle_research_task",
@@ -481,6 +482,9 @@ class OperationRouter:
         "get_agent_status": "_handle_research_agent_status",
         "submit_feedback": "_handle_research_feedback",
         "configure": "_handle_research_config",
+        # Phase 3.2: Interactive refinement
+        "refine_query": "_handle_research_refine_query",
+        "re_execute": "_handle_research_re_execute",
         "list_operations": "_handle_list_operations",  # Progressive disclosure (Anthropic pattern)
     }
 

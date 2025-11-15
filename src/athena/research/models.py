@@ -74,3 +74,29 @@ class AgentProgress(BaseModel):
     error_message: Optional[str] = None
 
     model_config = ConfigDict(use_enum_values=True)
+
+
+class FeedbackType(str, Enum):
+    """Types of research feedback."""
+    QUERY_REFINEMENT = "query_refinement"
+    SOURCE_EXCLUSION = "source_exclusion"
+    SOURCE_FOCUS = "source_focus"
+    AGENT_FOCUS = "agent_focus"
+    RESULT_FILTERING = "result_filtering"
+    QUALITY_THRESHOLD = "quality_threshold"
+
+
+class ResearchFeedback(BaseModel):
+    """User feedback for research task refinement."""
+
+    id: Optional[int] = None
+    research_task_id: int
+    feedback_type: FeedbackType = FeedbackType.QUERY_REFINEMENT
+    content: str = Field(..., description="Feedback content")
+    agent_target: Optional[str] = None
+    created_at: int = Field(default_factory=lambda: int(__import__("time").time()))
+    parent_feedback_id: Optional[int] = None
+    applied: bool = False
+    applied_at: Optional[int] = None
+
+    model_config = ConfigDict(use_enum_values=True)

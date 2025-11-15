@@ -11,6 +11,8 @@ from .models import (
     ResearchFinding,
     AgentProgress,
     AgentStatus,
+    ResearchFeedback,
+    FeedbackType,
 )
 
 
@@ -411,3 +413,244 @@ class ResearchStore(BaseStore):
             ))
 
         return tasks
+
+
+class ResearchFeedbackStore(BaseStore):
+    """Manages research feedback for task refinement (Phase 3.2)."""
+
+    table_name = "research_feedback"
+    model_class = ResearchFeedback
+
+    def __init__(self, db: Database):
+        """Initialize feedback store.
+
+        Args:
+            db: Database instance
+        """
+        super().__init__(db)
+
+    def _ensure_schema(self):
+        """Ensure research feedback table exists."""
+        cursor = self.db.get_cursor()
+
+        # Research feedback table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS research_feedback (
+                id SERIAL PRIMARY KEY,
+                research_task_id INTEGER NOT NULL,
+                feedback_type TEXT NOT NULL DEFAULT 'query_refinement',
+                content TEXT NOT NULL,
+                agent_target TEXT,
+                created_at INTEGER NOT NULL,
+                parent_feedback_id INTEGER,
+                applied BOOLEAN DEFAULT FALSE,
+                applied_at INTEGER,
+                FOREIGN KEY (research_task_id) REFERENCES research_tasks(id) ON DELETE CASCADE,
+                FOREIGN KEY (parent_feedback_id) REFERENCES research_feedback(id) ON DELETE SET NULL
+            )
+        """)
+
+        # Indices
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_feedback_task ON research_feedback(research_task_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_feedback_type ON research_feedback(feedback_type)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_feedback_agent ON research_feedback(agent_target)")
+
+    def _row_to_model(self, row) -> ResearchFeedback:
+        """Convert database row to ResearchFeedback model."""
+        row_dict = dict(row) if hasattr(row, 'keys') else row
+
+        return ResearchFeedback(
+            id=row_dict['id'],
+            research_task_id=row_dict['research_task_id'],
+            feedback_type=row_dict['feedback_type'],
+            content=row_dict['content'],
+            agent_target=row_dict.get('agent_target'),
+            created_at=row_dict['created_at'],
+            parent_feedback_id=row_dict.get('parent_feedback_id'),
+            applied=bool(row_dict.get('applied', False)),
+            applied_at=row_dict.get('applied_at'),
+        )
+
+    def record_feedback(self, feedback: ResearchFeedback) -> int:
+        """Record user feedback for a research task.
+
+        Args:
+            feedback: Feedback to record
+
+        Returns:
+            Feedback ID
+        """
+        now = self.now_timestamp()
+        return self.create(
+            columns=[
+                'research_task_id', 'feedback_type', 'content', 'agent_target',
+                'created_at', 'parent_feedback_id'
+            ],
+            values=(
+                feedback.research_task_id,
+                feedback.feedback_type if isinstance(feedback.feedback_type, str) else feedback.feedback_type.value,
+                feedback.content,
+                feedback.agent_target,
+                now,
+                feedback.parent_feedback_id,
+            )
+        )
+
+    def get_task_feedback(self, task_id: int, limit: int = 100) -> list[ResearchFeedback]:
+        """Get all feedback for a research task.
+
+        Args:
+            task_id: Research task ID
+            limit: Maximum feedback items to return
+
+        Returns:
+            List of feedback items
+        """
+        query = """
+            SELECT id, research_task_id, feedback_type, content, agent_target,
+                   created_at, parent_feedback_id, applied, applied_at
+            FROM research_feedback
+            WHERE research_task_id = %s
+            ORDER BY created_at DESC
+            LIMIT %s
+        """
+        rows = self.db.execute_sync(query, (task_id, limit))
+
+        feedback_list = []
+        for row in rows:
+            feedback_list.append(ResearchFeedback(
+                id=row[0],
+                research_task_id=row[1],
+                feedback_type=row[2],
+                content=row[3],
+                agent_target=row[4],
+                created_at=row[5],
+                parent_feedback_id=row[6],
+                applied=bool(row[7]),
+                applied_at=row[8],
+            ))
+
+        return feedback_list
+
+    def get_unapplied_feedback(self, task_id: int) -> list[ResearchFeedback]:
+        """Get unapplied feedback for a research task.
+
+        Args:
+            task_id: Research task ID
+
+        Returns:
+            List of unapplied feedback items
+        """
+        query = """
+            SELECT id, research_task_id, feedback_type, content, agent_target,
+                   created_at, parent_feedback_id, applied, applied_at
+            FROM research_feedback
+            WHERE research_task_id = %s AND applied = FALSE
+            ORDER BY created_at ASC
+        """
+        rows = self.db.execute_sync(query, (task_id,))
+
+        feedback_list = []
+        for row in rows:
+            feedback_list.append(ResearchFeedback(
+                id=row[0],
+                research_task_id=row[1],
+                feedback_type=row[2],
+                content=row[3],
+                agent_target=row[4],
+                created_at=row[5],
+                parent_feedback_id=row[6],
+                applied=bool(row[7]),
+                applied_at=row[8],
+            ))
+
+        return feedback_list
+
+    def mark_feedback_applied(self, feedback_id: int) -> bool:
+        """Mark feedback as applied.
+
+        Args:
+            feedback_id: Feedback ID
+
+        Returns:
+            Success
+        """
+        now = self.now_timestamp()
+        query = """
+            UPDATE research_feedback
+            SET applied = TRUE, applied_at = %s
+            WHERE id = %s
+        """
+        self.db.execute_sync(query, (now, feedback_id))
+        return True
+
+    def get_feedback_by_type(self, task_id: int, feedback_type: FeedbackType) -> list[ResearchFeedback]:
+        """Get feedback of a specific type for a task.
+
+        Args:
+            task_id: Research task ID
+            feedback_type: Type of feedback to retrieve
+
+        Returns:
+            List of matching feedback items
+        """
+        feedback_type_str = feedback_type if isinstance(feedback_type, str) else feedback_type.value
+        query = """
+            SELECT id, research_task_id, feedback_type, content, agent_target,
+                   created_at, parent_feedback_id, applied, applied_at
+            FROM research_feedback
+            WHERE research_task_id = %s AND feedback_type = %s
+            ORDER BY created_at DESC
+        """
+        rows = self.db.execute_sync(query, (task_id, feedback_type_str))
+
+        feedback_list = []
+        for row in rows:
+            feedback_list.append(ResearchFeedback(
+                id=row[0],
+                research_task_id=row[1],
+                feedback_type=row[2],
+                content=row[3],
+                agent_target=row[4],
+                created_at=row[5],
+                parent_feedback_id=row[6],
+                applied=bool(row[7]),
+                applied_at=row[8],
+            ))
+
+        return feedback_list
+
+    def get_feedback_by_agent(self, task_id: int, agent_name: str) -> list[ResearchFeedback]:
+        """Get feedback targeting a specific agent.
+
+        Args:
+            task_id: Research task ID
+            agent_name: Target agent name
+
+        Returns:
+            List of feedback items for agent
+        """
+        query = """
+            SELECT id, research_task_id, feedback_type, content, agent_target,
+                   created_at, parent_feedback_id, applied, applied_at
+            FROM research_feedback
+            WHERE research_task_id = %s AND agent_target = %s
+            ORDER BY created_at DESC
+        """
+        rows = self.db.execute_sync(query, (task_id, agent_name))
+
+        feedback_list = []
+        for row in rows:
+            feedback_list.append(ResearchFeedback(
+                id=row[0],
+                research_task_id=row[1],
+                feedback_type=row[2],
+                content=row[3],
+                agent_target=row[4],
+                created_at=row[5],
+                parent_feedback_id=row[6],
+                applied=bool(row[7]),
+                applied_at=row[8],
+            ))
+
+        return feedback_list

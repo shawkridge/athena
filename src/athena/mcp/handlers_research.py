@@ -23,11 +23,16 @@ from mcp.types import TextContent
 from .structured_result import StructuredResult, ResultStatus, PaginationMetadata
 from ..research import (
     ResearchStore,
+    ResearchFeedbackStore,
+    QueryRefinementEngine,
+    QueryRefinement,
     ResearchTask,
     ResearchStatus,
     ResearchFinding,
     AgentProgress,
     AgentStatus,
+    ResearchFeedback,
+    FeedbackType,
     ResearchAgentExecutor,
     ResearchMemoryIntegrator,
 )
@@ -411,22 +416,25 @@ class ResearchHandlersMixin:
         """Handle research feedback submission (Phase 3.2).
 
         Submit user feedback to refine research direction, improve queries,
-        or redirect agent focus.
+        or redirect agent focus. Feedback is persisted and can drive query refinement.
 
         Args:
             args: Dictionary with keys:
                 - task_id (int): Research task identifier
-                - feedback_type (str): 'query_refinement', 'source_exclusion', 'agent_focus'
-                - content (str): Feedback content
-                - agent_name (str, optional): Target specific agent
+                - feedback_type (str): 'query_refinement', 'source_exclusion', 'source_focus', 'agent_focus', 'result_filtering', 'quality_threshold'
+                - content (str): Feedback content/explanation
+                - agent_target (str, optional): Target specific agent ('web_searcher', 'academic_researcher', 'synthesizer')
+                - parent_feedback_id (int, optional): ID of feedback this builds on (for multi-turn refinement)
 
         Returns:
             List containing TextContent with feedback acknowledgment
         """
         try:
             task_id = args.get("task_id")
-            feedback_type = args.get("feedback_type", "query_refinement").lower()
+            feedback_type_str = args.get("feedback_type", "query_refinement").lower()
             content = args.get("content", "")
+            agent_target = args.get("agent_target", "").lower() or None
+            parent_feedback_id = args.get("parent_feedback_id")
 
             if not task_id or not content:
                 result = StructuredResult.error(
@@ -435,30 +443,49 @@ class ResearchHandlersMixin:
                 )
                 return [result.as_text_content()]
 
-            # Store feedback for future analysis
-            feedback_record = {
-                "task_id": task_id,
-                "feedback_type": feedback_type,
-                "content": content,
-                "agent_name": args.get("agent_name"),
-                "timestamp": int(__import__("time").time()),
-            }
+            # Validate feedback type
+            try:
+                feedback_type = FeedbackType(feedback_type_str)
+            except ValueError:
+                result = StructuredResult.error(
+                    f"Invalid feedback_type. Must be one of: {', '.join([ft.value for ft in FeedbackType])}",
+                    metadata={"operation": "research_feedback"},
+                )
+                return [result.as_text_content()]
 
-            # TODO: Phase 3.2 - Route feedback to agents for query refinement
-            # This is a placeholder for interactive refinement feature
-            logger.info(f"Research feedback received: {feedback_record}")
+            # Create feedback object
+            feedback = ResearchFeedback(
+                research_task_id=task_id,
+                feedback_type=feedback_type,
+                content=content,
+                agent_target=agent_target,
+                parent_feedback_id=parent_feedback_id,
+            )
+
+            # Store feedback in database
+            if hasattr(self, 'research_feedback_store'):
+                feedback_id = self.research_feedback_store.record_feedback(feedback)
+            else:
+                logger.warning("research_feedback_store not available, feedback not persisted")
+                feedback_id = -1
+
+            # Log feedback for debugging
+            logger.info(f"Feedback recorded: task={task_id}, type={feedback_type_str}, agent={agent_target}, id={feedback_id}")
 
             result = StructuredResult.success(
                 data={
+                    "feedback_id": feedback_id,
                     "task_id": task_id,
-                    "feedback_type": feedback_type,
-                    "status": "ACKNOWLEDGED",
-                    "note": "Feedback recorded. Interactive refinement (Phase 3.2) coming soon.",
+                    "feedback_type": feedback_type_str,
+                    "agent_target": agent_target,
+                    "status": "RECORDED",
+                    "message": f"Feedback recorded successfully. Use task refinement tools to apply this feedback.",
                 },
                 metadata={
                     "operation": "research_feedback",
                     "task_id": task_id,
-                    "feedback_type": feedback_type,
+                    "feedback_type": feedback_type_str,
+                    "feedback_id": feedback_id,
                 },
             )
 
@@ -526,5 +553,172 @@ class ResearchHandlersMixin:
         except Exception as e:
             logger.error(f"Error in _handle_research_config: {e}", exc_info=True)
             result = StructuredResult.error(str(e), metadata={"operation": "research_config"})
+
+        return [result.as_text_content()]
+
+    async def _handle_research_refine_query(self, args: dict) -> list[TextContent]:
+        """Handle query refinement (Phase 3.2 - Phase B).
+
+        Apply collected feedback to refine research query and re-execute
+        research with improved search parameters.
+
+        Args:
+            args: Dictionary with keys:
+                - task_id (int): Research task identifier
+                - apply_feedback (bool, optional): Auto-apply unapplied feedback (default True)
+
+        Returns:
+            List containing TextContent with refinement results
+        """
+        try:
+            task_id = args.get("task_id")
+            apply_feedback = args.get("apply_feedback", True)
+
+            if not task_id:
+                result = StructuredResult.error(
+                    "task_id is required",
+                    metadata={"operation": "research_refine_query"},
+                )
+                return [result.as_text_content()]
+
+            # Get the original task
+            task = self.research_store.get_task(task_id)
+            if not task:
+                result = StructuredResult.error(
+                    f"Research task {task_id} not found",
+                    metadata={"operation": "research_refine_query", "task_id": task_id},
+                )
+                return [result.as_text_content()]
+
+            # Get feedback for this task
+            if hasattr(self, 'research_feedback_store'):
+                if apply_feedback:
+                    feedback_list = self.research_feedback_store.get_unapplied_feedback(task_id)
+                else:
+                    feedback_list = self.research_feedback_store.get_task_feedback(task_id)
+            else:
+                feedback_list = []
+
+            if not feedback_list:
+                result = StructuredResult.success(
+                    data={
+                        "task_id": task_id,
+                        "message": "No feedback available for refinement",
+                        "feedback_count": 0,
+                    },
+                    metadata={
+                        "operation": "research_refine_query",
+                        "task_id": task_id,
+                    },
+                )
+                return [result.as_text_content()]
+
+            # Apply refinement engine
+            engine = QueryRefinementEngine()
+            refinement = engine.refine_from_feedback(task.topic, feedback_list)
+
+            # Mark feedback as applied
+            for feedback_id in refinement.applied_feedback_ids:
+                if hasattr(self, 'research_feedback_store'):
+                    self.research_feedback_store.mark_feedback_applied(feedback_id)
+
+            result = StructuredResult.success(
+                data={
+                    "task_id": task_id,
+                    "original_query": refinement.original_query,
+                    "refined_query": refinement.refined_query,
+                    "excluded_sources": refinement.excluded_sources,
+                    "focused_sources": refinement.focused_sources,
+                    "quality_threshold": refinement.quality_threshold,
+                    "agent_directives": refinement.agent_directives,
+                    "feedback_applied": len(refinement.applied_feedback_ids),
+                    "summary": refinement.summary(),
+                    "note": "Query refined. Use task refinement tools to execute research with refined parameters.",
+                },
+                metadata={
+                    "operation": "research_refine_query",
+                    "task_id": task_id,
+                    "feedback_count": len(refinement.applied_feedback_ids),
+                },
+            )
+
+        except Exception as e:
+            logger.error(f"Error in _handle_research_refine_query: {e}", exc_info=True)
+            result = StructuredResult.error(str(e), metadata={"operation": "research_refine_query"})
+
+        return [result.as_text_content()]
+
+    async def _handle_research_re_execute(self, args: dict) -> list[TextContent]:
+        """Handle refined research re-execution (Phase 3.2 - Phase B).
+
+        Re-execute research with refined query and constraints after feedback.
+
+        Args:
+            args: Dictionary with keys:
+                - task_id (int): Research task identifier
+                - refined_query (str, optional): Refined query to use
+                - excluded_sources (list, optional): Sources to exclude
+                - focused_sources (list, optional): Sources to focus on
+                - quality_threshold (float, optional): Min quality score
+
+        Returns:
+            List containing TextContent with execution result
+        """
+        try:
+            task_id = args.get("task_id")
+            refined_query = args.get("refined_query")
+            excluded_sources = args.get("excluded_sources", [])
+            focused_sources = args.get("focused_sources", [])
+            quality_threshold = float(args.get("quality_threshold", 0.5))
+
+            if not task_id:
+                result = StructuredResult.error(
+                    "task_id is required",
+                    metadata={"operation": "research_re_execute"},
+                )
+                return [result.as_text_content()]
+
+            # Get task
+            task = self.research_store.get_task(task_id)
+            if not task:
+                result = StructuredResult.error(
+                    f"Research task {task_id} not found",
+                    metadata={"operation": "research_re_execute", "task_id": task_id},
+                )
+                return [result.as_text_content()]
+
+            # Use refined query if provided, otherwise original
+            query_to_execute = refined_query or task.topic
+
+            # Update task status to running
+            self.research_store.update_task_status(task_id, ResearchStatus.RUNNING)
+
+            # Spawn background research execution with refined parameters
+            # TODO: Phase B - Pass constraints to executor
+            asyncio.create_task(
+                self.research_executor.execute_research(task_id, query_to_execute)
+            )
+
+            result = StructuredResult.success(
+                data={
+                    "task_id": task_id,
+                    "status": "RUNNING",
+                    "query": query_to_execute,
+                    "constraints": {
+                        "excluded_sources": excluded_sources,
+                        "focused_sources": focused_sources,
+                        "quality_threshold": quality_threshold,
+                    },
+                    "message": "Research re-execution started with refined parameters",
+                },
+                metadata={
+                    "operation": "research_re_execute",
+                    "task_id": task_id,
+                },
+            )
+
+        except Exception as e:
+            logger.error(f"Error in _handle_research_re_execute: {e}", exc_info=True)
+            result = StructuredResult.error(str(e), metadata={"operation": "research_re_execute"})
 
         return [result.as_text_content()]

@@ -6,8 +6,11 @@ from .models import (
     ResearchFinding,
     AgentProgress,
     AgentStatus,
+    ResearchFeedback,
+    FeedbackType,
 )
-from .store import ResearchStore
+from .store import ResearchStore, ResearchFeedbackStore
+from .query_refinement import QueryRefinementEngine, QueryRefinement
 from .executor import ResearchAgentExecutor
 from .agents import (
     ResearchAgent,
@@ -37,7 +40,12 @@ __all__ = [
     "ResearchFinding",
     "AgentProgress",
     "AgentStatus",
+    "ResearchFeedback",
+    "FeedbackType",
     "ResearchStore",
+    "ResearchFeedbackStore",
+    "QueryRefinementEngine",
+    "QueryRefinement",
     "ResearchAgentExecutor",
     "ResearchAgent",
     "ResearchCoordinator",
