@@ -254,54 +254,8 @@ async def get_episodic_events(
     order: str = Query("desc", regex="^(asc|desc)$"),
 ) -> Dict[str, Any]:
     """Get episodic events with pagination and sorting."""
-    try:
-        loader = _services.get("data_loader")
-        if not loader:
-            # Return mock data for testing
-            return {
-                "events": [
-                    {
-                        "id": f"evt_{1000-i}",
-                        "timestamp": (datetime.utcnow() - timedelta(hours=i)).isoformat() + "Z",
-                        "type": ["tool_execution", "learning", "error", "decision"][i % 4],
-                        "description": f"Event {1000-i}",
-                        "data": {}
-                    }
-                    for i in range(limit)
-                ],
-                "total": 8128,
-                "stats": {
-                    "totalEvents": 8128,
-                    "avgStorageSize": 2.5,
-                    "queryTimeMs": 45
-                }
-            }
-
-        # Use actual data loader
-        events = loader.get_recent_events(limit=limit)
-        total = loader.count_events()
-
-        return {
-            "events": [
-                {
-                    "id": e.get("id", f"evt_{i}"),
-                    "timestamp": e.get("timestamp", datetime.utcnow().isoformat() + "Z"),
-                    "type": e.get("type", "event"),
-                    "description": e.get("description", "Event"),
-                    "data": e.get("data", {})
-                }
-                for i, e in enumerate(events[:limit])
-            ],
-            "total": total,
-            "stats": {
-                "totalEvents": total,
-                "avgStorageSize": 2.5,
-                "queryTimeMs": 45
-            }
-        }
-    except Exception as e:
-        logger.error(f"Error fetching episodic events: {e}")
-        return {"events": [], "total": 0, "error": str(e)}
+    # TODO: Implement - query episodic_events table
+    return {"events": [], "total": 0, "limit": limit, "offset": offset}
 
 
 @episodic_router.get("/events/{event_id}")

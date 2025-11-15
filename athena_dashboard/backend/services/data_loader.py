@@ -240,9 +240,8 @@ class DataLoader:
             result = self._query(sql)
             return result[0]["count"] if result else 0
         except psycopg.errors.UndefinedTable as e:
-                logger.warning(f"working_memory table not available: {e}")
-                return 0
-            raise
+            logger.warning(f"working_memory table not available: {e}")
+            return 0
 
     # ========================================================================
     # KNOWLEDGE GRAPH QUERIES

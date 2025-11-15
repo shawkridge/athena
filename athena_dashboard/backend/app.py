@@ -18,6 +18,7 @@ from models.metrics import (
     LearningMetrics,
 )
 from routes.websocket_routes import initialize_websocket_routes
+from routes import api as api_module
 from routes.api import api_router
 
 # Configure logging
@@ -61,6 +62,10 @@ async def lifespan(app: FastAPI):
     # Initialize streaming service
     streaming_service = StreamingService(athena_url=settings.ATHENA_HTTP_URL)
     logger.info("Streaming service initialized")
+
+    # Inject services into routes module
+    api_module.set_services(data_loader, metrics_aggregator, cache_manager)
+    logger.info("Services injected into API routes")
 
     yield
 
