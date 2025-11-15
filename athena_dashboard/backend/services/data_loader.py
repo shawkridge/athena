@@ -190,7 +190,7 @@ class DataLoader:
             sql = """
                 SELECT *
                 FROM consolidation_runs
-                ORDER BY timestamp DESC
+                ORDER BY started_at DESC
                 LIMIT 1
             """
             result = self._query(sql)
@@ -201,14 +201,15 @@ class DataLoader:
 
     def get_consolidation_history(self, days: int = 7) -> List[Dict[str, Any]]:
         """Get consolidation history."""
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = int((datetime.utcnow() - timedelta(days=days)).timestamp())
         sql = """
-            SELECT timestamp, events_processed, patterns_extracted, quality_score
+            SELECT id, started_at, completed_at, status, patterns_extracted,
+                   avg_quality_before as quality_score
             FROM consolidation_runs
-            WHERE timestamp > %s
-            ORDER BY timestamp DESC
+            WHERE started_at > %s
+            ORDER BY started_at DESC
         """
-        return self._query(sql, (cutoff.isoformat(),))
+        return self._query(sql, (cutoff,))
 
     # ========================================================================
     # WORKING MEMORY QUERIES
