@@ -35,7 +35,17 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       const data = await response.json()
       setProjects(data.projects || [])
 
-      // Select the first project or one with events by default
+      // Try to restore previously selected project from localStorage
+      const savedProjectId = localStorage.getItem('selectedProjectId')
+      if (savedProjectId && data.projects) {
+        const savedProject = data.projects.find((p: Project) => p.id === parseInt(savedProjectId, 10))
+        if (savedProject) {
+          setSelectedProject(savedProject)
+          return
+        }
+      }
+
+      // Fall back to first project with events or first project
       if (data.projects && data.projects.length > 0) {
         const defaultProject = data.projects.find((p: Project) => p.event_count > 0) || data.projects[0]
         setSelectedProject(defaultProject)
