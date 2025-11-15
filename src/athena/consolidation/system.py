@@ -12,6 +12,7 @@ from ..memory.store import MemoryStore
 from ..meta.store import MetaMemoryStore
 from ..procedural.models import Procedure, ProcedureCategory
 from ..procedural.store import ProceduralStore
+from ..temporal.kg_synthesis import TemporalKGSynthesis
 from .metrics_store import ConsolidationMetricsStore
 from .quality_metrics import ConsolidationQualityMetrics
 from .models import (
@@ -33,6 +34,7 @@ class ConsolidationSystem:
         episodic_store: EpisodicStore,
         procedural_store: ProceduralStore,
         meta_store: MetaMemoryStore,
+        graph_store = None,  # Optional GraphStore for temporal KG synthesis
     ):
         """Initialize consolidation system.
 
@@ -42,12 +44,14 @@ class ConsolidationSystem:
             episodic_store: Episodic memory store
             procedural_store: Procedural memory store
             meta_store: Meta-memory store
+            graph_store: Optional knowledge graph store for temporal synthesis
         """
         self.db = db
         self.memory_store = memory_store
         self.episodic_store = episodic_store
         self.procedural_store = procedural_store
         self.meta_store = meta_store
+        self.graph_store = graph_store
         # Ensure consolidation schema is created
         self._ensure_schema()
     def _ensure_schema(self):
@@ -183,6 +187,24 @@ class ConsolidationSystem:
 
             # 6. Update meta-memory statistics
             self._update_meta_statistics(project_id)
+
+            # 7. Synthesize temporal knowledge graph (bidirectional sync)
+            if self.graph_store:
+                try:
+                    self._synthesize_temporal_kg(project_id)
+                except Exception as e:
+                    # Log but don't fail consolidation if graph synthesis fails
+                    import logging
+                    logging.warning(f"Temporal KG synthesis failed: {e}")
+
+            # 8. Create semantic memories from graph insights (feedback loop)
+            if self.graph_store:
+                try:
+                    self._extract_semantic_from_graph(project_id)
+                except Exception as e:
+                    # Log but don't fail consolidation if graph extraction fails
+                    import logging
+                    logging.warning(f"Graph-to-semantic extraction failed: {e}")
 
             # Calculate final average quality
             avg_after = self._calculate_average_quality(project_id)
@@ -836,6 +858,143 @@ class ConsolidationSystem:
         ))
 
         # commit handled by cursor context
+
+    def _synthesize_temporal_kg(self, project_id: Optional[int]) -> None:
+        """Synthesize temporal knowledge graph from episodic events.
+
+        Creates graph entities and relations from semantic patterns extracted
+        during consolidation, establishing bidirectional sync between semantic
+        and graph layers.
+
+        Args:
+            project_id: Project ID for consolidation
+        """
+        if not self.graph_store:
+            return
+
+        try:
+            # Create TemporalKGSynthesis with current stores
+            kg_synthesis = TemporalKGSynthesis(
+                episodic_store=self.episodic_store,
+                graph_store=self.graph_store,
+                causality_threshold=0.5,
+                recency_decay_hours=1.0,
+                frequency_threshold=10,
+            )
+
+            # Get session ID for synthesis (use project-level consolidation)
+            session_id = f"consolidation:project:{project_id}" if project_id else "consolidation:global"
+
+            # Synthesize temporal KG from recent episodic events
+            result = kg_synthesis.synthesize(
+                session_id=session_id,
+                since_timestamp=None  # Use all recent events
+            )
+
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(
+                f"Temporal KG synthesis complete: "
+                f"{result.entities_count} entities, "
+                f"{result.relations_count} relations, "
+                f"quality_score={result.quality_score:.2f}"
+            )
+        except Exception as e:
+            import logging
+            logging.warning(f"Failed to synthesize temporal KG: {e}")
+
+    def _extract_semantic_from_graph(self, project_id: Optional[int]) -> None:
+        """Extract semantic memories from knowledge graph insights.
+
+        Analyzes knowledge graph entities and relations to discover high-confidence
+        patterns and stores them as semantic memories, creating a feedback loop
+        from graph layer back to semantic layer.
+
+        Args:
+            project_id: Project ID for extraction
+        """
+        if not self.graph_store:
+            return
+
+        try:
+            import logging
+            logger = logging.getLogger(__name__)
+
+            # Get recently created entities (last 24 hours)
+            cutoff_timestamp = int((datetime.now() - timedelta(hours=24)).timestamp())
+            cursor = self.db.get_cursor()
+
+            if project_id:
+                cursor.execute("""
+                    SELECT id, name, entity_type, metadata
+                    FROM knowledge_graph_entities
+                    WHERE project_id = %s AND created_at > %s
+                    ORDER BY created_at DESC
+                    LIMIT 50
+                """, (project_id, cutoff_timestamp))
+            else:
+                cursor.execute("""
+                    SELECT id, name, entity_type, metadata
+                    FROM knowledge_graph_entities
+                    WHERE created_at > %s
+                    ORDER BY created_at DESC
+                    LIMIT 50
+                """, (cutoff_timestamp,))
+
+            entities = cursor.fetchall()
+            if not entities:
+                return
+
+            # Get relations for these entities to understand patterns
+            cursor.execute("""
+                SELECT from_entity_id, to_entity_id, relation_type, strength, confidence
+                FROM knowledge_graph_relations
+                WHERE (from_entity_id IN (
+                    SELECT id FROM knowledge_graph_entities
+                    WHERE created_at > %s
+                ) OR to_entity_id IN (
+                    SELECT id FROM knowledge_graph_entities
+                    WHERE created_at > %s
+                ))
+                ORDER BY confidence DESC
+                LIMIT 100
+            """, (cutoff_timestamp, cutoff_timestamp))
+
+            relations = cursor.fetchall()
+
+            # Create semantic memories from high-confidence relations
+            memories_created = 0
+            for relation in relations:
+                if relation["confidence"] >= 0.7:  # Only high-confidence relations
+                    # Create semantic memory representing the discovered relationship
+                    memory_content = {
+                        "type": "discovered_relation",
+                        "from_entity": relation["from_entity_id"],
+                        "to_entity": relation["to_entity_id"],
+                        "relation_type": relation["relation_type"],
+                        "confidence": relation["confidence"],
+                        "strength": relation["strength"],
+                        "source": "knowledge_graph_consolidation"
+                    }
+
+                    try:
+                        memory_id = self.memory_store.remember(
+                            content=json.dumps(memory_content),
+                            memory_type=MemoryType.PATTERN,
+                            tags=["graph_derived", f"relation:{relation['relation_type']}", "consolidated"],
+                            project_id=project_id,
+                            usefulness_score=relation["confidence"]
+                        )
+                        memories_created += 1
+                    except Exception as e:
+                        logger.warning(f"Failed to create semantic memory from graph relation: {e}")
+
+            if memories_created > 0:
+                logger.info(f"Created {memories_created} semantic memories from graph insights")
+
+        except Exception as e:
+            import logging
+            logging.warning(f"Failed to extract semantic memories from graph: {e}")
 
     def get_latest_run(self, project_id: Optional[int] = None) -> Optional[ConsolidationRun]:
         """Get latest consolidation run."""

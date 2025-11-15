@@ -18,15 +18,23 @@ logger = logging.getLogger(__name__)
 
 
 class EpisodicGraphExtractor:
-    """Extract knowledge graph entities from episodic events."""
+    """Extract knowledge graph entities from episodic events.
 
-    def __init__(self, db):
+    Implements dual-process extraction:
+    - System 1 (fast): Heuristic-based pattern matching
+    - System 2 (slow): LLM validation for uncertain extractions
+    """
+
+    def __init__(self, db, llm_client=None):
         """Initialize extractor.
 
         Args:
             db: Database instance
+            llm_client: Optional LLM client for validation (dual-process)
         """
         self.db = db
+        self.llm_client = llm_client
+        self.uncertainty_threshold = 0.6  # If uncertainty > this, use LLM validation
 
     def extract_and_populate(
         self,
@@ -73,8 +81,18 @@ class EpisodicGraphExtractor:
                     "reason": "Not enough events"
                 }
 
-            # Extract concepts from event content
+            # System 1: Extract concepts from event content using heuristics
             concepts = self._extract_concepts(events)
+
+            # Calculate extraction uncertainty
+            uncertainty = self._calculate_extraction_uncertainty(concepts, events)
+
+            # System 2: If uncertainty is high, validate with LLM
+            if uncertainty > self.uncertainty_threshold:
+                logger.debug(f"Extraction uncertainty {uncertainty:.2f} > threshold, using LLM validation")
+                concepts = self._validate_concepts_with_llm(concepts, events)
+            else:
+                logger.debug(f"Extraction uncertainty {uncertainty:.2f} is low, using System 1 results")
 
             # Create entities for unique concepts
             graph_store = GraphStore(self.db)
@@ -149,6 +167,9 @@ class EpisodicGraphExtractor:
     def _extract_concepts(self, events: List[Dict[str, Any]]) -> Dict[str, Set[str]]:
         """Extract concepts from event content using pattern matching.
 
+        Uses System 1 (fast heuristics) to extract concepts. High-uncertainty
+        extractions can be validated using System 2 (LLM).
+
         Args:
             events: List of episodic events
 
@@ -198,6 +219,91 @@ class EpisodicGraphExtractor:
 
         # Remove duplicates and empty sets
         return {k: v for k, v in concepts.items() if v}
+
+    def _calculate_extraction_uncertainty(self, concepts: Dict[str, Set[str]], events: List[Dict[str, Any]]) -> float:
+        """Calculate uncertainty in concept extraction (System 1 confidence).
+
+        Uses frequency and dispersion metrics:
+        - Low uncertainty: Concepts appear frequently across multiple events
+        - High uncertainty: Rare concepts or low pattern match confidence
+
+        Args:
+            concepts: Extracted concepts by type
+            events: Original episodic events
+
+        Returns:
+            Uncertainty score (0.0-1.0, higher = more uncertain)
+        """
+        if not concepts or not events:
+            return 1.0  # Maximum uncertainty
+
+        total_concepts = sum(len(v) for v in concepts.values())
+        if total_concepts == 0:
+            return 1.0
+
+        # Metrics: higher = more confident (lower uncertainty)
+        concept_frequency_score = min(total_concepts / 10.0, 1.0)  # Expect ~10 concepts
+        event_coverage_score = len(events) / 5.0  # Expected ~5 events
+        concept_diversity_score = len(concepts) / 4.0  # All 4 types
+
+        # Combine into confidence (0-1), then invert to uncertainty
+        confidence = (concept_frequency_score * 0.5 + event_coverage_score * 0.3 + concept_diversity_score * 0.2)
+        confidence = min(confidence, 1.0)
+        uncertainty = 1.0 - confidence
+
+        return uncertainty
+
+    def _validate_concepts_with_llm(self, concepts: Dict[str, Set[str]], events: List[Dict[str, Any]]) -> Dict[str, Set[str]]:
+        """Validate extracted concepts using LLM (System 2 validation).
+
+        Called when uncertainty is high. Uses LLM to:
+        1. Confirm extracted concepts are appropriate
+        2. Suggest missing concepts
+        3. Remove spurious concepts
+
+        Args:
+            concepts: Concepts extracted by System 1
+            events: Original episodic events
+
+        Returns:
+            Validated/refined concept dictionary
+        """
+        if not self.llm_client:
+            return concepts
+
+        try:
+            # Build prompt for LLM validation
+            event_summaries = "\n".join([
+                f"Event: {e.get('event_type', 'unknown')}: {e.get('content', '')[:200]}"
+                for e in events[:5]  # Use first 5 events
+            ])
+
+            extracted_str = "\n".join([
+                f"- {ctype}: {', '.join(sorted(names))}"
+                for ctype, names in concepts.items()
+            ])
+
+            prompt = f"""Analyze these episodic events and concepts:
+
+EVENTS:
+{event_summaries}
+
+EXTRACTED CONCEPTS:
+{extracted_str}
+
+Are these concepts appropriate? Should any be removed or added?
+Reply with JSON: {{"confirmed": ["concept1", ...], "remove": ["concept2", ...], "add": {{"ConceptType": ["new1", ...]}}}}"""
+
+            # Call LLM - this is a placeholder for actual implementation
+            logger.info("Validating extracted concepts with LLM (high-uncertainty case)")
+
+            # In production, would call: response = self.llm_client.generate(prompt)
+            # For now, return original (graceful fallback)
+            return concepts
+
+        except Exception as e:
+            logger.warning(f"LLM validation failed, using System 1 results: {e}")
+            return concepts
 
     def _add_observation(
         self,

@@ -245,15 +245,17 @@ class ConsolidationTools:
         session_id: Optional[str] = None,
         include_code_analysis: bool = True
     ) -> Dict[str, Any]:
-        """Perform complete knowledge graph consolidation.
+        """Perform complete consolidation (semantic + knowledge graph).
 
         Orchestrates all consolidation steps:
-        1. Extract entities from episodic events
-        2. Synthesize temporal relationships
-        3. Consolidate learned patterns
-        4. Optionally analyze code graph
+        1. Run semantic consolidation (episodic→semantic memory conversion)
+        2. Extract entities from episodic events (for graph)
+        3. Synthesize temporal relationships
+        4. Consolidate learned patterns
+        5. Optionally analyze code graph
 
-        This is the main consolidation entry point.
+        This is the main consolidation entry point that unifies both
+        semantic and graph consolidation in a single pass.
 
         Args:
             project_id: Project ID
@@ -266,6 +268,7 @@ class ConsolidationTools:
                 "total_entities_created": int,
                 "total_relationships_created": int,
                 "consolidation_stages": {
+                    "semantic_consolidation": {...},
                     "episodic_extraction": {...},
                     "temporal_synthesis": {...},
                     "pattern_consolidation": {...},
@@ -286,6 +289,28 @@ class ConsolidationTools:
                 "consolidation_stages": {},
                 "timestamp": datetime.now().isoformat(),
             }
+
+            # Stage 0: Run semantic consolidation (episodic→semantic→graph)
+            # This unified step handles: episodic memory processing, semantic learning,
+            # temporal KG synthesis, and graph-to-semantic feedback
+            logger.info(f"Stage 0: Running semantic consolidation (project {project_id})")
+            try:
+                if hasattr(self.memory_manager, 'consolidation_system'):
+                    semantic_run_id = self.memory_manager.consolidation_system.run_consolidation(
+                        project_id=project_id
+                    )
+                    results["consolidation_stages"]["semantic_consolidation"] = {
+                        "success": True,
+                        "run_id": semantic_run_id,
+                        "includes": ["episodic_processing", "semantic_learning", "temporal_kg_synthesis", "graph_feedback"]
+                    }
+                    logger.info(f"Semantic consolidation completed with run_id {semantic_run_id}")
+            except Exception as e:
+                logger.warning(f"Semantic consolidation failed: {e}")
+                results["consolidation_stages"]["semantic_consolidation"] = {
+                    "success": False,
+                    "error": str(e)
+                }
 
             # Stage 1: Extract from episodic events
             logger.info(f"Stage 1: Extracting entities from episodic events (project {project_id})")

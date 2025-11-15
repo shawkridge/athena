@@ -261,7 +261,8 @@ class MemoryMCPServer(
             self.store,
             self.episodic_store.episodic_store,  # Pass the underlying episodic store
             self.procedural_store,
-            self.meta_store
+            self.meta_store,
+            self.graph_store  # Pass graph store for temporal KG synthesis
         )
 
         # Initialize working memory components
