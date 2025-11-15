@@ -481,17 +481,23 @@ class SessionContextManager:
         injected_ids = []
 
         for mem in candidates[:7]:  # TOON works best with 7±2 items (Baddeley's limit)
-            # Include core fields
+            # Include core fields + enhanced project context
             toon_item = {
                 "id": mem["id"][:8],  # Shorten IDs
                 "title": mem.get("title", "Memory"),
                 "type": mem.get("type", "memory"),
                 "importance": round(mem.get("importance", 0.5), 2),
-                "score": round(mem.get("composite_score", 0.5), 2),
+                "actionability": round(mem.get("actionability", 0.5), 2),  # NEW: Actionability score
+                "context": round(mem.get("context_completeness", 0.5), 2),  # NEW: Context completeness
+                "score": round(mem.get("composite_score", mem.get("combined_rank", 0.5)), 2),
+                # NEW: Project context for continuity
+                "project": mem.get("project", ""),
+                "goal": mem.get("goal", ""),
+                "phase": mem.get("phase", ""),
             }
             toon_items.append(toon_item)
             injected_ids.append(mem["id"])
-            self.cache.mark_injected(mem["id"], mem.get("composite_score", 0.5), mem.get("content", ""))
+            self.cache.mark_injected(mem["id"], mem.get("composite_score", mem.get("combined_rank", 0.5)), mem.get("content", ""))
 
         # Encode to TOON
         if toon_items:

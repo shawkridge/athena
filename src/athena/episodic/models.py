@@ -100,6 +100,17 @@ class EpisodicEvent(BaseModel):
     performance_metrics: Optional[dict] = None         # {metric_name: value}
     code_quality_score: Optional[float] = None         # 0.0-1.0 quality rating
 
+    # Enhanced context metadata for working memory optimization
+    project_name: Optional[str] = None                 # Project name for context
+    project_goal: Optional[str] = None                 # Current project goal/objective
+    project_phase_status: Optional[str] = None         # Current phase of project (planning, development, testing, etc.)
+    importance_score: float = Field(default=0.5, ge=0.0, le=1.0)  # 0.0-1.0, drives working memory ranking
+    actionability_score: float = Field(default=0.5, ge=0.0, le=1.0)  # 0.0-1.0, indicates if item is actionable
+    context_completeness_score: float = Field(default=0.5, ge=0.0, le=1.0)  # 0.0-1.0, whether item has sufficient context
+    has_next_step: bool = False                        # Whether this discovery has a clear next step
+    has_blocker: bool = False                          # Whether this discovery has blockers
+    required_decisions: Optional[str] = None           # JSON list of decisions needed
+
     model_config = ConfigDict(use_enum_values=True)
 
 

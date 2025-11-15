@@ -117,26 +117,36 @@ try:
             if gap_type != "first_session":
                 print(f"  ✓ Session resumed after {gap_readable} ({gap_type})", file=sys.stderr)
 
-        # INJECT TO CLAUDE: Working memory (stdout)
+        # INJECT TO CLAUDE: Working memory (stdout) - using TOON format
         if active_items:
             # Convert to session manager format
+            # NOTE: content is already importance-based truncated from memory_bridge.py
+            # Do NOT re-truncate here (removes redundant Layer 2 truncation)
+            # ENHANCED: Include project context for better memory continuity
             memories = [
                 {
                     "id": f"mem_working_{i}",
-                    "title": item['content'][:50],
-                    "content": item['content'],
+                    "title": item['content'],  # Already importance-based truncated from bridge
+                    "content": item['content'],  # Full is now available in bridge
                     "type": item['type'],
                     "timestamp": item.get('timestamp'),
                     "importance": item.get('importance', 0.5),
-                    "composite_score": item.get('importance', 0.5),
+                    "actionability": item.get('actionability', 0.5),
+                    "context_completeness": item.get('context_completeness', 0.5),
+                    "project": item.get('project'),  # NEW: Project context for continuity
+                    "goal": item.get('goal'),  # NEW: Current goal context
+                    "phase": item.get('phase'),  # NEW: Project phase
+                    "combined_rank": item.get('combined_rank', 0.0),  # NEW: Ranking score
+                    "composite_score": item.get('combined_rank', item.get('importance', 0.5)),
                 }
-                for i, item in enumerate(active_items[:5])
+                for i, item in enumerate(active_items[:7])  # Increased to 7 for 7±2 cognitive limit
             ]
 
-            # Use adaptive formatting with token budget
-            formatted, injected_ids, tokens_used = session_mgr.format_context_adaptive(
+            # Use TOON format for ~40% token savings (preferred)
+            # Falls back to adaptive formatting if TOON not available
+            formatted, injected_ids, tokens_used = session_mgr.format_context_toon(
                 memories=memories,
-                max_tokens=400  # Optimized: 400 tokens provides 288-token headroom for rich formatting
+                max_tokens=400  # TOON uses ~60% of JSON budget, so more content fits
             )
 
             if formatted:

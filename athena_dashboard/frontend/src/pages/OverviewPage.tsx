@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Stat } from '@/components/common/Stat'
+import { Stat, RefreshButton } from '@/components/common'
 import { Card } from '@/components/common/Card'
 import { GaugeChart } from '@/components/charts/GaugeChart'
-import { useAPI } from '@/hooks'
+import { useRealtimeData } from '@/hooks'
 
 interface SystemStats {
   totalEvents: number
@@ -31,13 +31,18 @@ interface ProjectsResponse {
 }
 
 export const OverviewPage = () => {
-  const { data: stats, loading, error } = useAPI<SystemStats>(
-    '/api/system/overview'
-  )
+  const { data: stats, loading, error, refetch, isConnected } = useRealtimeData<SystemStats>({
+    url: '/api/system/overview',
+    pollInterval: 5000,
+    enabled: true,
+  })
 
-  const { data: projectsData } = useAPI<ProjectsResponse>(
-    '/api/system/projects'
-  )
+  const projectsResult = useRealtimeData<ProjectsResponse>({
+    url: '/api/system/projects',
+    pollInterval: 10000,
+    enabled: true,
+  })
+  const projectsData = projectsResult.data
 
   if (loading) {
     return (
@@ -68,9 +73,12 @@ export const OverviewPage = () => {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-50">Overview</h1>
-        <p className="text-gray-400">System health summary and key metrics</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-50">Overview</h1>
+          <p className="text-gray-400">System health summary and key metrics</p>
+        </div>
+        <RefreshButton onRefresh={refetch} isConnected={isConnected} isLoading={loading} />
       </div>
 
       {/* Key Metrics Grid */}

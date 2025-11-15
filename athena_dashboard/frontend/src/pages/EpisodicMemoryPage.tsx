@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Card } from '@/components/common/Card'
+import { Card, RefreshButton } from '@/components/common'
 import { SearchBar } from '@/components/common/SearchBar'
 import { Pagination } from '@/components/common/Pagination'
 import { DateRange } from '@/components/common/DateRange'
 import { Stat } from '@/components/common/Stat'
-import { useAPI } from '@/hooks'
+import { useRealtimeData } from '@/hooks'
 import { useProject } from '@/context/ProjectContext'
 import { format } from 'date-fns'
 
@@ -48,10 +48,12 @@ export const EpisodicMemoryPage = () => {
     ...(endDate && { endDate: format(endDate, 'yyyy-MM-dd') }),
   })
 
-  const { data, loading, error } = useAPI<EpisodicResponse>(
-    `/api/episodic/events?${queryParams}`,
-    [selectedProject?.id, page, pageSize, search]
-  )
+  const { data, loading, error, refetch, isConnected } = useRealtimeData<EpisodicResponse>({
+    url: `/api/episodic/events?${queryParams}`,
+    dependencies: [selectedProject?.id, page, pageSize, search],
+    pollInterval: 5000, // Poll every 5 seconds as fallback
+    enabled: true,
+  })
 
   if (loading) {
     return (
@@ -82,12 +84,15 @@ export const EpisodicMemoryPage = () => {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-50">Layer 1: Episodic Memory</h1>
-        <p className="text-gray-400">
-          Event timeline, filtering, and statistics
-          {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-50">Layer 1: Episodic Memory</h1>
+          <p className="text-gray-400">
+            Event timeline, filtering, and statistics
+            {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
+          </p>
+        </div>
+        <RefreshButton onRefresh={refetch} isConnected={isConnected} isLoading={loading} />
       </div>
 
       {/* Statistics */}
