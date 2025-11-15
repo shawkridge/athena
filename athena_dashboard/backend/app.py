@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from config import settings
-from services import DataLoader, CacheManager, MetricsAggregator, AthenaHTTPLoader, StreamingService
+from services import DataLoader, CacheManager, MetricsAggregator, AthenaHTTPLoader, StreamingService, TaskPollingService
 from services.notification_service import NotificationService
 from models.metrics import (
     DashboardOverview,
@@ -21,6 +21,7 @@ from models.metrics import (
 from routes.websocket_routes import initialize_websocket_routes
 from routes import api as api_module
 from routes.api import api_router, set_notification_service
+from routes.task_routes import task_router, set_task_services
 
 # Configure logging
 logging.basicConfig(
@@ -35,12 +36,13 @@ cache_manager: CacheManager
 metrics_aggregator: MetricsAggregator
 streaming_service: StreamingService
 notification_service: NotificationService
+task_polling_service: TaskPollingService
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown."""
-    global data_loader, cache_manager, metrics_aggregator, streaming_service, notification_service
+    global data_loader, cache_manager, metrics_aggregator, streaming_service, notification_service, task_polling_service
 
     # Startup
     logger.info("Starting Athena Dashboard backend")
@@ -74,11 +76,24 @@ async def lifespan(app: FastAPI):
     api_module.set_services(data_loader, metrics_aggregator, cache_manager)
     logger.info("Services injected into API routes")
 
+    # Inject services into task routes (Phase 3 integration)
+    set_task_services(data_loader, metrics_aggregator, cache_manager)
+    logger.info("Services injected into task routes (Phase 3)")
+
+    # Initialize and start task polling service (replaces WebSocket to avoid connection leaks)
+    task_polling_service = TaskPollingService(poll_interval_seconds=5)
+    await task_polling_service.start(data_loader=data_loader)
+    logger.info("Task polling service started (polling interval: 5s)")
+
     yield
 
     # Shutdown
     logger.info("Shutting down Athena Dashboard backend")
     try:
+        # Stop task polling service
+        await task_polling_service.stop()
+        logger.info("Task polling service stopped")
+
         # Cleanup streaming service
         await streaming_service.cleanup()
         data_loader.close()
@@ -106,6 +121,10 @@ app.add_middleware(
 # Include main API router
 app.include_router(api_router)
 logger.info("Dashboard API routes registered")
+
+# Include task management router (Phase 3 integration)
+app.include_router(task_router)
+logger.info("Task management routes registered (Phase 3)")
 
 
 # ============================================================================

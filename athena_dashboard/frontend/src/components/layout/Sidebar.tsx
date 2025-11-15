@@ -22,6 +22,7 @@ const navSections: NavSection[] = [
     name: 'Dashboard',
     items: [
       { label: 'Overview', href: '/overview', icon: '📊' },
+      { label: 'Phase 3: Tasks', href: '/tasks', icon: '✨' },
     ],
   },
   {

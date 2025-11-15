@@ -8,6 +8,7 @@ import { LoadingSpinner } from './components/common/LoadingSpinner'
 
 // Lazy load all pages for code splitting
 const OverviewPage = lazy(() => import('./pages/OverviewPage'))
+const TaskManagementPage = lazy(() => import('./pages/TaskManagementPage'))
 const EpisodicMemoryPage = lazy(() => import('./pages/EpisodicMemoryPage'))
 const SemanticMemoryPage = lazy(() => import('./pages/SemanticMemoryPage'))
 const ProceduralMemoryPage = lazy(() => import('./pages/ProceduralMemoryPage'))
@@ -35,6 +36,7 @@ function App() {
               <Route element={<MainLayout />}>
                 <Route path="/" element={<OverviewPage />} />
                 <Route path="/overview" element={<OverviewPage />} />
+                <Route path="/tasks" element={<TaskManagementPage />} />
                 <Route path="/episodic" element={<EpisodicMemoryPage />} />
                 <Route path="/semantic" element={<SemanticMemoryPage />} />
                 <Route path="/procedural" element={<ProceduralMemoryPage />} />
