@@ -794,73 +794,129 @@ async def get_graph_visualization(
     """Get graph data for visualization in Sigma.js format.
 
     Returns nodes and edges for interactive graph visualization.
-    Generates synthetic data matching the knowledge graph statistics.
+    First tries to get real data from knowledge graph, falls back to synthetic data.
     Limited by node count to prevent rendering performance issues.
     """
     import random
-    import hashlib
 
     try:
-        # Define entity types with colors
-        entity_types = ["entity", "concept", "relation", "attribute"]
+        loader = _services.get("data_loader")
         type_colors = {
-            "entity": "#3b82f6",      # Blue
-            "concept": "#8b5cf6",     # Purple
-            "relation": "#ec4899",    # Pink
-            "attribute": "#14b8a6",   # Teal
+            "Concept": "#8b5cf6",      # Purple
+            "Component": "#3b82f6",    # Blue
+            "Process": "#ec4899",      # Pink
+            "Pattern": "#14b8a6",      # Teal
+            "Decision": "#f59e0b",     # Amber
+            "Entity": "#10b981",       # Green
         }
 
-        # Generate synthetic nodes
+        # Try to get real data from knowledge graph
         nodes = []
-        num_nodes = min(limit, 500)  # Cap at 500 for visualization
-        num_communities = 45
-
-        entity_names = [
-            "Memory", "Learning", "Pattern", "Consolidation", "Knowledge",
-            "Graph", "Entity", "Relation", "Semantic", "Procedural",
-            "Episodic", "Prospective", "Meta", "System", "Layer",
-            "Architecture", "Model", "Data", "Process", "Cognitive",
-            "Event", "Context", "Vector", "Embedding", "Similarity",
-        ]
-
-        for i in range(num_nodes):
-            node_id = f"node_{i}"
-            # Create deterministic community assignment
-            community = (i * 7) % num_communities
-            entity_type = entity_types[i % len(entity_types)]
-
-            # Create realistic looking label
-            name_seed = i % len(entity_names)
-            label = f"{entity_names[name_seed]} {i+1}"
-
-            nodes.append({
-                "id": node_id,
-                "label": label,
-                "type": entity_type,
-                "value": random.randint(5, 20),  # For node sizing
-                "community": community,
-                "color": type_colors.get(entity_type, "#6b7280"),
-            })
-
-        # Generate synthetic edges (relationships)
         edges = []
-        num_edges = min(int(num_nodes * 3.5), 2000)  # 3.5 edges per node on average
 
-        for i in range(num_edges):
-            source_idx = random.randint(0, num_nodes - 1)
-            target_idx = random.randint(0, num_nodes - 1)
+        try:
+            # Query real entities
+            real_entities = loader._query(
+                """
+                SELECT id, name, entity_type FROM entities
+                WHERE project_id = %s
+                ORDER BY id LIMIT %s
+                """,
+                (project_id, min(limit, 500))
+            )
 
-            if source_idx == target_idx:
-                continue
+            if real_entities:
+                logger.info(f"Found {len(real_entities)} real entities for visualization")
 
-            edge_id = f"edge_{i}"
-            edges.append({
-                "id": edge_id,
-                "source": f"node_{source_idx}",
-                "target": f"node_{target_idx}",
-                "weight": random.uniform(0.5, 2.0),
-                "type": random.choice(["connects", "relates", "depends", "influences"]),
-            })
+                # Create nodes from real entities
+                for entity in real_entities:
+                    entity_id = str(entity['id'])
+                    entity_type = entity.get('entity_type', 'Entity')
+                    name = entity.get('name', f'Entity {entity_id}')
+
+                    nodes.append({
+                        "id": entity_id,
+                        "label": name,
+                        "type": entity_type,
+                        "value": random.randint(10, 20),
+                        "community": int(entity_id) % 45,
+                        "color": type_colors.get(entity_type, "#6b7280"),
+                    })
+
+                # Query real relationships
+                if real_entities:
+                    entity_ids = [str(e['id']) for e in real_entities]
+                    placeholders = ','.join(['%s'] * len(entity_ids))
+
+                    real_relations = loader._query(
+                        f"""
+                        SELECT id, from_entity_id, to_entity_id, relation_type, strength
+                        FROM entity_relations
+                        WHERE from_entity_id IN ({placeholders}) OR to_entity_id IN ({placeholders})
+                        LIMIT %s
+                        """,
+                        entity_ids + entity_ids + [limit * 2]
+                    )
+
+                    for relation in real_relations:
+                        edges.append({
+                            "id": f"edge_{relation['id']}",
+                            "source": str(relation['from_entity_id']),
+                            "target": str(relation['to_entity_id']),
+                            "weight": relation.get('strength', 1.0),
+                            "type": relation.get('relation_type', 'relates_to'),
+                        })
+
+                    logger.info(f"Found {len(edges)} real relationships for visualization")
+
+        except Exception as e:
+            logger.warning(f"Could not fetch real knowledge graph data: {e}")
+            # Will fall back to synthetic data below
+
+        # If no real data, generate synthetic data
+        if not nodes:
+            logger.info("No real entities found, generating synthetic data")
+
+            entity_types = ["Concept", "Component", "Process", "Pattern"]
+            num_nodes = min(limit, 500)
+            num_communities = 45
+
+            entity_names = [
+                "Memory", "Learning", "Pattern", "Consolidation", "Knowledge",
+                "Graph", "Entity", "Relation", "Semantic", "Procedural",
+                "Episodic", "Prospective", "Meta", "System", "Layer",
+                "Architecture", "Model", "Data", "Process", "Cognitive",
+            ]
+
+            for i in range(num_nodes):
+                node_id = f"node_{i}"
+                community = (i * 7) % num_communities
+                entity_type = entity_types[i % len(entity_types)]
+                name_seed = i % len(entity_names)
+                label = f"{entity_names[name_seed]} {i+1}"
+
+                nodes.append({
+                    "id": node_id,
+                    "label": label,
+                    "type": entity_type,
+                    "value": random.randint(5, 20),
+                    "community": community,
+                    "color": type_colors.get(entity_type, "#6b7280"),
+                })
+
+            # Generate synthetic edges
+            num_edges = min(int(num_nodes * 3.5), 2000)
+            for i in range(num_edges):
+                source_idx = random.randint(0, num_nodes - 1)
+                target_idx = random.randint(0, num_nodes - 1)
+                if source_idx != target_idx:
+                    edges.append({
+                        "id": f"edge_{i}",
+                        "source": f"node_{source_idx}",
+                        "target": f"node_{target_idx}",
+                        "weight": random.uniform(0.5, 2.0),
+                        "type": random.choice(["connects", "relates", "depends"]),
+                    })
 
         return {
             "nodes": nodes,
@@ -868,9 +924,11 @@ async def get_graph_visualization(
             "metadata": {
                 "total_nodes_in_graph": 2500,  # Match /stats endpoint
                 "total_edges_in_graph": 8900,  # Match /stats endpoint
-                "rendered_limit": num_nodes,
+                "rendered_limit": len(nodes),
+                "real_data": len(nodes) > 0 and any(e['id'].startswith('node_') is False for e in nodes),
             }
         }
+
     except Exception as e:
         logger.error(f"Error in graph visualization: {e}")
         return {

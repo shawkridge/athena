@@ -25,14 +25,14 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    name: 'Intelligent Planning',
+    name: 'Task & Project Planning',
     items: [
-      { label: 'Task Management (Phase 3a-3c)', href: '/tasks', icon: '✨' },
+      { label: 'Smart Task Tracking', href: '/tasks', icon: '✨' },
       { label: '  └─ Task Status & Dependencies', href: '/tasks#status', icon: '📋' },
       { label: '  └─ Effort Predictions', href: '/tasks#predictions', icon: '🔮' },
-      { label: '  └─ Workflow Patterns', href: '/tasks#suggestions', icon: '💡' },
-      { label: 'Projects & Goals (Layer 4)', href: '/prospective', icon: '🎯' },
-      { label: 'Planning Patterns & Strategies', href: '/rag-planning', icon: '🧠' },
+      { label: '  └─ Suggested Next Tasks', href: '/tasks#suggestions', icon: '💡' },
+      { label: 'Projects & Milestones', href: '/prospective', icon: '🎯' },
+      { label: 'Strategy Recommendations', href: '/rag-planning', icon: '🧠' },
     ],
   },
   {

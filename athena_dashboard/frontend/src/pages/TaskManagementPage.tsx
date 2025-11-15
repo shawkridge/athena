@@ -1,11 +1,11 @@
 /**
- * Task Management Page - Phase 3 Integration
+ * Smart Task Tracking Page
  *
- * Displays:
- * - Real-time task status (Phase 3a: Dependencies + Metadata)
- * - Effort predictions with confidence (Phase 3c: Predictive Analytics)
- * - Suggested next tasks (Phase 3b: Workflow Patterns)
- * - Comprehensive task metrics
+ * Displays intelligent task management with:
+ * - Real-time task status with dependencies and metadata
+ * - AI-powered effort predictions with confidence levels
+ * - Smart suggestions for next tasks based on workflow patterns
+ * - Comprehensive analytics and metrics
  */
 
 import { useEffect, useState } from 'react'
@@ -169,9 +169,9 @@ export const TaskManagementPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-50">Phase 3: Task Management</h1>
+          <h1 className="text-3xl font-bold text-gray-50">Smart Task Tracking</h1>
           <p className="text-gray-400">
-            Real-time task monitoring with intelligent predictions and suggestions
+            Real-time task monitoring with intelligent predictions and workflow insights
             {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
           </p>
         </div>
