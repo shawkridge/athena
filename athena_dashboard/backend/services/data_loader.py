@@ -56,6 +56,11 @@ class DataLoader:
             return []
         except psycopg.Error as e:
             logger.error(f"Database error: {e}")
+            # Rollback failed transaction to restore connection state
+            try:
+                self.conn.rollback()
+            except:
+                pass
             raise
 
     # ========================================================================

@@ -161,10 +161,37 @@ async def get_system_health() -> Dict[str, Any]:
 
         loader = _services["data_loader"]
 
-        # Get metrics
-        total_events = loader.count_events()
-        quality_score = loader.get_memory_quality_score() or 0.0
-        memory_metrics = loader.get_memory_metrics()
+        # Get metrics (with graceful fallback on query failures)
+        try:
+            total_events = loader.count_events()
+        except Exception as e:
+            logger.warning(f"Failed to count events: {e}")
+            total_events = 0
+
+        try:
+            quality_score = loader.get_memory_quality_score() or 0.0
+        except Exception as e:
+            logger.warning(f"Failed to get quality score: {e}")
+            quality_score = 0.0
+
+        try:
+            memory_metrics = loader.get_memory_metrics()
+        except Exception as e:
+            logger.warning(f"Failed to get memory metrics: {e}")
+            memory_metrics = {}
+
+        # Pre-compute counts with error handling
+        try:
+            semantic_count = loader.count_semantic_memories()
+        except Exception as e:
+            logger.warning(f"Failed to count semantic memories: {e}")
+            semantic_count = 0
+
+        try:
+            procedures_count = loader.count_procedures()
+        except Exception as e:
+            logger.warning(f"Failed to count procedures: {e}")
+            procedures_count = 0
 
         # Build layer health data
         layers = [
@@ -180,7 +207,7 @@ async def get_system_health() -> Dict[str, Any]:
                 "name": "Layer 2: Semantic",
                 "health": int(quality_score * 100) if quality_score else 85,
                 "status": "healthy" if quality_score > 0.7 else "fair",
-                "itemCount": loader.count_semantic_memories(),
+                "itemCount": semantic_count,
                 "queryTime": 52,
                 "lastUpdated": datetime.utcnow().isoformat() + "Z"
             },
@@ -188,7 +215,7 @@ async def get_system_health() -> Dict[str, Any]:
                 "name": "Layer 3: Procedural",
                 "health": 88,
                 "status": "healthy",
-                "itemCount": loader.count_procedures(),
+                "itemCount": procedures_count,
                 "queryTime": 38,
                 "lastUpdated": datetime.utcnow().isoformat() + "Z"
             },
