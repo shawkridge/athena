@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from config import settings
-from services import DataLoader, CacheManager, MetricsAggregator, AthenaHTTPLoader
+from services import DataLoader, CacheManager, MetricsAggregator, AthenaHTTPLoader, StreamingService
 from models.metrics import (
     DashboardOverview,
     HookMetrics,
@@ -17,6 +17,7 @@ from models.metrics import (
     TaskMetrics,
     LearningMetrics,
 )
+from routes.websocket_routes import initialize_websocket_routes
 
 # Configure logging
 logging.basicConfig(
@@ -29,12 +30,13 @@ logger = logging.getLogger(__name__)
 data_loader: DataLoader
 cache_manager: CacheManager
 metrics_aggregator: MetricsAggregator
+streaming_service: StreamingService
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown."""
-    global data_loader, cache_manager, metrics_aggregator
+    global data_loader, cache_manager, metrics_aggregator, streaming_service
 
     # Startup
     logger.info("Starting Athena Dashboard backend")
@@ -55,14 +57,20 @@ async def lifespan(app: FastAPI):
     cache_manager = CacheManager()
     metrics_aggregator = MetricsAggregator(data_loader, cache_manager)
 
+    # Initialize streaming service
+    streaming_service = StreamingService(athena_url=settings.ATHENA_HTTP_URL)
+    logger.info("Streaming service initialized")
+
     yield
 
     # Shutdown
     logger.info("Shutting down Athena Dashboard backend")
     try:
+        # Cleanup streaming service
+        await streaming_service.cleanup()
         data_loader.close()
     except Exception as e:
-        logger.error(f"Error closing data loader: {e}")
+        logger.error(f"Error closing resources: {e}")
 
 
 # Create FastAPI application
@@ -81,6 +89,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ============================================================================
+# WEBSOCKET ROUTES (initialized in lifespan)
+# ============================================================================
+
+# The WebSocket router will be added in the startup event once streaming_service is initialized
+def add_websocket_routes(app: FastAPI) -> None:
+    """Add WebSocket routes to the app."""
+    if settings.WEBSOCKET_ENABLED and streaming_service:
+        ws_router = initialize_websocket_routes(streaming_service)
+        app.include_router(ws_router)
+        logger.info("WebSocket routes registered")
 
 
 # ============================================================================
@@ -417,6 +438,10 @@ async def startup_event():
     logger.info(f"CORS origins: {settings.CORS_ORIGINS}")
     logger.info(f"Cache enabled: {settings.CACHE_ENABLED}")
     logger.info(f"WebSocket enabled: {settings.WEBSOCKET_ENABLED}")
+
+    # Add WebSocket routes if enabled
+    if settings.WEBSOCKET_ENABLED:
+        add_websocket_routes(app)
 
 
 if __name__ == "__main__":
