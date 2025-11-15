@@ -7,7 +7,8 @@ from datetime import datetime
 
 from .store import ResearchStore
 from .models import ResearchFinding, AgentProgress, AgentStatus, ResearchStatus
-from .agents import RESEARCH_AGENTS as AGENT_CLASSES
+# Note: agents module now contains ResearchCoordinator and specialized agents
+# RESEARCH_AGENTS defined locally in this module
 from .aggregation import FindingAggregator, AggregatedFinding
 from .memory_integration import ResearchMemoryIntegrator
 from .cache import ResearchQueryCache

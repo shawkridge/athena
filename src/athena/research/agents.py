@@ -1,438 +1,498 @@
-"""Research agents with specialized search strategies per source."""
+"""Multi-Agent Research System - Specialized research agents.
 
-import asyncio
+Implements agent-based research with:
+- Specialized agents (web searcher, academic researcher, synthesizer)
+- Agent coordination and task distribution
+- Shared context and memory
+- Progress tracking and result aggregation
+- Interactive refinement and feedback
+
+Each agent focuses on specific research aspects and coordinates with others.
+"""
+
 import logging
-from typing import Optional
+import asyncio
 from abc import ABC, abstractmethod
+from typing import List, Dict, Any, Optional, Set
+from dataclasses import dataclass, field
+from enum import Enum
+from datetime import datetime
+import uuid
+
+from .api_integrations import (
+    SearchResult,
+    AcademicPaper,
+    WebSearchProvider,
+    AcademicProvider,
+    LLMProvider,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class ResearchAgent(ABC):
-    """Base class for specialized research agents."""
+class AgentRole(Enum):
+    """Agent roles in research."""
+    WEB_SEARCHER = "web_searcher"
+    ACADEMIC_RESEARCHER = "academic_researcher"
+    SYNTHESIZER = "synthesizer"
+    VALIDATOR = "validator"
+    COORDINATOR = "coordinator"
 
-    def __init__(self, agent_name: str, source: str, credibility: float):
+
+@dataclass
+class AgentMessage:
+    """Message between agents."""
+    sender_id: str
+    receiver_id: Optional[str]  # None = broadcast
+    role: AgentRole
+    message_type: str  # 'task', 'result', 'feedback', 'status'
+    content: Dict[str, Any] = field(default_factory=dict)
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass
+class ResearchTask:
+    """A research task to be assigned to agents."""
+    task_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    query: str = ""
+    task_type: str = ""  # 'web_search', 'academic_search', 'synthesis', etc.
+    assigned_to: Optional[str] = None
+    status: str = "pending"  # pending, running, complete, failed
+    results: List[Any] = field(default_factory=list)
+    dependencies: List[str] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass
+class SharedContext:
+    """Shared context and memory for research session."""
+    session_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    original_query: str = ""
+    search_results: List[SearchResult] = field(default_factory=list)
+    academic_papers: List[AcademicPaper] = field(default_factory=list)
+    synthesis: Optional[str] = None
+    key_findings: List[str] = field(default_factory=list)
+    visited_urls: Set[str] = field(default_factory=set)
+    explored_queries: Set[str] = field(default_factory=set)
+    quality_metrics: Dict[str, float] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+class ResearchAgent(ABC):
+    """Base class for research agents."""
+
+    def __init__(
+        self,
+        agent_id: str,
+        role: AgentRole,
+        name: str,
+        context: SharedContext,
+    ):
         """Initialize agent.
 
         Args:
-            agent_name: Name of agent
-            source: Source being researched
-            credibility: Base credibility score for source
+            agent_id: Unique agent identifier
+            role: Agent's role in research
+            name: Human-readable name
+            context: Shared research context
         """
-        self.agent_name = agent_name
-        self.source = source
-        self.credibility = credibility
+        self.agent_id = agent_id
+        self.role = role
+        self.name = name
+        self.context = context
+        self._inbox: asyncio.Queue = asyncio.Queue()
+        self._tasks: Dict[str, ResearchTask] = {}
+        self._status = "idle"
+
+    async def run(self) -> None:
+        """Main agent loop."""
+        logger.info(f"{self.name} ({self.agent_id}) started")
+        self._status = "running"
+
+        try:
+            while self._status == "running":
+                try:
+                    # Get task with timeout
+                    message = await asyncio.wait_for(
+                        self._inbox.get(),
+                        timeout=5.0
+                    )
+                    await self._handle_message(message)
+
+                except asyncio.TimeoutError:
+                    # Check for work to do
+                    await self._check_work()
+
+        except Exception as e:
+            logger.error(f"{self.name} error: {e}")
+            self._status = "error"
+
+        logger.info(f"{self.name} ({self.agent_id}) stopped")
+
+    async def _handle_message(self, message: AgentMessage) -> None:
+        """Handle incoming message."""
+        if message.message_type == "task":
+            task = ResearchTask(**message.content)
+            await self.execute_task(task)
+
+        elif message.message_type == "feedback":
+            await self.handle_feedback(message.content)
+
+        elif message.message_type == "status":
+            await self.handle_status_request(message)
 
     @abstractmethod
-    async def search(self, topic: str) -> list[dict]:
-        """Search source for topic.
-
-        Args:
-            topic: Research topic/query
-
-        Returns:
-            List of findings (title, summary, url, relevance_score)
-        """
+    async def execute_task(self, task: ResearchTask) -> None:
+        """Execute a research task."""
         pass
 
-    def format_finding(self, title: str, summary: str, url: Optional[str] = None, relevance: float = 0.8) -> dict:
-        """Format finding with credibility score.
+    @abstractmethod
+    async def _check_work(self) -> None:
+        """Check if there's work to do."""
+        pass
 
-        Args:
-            title: Finding title
-            summary: Finding summary
-            url: Optional URL
-            relevance: Relevance score (0.0-1.0)
+    async def handle_feedback(self, feedback: Dict[str, Any]) -> None:
+        """Handle feedback from user or other agents."""
+        logger.debug(f"{self.name} received feedback: {feedback}")
 
-        Returns:
-            Formatted finding dict
-        """
-        return {
-            "title": title,
-            "summary": summary,
-            "url": url,
-            "relevance": relevance,
-            "credibility": self.credibility * relevance,
-        }
+    async def handle_status_request(self, message: AgentMessage) -> None:
+        """Send status to requester."""
+        status_msg = AgentMessage(
+            sender_id=self.agent_id,
+            receiver_id=message.sender_id,
+            role=self.role,
+            message_type="status",
+            content={
+                "status": self._status,
+                "tasks_completed": len([t for t in self._tasks.values() if t.status == "complete"]),
+                "tasks_pending": len([t for t in self._tasks.values() if t.status == "pending"]),
+            }
+        )
+
+    async def send_message(self, message: AgentMessage) -> None:
+        """Send message to another agent."""
+        await self._inbox.put(message)
+
+    def stop(self) -> None:
+        """Stop agent."""
+        self._status = "stopped"
 
 
-class ArxivResearcher(ResearchAgent):
-    """Research agent for arXiv papers."""
+class WebSearchAgent(ResearchAgent):
+    """Agent specialized in web search."""
 
-    def __init__(self):
-        super().__init__("arxiv-researcher", "arXiv", 1.0)
+    def __init__(
+        self,
+        agent_id: str,
+        name: str,
+        context: SharedContext,
+        provider: WebSearchProvider,
+    ):
+        """Initialize web search agent."""
+        super().__init__(agent_id, AgentRole.WEB_SEARCHER, name, context)
+        self.provider = provider
 
-    async def search(self, topic: str) -> list[dict]:
-        """Search arXiv for papers on topic.
+    async def execute_task(self, task: ResearchTask) -> None:
+        """Execute web search task."""
+        if task.task_type != "web_search":
+            return
 
-        Args:
-            topic: Research topic
+        logger.info(f"{self.name} searching: {task.query}")
+        task.status = "running"
+        task.assigned_to = self.agent_id
 
-        Returns:
-            List of paper findings
-        """
-        findings = []
         try:
-            # Simulate arXiv paper discovery
-            # In production, would use: arxiv API, WebFetch to arxiv.org, or WebSearch
-            papers = [
-                {
-                    "title": f"Towards Autonomous Agents: {topic.title()}",
-                    "summary": f"Paper exploring advancements in {topic}. Presents novel approaches to autonomous agent development.",
-                    "url": "https://arxiv.org/abs/2024.xxxxx",
-                    "relevance": 0.95,
-                },
-                {
-                    "title": f"A Survey on {topic.title()} Techniques",
-                    "summary": f"Comprehensive survey covering recent developments in {topic}. Reviews state-of-the-art methods and benchmarks.",
-                    "url": "https://arxiv.org/abs/2024.yyyyy",
-                    "relevance": 0.88,
-                },
+            # Skip if already searched
+            if task.query in self.context.explored_queries:
+                logger.debug(f"Query already explored: {task.query}")
+                task.results = []
+                task.status = "complete"
+                return
+
+            # Search
+            results = await self.provider.search(
+                task.query,
+                limit=15,
+            )
+
+            # Filter duplicates
+            new_results = [
+                r for r in results
+                if r.url not in self.context.visited_urls
             ]
 
-            for paper in papers:
-                findings.append(self.format_finding(
-                    paper["title"],
-                    paper["summary"],
-                    paper["url"],
-                    paper["relevance"]
-                ))
+            # Update context
+            self.context.search_results.extend(new_results)
+            for result in new_results:
+                self.context.visited_urls.add(result.url)
+            self.context.explored_queries.add(task.query)
 
-            await asyncio.sleep(0.05)  # Simulate network latency
+            task.results = new_results
+            task.status = "complete"
+
+            logger.info(f"{self.name} found {len(new_results)} results")
 
         except Exception as e:
-            logger.warning(f"ArxivResearcher error: {e}")
+            logger.error(f"Web search failed: {e}")
+            task.status = "failed"
+            task.metadata["error"] = str(e)
 
-        return findings
+        self._tasks[task.task_id] = task
+
+    async def _check_work(self) -> None:
+        """Check for pending work."""
+        pass
 
 
-class GithubResearcher(ResearchAgent):
-    """Research agent for GitHub repositories."""
+class AcademicResearchAgent(ResearchAgent):
+    """Agent specialized in academic research."""
 
-    def __init__(self):
-        super().__init__("github-researcher", "GitHub", 0.85)
+    def __init__(
+        self,
+        agent_id: str,
+        name: str,
+        context: SharedContext,
+        provider: AcademicProvider,
+    ):
+        """Initialize academic research agent."""
+        super().__init__(agent_id, AgentRole.ACADEMIC_RESEARCHER, name, context)
+        self.provider = provider
 
-    async def search(self, topic: str) -> list[dict]:
-        """Search GitHub for open-source implementations.
+    async def execute_task(self, task: ResearchTask) -> None:
+        """Execute academic search task."""
+        if task.task_type != "academic_search":
+            return
 
-        Args:
-            topic: Research topic
+        logger.info(f"{self.name} searching: {task.query}")
+        task.status = "running"
+        task.assigned_to = self.agent_id
 
-        Returns:
-            List of repository findings
-        """
-        findings = []
         try:
-            # Simulate GitHub repository discovery
-            repos = [
-                {
-                    "title": f"Awesome {topic.title()} - Community curated list",
-                    "summary": f"Comprehensive curated list of tools, frameworks, and resources for {topic}.",
-                    "url": "https://github.com/awesome-{topic}",
-                    "relevance": 0.92,
-                },
-                {
-                    "title": f"OpenSource {topic.title()} Framework",
-                    "summary": f"Production-ready implementation of {topic}. Includes examples, documentation, and benchmarks.",
-                    "url": "https://github.com/opensource-{topic}",
-                    "relevance": 0.85,
-                },
-                {
-                    "title": f"{topic.title()} Experiments & Benchmarks",
-                    "summary": f"Collection of experiments and benchmarks for evaluating {topic} approaches.",
-                    "url": "https://github.com/research-{topic}",
-                    "relevance": 0.78,
-                },
+            papers = await self.provider.search(
+                task.query,
+                limit=20,
+            )
+
+            self.context.academic_papers.extend(papers)
+            task.results = papers
+            task.status = "complete"
+
+            logger.info(f"{self.name} found {len(papers)} papers")
+
+        except Exception as e:
+            logger.error(f"Academic search failed: {e}")
+            task.status = "failed"
+            task.metadata["error"] = str(e)
+
+        self._tasks[task.task_id] = task
+
+    async def _check_work(self) -> None:
+        """Check for pending work."""
+        pass
+
+
+class SynthesisAgent(ResearchAgent):
+    """Agent specialized in synthesizing findings."""
+
+    def __init__(
+        self,
+        agent_id: str,
+        name: str,
+        context: SharedContext,
+        llm_provider: LLMProvider,
+    ):
+        """Initialize synthesis agent."""
+        super().__init__(agent_id, AgentRole.SYNTHESIZER, name, context)
+        self.llm_provider = llm_provider
+
+    async def execute_task(self, task: ResearchTask) -> None:
+        """Execute synthesis task."""
+        if task.task_type != "synthesis":
+            return
+
+        logger.info(f"{self.name} synthesizing research")
+        task.status = "running"
+        task.assigned_to = self.agent_id
+
+        try:
+            # Prepare sources
+            web_snippets = [f"- {r.title}: {r.snippet}" for r in self.context.search_results[:5]]
+            paper_summaries = [
+                f"- {p.title} ({', '.join(p.authors[:2])})"
+                for p in self.context.academic_papers[:5]
             ]
 
-            for repo in repos:
-                findings.append(self.format_finding(
-                    repo["title"],
-                    repo["summary"],
-                    repo["url"],
-                    repo["relevance"]
-                ))
+            sources = "\n".join(web_snippets + paper_summaries)
 
-            await asyncio.sleep(0.05)
+            prompt = f"""Synthesize the following research sources into a comprehensive summary
+for the query: "{self.context.original_query}"
+
+Sources:
+{sources}
+
+Provide:
+1. Key Findings (3-5 bullets)
+2. Synthesis (2-3 paragraphs)
+3. Gaps and Future Directions
+
+Synthesis:"""
+
+            response = await self.llm_provider.complete(
+                prompt,
+                max_tokens=2000,
+                temperature=0.7,
+            )
+
+            self.context.synthesis = response.text
+
+            # Extract key findings
+            lines = response.text.split("\n")
+            self.context.key_findings = [
+                line.strip()
+                for line in lines
+                if line.strip().startswith(("-", "•", "*"))
+            ][:5]
+
+            task.results = [response.text]
+            task.status = "complete"
+
+            logger.info(f"{self.name} completed synthesis")
 
         except Exception as e:
-            logger.warning(f"GithubResearcher error: {e}")
+            logger.error(f"Synthesis failed: {e}")
+            task.status = "failed"
+            task.metadata["error"] = str(e)
 
-        return findings
+        self._tasks[task.task_id] = task
+
+    async def _check_work(self) -> None:
+        """Check for pending work."""
+        pass
 
 
-class AnthropicDocsResearcher(ResearchAgent):
-    """Research agent for Anthropic documentation."""
+class ResearchCoordinator:
+    """Coordinates research agents and task distribution."""
 
-    def __init__(self):
-        super().__init__("anthropic-docs-researcher", "Anthropic Docs", 0.95)
-
-    async def search(self, topic: str) -> list[dict]:
-        """Search Anthropic docs for Claude guidance.
+    def __init__(
+        self,
+        web_provider: Optional[WebSearchProvider] = None,
+        academic_provider: Optional[AcademicProvider] = None,
+        llm_provider: Optional[LLMProvider] = None,
+    ):
+        """Initialize coordinator.
 
         Args:
-            topic: Research topic
-
-        Returns:
-            List of documentation findings
+            web_provider: Web search provider
+            academic_provider: Academic search provider
+            llm_provider: LLM synthesis provider
         """
-        findings = []
-        try:
-            # Simulate Anthropic docs discovery
-            docs = [
-                {
-                    "title": f"Claude API Guide: {topic.title()}",
-                    "summary": f"Official guide on using Claude API for {topic}. Includes best practices, examples, and recommendations.",
-                    "url": "https://docs.anthropic.com/claude/{topic}",
-                    "relevance": 0.95,
-                },
-                {
-                    "title": "Building with Claude: Advanced Patterns",
-                    "summary": f"Advanced patterns for {topic} using Claude. Covers extended thinking, system prompts, and optimization.",
-                    "url": "https://docs.anthropic.com/building/{topic}",
-                    "relevance": 0.90,
-                },
-            ]
+        self.web_provider = web_provider
+        self.academic_provider = academic_provider
+        self.llm_provider = llm_provider
 
-            for doc in docs:
-                findings.append(self.format_finding(
-                    doc["title"],
-                    doc["summary"],
-                    doc["url"],
-                    doc["relevance"]
-                ))
+        self.agents: Dict[str, ResearchAgent] = {}
+        self.context: Optional[SharedContext] = None
+        self.task_queue: asyncio.Queue = asyncio.Queue()
 
-            await asyncio.sleep(0.05)
-
-        except Exception as e:
-            logger.warning(f"AnthropicDocsResearcher error: {e}")
-
-        return findings
-
-
-class PapersWithCodeResearcher(ResearchAgent):
-    """Research agent for Papers with Code."""
-
-    def __init__(self):
-        super().__init__("paperswithcode-researcher", "Papers with Code", 0.90)
-
-    async def search(self, topic: str) -> list[dict]:
-        """Search Papers with Code for verified implementations.
+    async def start_research(self, query: str) -> SharedContext:
+        """Start multi-agent research on a query.
 
         Args:
-            topic: Research topic
+            query: Research query
 
         Returns:
-            List of implementation findings
+            SharedContext with research results
         """
-        findings = []
+        # Initialize context
+        self.context = SharedContext(original_query=query)
+
+        # Create agents
+        await self._create_agents()
+
+        # Start agent tasks
+        agent_tasks = [agent.run() for agent in self.agents.values()]
+        agents_task = asyncio.gather(*agent_tasks)
+
         try:
-            # Simulate Papers with Code discovery
-            implementations = [
-                {
-                    "title": f"Verified Implementation: {topic.title()}",
-                    "summary": f"Paper with verified implementation on Papers with Code. Includes benchmarks, comparisons, and leaderboards.",
-                    "url": "https://paperswithcode.com/{topic}",
-                    "relevance": 0.90,
-                },
-            ]
+            # Distribute tasks
+            await self._distribute_tasks(query)
 
-            for impl in implementations:
-                findings.append(self.format_finding(
-                    impl["title"],
-                    impl["summary"],
-                    impl["url"],
-                    impl["relevance"]
-                ))
+            # Wait for agents to complete (with timeout)
+            await asyncio.wait_for(agents_task, timeout=60.0)
 
-            await asyncio.sleep(0.05)
+        except asyncio.TimeoutError:
+            logger.warning("Research timed out, collecting partial results")
 
         except Exception as e:
-            logger.warning(f"PapersWithCodeResearcher error: {e}")
+            logger.error(f"Research failed: {e}")
 
-        return findings
+        finally:
+            # Stop agents
+            for agent in self.agents.values():
+                agent.stop()
 
+        return self.context
 
-class HackernewsResearcher(ResearchAgent):
-    """Research agent for Hacker News discussions."""
+    async def _create_agents(self) -> None:
+        """Create specialized research agents."""
+        if self.web_provider:
+            web_agent = WebSearchAgent(
+                agent_id="web-searcher-1",
+                name="Web Searcher",
+                context=self.context,
+                provider=self.web_provider,
+            )
+            self.agents[web_agent.agent_id] = web_agent
 
-    def __init__(self):
-        super().__init__("hackernews-researcher", "Hacker News", 0.70)
+        if self.academic_provider:
+            academic_agent = AcademicResearchAgent(
+                agent_id="academic-researcher-1",
+                name="Academic Researcher",
+                context=self.context,
+                provider=self.academic_provider,
+            )
+            self.agents[academic_agent.agent_id] = academic_agent
 
-    async def search(self, topic: str) -> list[dict]:
-        """Search Hacker News for community discussions.
+        if self.llm_provider:
+            synthesis_agent = SynthesisAgent(
+                agent_id="synthesizer-1",
+                name="Synthesizer",
+                context=self.context,
+                llm_provider=self.llm_provider,
+            )
+            self.agents[synthesis_agent.agent_id] = synthesis_agent
 
-        Args:
-            topic: Research topic
+    async def _distribute_tasks(self, query: str) -> None:
+        """Distribute research tasks to agents."""
+        # Task 1: Web search
+        if self.web_provider:
+            web_task = ResearchTask(
+                query=query,
+                task_type="web_search",
+            )
+            web_agent = self.agents.get("web-searcher-1")
+            if web_agent:
+                await web_agent.execute_task(web_task)
 
-        Returns:
-            List of discussion findings
-        """
-        findings = []
-        try:
-            # Simulate Hacker News discovery
-            discussions = [
-                {
-                    "title": f"Discussion: Latest Developments in {topic.title()}",
-                    "summary": f"Active HN discussion with expert insights and practical experiences about {topic}.",
-                    "url": f"https://news.ycombinator.com/search?q={topic}",
-                    "relevance": 0.72,
-                },
-            ]
+        # Task 2: Academic search
+        if self.academic_provider:
+            academic_task = ResearchTask(
+                query=query,
+                task_type="academic_search",
+            )
+            academic_agent = self.agents.get("academic-researcher-1")
+            if academic_agent:
+                await academic_agent.execute_task(academic_task)
 
-            for discussion in discussions:
-                findings.append(self.format_finding(
-                    discussion["title"],
-                    discussion["summary"],
-                    discussion["url"],
-                    discussion["relevance"]
-                ))
-
-            await asyncio.sleep(0.05)
-
-        except Exception as e:
-            logger.warning(f"HackernewsResearcher error: {e}")
-
-        return findings
-
-
-class MediumResearcher(ResearchAgent):
-    """Research agent for Medium technical articles."""
-
-    def __init__(self):
-        super().__init__("medium-researcher", "Medium", 0.68)
-
-    async def search(self, topic: str) -> list[dict]:
-        """Search Medium for technical articles.
-
-        Args:
-            topic: Research topic
-
-        Returns:
-            List of article findings
-        """
-        findings = []
-        try:
-            # Simulate Medium discovery
-            articles = [
-                {
-                    "title": f"Deep Dive: {topic.title()} Explained",
-                    "summary": f"Technical article explaining {topic} concepts with practical examples and code.",
-                    "url": f"https://medium.com/search?q={topic}",
-                    "relevance": 0.70,
-                },
-            ]
-
-            for article in articles:
-                findings.append(self.format_finding(
-                    article["title"],
-                    article["summary"],
-                    article["url"],
-                    article["relevance"]
-                ))
-
-            await asyncio.sleep(0.05)
-
-        except Exception as e:
-            logger.warning(f"MediumResearcher error: {e}")
-
-        return findings
-
-
-class TechblogsResearcher(ResearchAgent):
-    """Research agent for tech company blogs."""
-
-    def __init__(self):
-        super().__init__("techblogs-researcher", "Tech Blogs", 0.88)
-
-    async def search(self, topic: str) -> list[dict]:
-        """Search tech blogs for company research and announcements.
-
-        Args:
-            topic: Research topic
-
-        Returns:
-            List of blog post findings
-        """
-        findings = []
-        try:
-            # Simulate tech blog discovery
-            posts = [
-                {
-                    "title": f"Research: {topic.title()} at Scale",
-                    "summary": f"Company research blog post on implementing {topic} at scale. Includes lessons learned and recommendations.",
-                    "url": "https://techblogs.example.com/research/{topic}",
-                    "relevance": 0.90,
-                },
-            ]
-
-            for post in posts:
-                findings.append(self.format_finding(
-                    post["title"],
-                    post["summary"],
-                    post["url"],
-                    post["relevance"]
-                ))
-
-            await asyncio.sleep(0.05)
-
-        except Exception as e:
-            logger.warning(f"TechblogsResearcher error: {e}")
-
-        return findings
-
-
-class XResearcher(ResearchAgent):
-    """Research agent for Twitter/X announcements and discussions."""
-
-    def __init__(self):
-        super().__init__("x-researcher", "X/Twitter", 0.62)
-
-    async def search(self, topic: str) -> list[dict]:
-        """Search X/Twitter for announcements and trends.
-
-        Args:
-            topic: Research topic
-
-        Returns:
-            List of tweet findings
-        """
-        findings = []
-        try:
-            # Simulate X/Twitter discovery
-            tweets = [
-                {
-                    "title": f"Trending: {topic.title()} Announcements",
-                    "summary": f"Latest announcements and trends on X/Twitter about {topic}. Includes expert commentary.",
-                    "url": f"https://twitter.com/search?q={topic}",
-                    "relevance": 0.65,
-                },
-            ]
-
-            for tweet in tweets:
-                findings.append(self.format_finding(
-                    tweet["title"],
-                    tweet["summary"],
-                    tweet["url"],
-                    tweet["relevance"]
-                ))
-
-            await asyncio.sleep(0.05)
-
-        except Exception as e:
-            logger.warning(f"XResearcher error: {e}")
-
-        return findings
-
-
-# Registry of all agents
-RESEARCH_AGENTS = {
-    "arxiv-researcher": ArxivResearcher,
-    "github-researcher": GithubResearcher,
-    "anthropic-docs-researcher": AnthropicDocsResearcher,
-    "paperswithcode-researcher": PapersWithCodeResearcher,
-    "hackernews-researcher": HackernewsResearcher,
-    "medium-researcher": MediumResearcher,
-    "techblogs-researcher": TechblogsResearcher,
-    "x-researcher": XResearcher,
-}
+        # Task 3: Synthesis (after searches complete)
+        if self.llm_provider:
+            await asyncio.sleep(1)  # Wait for searches
+            synthesis_task = ResearchTask(
+                query=query,
+                task_type="synthesis",
+                dependencies=["web_search", "academic_search"],
+            )
+            synthesis_agent = self.agents.get("synthesizer-1")
+            if synthesis_agent:
+                await synthesis_agent.execute_task(synthesis_task)
