@@ -17,3 +17,13 @@ Usage:
     2. Read tool definition: cat /athena/tools/workflow_patterns/analyze_workflow_patterns.py
     3. Use the tool (see tool file for import path)
 """
+
+__all__ = [
+    "analyze_workflow_patterns",
+    "get_typical_workflow",
+    "suggest_next_task_with_patterns",
+    "find_workflow_anomalies",
+    "get_pattern_metrics",
+    "assess_workflow_risk",
+    "get_typical_workflow_steps",
+]

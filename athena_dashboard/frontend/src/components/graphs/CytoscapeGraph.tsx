@@ -125,14 +125,6 @@ export const CytoscapeGraph = ({
         },
       },
       {
-        selector: 'node:hover',
-        style: {
-          'opacity': 1,
-          'border-width': '3px',
-          'border-color': '#ffffff',
-        },
-      },
-      {
         selector: 'edge',
         style: {
           'line-color': (ele: any) => {

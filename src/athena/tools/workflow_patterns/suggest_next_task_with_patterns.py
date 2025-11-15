@@ -1,59 +1,50 @@
+"""suggest_next_task_with_patterns - Get next task suggestions based on patterns.
+
+Part of Phase 3b: Workflow Pattern Mining
 """
-SUGGEST_NEXT_TASK_WITH_PATTERNS Tool - Phase 3b Workflow Analysis
 
-Gets intelligent task suggestions based on historical workflow patterns.
-
-To use:
-    from athena.workflow.suggestions import PatternSuggestionEngine
-    from athena.core.database import Database
-
-    db = Database()
-    engine = PatternSuggestionEngine(db)
-    suggestions = engine.suggest_next_task_with_patterns(project_id, task_id, limit=5)
-"""
+from typing import Dict, Any, Optional, List
 
 
 def suggest_next_task_with_patterns(
     project_id: int,
     completed_task_id: int,
     limit: int = 5,
-) -> list:
+    db: Optional[Any] = None,
+) -> Dict[str, Any]:
     """Suggest next tasks based on patterns from completed task.
 
     Analyzes the type of completed task and suggests what typically comes next
-    based on historical workflow patterns.
+    based on historical workflow patterns. Provides confidence scores and explanations.
 
-    Parameters:
-        project_id: Project ID
-        completed_task_id: Task that was just completed
-        limit: Max suggestions to return (default: 5)
+    Args:
+        project_id (int): Project ID
+        completed_task_id (int): Task that was just completed
+        limit (int): Max suggestions to return (default: 5)
+        db (Optional[Database]): Database connection (auto-initialized if not provided)
 
     Returns:
-        List of suggested task types with metrics:
-        [
-          {
-            "task_type": "test",
-            "confidence": 0.92,
-            "frequency": 23,
-            "avg_duration_hours": 48.5,
-            "explanation": "Based on 23 similar workflows (92% confidence)"
-          },
-          ...
-        ]
+        Dict with task suggestions and explanations
 
-    Example:
-        >>> suggestions = suggest_next_task_with_patterns(1, 42)
-        >>> for s in suggestions:
-        ...     print(f"{s['task_type']}: {s['confidence']:.0%} confidence")
-        test: 92% confidence
-        review: 45% confidence
-
-    How it works:
-        1. Get completed task type (from content + tags)
-        2. Query workflow_patterns table
-        3. Find tasks that typically follow this type
-        4. Return sorted by confidence
-        5. Include explanation with historical evidence
+    Examples:
+        >>> suggest_next_task_with_patterns(project_id=1, completed_task_id=42, limit=5)
+        {
+            'suggestions': [
+                {
+                    'task_type': 'test',
+                    'confidence': 0.92,
+                    'frequency': 23,
+                    'explanation': 'Based on 23 similar workflows (92% confidence)'
+                },
+                {
+                    'task_type': 'review',
+                    'confidence': 0.45,
+                    'frequency': 9,
+                    'explanation': 'Based on 9 similar workflows (45% confidence)'
+                }
+            ],
+            'completed_task_type': 'implement'
+        }
 
     Confidence interpretation:
         - 0.90+: Very reliable (do this next!)
@@ -61,20 +52,49 @@ def suggest_next_task_with_patterns(
         - 0.50-0.70: Possible (sometimes follows this)
         - <0.50: Uncommon (rarely follows this)
 
-    Implementation:
-        from athena.workflow.suggestions import PatternSuggestionEngine
-        from athena.core.database import Database
-
-        db = Database()
-        engine = PatternSuggestionEngine(db)
-        return engine.suggest_next_task_with_patterns(project_id, completed_task_id, limit)
+    Use this to:
+        - Get intelligent next task suggestions
+        - Understand typical workflow patterns
+        - Stay on expected path
+        - Discover alternative paths
     """
 
-    raise NotImplementedError(
-        "Use PatternSuggestionEngine directly:\n"
-        "  from athena.workflow.suggestions import PatternSuggestionEngine\n"
-        "  from athena.core.database import Database\n"
-        "  db = Database()\n"
-        "  engine = PatternSuggestionEngine(db)\n"
-        "  return engine.suggest_next_task_with_patterns(project_id, task_id, limit)"
-    )
+    try:
+        if db is None:
+            from ..core.database import Database
+            db = Database()
+
+        from ..workflow.suggestions import PatternSuggestionEngine
+
+        engine = PatternSuggestionEngine(db)
+        suggestions = engine.suggest_next_task_with_patterns(
+            project_id, completed_task_id, limit
+        )
+
+        if not suggestions:
+            return {
+                "suggestions": [],
+                "message": "No suggestions available",
+                "reason": "Not enough pattern data; complete more tasks first",
+            }
+
+        return {
+            "suggestions": suggestions,
+            "count": len(suggestions),
+            "limit": limit,
+        }
+
+    except Exception as e:
+        return {
+            "error": f"Failed to suggest next task: {str(e)}",
+            "project_id": project_id,
+            "task_id": completed_task_id,
+        }
+
+
+# Tool metadata for filesystem discovery
+__tool_name__ = "suggest_next_task_with_patterns"
+__tool_category__ = "workflow_patterns"
+__tool_summary__ = "Get next task suggestions based on patterns"
+__tool_version__ = "1.0.0"
+__tool_tags__ = ["workflow", "suggestion", "patterns", "recommendation", "next-task"]
