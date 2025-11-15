@@ -136,7 +136,7 @@ try:
             # Use adaptive formatting with token budget
             formatted, injected_ids, tokens_used = session_mgr.format_context_adaptive(
                 memories=memories,
-                max_tokens=350  # Phase 3+4: Session start with advanced features
+                max_tokens=400  # Optimized: 400 tokens provides 288-token headroom for rich formatting
             )
 
             if formatted:

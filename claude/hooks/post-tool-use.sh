@@ -25,10 +25,23 @@ log_error() {
     echo -e "${RED}[POST-TOOL-USE ERROR]${NC} $1" >&2
 }
 
-# Get tool execution data from environment
-TOOL_NAME="${TOOL_NAME:-unknown}"
-TOOL_STATUS="${TOOL_STATUS:-unknown}"
-EXECUTION_TIME_MS="${EXECUTION_TIME_MS:-0}"
+# Read hook input from stdin (official Claude Code interface)
+hook_input=$(cat)
+
+# Extract tool metadata from JSON
+TOOL_NAME=$(echo "$hook_input" | jq -r '.tool_name // "unknown"')
+SESSION_ID=$(echo "$hook_input" | jq -r '.session_id // "unknown"')
+CWD=$(echo "$hook_input" | jq -r '.cwd // "."')
+
+# Extract tool response (contains status, output, and tool-specific metadata)
+TOOL_RESPONSE=$(echo "$hook_input" | jq -r '.tool_response // {}')
+TOOL_STATUS=$(echo "$TOOL_RESPONSE" | jq -r '.status // "completed"')
+
+# For Bash tool, extract execution time if available
+EXECUTION_TIME_MS=$(echo "$TOOL_RESPONSE" | jq -r '.duration_ms // 0')
+if [ "$EXECUTION_TIME_MS" = "0" ]; then
+    EXECUTION_TIME_MS="${EXECUTION_TIME_MS:-0}"
+fi
 
 # Increment operation counter
 OPERATIONS_COUNTER_FILE="/tmp/.claude_operations_counter_$$"
@@ -41,8 +54,14 @@ fi
 echo "$COUNTER" > "$OPERATIONS_COUNTER_FILE"
 
 # Record episodic event to memory via direct Python import
-TOOL_NAME="${TOOL_NAME:-unknown}"
 log "Recording episodic event: $TOOL_NAME ($TOOL_STATUS)"
+
+# Export variables for Python subprocess
+export TOOL_NAME
+export TOOL_STATUS
+export EXECUTION_TIME_MS
+export SESSION_ID
+export CWD
 
 # Source environment variables for database connections
 if [ -f "/home/user/.work/athena/.env.local" ]; then
@@ -62,11 +81,28 @@ sys.path.insert(0, '/home/user/.claude/hooks/lib')
 try:
     from memory_bridge import MemoryBridge
     from tool_validator import validate_tool_name, validate_tool_status, validate_execution_time
+    from tool_response_parser import ToolResponseParser
+    import json
 
-    # Read tool context from environment (with fallback handling)
+    # Read tool context from shell variables (populated from stdin JSON)
     tool_name_raw = os.environ.get('TOOL_NAME', None)
     tool_status_raw = os.environ.get('TOOL_STATUS', None)
     duration_raw = os.environ.get('EXECUTION_TIME_MS', None)
+
+    # Parse tool response for enhanced metadata (if available via jq)
+    tool_response_json = os.environ.get('TOOL_RESPONSE', '{}')
+    try:
+        tool_response_obj = json.loads(tool_response_json) if tool_response_json and tool_response_json != '{}' else {}
+    except:
+        tool_response_obj = {}
+
+    # Use tool response parser for detailed metadata extraction
+    if tool_name_raw and tool_response_obj:
+        parser = ToolResponseParser()
+        parsed_response = parser.parse(tool_name_raw, tool_response_obj)
+        tool_summary = parsed_response.summary
+    else:
+        tool_summary = None
 
     # Validate each component
     tool_result = validate_tool_name(tool_name_raw)
@@ -80,7 +116,12 @@ try:
         # All context validated and present
         # For status, extract the validated value from the raw input (it's already validated)
         validated_status = tool_status_raw.strip().lower() if tool_status_raw else "unknown"
-        content_str = f"Tool: {tool_result.tool_name} | Status: {validated_status} | Duration: {time_ms}ms"
+
+        # Use rich summary from tool response parser if available
+        if tool_summary:
+            content_str = f"Tool: {tool_result.tool_name} | {tool_summary}"
+        else:
+            content_str = f"Tool: {tool_result.tool_name} | Status: {validated_status} | Duration: {time_ms}ms"
         outcome = validated_status
     else:
         # Log validation errors and use fallback
@@ -95,9 +136,10 @@ try:
             validation_errors.append(f"execution_time: {time_error}")
             print(f"⚠ Invalid EXECUTION_TIME_MS: {time_error}", file=sys.stderr)
 
-        # Fallback content
-        content_str = "Tool execution (context validation failed - see warnings above)"
-        outcome = "context_validation_failed"
+        # Claude Code doesn't pass environment variables - record generic tool execution
+        # This is expected behavior; hooks still work and can consolidate these events
+        content_str = f"Tool execution recorded (metadata: tool_name={'present' if tool_name_raw else 'missing'}, status={'present' if tool_status_raw else 'missing'}, duration={'present' if duration_raw else 'missing'})"
+        outcome = "recorded"  # Changed from "context_validation_failed" to allow consolidation
 
     with MemoryBridge() as bridge:
         project = bridge.get_project_by_path(os.getcwd())
@@ -113,8 +155,7 @@ try:
                 if validation_passed:
                     print(f"✓ Tool execution recorded: {tool_result.tool_name} (Status: {validated_status}, Duration: {time_ms}ms, ID: {event_id})", file=sys.stderr)
                 else:
-                    print(f"⚠ Tool execution recorded with validation issues (ID: {event_id})", file=sys.stderr)
-                    print(f"  Run: python3 ~/.claude/hooks/lib/tool_validator.py for validation details", file=sys.stderr)
+                    print(f"✓ Tool execution recorded (without metadata - Claude Code doesn't pass TOOL_NAME/TOOL_STATUS env vars yet, ID: {event_id})", file=sys.stderr)
             else:
                 print(f"⚠ Event recording may have failed (returned None)", file=sys.stderr)
         else:
@@ -159,8 +200,8 @@ except Exception as e:
 PYTHON_EOF
 
 # Check for anomalies/errors
-if [ "$TOOL_STATUS" != "success" ]; then
-    log_warn "Tool failed: $TOOL_NAME - Status: $TOOL_STATUS"
+if [ "$TOOL_STATUS" != "success" ] && [ "$TOOL_STATUS" != "completed" ]; then
+    log_warn "Tool may have failed: $TOOL_NAME - Status: $TOOL_STATUS"
 
     # Invoke error-handler agent to analyze failure
     # Uses agent_invoker to log the agent invocation

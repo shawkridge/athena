@@ -103,11 +103,26 @@ class DataLoader:
         """
         return self._query(sql, (event_type, cutoff.isoformat()))
 
-    def count_events(self) -> int:
-        """Count total episodic events."""
-        sql = "SELECT COUNT(*) as count FROM episodic_events"
-        result = self._query(sql)
-        return result[0]["count"] if result else 0
+    def count_events(self, project_id: Optional[int] = None) -> int:
+        """Count total episodic events, optionally filtered by project.
+
+        Args:
+            project_id: Optional project ID to filter by. If None, counts all events.
+
+        Returns:
+            Event count
+        """
+        try:
+            if project_id:
+                sql = "SELECT COUNT(*) as count FROM episodic_events WHERE project_id = %s"
+                result = self._query(sql, (project_id,))
+            else:
+                sql = "SELECT COUNT(*) as count FROM episodic_events"
+                result = self._query(sql)
+            return result[0]["count"] if result else 0
+        except Exception as e:
+            logger.warning(f"Failed to count events: {e}")
+            return 0
 
     def get_event_count_by_type(self) -> Dict[str, int]:
         """Get event counts grouped by type."""
@@ -159,11 +174,26 @@ class DataLoader:
     # PROCEDURAL MEMORY QUERIES
     # ========================================================================
 
-    def count_procedures(self) -> int:
-        """Count stored procedures."""
-        sql = "SELECT COUNT(*) as count FROM procedures"
-        result = self._query(sql)
-        return result[0]["count"] if result else 0
+    def count_procedures(self, project_id: Optional[int] = None) -> int:
+        """Count stored procedures, optionally filtered by project.
+
+        Args:
+            project_id: Optional project ID to filter by.
+
+        Returns:
+            Procedure count
+        """
+        try:
+            if project_id:
+                sql = "SELECT COUNT(*) as count FROM procedures WHERE project_id = %s"
+                result = self._query(sql, (project_id,))
+            else:
+                sql = "SELECT COUNT(*) as count FROM procedures"
+                result = self._query(sql)
+            return result[0]["count"] if result else 0
+        except Exception as e:
+            logger.warning(f"Failed to count procedures: {e}")
+            return 0
 
     def get_top_procedures(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Get most effective procedures.
@@ -186,35 +216,67 @@ class DataLoader:
     # CONSOLIDATION QUERIES
     # ========================================================================
 
-    def get_last_consolidation(self) -> Optional[Dict[str, Any]]:
-        """Get last consolidation run details.
+    def get_last_consolidation(self, project_id: Optional[int] = None) -> Optional[Dict[str, Any]]:
+        """Get last consolidation run details, optionally filtered by project.
 
-        Returns None if consolidation_runs table doesn't exist (graceful fallback).
+        Args:
+            project_id: Optional project ID to filter by.
+
+        Returns:
+            Consolidation run dict or None if not found.
         """
         try:
-            sql = """
-                SELECT *
-                FROM consolidation_runs
-                ORDER BY started_at DESC
-                LIMIT 1
-            """
-            result = self._query(sql)
+            if project_id:
+                sql = """
+                    SELECT *
+                    FROM consolidation_runs
+                    WHERE project_id = %s
+                    ORDER BY started_at DESC
+                    LIMIT 1
+                """
+                result = self._query(sql, (project_id,))
+            else:
+                sql = """
+                    SELECT *
+                    FROM consolidation_runs
+                    ORDER BY started_at DESC
+                    LIMIT 1
+                """
+                result = self._query(sql)
             return dict(result[0]) if result else None
         except psycopg.errors.UndefinedTable as e:
             logger.warning(f"consolidation_runs table not available: {e}")
             return None
 
-    def get_consolidation_history(self, days: int = 7) -> List[Dict[str, Any]]:
-        """Get consolidation history."""
-        cutoff = int((datetime.utcnow() - timedelta(days=days)).timestamp())
-        sql = """
-            SELECT id, started_at, completed_at, status, patterns_extracted,
-                   avg_quality_before as quality_score
-            FROM consolidation_runs
-            WHERE started_at > %s
-            ORDER BY started_at DESC
+    def get_consolidation_history(self, days: int = 7, project_id: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Get consolidation history, optionally filtered by project.
+
+        Args:
+            days: Number of days to look back.
+            project_id: Optional project ID to filter by.
+
+        Returns:
+            List of consolidation runs.
         """
-        return self._query(sql, (cutoff,))
+        cutoff = int((datetime.utcnow() - timedelta(days=days)).timestamp())
+        if project_id:
+            sql = """
+                SELECT id, started_at, completed_at, status, patterns_extracted,
+                       avg_quality_before as quality_score
+                FROM consolidation_runs
+                WHERE started_at > %s AND project_id = %s
+                ORDER BY started_at DESC
+            """
+            return self._query(sql, (cutoff, project_id))
+        else:
+            sql = """
+                SELECT id, started_at, completed_at, status, patterns_extracted,
+                       avg_quality_before as quality_score
+                FROM consolidation_runs
+                WHERE started_at > %s
+                ORDER BY started_at DESC
+            """
+            return self._query(sql, (cutoff,))
 
     # ========================================================================
     # WORKING MEMORY QUERIES
@@ -396,6 +458,61 @@ class DataLoader:
         except psycopg.errors.UndefinedTable as e:
             logger.warning(f"hook_executions table not available: {e}")
             return []
+
+    # ========================================================================
+    # PROJECT MANAGEMENT
+    # ========================================================================
+
+    def get_projects(self) -> List[Dict[str, Any]]:
+        """Get all projects with their basic info.
+
+        Returns:
+            List of project dicts with id, name, path, created_at
+        """
+        try:
+            sql = """
+                SELECT id, name, path, created_at
+                FROM projects
+                ORDER BY created_at DESC
+            """
+            return self._query(sql)
+        except Exception as e:
+            logger.warning(f"Failed to get projects: {e}")
+            return []
+
+    def get_project(self, project_id: int) -> Optional[Dict[str, Any]]:
+        """Get a specific project by ID.
+
+        Args:
+            project_id: Project ID
+
+        Returns:
+            Project dict or None if not found
+        """
+        try:
+            sql = "SELECT id, name, path, created_at FROM projects WHERE id = %s"
+            result = self._query(sql, (project_id,))
+            return result[0] if result else None
+        except Exception as e:
+            logger.warning(f"Failed to get project {project_id}: {e}")
+            return None
+
+    def get_project_by_path(self, path: str) -> Optional[Dict[str, Any]]:
+        """Get project by file path.
+
+        Args:
+            path: File path to match against project paths
+
+        Returns:
+            Project dict or None if not found
+        """
+        try:
+            sql = "SELECT id, name, path, created_at FROM projects WHERE path = %s"
+            result = self._query(sql, (path,))
+            return result[0] if result else None
+        except Exception as e:
+            logger.warning(f"Failed to get project by path {path}: {e}")
+            return None
 
     # ========================================================================
     # LLM USAGE METRICS

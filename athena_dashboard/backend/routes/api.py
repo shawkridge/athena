@@ -48,6 +48,48 @@ def set_services(data_loader, metrics_aggregator, cache_manager):
 system_router = APIRouter(prefix="/system", tags=["system"])
 
 
+@system_router.get("/projects")
+async def get_projects() -> Dict[str, Any]:
+    """
+    Get list of all available projects for the project selector.
+
+    Returns:
+        List of projects with id, name, path, and event count
+    """
+    try:
+        loader = _services.get("data_loader")
+        if not loader:
+            return {"projects": [], "total": 0}
+
+        projects = loader.get_projects()
+
+        # Enrich with event counts
+        enriched_projects = []
+        for project in projects:
+            try:
+                event_count = loader.count_events(project_id=project["id"])
+                enriched_projects.append({
+                    **project,
+                    "event_count": event_count,
+                    "created_at": project.get("created_at", "").isoformat() if hasattr(project.get("created_at"), "isoformat") else project.get("created_at", "")
+                })
+            except Exception as e:
+                logger.warning(f"Failed to get event count for project {project.get('id')}: {e}")
+                enriched_projects.append({
+                    **project,
+                    "event_count": 0,
+                    "created_at": project.get("created_at", "").isoformat() if hasattr(project.get("created_at"), "isoformat") else project.get("created_at", "")
+                })
+
+        return {
+            "projects": enriched_projects,
+            "total": len(enriched_projects)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching projects: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @system_router.get("/overview")
 async def get_system_overview() -> Dict[str, Any]:
     """
@@ -150,10 +192,16 @@ async def get_system_overview() -> Dict[str, Any]:
 
 
 @system_router.get("/health")
-async def get_system_health() -> Dict[str, Any]:
+async def get_system_health(project_id: Optional[int] = Query(None)) -> Dict[str, Any]:
     """
     Get detailed health metrics for all memory layers.
-    Returns layer-specific health, status, and timestamps.
+    Optionally filtered by project.
+
+    Args:
+        project_id: Optional project ID to filter by. If None, returns global stats.
+
+    Returns:
+        Layer-specific health, status, and timestamps.
     """
     try:
         if not _services["data_loader"]:
@@ -163,7 +211,7 @@ async def get_system_health() -> Dict[str, Any]:
 
         # Get metrics (with graceful fallback on query failures)
         try:
-            total_events = loader.count_events()
+            total_events = loader.count_events(project_id=project_id)
         except Exception as e:
             logger.warning(f"Failed to count events: {e}")
             total_events = 0
@@ -188,7 +236,7 @@ async def get_system_health() -> Dict[str, Any]:
             semantic_count = 0
 
         try:
-            procedures_count = loader.count_procedures()
+            procedures_count = loader.count_procedures(project_id=project_id)
         except Exception as e:
             logger.warning(f"Failed to count procedures: {e}")
             procedures_count = 0
@@ -828,20 +876,27 @@ consolidation_router = APIRouter(prefix="/consolidation", tags=["consolidation"]
 
 
 @consolidation_router.get("/analytics")
-async def get_consolidation_analytics() -> Dict[str, Any]:
-    """Get consolidation progress and statistics. Matches API_INTEGRATION_GUIDE.md schema."""
+async def get_consolidation_analytics(project_id: Optional[int] = Query(None)) -> Dict[str, Any]:
+    """Get consolidation progress and statistics, optionally filtered by project.
+
+    Args:
+        project_id: Optional project ID to filter by. If None, returns global stats.
+
+    Returns:
+        Consolidation analytics matching API_INTEGRATION_GUIDE.md schema.
+    """
     try:
         loader = _services.get("data_loader")
 
         # Get last consolidation run
         last_consolidation = None
         if loader:
-            last_consolidation = loader.get_last_consolidation()
+            last_consolidation = loader.get_last_consolidation(project_id=project_id)
 
         # Get consolidation history for stats
         history = []
         if loader:
-            history = loader.get_consolidation_history(days=30)
+            history = loader.get_consolidation_history(days=30, project_id=project_id)
 
         # Transform last consolidation to frontend schema
         last_run = {}

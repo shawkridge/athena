@@ -30,12 +30,36 @@ log_info() {
     echo -e "${BLUE}[PRE-EXECUTION INFO]${NC} $1" >&2
 }
 
-# Get execution context (from environment)
-TASK_ID="${TASK_ID:-unknown}"
-TASK_NAME="${TASK_NAME:-Unnamed Task}"
-EXECUTION_TYPE="${EXECUTION_TYPE:-general}"
+# Read hook input from stdin (official Claude Code interface)
+hook_input=$(cat)
+
+# Extract execution context from JSON
+TASK_ID=$(echo "$hook_input" | jq -r '.session_id // "unknown"')
+TOOL_NAME=$(echo "$hook_input" | jq -r '.tool_name // "unknown"')
+TOOL_INPUT=$(echo "$hook_input" | jq -r '.tool_input // {}')
+EXECUTION_TYPE="pre_tool_execution"
+
+# Determine task name from tool being executed
+case "$TOOL_NAME" in
+  "Read")
+    file=$(echo "$TOOL_INPUT" | jq -r '.file_path // "unknown"')
+    TASK_NAME="Read file: $file"
+    ;;
+  "Write")
+    file=$(echo "$TOOL_INPUT" | jq -r '.file_path // "unknown"')
+    TASK_NAME="Write file: $file"
+    ;;
+  "Bash")
+    cmd=$(echo "$TOOL_INPUT" | jq -r '.command // "unknown"' | cut -c1-50)
+    TASK_NAME="Execute: $cmd..."
+    ;;
+  *)
+    TASK_NAME="Execute: $TOOL_NAME"
+    ;;
+esac
 
 log "=== Pre-Execution Validation for Task: $TASK_ID ==="
+log_info "Tool: $TOOL_NAME"
 log_info "Task: $TASK_NAME"
 log_info "Type: $EXECUTION_TYPE"
 

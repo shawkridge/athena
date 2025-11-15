@@ -25,15 +25,20 @@ log_info() {
     echo -e "${BLUE}[USER-PROMPT-SUBMIT INFO]${NC} $1" >&2
 }
 
-# Get user input (if available in environment)
-USER_PROMPT="${1:-}"
+# Read hook input from stdin (official Claude Code interface)
+hook_input=$(cat)
+
+# Extract user input from JSON
+USER_PROMPT=$(echo "$hook_input" | jq -r '.user_input // .message // ""')
+SESSION_ID=$(echo "$hook_input" | jq -r '.session_id // "unknown"')
+CONTEXT=$(echo "$hook_input" | jq -r '.context // {}')
 
 if [ -z "$USER_PROMPT" ]; then
     # Silent if no prompt available - don't interrupt workflow
     exit 0
 fi
 
-log "Analyzing user prompt..."
+log "Analyzing user prompt (session: $SESSION_ID)..."
 
 # Detect resume intent (key feature for context injection)
 RESUME_INTENT=false
