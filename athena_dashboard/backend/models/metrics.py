@@ -263,6 +263,47 @@ class LearningTrendPoint(BaseModel):
 
 
 # ============================================================================
+# LLM USAGE METRICS
+# ============================================================================
+
+class LLMProviderStats(BaseModel):
+    """Statistics for a single LLM provider."""
+
+    provider: str = Field(..., description="claude | openai | ollama | llamacpp | etc")
+    model: str = Field(..., description="Model name/version")
+    type: str = Field(..., description="cloud | local")
+    status: str = Field(..., description="available | unavailable | degraded")
+    input_tokens: int = Field(default=0, description="Total input tokens consumed")
+    output_tokens: int = Field(default=0, description="Total output tokens generated")
+    total_tokens: int = Field(default=0, description="Total tokens used")
+    estimated_cost: float = Field(default=0.0, description="Estimated cost in USD")
+    requests_count: int = Field(default=0, description="Number of API calls")
+    success_count: int = Field(default=0, description="Successful requests")
+    error_count: int = Field(default=0, description="Failed requests")
+    success_rate: float = Field(default=1.0, ge=0.0, le=1.0, description="0.0-1.0")
+    avg_latency_ms: float = Field(default=0.0, description="Average response time")
+    requests_per_minute: float = Field(default=0.0, description="Current request rate")
+    last_used: Optional[datetime] = None
+
+
+class LLMStats(BaseModel):
+    """Overall LLM usage statistics."""
+
+    providers: List[LLMProviderStats] = Field(default_factory=list)
+    total_input_tokens: int = Field(default=0)
+    total_output_tokens: int = Field(default=0)
+    total_tokens: int = Field(default=0)
+    total_cost: float = Field(default=0.0, description="Total estimated cost")
+    total_requests: int = Field(default=0)
+    total_errors: int = Field(default=0)
+    overall_success_rate: float = Field(default=1.0, ge=0.0, le=1.0)
+    total_requests_per_minute: float = Field(default=0.0)
+    last_24h_cost: float = Field(default=0.0, description="Cost in last 24 hours")
+    last_24h_requests: int = Field(default=0)
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
+# ============================================================================
 # DASHBOARD OVERVIEW
 # ============================================================================
 

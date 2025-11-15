@@ -275,9 +275,30 @@ async def get_system_health() -> Dict[str, Any]:
             for m in range(0, 60, 15)
         ]
 
+        # Get LLM statistics
+        llm_stats = {}
+        try:
+            llm_stats = loader.get_llm_stats()
+        except Exception as e:
+            logger.warning(f"Failed to get LLM stats: {e}")
+            llm_stats = {
+                "providers": [],
+                "total_input_tokens": 0,
+                "total_output_tokens": 0,
+                "total_tokens": 0,
+                "total_cost": 0.0,
+                "total_requests": 0,
+                "total_errors": 0,
+                "overall_success_rate": 1.0,
+                "total_requests_per_minute": 0.0,
+                "last_24h_cost": 0.0,
+                "last_24h_requests": 0
+            }
+
         return {
             "layers": layers,
-            "metrics": list(reversed(metrics))
+            "metrics": list(reversed(metrics)),
+            "llm_stats": llm_stats
         }
     except Exception as e:
         logger.error(f"Error computing health: {e}")
