@@ -84,29 +84,9 @@ export const NotificationCenter = () => {
 
   const { data: stats } = useAPI<NotificationStats>(statsUrl, [selectedProject?.id])
 
-  // WebSocket connection
-  const wsUrl = selectedProject
-    ? `ws://localhost:8000/api/notifications/ws/alerts/${selectedProject.id}`
-    : `ws://localhost:8000/api/notifications/ws/alerts`
-
-  const { connect, disconnect, isConnected } = useWebSocket({
-    url: wsUrl,
-    onMessage: (message) => {
-      // Refetch notifications when new one arrives
-      if (message.type === 'notification') {
-        refetchNotifications()
-      }
-    },
-    enabled: false, // DISABLED: Connection leak issue - connections not being cleaned up
-  })
-
-  useEffect(() => {
-    if (isOpen) {
-      connect()
-    } else {
-      disconnect()
-    }
-  }, [isOpen])
+  // WebSocket disabled - using polling instead
+  // TODO: Re-enable when WebSocket server is available
+  const isConnected = false
 
   // Close dropdown when clicking outside
   useEffect(() => {
