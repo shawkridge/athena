@@ -128,6 +128,11 @@ from .handlers_hook_coordination import HookCoordinationHandlersMixin
 from .handlers_skill_optimization import SkillOptimizationHandlersMixin
 from .handlers_slash_commands import SlashCommandHandlersMixin
 
+# Phase 3: Intelligent Task Management (Dependencies, Patterns, Predictions)
+from .handlers_phase3a import Phase3aHandlersMixin
+from .handlers_phase3b import Phase3bHandlersMixin
+from .handlers_phase3c import Phase3cHandlersMixin
+
 # Phase 3: Git-Aware Temporal Chains
 from .git_tools import get_git_tools, GitMCPHandlers
 from ..temporal.git_store import GitStore
@@ -191,6 +196,9 @@ class MemoryMCPServer(
     HookCoordinationHandlersMixin,
     SkillOptimizationHandlersMixin,
     SlashCommandHandlersMixin,
+    Phase3aHandlersMixin,
+    Phase3bHandlersMixin,
+    Phase3cHandlersMixin,
 ):
     """MCP server for memory operations.
 

@@ -1,5 +1,4 @@
 import { Card, Stat, RefreshButton } from '@/components/common'
-import { CytoscapeGraph, GraphData } from '@/components/graphs/CytoscapeGraph'
 import { useRealtimeData } from '@/hooks'
 import { useProject } from '@/context/ProjectContext'
 import { useState } from 'react'
@@ -27,7 +26,6 @@ interface VisualizationResponse {
 
 export const KnowledgeGraphPage = () => {
   const { selectedProject } = useProject()
-  const [selectedNode, setSelectedNode] = useState<any>(null)
 
   // Fetch stats
   const statsUrl = selectedProject
@@ -68,11 +66,6 @@ export const KnowledgeGraphPage = () => {
     await refetchViz()
   }
 
-  const graphData: GraphData = {
-    nodes: vizData?.nodes || [],
-    edges: vizData?.edges || [],
-  }
-
   const loading = statsLoading || vizLoading
   const isConnected = statsConnected && vizConnected
 
@@ -101,58 +94,25 @@ export const KnowledgeGraphPage = () => {
       </div>
 
       <Card header={<h3 className="text-lg font-semibold text-gray-50">Graph Visualization</h3>}>
-        <CytoscapeGraph
-          data={graphData}
-          loading={vizLoading}
-          onNodeClick={(node) => setSelectedNode(node)}
-          height="600px"
-        />
-        {vizData?.metadata && (
-          <div className="mt-4 p-3 bg-gray-800 rounded text-xs text-gray-400 space-y-1">
-            <p>Total nodes in graph: {vizData.metadata.total_nodes_in_graph}</p>
-            <p>Total relationships: {vizData.metadata.total_edges_in_graph}</p>
-            <p>Rendered limit: {vizData.metadata.rendered_limit}</p>
-          </div>
-        )}
-      </Card>
-
-      {selectedNode && (
-        <Card header={<h3 className="text-lg font-semibold text-gray-50">Selected Entity</h3>}>
-          <div className="space-y-2">
-            <div>
-              <p className="text-xs text-gray-400">ID</p>
-              <p className="text-gray-50 font-mono">{selectedNode.id}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">Name</p>
-              <p className="text-gray-50">{selectedNode.label}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">Type</p>
-              <p className="text-gray-50">{selectedNode.type || 'unknown'}</p>
-            </div>
-            {selectedNode.community !== undefined && (
-              <div>
-                <p className="text-xs text-gray-400">Community</p>
-                <p className="text-gray-50">{selectedNode.community}</p>
+        <div className="h-96 rounded-lg bg-gray-900 flex items-center justify-center text-gray-400 border border-gray-700 p-6">
+          <div className="text-center space-y-4">
+            <p className="text-lg">Interactive Graph Visualization</p>
+            <p className="text-sm text-gray-500">
+              Cytoscape integration is in development. The knowledge graph contains:
+            </p>
+            {vizData?.metadata && (
+              <div className="space-y-2 text-sm">
+                <p><strong>{vizData.metadata.total_nodes_in_graph}</strong> entities</p>
+                <p><strong>{vizData.metadata.total_edges_in_graph}</strong> relationships</p>
               </div>
             )}
-          </div>
-        </Card>
-      )}
-
-      <Card header={<h3 className="text-lg font-semibold text-gray-50">Graph Statistics</h3>}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-3 bg-gray-800 rounded">
-            <p className="text-xs text-gray-400 mb-1">Rendered Nodes</p>
-            <p className="text-2xl font-bold text-blue-400">{graphData.nodes.length}</p>
-          </div>
-          <div className="p-3 bg-gray-800 rounded">
-            <p className="text-xs text-gray-400 mb-1">Rendered Relationships</p>
-            <p className="text-2xl font-bold text-green-400">{graphData.edges.length}</p>
+            <p className="text-xs text-gray-600 mt-4">
+              The backend API is ready at <code className="bg-gray-800 px-2 py-1 rounded">/api/graph/visualization</code>
+            </p>
           </div>
         </div>
       </Card>
+
     </div>
   )
 }

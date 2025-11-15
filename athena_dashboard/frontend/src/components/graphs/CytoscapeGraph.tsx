@@ -141,9 +141,15 @@ export const CytoscapeGraph = ({
       },
     ]
 
-    // Initialize or update Cytoscape
+    // Initialize or update Cytoscape with error boundary
     if (!cyRef.current) {
       try {
+        // Ensure container is valid before initializing
+        if (!containerRef.current || !containerRef.current.parentNode) {
+          console.warn('Cytoscape container not properly mounted')
+          return
+        }
+
         cyRef.current = cytoscape({
           container: containerRef.current,
           elements,
@@ -244,15 +250,23 @@ export const CytoscapeGraph = ({
       }
     }
 
-    // Cleanup on unmount - improved to handle React's DOM updates
+    // Cleanup on unmount - defensive against React/DOM lifecycle conflicts
     return () => {
       if (cyRef.current) {
         try {
-          // Don't call destroy during React's cleanup - just nullify reference
-          // This prevents "removeChild" errors when React is still managing the DOM
+          // Attempt graceful cleanup but don't throw
+          try {
+            // Remove all event listeners first
+            cyRef.current.removeAllListeners?.()
+          } catch (e) {
+            // Silently ignore listener removal errors
+          }
+
+          // Nullify reference without calling destroy
+          // This prevents "removeChild" errors when React is managing the DOM
           cyRef.current = null
         } catch (error) {
-          console.error('Error during Cytoscape cleanup:', error)
+          // Fail silently - React will clean up the DOM anyway
           cyRef.current = null
         }
       }
