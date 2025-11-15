@@ -46,17 +46,17 @@ class EpisodicGraphExtractor:
         """
         try:
             from ..graph.store import GraphStore
-            from ..graph.models import Entity, EntityType, Relation, RelationType
+            from ..graph.models import Entity, EntityType, Relation, RelationType, Observation
 
             # Get recent episodic events
             cutoff_time = int((datetime.now() - timedelta(hours=hours_back)).timestamp())
 
             events = self.db.query(
                 """
-                SELECT id, content, event_type, metadata, created_at
+                SELECT id, content, event_type, timestamp
                 FROM episodic_events
-                WHERE project_id = %s AND created_at > %s
-                ORDER BY created_at DESC
+                WHERE project_id = %s AND timestamp > %s
+                ORDER BY timestamp DESC
                 LIMIT 100
                 """,
                 (project_id, cutoff_time)
@@ -79,31 +79,17 @@ class EpisodicGraphExtractor:
             # Create entities for unique concepts
             graph_store = GraphStore(self.db)
             entities_created = 0
-            entities_updated = 0
             observations_added = 0
 
             for concept_type, concept_names in concepts.items():
                 for concept_name in concept_names:
                     try:
-                        # Check if entity exists
-                        existing = graph_store.find_entity_by_name(
-                            concept_name,
-                            concept_type,
-                            project_id
-                        )
+                        # Try to find existing entity
+                        existing = graph_store.find_entity(name=concept_name, entity_type=concept_type)
 
                         if existing:
-                            # Update existing entity
-                            graph_store.update_entity(
-                                existing.id,
-                                name=concept_name,
-                                metadata={
-                                    "consolidated_from_events": True,
-                                    "last_updated": datetime.now().isoformat(),
-                                    "event_count": existing.metadata.get("event_count", 0) + len(events)
-                                }
-                            )
-                            entities_updated += 1
+                            # Entity exists, add observations from new events
+                            entity_id = existing[0].id if existing else None
                         else:
                             # Create new entity
                             entity = Entity(
@@ -116,19 +102,18 @@ class EpisodicGraphExtractor:
                                     "event_count": len(events)
                                 }
                             )
-                            graph_store.create_entity(entity)
+                            entity_id = graph_store.create_entity(entity)
                             entities_created += 1
 
                         # Add observations from events
-                        for event in events:
-                            obs_added = self._add_observation(
-                                graph_store,
-                                concept_name,
-                                concept_type,
-                                event,
-                                project_id
-                            )
-                            observations_added += obs_added
+                        if entity_id:
+                            for event in events:
+                                obs_added = self._add_observation(
+                                    graph_store,
+                                    entity_id,
+                                    event
+                                )
+                                observations_added += obs_added
 
                     except Exception as e:
                         logger.warning(f"Error processing concept {concept_name}: {e}")
@@ -143,13 +128,15 @@ class EpisodicGraphExtractor:
             return {
                 "success": True,
                 "entities_created": entities_created,
-                "entities_updated": entities_updated,
+                "entities_updated": 0,
                 "observations_added": observations_added,
                 "events_processed": len(events),
             }
 
         except Exception as e:
             logger.error(f"Error extracting episodic entities: {e}")
+            import traceback
+            traceback.print_exc()
             return {
                 "success": False,
                 "error": str(e),
@@ -215,38 +202,31 @@ class EpisodicGraphExtractor:
     def _add_observation(
         self,
         graph_store,
-        entity_name: str,
-        entity_type: str,
-        event: Dict[str, Any],
-        project_id: int
+        entity_id: int,
+        event: Dict[str, Any]
     ) -> int:
         """Add observation from event to entity.
 
         Args:
             graph_store: GraphStore instance
-            entity_name: Entity name
-            entity_type: Entity type
+            entity_id: Entity ID
             event: Episodic event
-            project_id: Project ID
 
         Returns:
             Number of observations added
         """
         try:
-            entity = graph_store.find_entity_by_name(
-                entity_name,
-                entity_type,
-                project_id
-            )
+            from ..graph.models import Observation
 
-            if entity and event.get("content"):
-                graph_store.add_observation(
-                    entity_id=entity.id,
+            if event.get("content"):
+                obs = Observation(
+                    entity_id=entity_id,
                     content=event["content"][:500],  # Truncate long content
                     observation_type="extracted_from_episodic_event",
                     source="episodic_consolidation",
-                    timestamp=event.get("created_at", int(datetime.now().timestamp()))
+                    timestamp=event.get("timestamp", int(datetime.now().timestamp()))
                 )
+                graph_store.add_observation(obs)
                 return 1
         except Exception as e:
             logger.debug(f"Could not add observation: {e}")
@@ -267,22 +247,35 @@ class EpisodicGraphExtractor:
             events: Source episodic events
         """
         try:
-            entities = graph_store.get_all_for_project(project_id)
+            from ..graph.models import Relation, RelationType
+
+            # Get all entities for this project
+            all_entities = graph_store.read_graph(project_id)
+            entities = all_entities.get("nodes", []) if isinstance(all_entities, dict) else []
+
+            if not entities:
+                return
 
             # Create simple co-occurrence based relationships
             # Entities that appear in same events are related
             for i, entity1 in enumerate(entities):
+                entity1_name = entity1.get("name", "") if isinstance(entity1, dict) else entity1.name
+                entity1_id = entity1.get("id", None) if isinstance(entity1, dict) else entity1.id
+
                 for entity2 in entities[i+1:]:
+                    entity2_name = entity2.get("name", "") if isinstance(entity2, dict) else entity2.name
+                    entity2_id = entity2.get("id", None) if isinstance(entity2, dict) else entity2.id
+
                     # Check if both appear in same event
                     for event in events:
                         content = event.get("content", "").lower()
-                        if (entity1.name.lower() in content and
-                            entity2.name.lower() in content):
+                        if (entity1_name.lower() in content and
+                            entity2_name.lower() in content):
                             try:
-                                graph_store.create_relation(
-                                    from_entity_id=entity1.id,
-                                    to_entity_id=entity2.id,
-                                    relation_type="relates_to",
+                                rel = Relation(
+                                    from_entity_id=entity1_id,
+                                    to_entity_id=entity2_id,
+                                    relation_type=RelationType("relates_to"),
                                     strength=1.0,
                                     confidence=0.7,
                                     metadata={
@@ -290,6 +283,7 @@ class EpisodicGraphExtractor:
                                         "source": "episodic_consolidation"
                                     }
                                 )
+                                graph_store.create_relation(rel)
                                 break
                             except Exception as e:
                                 logger.debug(f"Relationship creation: {e}")
