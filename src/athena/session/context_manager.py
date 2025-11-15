@@ -390,10 +390,10 @@ class SessionContextManager:
         recovery_patterns: Optional[List[str]] = None,
         source: str = "episodic_memory",
     ) -> Optional[SessionContext]:
-        """Recover session context from episodic memory.
+        """Recover session context from episodic memory or session history.
 
-        Attempts to reconstruct session context from recent episodic events
-        when explicit context is unavailable.
+        Attempts to reconstruct session context from recent episodic events or
+        session context events when explicit context is unavailable.
 
         Args:
             recovery_patterns: Patterns to search for (e.g., ["task", "phase"])
@@ -401,9 +401,6 @@ class SessionContextManager:
 
         Returns:
             Recovered SessionContext or current session if recovery not needed
-
-        Note:
-            Future enhancement: Search episodic memory for task/phase keywords
         """
         if not self._current_session:
             logger.debug(f"No session to recover from {source}")
@@ -413,9 +410,69 @@ class SessionContextManager:
             f"Recovering context from {source} for session {self._current_session.session_id}"
         )
 
-        # TODO: Implement recovery logic
-        # This would search episodic events for recent task/phase info
-        # using patterns like ["task:", "phase:", "working on", "currently"]
+        # Default recovery patterns if not provided
+        if not recovery_patterns:
+            recovery_patterns = ["task:", "phase:", "working on", "currently", "debugging", "testing", "developing"]
+
+        try:
+            cursor = self.db.get_cursor()
+
+            # Search session context events for recent task/phase info
+            cursor.execute(
+                """
+                SELECT event_data FROM session_context_events
+                WHERE session_id = %s
+                ORDER BY created_at DESC
+                LIMIT 20
+                """,
+                (self._current_session.session_id,)
+            )
+
+            recent_events = cursor.fetchall()
+
+            # Try to find task and phase from recent events
+            recovered_task = self._current_session.current_task
+            recovered_phase = self._current_session.current_phase
+
+            for event_row in recent_events:
+                if not event_row:
+                    continue
+
+                try:
+                    event_data = json.loads(event_row[0]) if isinstance(event_row[0], str) else event_row[0]
+                    event_content = json.dumps(event_data).lower()
+
+                    # Search for patterns in event content
+                    for pattern in recovery_patterns:
+                        pattern_lower = pattern.lower()
+                        if pattern_lower in event_content:
+                            # Try to extract value after pattern
+                            if "task" in pattern and not recovered_task:
+                                if isinstance(event_data, dict) and "task" in event_data:
+                                    recovered_task = str(event_data["task"])
+                                    logger.debug(f"Recovered task from events: {recovered_task}")
+
+                            if "phase" in pattern and not recovered_phase:
+                                if isinstance(event_data, dict) and "phase" in event_data:
+                                    recovered_phase = str(event_data["phase"])
+                                    logger.debug(f"Recovered phase from events: {recovered_phase}")
+
+                except (json.JSONDecodeError, TypeError):
+                    continue
+
+            # Update session with recovered values
+            if recovered_task and recovered_task != self._current_session.current_task:
+                self._current_session.current_task = recovered_task
+
+            if recovered_phase and recovered_phase != self._current_session.current_phase:
+                self._current_session.current_phase = recovered_phase
+
+            if recovered_task or recovered_phase:
+                logger.info(f"Context recovery successful: task={recovered_task}, phase={recovered_phase}")
+
+        except Exception as e:
+            logger.warning(f"Context recovery failed: {e}")
+            # Continue with current session unchanged
 
         return self._current_session
 

@@ -332,3 +332,131 @@ class ExecutionFeedback(BaseModel):
                 (self.actual_duration_minutes - self.planned_duration_minutes) /
                 self.planned_duration_minutes * 100
             )
+
+
+# ============================================================================
+# GOAL DECOMPOSITION MODELS (Phase 4)
+# ============================================================================
+
+
+class GoalDecompositionStatus(str, Enum):
+    """Status of a goal decomposition."""
+    PENDING = "pending"
+    DECOMPOSING = "decomposing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    REFINED = "refined"
+
+
+class TaskNodeStatus(str, Enum):
+    """Status of a task node in decomposition."""
+    PENDING = "pending"
+    READY = "ready"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    BLOCKED = "blocked"
+
+
+class TaskNode(BaseModel):
+    """Represents a single task in a decomposed goal."""
+
+    id: str
+    title: str
+    description: str = ""
+
+    # Hierarchy
+    parent_id: Optional[str] = None
+    subtask_ids: list[str] = Field(default_factory=list)
+
+    # Dependencies
+    depends_on: list[str] = Field(default_factory=list)
+    blocks: list[str] = Field(default_factory=list)
+
+    # Effort & Complexity
+    estimated_effort_minutes: int = Field(default=0, ge=0)
+    estimated_complexity: int = Field(default=5, ge=1, le=10)
+    estimated_priority: int = Field(default=5, ge=1, le=10)
+
+    # Status & Tracking
+    status: TaskNodeStatus = TaskNodeStatus.PENDING
+    sequence_order: int = Field(default=0, ge=0)
+    critical_path: bool = False
+
+    # Metadata
+    tags: list[str] = Field(default_factory=list)
+    assignee: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.now)
+
+    class Config:
+        use_enum_values = True
+
+
+class Goal(BaseModel):
+    """Represents a high-level goal to be decomposed."""
+
+    id: str
+    title: str
+    description: str
+    context: Optional[str] = None
+
+    # Constraints
+    target_effort_minutes: Optional[int] = None
+    target_complexity: Optional[int] = None
+    deadline: Optional[datetime] = None
+
+    # Metadata
+    project_id: Optional[int] = None
+    tags: list[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=datetime.now)
+
+    class Config:
+        use_enum_values = True
+
+
+class DecomposedGoal(BaseModel):
+    """Result of decomposing a goal into tasks."""
+
+    goal_id: str
+    goal_title: str
+
+    # Task breakdown
+    root_tasks: list[TaskNode] = Field(default_factory=list)
+    all_tasks: dict[str, TaskNode] = Field(default_factory=dict)
+
+    # Analysis
+    total_estimated_effort: int = Field(default=0, ge=0)
+    avg_complexity: float = Field(default=0.0, ge=0.0)
+    num_tasks: int = Field(default=0, ge=0)
+    num_subtasks: int = Field(default=0, ge=0)
+    max_depth: int = Field(default=0, ge=0)
+    critical_path_length: int = Field(default=0, ge=0)
+
+    # Quality metrics
+    completeness_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    clarity_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    feasibility_score: float = Field(default=0.0, ge=0.0, le=1.0)
+
+    # Metadata
+    decomposition_method: str = "goal_decomposition_service"
+    decomposed_by: Optional[str] = None
+    decomposed_at: datetime = Field(default_factory=datetime.now)
+
+    class Config:
+        use_enum_values = True
+
+
+class DecompositionResult(BaseModel):
+    """Complete result of a decomposition operation."""
+
+    success: bool
+    decomposed_goal: Optional[DecomposedGoal] = None
+    error_message: Optional[str] = None
+    warnings: list[str] = Field(default_factory=list)
+    suggestions: list[str] = Field(default_factory=list)
+
+    execution_time_seconds: float = Field(default=0.0, ge=0.0)
+    tokens_used: dict = Field(default_factory=dict)
+
+    class Config:
+        use_enum_values = True

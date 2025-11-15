@@ -39,14 +39,16 @@ _services = {
     "data_loader": None,
     "metrics_aggregator": None,
     "cache_manager": None,
+    "athena_stores": None,  # Phase 3 stores service
 }
 
 
-def set_task_services(data_loader, metrics_aggregator, cache_manager):
+def set_task_services(data_loader, metrics_aggregator, cache_manager, athena_stores_service=None):
     """Set service references for task routes."""
     _services["data_loader"] = data_loader
     _services["metrics_aggregator"] = metrics_aggregator
     _services["cache_manager"] = cache_manager
+    _services["athena_stores"] = athena_stores_service
 
 
 # ============================================================================
@@ -87,7 +89,8 @@ class TaskStatus:
 async def get_task_status(
     task_id: Optional[str] = Query(None, description="Filter by task ID"),
     status: Optional[str] = Query(None, description="Filter by status (pending|in_progress|completed|blocked)"),
-    project_id: Optional[str] = Query(None, description="Filter by project ID"),
+    project_id: Optional[int] = Query(None, description="Filter by project ID"),
+    limit: int = Query(50, ge=1, le=500, description="Maximum tasks to return"),
 ) -> Dict[str, Any]:
     """
     Get current task status and dependency information (Phase 3a).
@@ -98,12 +101,9 @@ async def get_task_status(
     - Effort tracking (estimate vs actual)
     - Accuracy scores per task
     """
-    if not PHASE3_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Phase 3 modules not available")
-
     try:
         # Cache key for task status
-        cache_key = f"task_status:{project_id}:{task_id}:{status}"
+        cache_key = f"task_status:{project_id}:{task_id}:{status}:{limit}"
 
         # Try cache first
         if _services["cache_manager"]:
@@ -111,41 +111,50 @@ async def get_task_status(
             if cached:
                 return cached
 
-        # Generate mock data for now (real implementation will query Phase 3a stores)
-        # TODO: Query DependencyStore and MetadataStore for actual task data
-        tasks = [
-            TaskStatus(
-                task_id="task_1",
-                name="Implement feature X",
-                status="in_progress",
-                estimated_effort=120,
-                actual_effort=90,
-                blockers=[],
-                dependencies=[],
-                accuracy_score=0.95,
-            ),
-            TaskStatus(
-                task_id="task_2",
-                name="Write tests",
-                status="pending",
-                estimated_effort=60,
-                actual_effort=0,
-                blockers=["task_1"],
-                dependencies=["task_1"],
-                accuracy_score=0.0,
-            ),
-        ]
+        # Get tasks from Athena stores
+        athena_stores = _services.get("athena_stores")
 
-        # Filter
-        if task_id:
-            tasks = [t for t in tasks if t.task_id == task_id]
-        if status:
-            tasks = [t for t in tasks if t.status == status]
+        if not athena_stores or not athena_stores.is_initialized():
+            logger.warning("Athena stores not initialized, returning empty task list")
+            return {
+                "total_tasks": 0,
+                "tasks": [],
+                "timestamp": datetime.utcnow().isoformat(),
+                "note": "Athena Phase 3 stores not initialized"
+            }
+
+        # Get tasks with metadata from Athena
+        tasks_with_metadata = athena_stores.get_tasks_with_metadata(
+            project_id=project_id,
+            status=status,
+            limit=limit
+        )
+
+        # Convert to TaskStatus format
+        tasks = []
+        for task_data in tasks_with_metadata:
+            task_status = TaskStatus(
+                task_id=str(task_data.get("id", "")),
+                name=task_data.get("content", task_data.get("title", "Untitled")),
+                status=task_data.get("status", "pending").lower(),
+                estimated_effort=task_data.get("effort_estimate", 0),
+                actual_effort=task_data.get("effort_actual", 0),
+                blockers=task_data.get("blockers", []),
+                dependencies=task_data.get("dependencies", []),
+                accuracy_score=task_data.get("accuracy_percent", 0.0) / 100.0,
+            )
+
+            # Filter by task_id if specified
+            if task_id and task_status.task_id != task_id:
+                continue
+
+            tasks.append(task_status)
 
         result = {
             "total_tasks": len(tasks),
             "tasks": [t.to_dict() for t in tasks],
             "timestamp": datetime.utcnow().isoformat(),
+            "source": "athena_prospective_memory"
         }
 
         # Cache result
@@ -155,7 +164,7 @@ async def get_task_status(
         return result
 
     except Exception as e:
-        logger.error(f"Error fetching task status: {e}")
+        logger.error(f"Error fetching task status: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -195,8 +204,8 @@ class TaskPrediction:
 
 @task_router.get("/predictions", summary="Get effort predictions for tasks")
 async def get_task_predictions(
-    task_id: Optional[str] = Query(None, description="Task ID to predict"),
-    task_type: Optional[str] = Query(None, description="Task type to get baseline prediction"),
+    task_id: Optional[int] = Query(None, description="Task ID to predict"),
+    project_id: Optional[int] = Query(None, description="Project ID context"),
     min_confidence: float = Query(0.5, ge=0.0, le=1.0, description="Minimum confidence threshold"),
 ) -> Dict[str, Any]:
     """
@@ -208,55 +217,57 @@ async def get_task_predictions(
     - Historical accuracy per task type
     - Bias factors (accounts for systematic over/underestimation)
     """
-    if not PHASE3_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Phase 3 modules not available")
-
     try:
-        cache_key = f"task_predictions:{task_id}:{task_type}:{min_confidence}"
+        cache_key = f"task_predictions:{task_id}:{project_id}:{min_confidence}"
 
         if _services["cache_manager"]:
             cached = _services["cache_manager"].get(cache_key)
             if cached:
                 return cached
 
-        # Generate predictions (real implementation will use PredictiveEstimator)
-        # TODO: Query PredictiveEstimator for actual predictions
-        predictions = [
-            TaskPrediction(
-                task_id="task_1",
-                task_type="feature_implementation",
-                predicted=120,
-                confidence=0.87,
-                optimistic=90,
-                expected=120,
-                pessimistic=180,
-                accuracy=0.82,
-                bias=1.05,  # Slightly underestimating
-            ),
-            TaskPrediction(
-                task_id="task_2",
-                task_type="testing",
-                predicted=60,
-                confidence=0.91,
-                optimistic=45,
-                expected=60,
-                pessimistic=90,
-                accuracy=0.88,
-                bias=0.98,
-            ),
-        ]
+        # Get predictions from Athena stores
+        athena_stores = _services.get("athena_stores")
+
+        if not athena_stores or not athena_stores.is_initialized():
+            logger.warning("Athena stores not initialized, returning empty predictions")
+            return {
+                "total_predictions": 0,
+                "predictions": [],
+                "summary": {"avg_confidence": 0.0, "total_predicted_effort": 0},
+                "timestamp": datetime.utcnow().isoformat(),
+                "note": "Athena Phase 3 stores not initialized"
+            }
+
+        # Get predictions
+        if task_id:
+            # Single task prediction
+            prediction = athena_stores.get_effort_predictions(task_id, project_id)
+            predictions = [prediction] if prediction else []
+        else:
+            # Get all task predictions (from tasks with metadata)
+            tasks = athena_stores.get_tasks_with_metadata(project_id=project_id, limit=50)
+            task_ids = [t.get("id") for t in tasks if t.get("id")]
+            predictions = [
+                p for p in athena_stores.get_predictions_for_tasks(task_ids, project_id)
+                if p is not None
+            ]
 
         # Filter by confidence
-        predictions = [p for p in predictions if p.confidence >= min_confidence]
+        predictions = [p for p in predictions if p.get("confidence", 0.0) >= min_confidence]
+
+        # Extract summary
+        avg_confidence = sum(p.get("confidence", 0.0) for p in predictions) / len(predictions) if predictions else 0.0
+        total_effort = sum(p.get("predicted_effort", 0) or p.get("expected_minutes", 0) for p in predictions)
 
         result = {
             "total_predictions": len(predictions),
-            "predictions": [p.to_dict() for p in predictions],
+            "predictions": predictions,
             "summary": {
-                "avg_confidence": sum(p.confidence for p in predictions) / len(predictions) if predictions else 0,
-                "total_predicted_effort": sum(p.expected_minutes for p in predictions),
+                "avg_confidence": round(avg_confidence, 3),
+                "total_predicted_effort": total_effort,
             },
             "timestamp": datetime.utcnow().isoformat(),
+            "source": "athena_predictive_estimator"
         }
 
         if _services["cache_manager"]:
@@ -265,7 +276,7 @@ async def get_task_predictions(
         return result
 
     except Exception as e:
-        logger.error(f"Error fetching predictions: {e}")
+        logger.error(f"Error fetching predictions: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -297,7 +308,8 @@ class TaskSuggestion:
 
 @task_router.get("/suggestions", summary="Get suggested next tasks")
 async def get_task_suggestions(
-    current_task_id: Optional[str] = Query(None, description="Current task ID to get suggestions for"),
+    completed_task_id: Optional[int] = Query(None, description="Recently completed task ID to get suggestions for"),
+    project_id: Optional[int] = Query(None, description="Project ID context"),
     limit: int = Query(5, ge=1, le=20, description="Number of suggestions to return"),
     min_confidence: float = Query(0.6, ge=0.0, le=1.0, description="Minimum confidence threshold"),
 ) -> Dict[str, Any]:
@@ -310,47 +322,61 @@ async def get_task_suggestions(
     - Pattern frequency (how often this sequence occurs)
     - Process maturity assessment
     """
-    if not PHASE3_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Phase 3 modules not available")
-
     try:
-        cache_key = f"task_suggestions:{current_task_id}:{limit}:{min_confidence}"
+        cache_key = f"task_suggestions:{completed_task_id}:{project_id}:{limit}:{min_confidence}"
 
         if _services["cache_manager"]:
             cached = _services["cache_manager"].get(cache_key)
             if cached:
                 return cached
 
-        # Generate suggestions (real implementation will use PatternSuggestionEngine)
-        # TODO: Query PatternSuggestionEngine for actual suggestions
-        suggestions = [
-            TaskSuggestion(
-                task_id="task_2",
-                reason="92% of features are followed by testing",
-                name="Write tests",
-                confidence=0.92,
-                frequency=0.92,
-                next="task_3",
-            ),
-            TaskSuggestion(
-                task_id="task_3",
-                reason="78% of test suites are followed by review",
-                name="Code review",
-                confidence=0.78,
-                frequency=0.78,
-                next="task_4",
-            ),
-        ]
+        # Get suggestions from Athena stores
+        athena_stores = _services.get("athena_stores")
+
+        if not athena_stores or not athena_stores.is_initialized():
+            logger.warning("Athena stores not initialized, returning empty suggestions")
+            return {
+                "completed_task": completed_task_id,
+                "total_suggestions": 0,
+                "suggestions": [],
+                "process_maturity": "unknown",
+                "timestamp": datetime.utcnow().isoformat(),
+                "note": "Athena Phase 3 stores not initialized"
+            }
+
+        # Get suggestions for completed task
+        suggestions = []
+        if completed_task_id:
+            suggestions_data = athena_stores.get_task_suggestions(
+                completed_task_id=completed_task_id,
+                project_id=project_id,
+                limit=limit
+            )
+            # Convert to TaskSuggestion format
+            for sugg in suggestions_data:
+                task_suggestion = TaskSuggestion(
+                    task_id=str(sugg.get("task_id", "")),
+                    reason=sugg.get("reason", sugg.get("explanation", "Based on workflow patterns")),
+                    name=sugg.get("task_name", sugg.get("name", "Suggested task")),
+                    confidence=sugg.get("confidence", 0.0),
+                    frequency=sugg.get("pattern_frequency", sugg.get("frequency", 0.0)),
+                    next=sugg.get("expected_next_task", sugg.get("next", None)),
+                )
+                suggestions.append(task_suggestion)
 
         # Filter by confidence
         suggestions = [s for s in suggestions if s.confidence >= min_confidence][:limit]
 
+        # Assess process maturity based on pattern consistency
+        process_maturity = "high" if len(suggestions) >= 3 else ("medium" if len(suggestions) >= 1 else "low")
+
         result = {
-            "current_task": current_task_id,
+            "completed_task": completed_task_id,
             "total_suggestions": len(suggestions),
             "suggestions": [s.to_dict() for s in suggestions],
-            "process_maturity": "high" if len(suggestions) > 0 else "low",
+            "process_maturity": process_maturity,
             "timestamp": datetime.utcnow().isoformat(),
+            "source": "athena_workflow_patterns"
         }
 
         if _services["cache_manager"]:
@@ -359,7 +385,7 @@ async def get_task_suggestions(
         return result
 
     except Exception as e:
-        logger.error(f"Error fetching suggestions: {e}")
+        logger.error(f"Error fetching suggestions: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

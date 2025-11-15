@@ -14,6 +14,7 @@ from .rate_limiter import MCPRateLimiter, rate_limit_response
 from .operation_router import OperationRouter
 from .structured_result import StructuredResult, ResultStatus, PaginationMetadata
 from .handler_middleware_wrapper import HandlerBudgetMiddlewareMixin
+from .handlers_goal_decomposition import GoalDecompositionHandlersMixin
 from ..core.models import MemoryType
 from ..memory import MemoryStore
 from ..memory.quality import SemanticMemoryQualityAnalyzer
@@ -199,6 +200,7 @@ class MemoryMCPServer(
     Phase3aHandlersMixin,
     Phase3bHandlersMixin,
     Phase3cHandlersMixin,
+    GoalDecompositionHandlersMixin,
 ):
     """MCP server for memory operations.
 

@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from config import settings
-from services import DataLoader, CacheManager, MetricsAggregator, AthenaHTTPLoader, StreamingService, TaskPollingService
+from services import DataLoader, CacheManager, MetricsAggregator, AthenaHTTPLoader, StreamingService, TaskPollingService, AthenaStoresService
 from services.notification_service import NotificationService
 from models.metrics import (
     DashboardOverview,
@@ -37,12 +37,13 @@ metrics_aggregator: MetricsAggregator
 streaming_service: StreamingService
 notification_service: NotificationService
 task_polling_service: TaskPollingService
+athena_stores_service: AthenaStoresService
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown."""
-    global data_loader, cache_manager, metrics_aggregator, streaming_service, notification_service, task_polling_service
+    global data_loader, cache_manager, metrics_aggregator, streaming_service, notification_service, task_polling_service, athena_stores_service
 
     # Startup
     logger.info("Starting Athena Dashboard backend")
@@ -72,12 +73,19 @@ async def lifespan(app: FastAPI):
     set_notification_service(notification_service)
     logger.info("Notification service initialized")
 
+    # Initialize Athena Phase 3 stores service (prospective memory, dependencies, predictions)
+    athena_stores_service = AthenaStoresService()
+    if athena_stores_service.initialize():
+        logger.info("✅ Athena Phase 3 stores service initialized")
+    else:
+        logger.warning("⚠️ Athena Phase 3 stores initialization failed, task management features may be limited")
+
     # Inject services into routes module
     api_module.set_services(data_loader, metrics_aggregator, cache_manager)
     logger.info("Services injected into API routes")
 
     # Inject services into task routes (Phase 3 integration)
-    set_task_services(data_loader, metrics_aggregator, cache_manager)
+    set_task_services(data_loader, metrics_aggregator, cache_manager, athena_stores_service)
     logger.info("Services injected into task routes (Phase 3)")
 
     # Initialize and start task polling service (replaces WebSocket to avoid connection leaks)
@@ -96,6 +104,12 @@ async def lifespan(app: FastAPI):
 
         # Cleanup streaming service
         await streaming_service.cleanup()
+
+        # Close Athena stores
+        if athena_stores_service:
+            athena_stores_service.close()
+            logger.info("Athena stores service closed")
+
         data_loader.close()
     except Exception as e:
         logger.error(f"Error closing resources: {e}")

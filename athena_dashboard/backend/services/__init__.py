@@ -7,6 +7,7 @@ from .athena_http_loader import AthenaHTTPLoader
 from .streaming_service import StreamingService, StreamingUpdate, Finding, AgentProgress
 from .dashboard_data_service import DashboardDataService
 from .task_polling_service import TaskPollingService
+from .athena_stores_service import AthenaStoresService
 
 __all__ = [
     "MetricsAggregator",
@@ -19,4 +20,5 @@ __all__ = [
     "AgentProgress",
     "DashboardDataService",
     "TaskPollingService",
+    "AthenaStoresService",
 ]

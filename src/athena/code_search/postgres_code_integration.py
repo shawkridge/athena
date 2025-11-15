@@ -23,6 +23,61 @@ from .code_dependency_analysis import Dependency, DependencyMetrics, DependencyG
 
 logger = logging.getLogger(__name__)
 
+# Language detection mapping from file extensions
+LANGUAGE_EXTENSIONS = {
+    ".py": "python",
+    ".js": "javascript",
+    ".ts": "typescript",
+    ".jsx": "jsx",
+    ".tsx": "tsx",
+    ".java": "java",
+    ".cpp": "cpp",
+    ".c": "c",
+    ".cc": "cpp",
+    ".cxx": "cpp",
+    ".h": "c",
+    ".hpp": "cpp",
+    ".cs": "csharp",
+    ".go": "go",
+    ".rs": "rust",
+    ".rb": "ruby",
+    ".php": "php",
+    ".swift": "swift",
+    ".kt": "kotlin",
+    ".scala": "scala",
+    ".r": "r",
+    ".sql": "sql",
+    ".sh": "bash",
+    ".bash": "bash",
+    ".zsh": "zsh",
+    ".fish": "fish",
+    ".html": "html",
+    ".htm": "html",
+    ".css": "css",
+    ".scss": "scss",
+    ".less": "less",
+    ".json": "json",
+    ".xml": "xml",
+    ".yaml": "yaml",
+    ".yml": "yaml",
+    ".toml": "toml",
+    ".ini": "ini",
+    ".cfg": "cfg",
+    ".vue": "vue",
+    ".svelte": "svelte",
+    ".clj": "clojure",
+    ".cljs": "clojurescript",
+    ".ex": "elixir",
+    ".exs": "elixir",
+    ".erl": "erlang",
+    ".hrl": "erlang",
+    ".hs": "haskell",
+    ".ml": "ocaml",
+    ".mli": "ocaml",
+    ".pl": "perl",
+    ".pm": "perl",
+}
+
 
 @dataclass
 class CodeSearchResult:
@@ -112,13 +167,16 @@ class PostgresCodeIntegration:
 
         # Then store code metadata with relationships
         try:
+            # Detect language from file extension
+            language = self._detect_language(file_path)
+
             code_id = await db.store_code_entity(
                 project_id=project_id,
                 memory_vector_id=memory_id,
                 file_path=file_path,
                 entity_name=entity.name,
                 entity_type=entity.entity_type.value,
-                language="python",  # TODO: detect from file extension
+                language=language,
                 signature=signature or entity.name,
                 docstring=entity.docstring,
                 semantic_hash=self._compute_hash(entity),
@@ -278,6 +336,39 @@ class PostgresCodeIntegration:
         except Exception as e:
             logger.error(f"Failed to get code statistics: {e}")
             return {}
+
+    @staticmethod
+    def _detect_language(file_path: str) -> str:
+        """Detect programming language from file extension.
+
+        Args:
+            file_path: Path to the code file
+
+        Returns:
+            Language name (e.g., "python", "javascript") or "unknown" if not detected
+        """
+        import os
+
+        # Get file extension
+        _, ext = os.path.splitext(file_path.lower())
+
+        # Look up in language mapping
+        language = LANGUAGE_EXTENSIONS.get(ext)
+
+        if language:
+            logger.debug(f"Detected language '{language}' from extension '{ext}'")
+            return language
+
+        # If no extension found, try special cases
+        if file_path.endswith("Makefile"):
+            return "makefile"
+        elif file_path.endswith("Dockerfile"):
+            return "dockerfile"
+        elif file_path.endswith(".gitignore"):
+            return "gitignore"
+
+        logger.debug(f"Could not detect language for '{file_path}', defaulting to 'unknown'")
+        return "unknown"
 
     @staticmethod
     def _compute_hash(entity: CodeEntity) -> str:
