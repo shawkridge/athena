@@ -18,9 +18,25 @@ interface SystemStats {
   }[]
 }
 
+interface Project {
+  id: number
+  name: string
+  path: string
+  event_count: number
+}
+
+interface ProjectsResponse {
+  projects: Project[]
+  total: number
+}
+
 export const OverviewPage = () => {
   const { data: stats, loading, error } = useAPI<SystemStats>(
     '/api/system/overview'
+  )
+
+  const { data: projectsData } = useAPI<ProjectsResponse>(
+    '/api/system/projects'
   )
 
   if (loading) {
@@ -207,6 +223,42 @@ export const OverviewPage = () => {
           </a>
         </div>
       </Card>
+
+      {/* Project Comparison */}
+      {projectsData && projectsData.projects.length > 0 && (
+        <Card header={<h3 className="text-lg font-semibold text-gray-50">Project Statistics</h3>}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-700">
+                  <th className="text-left py-3 px-3 text-gray-400">Project</th>
+                  <th className="text-right py-3 px-3 text-gray-400">Events</th>
+                  <th className="text-left py-3 px-3 text-gray-400">Path</th>
+                </tr>
+              </thead>
+              <tbody>
+                {projectsData.projects.map((project) => (
+                  <tr key={project.id} className="border-b border-gray-700/50 hover:bg-gray-700/20">
+                    <td className="py-3 px-3">
+                      <span className="text-gray-50 font-medium">{project.name}</span>
+                    </td>
+                    <td className="py-3 px-3 text-right">
+                      <span className="text-blue-400 font-semibold">{project.event_count.toLocaleString()}</span>
+                    </td>
+                    <td className="py-3 px-3">
+                      <span className="text-gray-400 text-xs font-mono">{project.path}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-700 text-sm text-gray-400">
+            <p>Total Projects: <span className="text-gray-50 font-semibold">{projectsData.total}</span></p>
+            <p>Total Events: <span className="text-gray-50 font-semibold">{projectsData.projects.reduce((sum, p) => sum + p.event_count, 0).toLocaleString()}</span></p>
+          </div>
+        </Card>
+      )}
     </div>
   )
 }

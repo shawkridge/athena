@@ -31,14 +31,18 @@ interface EpisodicResponse {
 export const EpisodicMemoryPage = () => {
   const { selectedProject } = useProject()
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(50)
   const [search, setSearch] = useState('')
   const [startDate, setStartDate] = useState<Date | null>(null)
   const [endDate, setEndDate] = useState<Date | null>(null)
 
+  // Calculate offset for pagination
+  const offset = (page - 1) * pageSize
+
   const queryParams = new URLSearchParams({
-    page: page.toString(),
+    limit: pageSize.toString(),
+    offset: offset.toString(),
     search,
-    limit: '50',
     ...(selectedProject && { project_id: selectedProject.id.toString() }),
     ...(startDate && { startDate: format(startDate, 'yyyy-MM-dd') }),
     ...(endDate && { endDate: format(endDate, 'yyyy-MM-dd') }),
@@ -46,7 +50,7 @@ export const EpisodicMemoryPage = () => {
 
   const { data, loading, error } = useAPI<EpisodicResponse>(
     `/api/episodic/events?${queryParams}`,
-    [selectedProject?.id, page, search]
+    [selectedProject?.id, page, pageSize, search]
   )
 
   if (loading) {
@@ -94,7 +98,7 @@ export const EpisodicMemoryPage = () => {
       </div>
 
       {/* Filters */}
-      <Card header={<h3 className="text-lg font-semibold text-gray-50">Filters</h3>}>
+      <Card header={<h3 className="text-lg font-semibold text-gray-50">Filters & Pagination</h3>}>
         <div className="space-y-4">
           <SearchBar onSearch={setSearch} placeholder="Search events..." />
           <DateRange startDate={startDate} endDate={endDate} onDateChange={(s, e) => {
@@ -102,6 +106,25 @@ export const EpisodicMemoryPage = () => {
             setEndDate(e)
             setPage(1)
           }} />
+          <div className="flex items-center gap-4 pt-2">
+            <label className="text-gray-400 text-sm">Items per page:</label>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(parseInt(e.target.value))
+                setPage(1)
+              }}
+              className="px-3 py-2 rounded bg-gray-700 text-gray-50 border border-gray-600 focus:outline-none"
+            >
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+            <span className="text-sm text-gray-400 ml-auto">
+              {data && data.total > 0 ? `Showing ${offset + 1}-${Math.min(offset + pageSize, data.total)} of ${data.total.toLocaleString()}` : 'No results'}
+            </span>
+          </div>
         </div>
       </Card>
 

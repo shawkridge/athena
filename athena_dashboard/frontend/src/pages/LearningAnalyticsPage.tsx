@@ -1,3 +1,4 @@
+import { useProject } from '@/context/ProjectContext'
 import { Card } from '@/components/common/Card'
 import { Stat } from '@/components/common/Stat'
 import { TimeSeriesChart } from '@/components/charts/TimeSeriesChart'
@@ -14,7 +15,11 @@ interface LearningResponse {
 }
 
 export const LearningAnalyticsPage = () => {
-  const { data, loading } = useAPI<LearningResponse>('/api/learning/analytics')
+  const { selectedProject } = useProject()
+  const apiUrl = selectedProject
+    ? `/api/learning/analytics?project_id=${selectedProject.id}`
+    : '/api/learning/analytics'
+  const { data, loading } = useAPI<LearningResponse>(apiUrl, [selectedProject?.id])
 
   if (loading) return <div className="p-6 animate-pulse h-64 bg-gray-800 rounded" />
 
@@ -22,7 +27,10 @@ export const LearningAnalyticsPage = () => {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-50">Learning Analytics</h1>
-        <p className="text-gray-400">Strategy effectiveness and learning patterns</p>
+        <p className="text-gray-400">
+          Strategy effectiveness and learning patterns
+          {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
+        </p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

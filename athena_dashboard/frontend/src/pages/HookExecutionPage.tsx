@@ -3,6 +3,7 @@ import { Stat } from '@/components/common/Stat'
 import { Badge } from '@/components/common/Badge'
 import { TimeSeriesChart } from '@/components/charts/TimeSeriesChart'
 import { useAPI } from '@/hooks'
+import { useProject } from '@/context/ProjectContext'
 
 interface HookStatus {
   name: string
@@ -18,7 +19,13 @@ interface HookResponse {
 }
 
 export const HookExecutionPage = () => {
-  const { data, loading } = useAPI<HookResponse>('/api/hooks/status')
+  const { selectedProject } = useProject()
+
+  const apiUrl = selectedProject
+    ? `/api/hooks/status?project_id=${selectedProject.id}`
+    : '/api/hooks/status'
+
+  const { data, loading } = useAPI<HookResponse>(apiUrl, [selectedProject?.id])
 
   if (loading) return <div className="p-6 animate-pulse h-64 bg-gray-800 rounded" />
 
@@ -26,7 +33,10 @@ export const HookExecutionPage = () => {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-50">Hook Execution Monitor</h1>
-        <p className="text-gray-400">Track hook status, latency, and success rates</p>
+        <p className="text-gray-400">
+          Track hook status, latency, and success rates
+          {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
+        </p>
       </div>
 
       <Card header={<h3 className="text-lg font-semibold text-gray-50">Performance Trends</h3>}>

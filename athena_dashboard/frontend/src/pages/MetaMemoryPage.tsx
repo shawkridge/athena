@@ -1,6 +1,7 @@
 import { Card } from '@/components/common/Card'
 import { GaugeChart } from '@/components/charts/GaugeChart'
 import { useAPI } from '@/hooks'
+import { useProject } from '@/context/ProjectContext'
 
 interface MetaResponse {
   quality: number
@@ -9,7 +10,13 @@ interface MetaResponse {
 }
 
 export const MetaMemoryPage = () => {
-  const { data, loading } = useAPI<MetaResponse>('/api/meta/quality')
+  const { selectedProject } = useProject()
+
+  const apiUrl = selectedProject
+    ? `/api/meta/quality?project_id=${selectedProject.id}`
+    : '/api/meta/quality'
+
+  const { data, loading } = useAPI<MetaResponse>(apiUrl, [selectedProject?.id])
 
   if (loading) return <div className="p-6 animate-pulse h-64 bg-gray-800 rounded" />
 
@@ -17,7 +24,10 @@ export const MetaMemoryPage = () => {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-50">Layer 6: Meta-Memory</h1>
-        <p className="text-gray-400">Quality metrics and system awareness</p>
+        <p className="text-gray-400">
+          Quality metrics and system awareness
+          {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -1,6 +1,7 @@
 import { Card } from '@/components/common/Card'
 import { Stat } from '@/components/common/Stat'
 import { useAPI } from '@/hooks'
+import { useProject } from '@/context/ProjectContext'
 
 interface GraphStats {
   entities: number
@@ -14,7 +15,13 @@ interface GraphResponse {
 }
 
 export const KnowledgeGraphPage = () => {
-  const { data, loading } = useAPI<GraphResponse>('/api/graph/stats')
+  const { selectedProject } = useProject()
+
+  const apiUrl = selectedProject
+    ? `/api/graph/stats?project_id=${selectedProject.id}`
+    : '/api/graph/stats'
+
+  const { data, loading } = useAPI<GraphResponse>(apiUrl, [selectedProject?.id])
 
   if (loading) return <div className="p-6 animate-pulse h-64 bg-gray-800 rounded" />
 
@@ -22,7 +29,10 @@ export const KnowledgeGraphPage = () => {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-50">Layer 5: Knowledge Graph</h1>
-        <p className="text-gray-400">Entities, relationships, and communities</p>
+        <p className="text-gray-400">
+          Entities, relationships, and communities
+          {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
+        </p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

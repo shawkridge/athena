@@ -1,3 +1,4 @@
+import { useProject } from '@/context/ProjectContext'
 import { Card } from '@/components/common/Card'
 import { Stat } from '@/components/common/Stat'
 import { BarChartComponent } from '@/components/charts/BarChart'
@@ -16,7 +17,11 @@ interface RAGResponse {
 }
 
 export const RAGPlanningPage = () => {
-  const { data, loading } = useAPI<RAGResponse>('/api/rag/metrics')
+  const { selectedProject } = useProject()
+  const apiUrl = selectedProject
+    ? `/api/rag/metrics?project_id=${selectedProject.id}`
+    : '/api/rag/metrics'
+  const { data, loading } = useAPI<RAGResponse>(apiUrl, [selectedProject?.id])
 
   if (loading) return <div className="p-6 animate-pulse h-64 bg-gray-800 rounded" />
 
@@ -24,7 +29,10 @@ export const RAGPlanningPage = () => {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-50">RAG & Planning</h1>
-        <p className="text-gray-400">Retrieval quality and plan validation</p>
+        <p className="text-gray-400">
+          Retrieval quality and plan validation
+          {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
+        </p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
