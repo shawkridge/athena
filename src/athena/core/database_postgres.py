@@ -655,6 +655,134 @@ class PostgresDatabase:
             )
         """)
 
+        # 12. Research patterns (Phase 3.3)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS research_patterns (
+                id BIGSERIAL PRIMARY KEY,
+                task_id BIGINT NOT NULL REFERENCES research_tasks(id) ON DELETE CASCADE,
+                pattern_type VARCHAR(100) NOT NULL,
+                pattern_content TEXT NOT NULL,
+                confidence FLOAT NOT NULL,
+                metrics JSONB DEFAULT '{}',
+                source_findings BIGINT[] DEFAULT '{}',
+                finding_count INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+        # 13. Agent domain expertise (Phase 3.3)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS agent_domain_expertise (
+                id BIGSERIAL PRIMARY KEY,
+                agent_name VARCHAR(255) NOT NULL,
+                domain VARCHAR(255) NOT NULL,
+                total_findings INT DEFAULT 0,
+                avg_credibility FLOAT DEFAULT 0.0,
+                successful_tasks INT DEFAULT 0,
+                confidence FLOAT DEFAULT 0.5,
+                last_updated TIMESTAMP DEFAULT NOW(),
+                UNIQUE(agent_name, domain)
+            )
+        """)
+
+        # 14. Source domain credibility (Phase 3.3)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS source_domain_credibility (
+                id BIGSERIAL PRIMARY KEY,
+                source VARCHAR(255) NOT NULL,
+                domain VARCHAR(255) NOT NULL,
+                avg_credibility FLOAT NOT NULL,
+                finding_count INT NOT NULL,
+                cross_validation_rate FLOAT,
+                temporal_trend FLOAT,
+                confidence FLOAT DEFAULT 0.5,
+                last_updated TIMESTAMP DEFAULT NOW(),
+                UNIQUE(source, domain)
+            )
+        """)
+
+        # 15. Quality thresholds (Phase 3.3)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS quality_thresholds (
+                id BIGSERIAL PRIMARY KEY,
+                domain VARCHAR(255) NOT NULL UNIQUE,
+                threshold_optimal FLOAT DEFAULT 0.75,
+                threshold_strict FLOAT DEFAULT 0.85,
+                threshold_lenient FLOAT DEFAULT 0.60,
+                findings_tested INT DEFAULT 0,
+                retention_rate_optimal FLOAT,
+                last_updated TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+        # 16. Search strategies (Phase 3.3)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS search_strategies (
+                id BIGSERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                domain VARCHAR(255) NOT NULL,
+                description TEXT,
+                recommended_sources TEXT[],
+                excluded_sources TEXT[],
+                expected_quality FLOAT DEFAULT 0.8,
+                expected_findings_per_query INT DEFAULT 50,
+                success_count INT DEFAULT 0,
+                failure_count INT DEFAULT 0,
+                created_from_patterns BIGINT[],
+                procedure_id BIGINT REFERENCES procedures(id) ON DELETE SET NULL,
+                confidence FLOAT DEFAULT 0.5,
+                last_updated TIMESTAMP DEFAULT NOW(),
+                UNIQUE(domain, name)
+            )
+        """)
+
+        # 17. Research graph entities (Phase 3.3)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS research_graph_entities (
+                id BIGSERIAL PRIMARY KEY,
+                task_id BIGINT NOT NULL REFERENCES research_tasks(id) ON DELETE CASCADE,
+                entity_name TEXT NOT NULL,
+                entity_type VARCHAR(100),
+                mentioned_in_findings BIGINT[],
+                frequency INT DEFAULT 1,
+                confidence FLOAT DEFAULT 0.8,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+        # 18. Research graph relations (Phase 3.3)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS research_graph_relations (
+                id BIGSERIAL PRIMARY KEY,
+                task_id BIGINT NOT NULL REFERENCES research_tasks(id) ON DELETE CASCADE,
+                source_entity TEXT NOT NULL,
+                relation_type VARCHAR(100) NOT NULL,
+                target_entity TEXT NOT NULL,
+                strength FLOAT DEFAULT 0.8,
+                source_findings BIGINT[],
+                confidence FLOAT DEFAULT 0.8,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
+        # 19. Research consolidation runs (Phase 3.3)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS research_consolidation_runs (
+                id BIGSERIAL PRIMARY KEY,
+                task_id BIGINT NOT NULL UNIQUE REFERENCES research_tasks(id) ON DELETE CASCADE,
+                started_at TIMESTAMP NOT NULL,
+                completed_at TIMESTAMP,
+                status VARCHAR(50) DEFAULT 'running',
+                patterns_extracted INT DEFAULT 0,
+                procedures_created INT DEFAULT 0,
+                entities_created INT DEFAULT 0,
+                relations_created INT DEFAULT 0,
+                expertise_updates INT DEFAULT 0,
+                strategy_improvements INT DEFAULT 0,
+                error_message TEXT
+            )
+        """)
+
     async def _create_indices(self, conn: AsyncConnection):
         """Create all indices for performance."""
 
@@ -801,6 +929,52 @@ class PostgresDatabase:
         await conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_decision_status
             ON planning_decisions(validation_status)
+        """)
+
+        # Research consolidation indices (Phase 3.3)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_research_patterns_task
+            ON research_patterns(task_id)
+        """)
+
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_research_patterns_type
+            ON research_patterns(pattern_type)
+        """)
+
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_agent_expertise
+            ON agent_domain_expertise(agent_name, domain)
+        """)
+
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_source_credibility
+            ON source_domain_credibility(source, domain)
+        """)
+
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_quality_thresholds
+            ON quality_thresholds(domain)
+        """)
+
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_search_strategies
+            ON search_strategies(domain)
+        """)
+
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_research_entities
+            ON research_graph_entities(task_id, entity_type)
+        """)
+
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_research_relations
+            ON research_graph_relations(task_id)
+        """)
+
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_consolidation_runs
+            ON research_consolidation_runs(task_id, status)
         """)
 
         # Create IVFFlat index for fast semantic search with pgvector

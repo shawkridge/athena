@@ -15,6 +15,10 @@ from .cache import ResearchQueryCache
 from .rate_limit import RateLimiter, RateLimitError
 from .metrics import ResearchMetricsCollector
 from .circuit_breaker import CircuitBreakerManager
+from .consolidation import ResearchConsolidationStore
+from .consolidation_system import ResearchConsolidationSystem
+from .streaming import StreamingResultCollector, StreamingUpdate
+from .agent_monitor import LiveAgentMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +72,11 @@ class ResearchAgentExecutor:
         self.rate_limiter = RateLimiter() if enable_rate_limiting else None
         self.metrics = ResearchMetricsCollector()
         self.circuit_breakers = CircuitBreakerManager()
+
+        # Phase 3.4: Real-time streaming components
+        self.streaming_collector: Optional[StreamingResultCollector] = None
+        self.agent_monitor: Optional[LiveAgentMonitor] = None
+        self.on_streaming_update: Optional[Callable[[StreamingUpdate], Any]] = None
 
     async def execute_research(self, task_id: int, topic: str) -> int:
         """Execute research for a topic with parallel agent coordination.
@@ -250,6 +259,14 @@ class ResearchAgentExecutor:
                 result_msg += f" ({len(failed_agents)} agents failed)"
             result_msg += f" with {total_findings} total findings"
             logger.info(result_msg)
+
+            # PHASE 4: Automatic consolidation (Phase 3.3)
+            # Trigger consolidation in background (non-blocking)
+            try:
+                asyncio.create_task(self._trigger_consolidation_async(task_id))
+            except Exception as e:
+                logger.warning(f"Failed to trigger consolidation: {e}")
+                # Don't fail the research task if consolidation fails
 
             # Cache results if enabled
             if self.cache and aggregated_findings:
@@ -584,3 +601,123 @@ class ResearchAgentExecutor:
             "failing": self.circuit_breakers.get_failing_sources(),
             "details": self.circuit_breakers.get_all_status(),
         }
+
+    # =========================================================================
+    # PHASE 3.4: REAL-TIME STREAMING
+    # =========================================================================
+
+    def enable_streaming(
+        self, on_streaming_update: Callable[[StreamingUpdate], Any]
+    ) -> None:
+        """Enable real-time streaming of research results.
+
+        Args:
+            on_streaming_update: Callback called when streaming update available
+        """
+        self.on_streaming_update = on_streaming_update
+        logger.info("Real-time streaming enabled")
+
+    async def set_up_streaming(self, task_id: int, topic: str) -> None:
+        """Initialize streaming for a research task.
+
+        Args:
+            task_id: Research task ID
+            topic: Research topic
+        """
+        self.streaming_collector = StreamingResultCollector(
+            task_id=task_id, query=topic, batch_size=5
+        )
+        self.agent_monitor = LiveAgentMonitor()
+        logger.info(f"Streaming initialized for task {task_id}")
+
+    async def add_finding_to_stream(
+        self, finding: ResearchFinding, agent_name: str
+    ) -> None:
+        """Add finding to streaming collector.
+
+        Args:
+            finding: Finding to add
+            agent_name: Agent that discovered it
+        """
+        if not self.streaming_collector:
+            return
+
+        # Add to streaming collector
+        update = await self.streaming_collector.add_finding_async(
+            finding, agent_name
+        )
+
+        # Record discovery in agent monitor
+        if self.agent_monitor:
+            await self.agent_monitor.record_discovery(agent_name, latency_ms=0)
+
+        # Stream update if batch ready
+        if update and self.on_streaming_update:
+            try:
+                self.on_streaming_update(update)
+            except Exception as e:
+                logger.warning(f"Failed to call streaming update callback: {e}")
+
+    async def finalize_streaming(self) -> StreamingUpdate:
+        """Finalize streaming and return final update.
+
+        Returns:
+            Final StreamingUpdate with all findings
+        """
+        if not self.streaming_collector:
+            return None
+
+        return await self.streaming_collector.finalize()
+
+    # =========================================================================
+    # PHASE 3.3: CONSOLIDATION INTEGRATION
+    # =========================================================================
+
+    async def _trigger_consolidation_async(self, task_id: int) -> None:
+        """Trigger automatic consolidation on research task completion.
+
+        Runs in background (non-blocking). Consolidates findings into:
+        - Research patterns (11 types)
+        - Domain expertise
+        - Source credibility maps
+        - Quality thresholds
+        - Search strategies
+        - Knowledge graph entities/relations
+
+        Args:
+            task_id: Research task ID to consolidate
+        """
+        try:
+            logger.info(f"Triggering automatic consolidation for task {task_id}")
+
+            # Get database instance (from research_store's db)
+            if not hasattr(self.research_store, "db") or self.research_store.db is None:
+                logger.warning("Database not available for consolidation")
+                return
+
+            db = self.research_store.db
+
+            # Initialize consolidation stores and systems
+            consolidation_store = ResearchConsolidationStore(db)
+            consolidation_system = ResearchConsolidationSystem(
+                db=db,
+                research_store=self.research_store,
+                consolidation_store=consolidation_store,
+                procedural_store=None,  # Optional - will be set if available
+                graph_store=None,  # Optional - will be set if available
+                meta_store=None,  # Optional - will be set if available
+            )
+
+            # Run consolidation (sync method, but safe to call from async context)
+            result = consolidation_system.consolidate_research_task(task_id)
+
+            logger.info(
+                f"Consolidation completed for task {task_id}: "
+                f"{result.patterns_extracted} patterns, "
+                f"{result.procedures_created} procedures, "
+                f"{result.entities_created} entities"
+            )
+
+        except Exception as e:
+            logger.error(f"Consolidation failed for task {task_id}: {e}")
+            # Don't raise - consolidation failure shouldn't impact research task

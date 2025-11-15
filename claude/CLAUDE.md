@@ -35,6 +35,10 @@ When I give you a problem, I don't want the first solution that works. I want yo
 
 </vision>
 
+## This Is Your Global Baseline
+
+This file applies to all your projects on this machine. It establishes universal principles (how you think, test, and work), not project-specific details. Each project loads its own CLAUDE.md on top of this, providing context-specific guidance while keeping this core steady.
+
 <operations>
 
 ## Your Tools Are Your Instruments
@@ -104,18 +108,37 @@ These are concrete behavioral rules, not suggestions.
 - Sometimes explicit prompting helps ensure compliance: "What does CLAUDE.md say about testing?"
 
 **When Things Break**
-- If you encounter the same error twice, ask: "What should we add to CLAUDE.md to prevent this?"
 - If stuck after 2-3 attempts, ask for help rather than iterate endlessly
-- Document actual failures in CLAUDE.md so future sessions learn
+- Don't manually edit CLAUDE.md on errors—Athena captures failures and extracts patterns automatically
+- Future sessions will have better context from what you learned; trust the memory system
 
 **Complexity Boundaries**
 - Break work into tasks that can complete in single sessions
 - For large rewrites, create parallel implementation with clear naming—don't replace incrementally
 - Don't assume you understand the codebase until you've read the actual code
 
+**Documentation Discipline**
+- Never create summary docs, progress files, or documentation unless explicitly requested
+- No IMPLEMENTATION_PLAN.md, PROGRESS.md, summary files, or README updates unless asked
+- The code itself is the documentation; commit messages describe what was done
+- Athena captures progress; you don't need to write it
+
 </operational-rules>
 
 <boundaries>
+
+## What Belongs in Project CLAUDE.md, Not Global
+
+Keep this file for universal principles. Project-level CLAUDE.md (checked into repo) should contain:
+- Architecture decisions and "why" behind tech choices
+- Project-specific coding conventions and style
+- Build, test, and deployment commands
+- File structure and component organization
+- Team guidelines and process requirements
+- Security/privacy requirements specific to the project
+- Performance expectations and constraints
+
+**Why**: Global settings apply everywhere; project-specific guidance should be versioned with the code.
 
 ## Scope: What NOT to Do
 
@@ -183,7 +206,82 @@ This gives you access to:
 
 **End sessions consciously.** One logical task per session = clearer learning = better patterns for next time.
 
+**Athena learns so CLAUDE.md doesn't have to.** When you fail and recover, Athena captures it. When you find a pattern, Athena extracts it. Don't manually update this file on errors—future sessions get better context from the memory system automatically. This file stays stable; Athena handles the learning.
+
 </memory-system>
+
+## Athena Tools & Skills Available Globally
+
+**Status**: Athena tools and skills are now discoverable and usable from ANY project on this machine.
+
+### Available Tools
+
+Athena provides filesystem-discoverable tools organized by capability:
+
+**Memory Tools** (`~/.work/athena/src/athena/tools/memory/`):
+- `recall(query, limit=10)` - Search memories semantically across all projects
+- `remember(content, event_type='action', tags=[])` - Store new memories
+- `forget(memory_id)` - Delete a memory
+
+**Planning Tools** (`~/.work/athena/src/athena/tools/planning/`):
+- `plan_task(description, depth=3)` - Decompose tasks into executable plans
+- `validate_plan(plan, scenarios=5)` - Verify plans using formal verification
+
+**Consolidation Tools** (`~/.work/athena/src/athena/tools/consolidation/`):
+- `consolidate(strategy='balanced', days_back=7)` - Extract patterns from memories
+- `get_patterns(limit=10)` - Retrieve learned patterns
+
+**Graph Tools** (`~/.work/athena/src/athena/tools/graph/`):
+- `query(pattern)` - Search knowledge graph
+- `analyze(entity)` - Analyze entity relationships
+
+**Retrieval Tools** (`~/.work/athena/src/athena/tools/retrieval/`):
+- `hybrid(query, limit=10)` - Advanced semantic + BM25 hybrid search
+
+### How to Use Athena Tools
+
+When working on any project, you can import and use Athena tools:
+
+```python
+# Discover tools by exploring filesystem
+# ls ~/.work/athena/src/athena/tools/memory/
+
+# Import and use (example)
+from athena.manager import UnifiedMemoryManager
+
+async def my_task():
+    manager = UnifiedMemoryManager()
+    await manager.initialize()
+
+    # Search memories from previous sessions
+    results = await manager.recall("related query", limit=5)
+
+    # Store new learning
+    memory_id = await manager.remember("what I learned today", tags=["learning"])
+
+    # Get patterns Athena discovered
+    patterns = await manager.get_patterns(limit=3)
+```
+
+### Available Skills
+
+30+ reusable skills in `~/.claude/skills/` are automatically available:
+
+- **Research Skills**: advanced-retrieval, deep-research, web-research, documentation-research
+- **Planning Skills**: advanced-planning, planning-coordination, task-decomposition
+- **Analysis Skills**: code-analyzer, pattern-extraction, hypothesis-validation, strategy-analysis
+- **Integration Skills**: research-synthesis, research-coordination, workflow-engineering
+- **System Skills**: graph-analysis, graph-navigation, memory-management, load-management, cost-estimation
+
+Each skill includes documentation (SKILL.md) on when to use it and how to invoke it.
+
+### How Athena Improves Your Work
+
+1. **Cross-project memory**: Insights from Project A are available when working on Project B
+2. **Pattern learning**: Athena automatically extracts reusable workflows from your actions
+3. **Context injection**: Working memory (top 7±2 items) loaded at session start automatically
+4. **Consolidation**: Patterns extracted during sleep-like consolidation at session end
+5. **Knowledge graph**: Relationships between concepts across all projects
 
 <execution-model>
 
