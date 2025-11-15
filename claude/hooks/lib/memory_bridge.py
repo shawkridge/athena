@@ -133,7 +133,7 @@ class MemoryBridge:
                 SELECT id, event_type, content, timestamp, importance_score
                 FROM episodic_events
                 WHERE project_id = %s
-                ORDER BY timestamp DESC, importance_score DESC
+                ORDER BY importance_score DESC, timestamp DESC
                 LIMIT %s
                 """
                 params = (project_id, limit)
@@ -345,3 +345,39 @@ class MemoryBridge:
         except Exception as e:
             logger.warning(f"Error searching memories: {e}")
             return {"found": 0, "results": []}
+
+    def get_last_session_time(self, project_id: int) -> Optional[datetime]:
+        """Get the timestamp of the last session for a project.
+
+        Args:
+            project_id: Project ID
+
+        Returns:
+            datetime of last session, or None if no sessions recorded
+        """
+        try:
+            with PooledConnection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT timestamp
+                    FROM episodic_events
+                    WHERE project_id = %s
+                    ORDER BY timestamp DESC
+                    LIMIT 1
+                    """,
+                    (project_id,),
+                )
+                row = cursor.fetchone()
+
+                if row:
+                    # Convert milliseconds timestamp to datetime
+                    timestamp_ms = row[0]
+                    if isinstance(timestamp_ms, int):
+                        return datetime.fromtimestamp(timestamp_ms / 1000.0)
+                    return None
+
+                return None
+        except Exception as e:
+            logger.warning(f"Error getting last session time: {e}")
+            return None

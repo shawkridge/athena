@@ -287,9 +287,8 @@ class DataLoader:
             results = self._query(sql)
             return {row["domain"]: row["coverage_percent"] for row in results}
         except psycopg.errors.UndefinedTable as e:
-                logger.warning(f"domain_coverage table not available: {e}")
-                return {}
-            raise
+            logger.warning(f"domain_coverage table not available: {e}")
+            return {}
 
     # ========================================================================
     # TASK & PROJECT QUERIES

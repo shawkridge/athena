@@ -1139,58 +1139,6 @@ async def get_working_memory_stats() -> Dict[str, Any]:
 # SYSTEM HEALTH ENDPOINTS
 # ============================================================================
 
-system_router = APIRouter(prefix="/system", tags=["system"])
-
-
-@system_router.get("/health")
-async def get_system_health() -> Dict[str, Any]:
-    """Get overall system health status."""
-    # TODO: Implement
-    return {
-        "status": "healthy",
-        "layers": {},
-        "timestamp": None,
-    }
-
-
-@system_router.get("/performance")
-async def get_system_performance() -> Dict[str, Any]:
-    """Get system performance metrics."""
-    # TODO: Implement
-    return {
-        "api_response_time": 0.0,
-        "database_latency": 0.0,
-        "memory_usage": 0.0,
-        "cpu_usage": 0.0,
-    }
-
-
-@system_router.get("/alerts")
-async def get_system_alerts() -> List[Dict[str, Any]]:
-    """Get active system alerts."""
-    # TODO: Implement
-    return []
-
-
-@system_router.get("/database-size")
-async def get_database_size() -> Dict[str, Any]:
-    """Get database size and growth metrics."""
-    # TODO: Implement
-    return {
-        "total_size": 0,
-        "tables": {},
-    }
-
-
-@system_router.get("/stats")
-async def get_system_stats() -> Dict[str, Any]:
-    """Get system-wide statistics."""
-    # TODO: Implement
-    return {
-        "uptime": 0,
-        "total_requests": 0,
-        "error_rate": 0.0,
-    }
 
 
 # ============================================================================
