@@ -412,6 +412,18 @@ class MemoryMCPServer(
             session_manager=self.session_manager,
         )
 
+        # Initialize knowledge graph consolidation tools and orchestrator
+        # Following Anthropic's MCP code execution pattern
+        from ..mcp.handlers_consolidation_tools import ConsolidationTools
+        from ..consolidation.orchestrator import create_and_start_consolidator
+
+        self.consolidation_tools = ConsolidationTools(self.unified_manager)
+        self.consolidation_orchestrator = create_and_start_consolidator(
+            self.unified_manager,
+            self.consolidation_tools
+        )
+        logger.info("Knowledge graph consolidation orchestrator initialized and running")
+
         self.server = Server("athena")
 
         # Initialize OperationRouter as singleton (avoid recreating on every tool call - saves ~100ms per call)

@@ -22,7 +22,17 @@ const navSections: NavSection[] = [
     name: 'Dashboard',
     items: [
       { label: 'Overview', href: '/overview', icon: '📊' },
-      { label: 'Phase 3: Tasks', href: '/tasks', icon: '✨' },
+    ],
+  },
+  {
+    name: 'Intelligent Planning',
+    items: [
+      { label: 'Task Management (Phase 3a-3c)', href: '/tasks', icon: '✨' },
+      { label: '  └─ Task Status & Dependencies', href: '/tasks#status', icon: '📋' },
+      { label: '  └─ Effort Predictions', href: '/tasks#predictions', icon: '🔮' },
+      { label: '  └─ Workflow Patterns', href: '/tasks#suggestions', icon: '💡' },
+      { label: 'Projects & Goals (Layer 4)', href: '/prospective', icon: '🎯' },
+      { label: 'Planning Patterns & Strategies', href: '/rag-planning', icon: '🧠' },
     ],
   },
   {
