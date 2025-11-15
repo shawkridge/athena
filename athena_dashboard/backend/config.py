@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     # Athena HTTP API
     ATHENA_HTTP_URL: str = "http://localhost:3000"  # Athena HTTP service
-    USE_ATHENA_HTTP: bool = True  # Use HTTP loader instead of direct database access
+    USE_ATHENA_HTTP: bool = False  # Use HTTP loader instead of direct database access
 
     # Redis cache
     REDIS_URL: str = "redis://localhost:6379/0"

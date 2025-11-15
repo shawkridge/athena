@@ -37,11 +37,15 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
       // Try to restore previously selected project from localStorage
       const savedProjectId = localStorage.getItem('selectedProjectId')
+      console.log(`[ProjectContext] Checking localStorage for saved project: ${savedProjectId}`)
       if (savedProjectId && data.projects) {
         const savedProject = data.projects.find((p: Project) => p.id === parseInt(savedProjectId, 10))
         if (savedProject) {
+          console.log(`[ProjectContext] Restored project from localStorage: ${savedProject.id} (${savedProject.name})`)
           setSelectedProject(savedProject)
           return
+        } else {
+          console.log(`[ProjectContext] Saved project ID not found in API response. Available projects: ${data.projects.map((p: Project) => p.id).join(', ')}`)
         }
       }
 
@@ -67,6 +71,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (selectedProject) {
       localStorage.setItem('selectedProjectId', String(selectedProject.id))
+      console.log(`[ProjectContext] Saved project to localStorage: ${selectedProject.id} (${selectedProject.name})`)
     }
   }, [selectedProject])
 

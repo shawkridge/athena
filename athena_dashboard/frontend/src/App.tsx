@@ -21,6 +21,7 @@ const WorkingMemoryPage = lazy(() => import('./pages/WorkingMemoryPage'))
 const RAGPlanningPage = lazy(() => import('./pages/RAGPlanningPage'))
 const LearningAnalyticsPage = lazy(() => import('./pages/LearningAnalyticsPage'))
 const ResearchPage = lazy(() => import('./pages/ResearchPage'))
+const PerformanceMonitoringPage = lazy(() => import('./pages/PerformanceMonitoringPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 
 function App() {
@@ -47,6 +48,7 @@ function App() {
                 <Route path="/rag-planning" element={<RAGPlanningPage />} />
                 <Route path="/learning-analytics" element={<LearningAnalyticsPage />} />
                 <Route path="/research" element={<ResearchPage />} />
+                <Route path="/performance" element={<PerformanceMonitoringPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>
             </Routes>

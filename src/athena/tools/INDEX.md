@@ -17,6 +17,15 @@ Filesystem-discoverable tools for agent execution.
 - `plan_task`: Decompose a task into an executable plan
 - `validate_plan`: Validate a plan using formal verification and scenario testing
 
+### Task Management - Phase 3a (6 tools)
+- `create_dependency`: Create task blocking relationship (Task A blocks Task B)
+- `check_task_blocked`: Check if a task is blocked by dependencies
+- `get_unblocked_tasks`: Get tasks ready to work on (not blocked)
+- `set_task_metadata`: Set effort estimate, complexity score, tags
+- `record_task_effort`: Record actual effort spent on a task
+- `get_task_metadata`: Get full metadata including accuracy
+- `get_project_analytics`: Get project-wide effort and accuracy analytics
+
 ## Usage
 
 ### Discover Tools

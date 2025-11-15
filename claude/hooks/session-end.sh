@@ -317,6 +317,148 @@ PYTHON_EOF
 log "  ✓ Associations strengthened via learning mechanisms"
 log "  ✓ Memory quality updated based on consolidation results"
 
+# Phase 6.3: TodoWrite sync - save task changes back to PostgreSQL
+log "Phase 6.3: Syncing TodoWrite changes back to PostgreSQL..."
+
+python3 << 'PYTHON_EOF'
+import sys
+import os
+import json
+from pathlib import Path
+
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
+
+try:
+    from memory_bridge import MemoryBridge
+    from todowrite_sync import TodoWriteSync
+
+    # Get project
+    bridge = MemoryBridge()
+    project_path = os.getcwd()
+    project = bridge.get_project_by_path(project_path)
+
+    if not project:
+        project = bridge.get_project_by_path("/home/user/.work/default")
+
+    if project:
+        project_id = project['id']
+
+        # Try to load TodoWrite changes from session file
+        session_id = os.environ.get('CLAUDE_SESSION_ID', 'default')
+        todowrite_path = f"/home/user/.claude/todos/{session_id}.json"
+
+        if os.path.exists(todowrite_path):
+            try:
+                with open(todowrite_path, 'r') as f:
+                    current_tasks = json.load(f)
+
+                if current_tasks:
+                    # Sync changes back to PostgreSQL
+                    sync = TodoWriteSync()
+                    summary = sync.save_todowrite_to_postgres(project_id, current_tasks)
+                    sync.close()
+
+                    if summary['updated'] > 0 or summary['created'] > 0:
+                        print(f"✓ TodoWrite sync complete", file=sys.stderr)
+                        print(f"  Created: {summary['created']} tasks", file=sys.stderr)
+                        print(f"  Updated: {summary['updated']} tasks", file=sys.stderr)
+
+                        if summary['errors']:
+                            print(f"  Errors: {len(summary['errors'])}", file=sys.stderr)
+                            for error in summary['errors'][:3]:
+                                print(f"    ⚠ {error}", file=sys.stderr)
+                    else:
+                        print(f"ℹ No TodoWrite changes to sync", file=sys.stderr)
+                else:
+                    print(f"ℹ TodoWrite file is empty", file=sys.stderr)
+
+            except json.JSONDecodeError:
+                print(f"⚠ Could not parse TodoWrite JSON: {todowrite_path}", file=sys.stderr)
+            except Exception as e:
+                print(f"⚠ Error syncing TodoWrite: {str(e)}", file=sys.stderr)
+        else:
+            print(f"ℹ No TodoWrite session file found (this is OK)", file=sys.stderr)
+
+    bridge.close()
+
+except Exception as e:
+    print(f"⚠ TodoWrite sync failed: {str(e)}", file=sys.stderr)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+
+PYTHON_EOF
+
+# Phase 6.5: Checkpoint capture for session resumption
+log "Phase 6.5: Capturing operational checkpoint for session resumption..."
+
+python3 << 'PYTHON_EOF'
+import sys
+import os
+import json
+
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
+
+try:
+    from memory_bridge import MemoryBridge
+    from checkpoint_manager import CheckpointManager
+
+    # Get project
+    bridge = MemoryBridge()
+    project_path = os.getcwd()
+    project = bridge.get_project_by_path(project_path)
+
+    if not project:
+        project = bridge.get_project_by_path("/home/user/.work/default")
+
+    if project:
+        project_id = project['id']
+
+        # Try to capture checkpoint from environment variables
+        # These would be set by tools or user commands during the session
+        task_name = os.environ.get('CHECKPOINT_TASK', '')
+        file_path = os.environ.get('CHECKPOINT_FILE', '')
+        test_name = os.environ.get('CHECKPOINT_TEST', '')
+        next_action = os.environ.get('CHECKPOINT_NEXT', '')
+        status = os.environ.get('CHECKPOINT_STATUS', 'in_progress')
+        test_status = os.environ.get('CHECKPOINT_TEST_STATUS', 'not_run')
+        error_msg = os.environ.get('CHECKPOINT_ERROR', '')
+
+        # Only save if we have meaningful content
+        if task_name or file_path or test_name or next_action:
+            manager = CheckpointManager()
+            checkpoint_id = manager.save_checkpoint(
+                project_id=project_id,
+                task_name=task_name or "[task not specified]",
+                file_path=file_path or "[file not specified]",
+                test_name=test_name or "[test not specified]",
+                next_action=next_action or "[next action not specified]",
+                status=status,
+                test_status=test_status,
+                error_message=error_msg if error_msg else None,
+            )
+
+            if checkpoint_id:
+                print(f"✓ Checkpoint saved (ID: {checkpoint_id})", file=sys.stderr)
+                print(f"  Task: {task_name or '[not specified]'}", file=sys.stderr)
+                print(f"  File: {file_path or '[not specified]'}", file=sys.stderr)
+                print(f"  Test: {test_name or '[not specified]'}", file=sys.stderr)
+                print(f"  Next: {next_action or '[not specified]'}", file=sys.stderr)
+            else:
+                print(f"⚠ Failed to save checkpoint", file=sys.stderr)
+            manager.close()
+        else:
+            print(f"ℹ No checkpoint saved (no task data provided)", file=sys.stderr)
+            print(f"  Set CHECKPOINT_TASK, CHECKPOINT_FILE, CHECKPOINT_TEST, CHECKPOINT_NEXT to capture", file=sys.stderr)
+
+    bridge.close()
+
+except Exception as e:
+    print(f"⚠ Checkpoint capture failed: {str(e)}", file=sys.stderr)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+
+PYTHON_EOF
+
 # Phase 7: Token Cost Monitoring
 log "Phase 7: Monitoring token usage and costs..."
 

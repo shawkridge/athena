@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 
 from config import settings
 from services import DataLoader, CacheManager, MetricsAggregator, AthenaHTTPLoader, StreamingService
+from services.notification_service import NotificationService
 from models.metrics import (
     DashboardOverview,
     HookMetrics,
@@ -19,7 +20,7 @@ from models.metrics import (
 )
 from routes.websocket_routes import initialize_websocket_routes
 from routes import api as api_module
-from routes.api import api_router
+from routes.api import api_router, set_notification_service
 
 # Configure logging
 logging.basicConfig(
@@ -33,12 +34,13 @@ data_loader: DataLoader
 cache_manager: CacheManager
 metrics_aggregator: MetricsAggregator
 streaming_service: StreamingService
+notification_service: NotificationService
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown."""
-    global data_loader, cache_manager, metrics_aggregator, streaming_service
+    global data_loader, cache_manager, metrics_aggregator, streaming_service, notification_service
 
     # Startup
     logger.info("Starting Athena Dashboard backend")
@@ -62,6 +64,11 @@ async def lifespan(app: FastAPI):
     # Initialize streaming service
     streaming_service = StreamingService(athena_url=settings.ATHENA_HTTP_URL)
     logger.info("Streaming service initialized")
+
+    # Initialize notification service
+    notification_service = NotificationService(db_loader=data_loader)
+    set_notification_service(notification_service)
+    logger.info("Notification service initialized")
 
     # Inject services into routes module
     api_module.set_services(data_loader, metrics_aggregator, cache_manager)

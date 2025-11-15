@@ -102,6 +102,16 @@ class EpisodicStore(BaseStore):
             stack_trace=row_dict.get("stack_trace"),
             performance_metrics=perf_metrics,
             code_quality_score=row_dict.get("code_quality_score"),
+            # Enhanced context metadata for working memory optimization
+            project_name=row_dict.get("project_name"),
+            project_goal=row_dict.get("project_goal"),
+            project_phase_status=row_dict.get("project_phase_status"),
+            importance_score=row_dict.get("importance_score", 0.5),
+            actionability_score=row_dict.get("actionability_score", 0.5),
+            context_completeness_score=row_dict.get("context_completeness_score", 0.5),
+            has_next_step=bool(row_dict.get("has_next_step", 0)),
+            has_blocker=bool(row_dict.get("has_blocker", 0)),
+            required_decisions=row_dict.get("required_decisions"),
         )
 
     def _safe_json_loads(self, data: str, default=None):
@@ -259,9 +269,11 @@ class EpisodicStore(BaseStore):
                 context_cwd, context_files, context_task, context_phase,
                 duration_ms, files_changed, lines_added, lines_deleted,
                 learned, confidence, surprise_score, surprise_normalized, surprise_coherence,
-                embedding
+                embedding, project_name, project_goal, project_phase_status,
+                importance_score, actionability_score, context_completeness_score,
+                has_next_step, has_blocker, required_decisions
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """,
             (
@@ -285,6 +297,15 @@ class EpisodicStore(BaseStore):
                 surprise_normalized,
                 surprise_coherence,
                 self.serialize_json(embedding) if embedding else None,
+                event.project_name,
+                event.project_goal,
+                event.project_phase_status,
+                event.importance_score,
+                event.actionability_score,
+                event.context_completeness_score,
+                int(event.has_next_step),
+                int(event.has_blocker),
+                event.required_decisions,
             ),
         )
 
@@ -354,6 +375,15 @@ class EpisodicStore(BaseStore):
                     event.lines_deleted,
                     event.learned,
                     event.confidence,
+                    event.project_name,
+                    event.project_goal,
+                    event.project_phase_status,
+                    event.importance_score,
+                    event.actionability_score,
+                    event.context_completeness_score,
+                    int(event.has_next_step),
+                    int(event.has_blocker),
+                    event.required_decisions,
                 ))
 
             # Batch insert all events
@@ -362,9 +392,11 @@ class EpisodicStore(BaseStore):
                     project_id, session_id, timestamp, event_type, content, outcome,
                     context_cwd, context_files, context_task, context_phase,
                     duration_ms, files_changed, lines_added, lines_deleted,
-                    learned, confidence
+                    learned, confidence, project_name, project_goal, project_phase_status,
+                    importance_score, actionability_score, context_completeness_score,
+                    has_next_step, has_blocker, required_decisions
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, data)
 
             # Get the last inserted ID and work backward

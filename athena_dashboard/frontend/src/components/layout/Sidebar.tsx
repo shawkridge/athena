@@ -50,6 +50,7 @@ const navSections: NavSection[] = [
     items: [
       { label: 'Research Console', href: '/research', icon: '🔬' },
       { label: 'Learning Analytics', href: '/learning-analytics', icon: '📈' },
+      { label: 'Performance Monitoring', href: '/performance', icon: '⚡' },
     ],
   },
   {

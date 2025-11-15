@@ -53,6 +53,21 @@ class DataLoader:
             return []
         except psycopg.errors.UndefinedTable as e:
             logger.warning(f"Table not found, returning empty results: {e}")
+            # Try to rollback to clear the transaction state
+            try:
+                self.conn.rollback()
+            except:
+                pass
+            return []
+        except psycopg.errors.InFailedSqlTransaction as e:
+            # Transaction was aborted, reconnect
+            logger.warning(f"Transaction aborted, reconnecting: {e}")
+            try:
+                self.conn.rollback()
+            except:
+                pass
+            self.disconnect()
+            self.connect()
             return []
         except psycopg.Error as e:
             logger.error(f"Database error: {e}")
@@ -61,7 +76,7 @@ class DataLoader:
                 self.conn.rollback()
             except:
                 pass
-            raise
+            return []
 
     # ========================================================================
     # EPISODIC MEMORY QUERIES
@@ -149,58 +164,214 @@ class DataLoader:
     # SEMANTIC MEMORY QUERIES
     # ========================================================================
 
-    def count_semantic_memories(self) -> int:
-        """Count semantic memories."""
-        sql = "SELECT COUNT(*) as count FROM semantic_memories"
-        result = self._query(sql)
-        return result[0]["count"] if result else 0
+    def count_semantic_memories(self, project_id: Optional[int] = None) -> int:
+        """Count semantic memories.
 
-    def get_memory_quality_score(self) -> Optional[float]:
+        Args:
+            project_id: Optional project ID to filter by
+
+        Returns:
+            Count of semantic memories
+        """
+        try:
+            if project_id:
+                sql = "SELECT COUNT(*) as count FROM memory_vectors WHERE project_id = %s"
+                result = self._query(sql, (project_id,))
+            else:
+                sql = "SELECT COUNT(*) as count FROM memory_vectors"
+                result = self._query(sql)
+            return result[0]["count"] if result else 0
+        except Exception as e:
+            logger.warning(f"Failed to count semantic memories: {e}")
+            return 0
+
+    def get_semantic_memories(
+        self,
+        limit: int = 50,
+        project_id: Optional[int] = None,
+        domain: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get semantic memories from memory_vectors table.
+
+        Args:
+            limit: Number of memories to retrieve
+            project_id: Optional project ID to filter by
+            domain: Optional domain to filter by
+
+        Returns:
+            List of semantic memories
+        """
+        try:
+            conditions = []
+            params = []
+
+            if project_id:
+                conditions.append("project_id = %s")
+                params.append(project_id)
+            if domain:
+                conditions.append("domain = %s")
+                params.append(domain)
+
+            where_clause = " AND ".join(conditions) if conditions else "1=1"
+            sql = f"""
+                SELECT id, content, domain, quality_score, created_at,
+                       last_accessed, access_count, usefulness_score
+                FROM memory_vectors
+                WHERE {where_clause}
+                ORDER BY usefulness_score DESC, last_accessed DESC
+                LIMIT %s
+            """
+            params.append(limit)
+            return self._query(sql, tuple(params))
+        except Exception as e:
+            logger.warning(f"Failed to get semantic memories: {e}")
+            return []
+
+    def search_semantic_memories(
+        self,
+        query: str,
+        limit: int = 20,
+        project_id: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """Search semantic memories using full-text search.
+
+        Args:
+            query: Search query
+            limit: Number of results
+            project_id: Optional project ID to filter by
+
+        Returns:
+            List of matching memories
+        """
+        try:
+            if project_id:
+                sql = """
+                    SELECT id, content, domain, quality_score, created_at,
+                           ts_rank(content_tsvector, plainto_tsquery(%s)) as rank
+                    FROM memory_vectors
+                    WHERE project_id = %s AND content_tsvector @@ plainto_tsquery(%s)
+                    ORDER BY rank DESC, usefulness_score DESC
+                    LIMIT %s
+                """
+                return self._query(sql, (query, project_id, query, limit))
+            else:
+                sql = """
+                    SELECT id, content, domain, quality_score, created_at,
+                           ts_rank(content_tsvector, plainto_tsquery(%s)) as rank
+                    FROM memory_vectors
+                    WHERE content_tsvector @@ plainto_tsquery(%s)
+                    ORDER BY rank DESC, usefulness_score DESC
+                    LIMIT %s
+                """
+                return self._query(sql, (query, query, limit))
+        except Exception as e:
+            logger.warning(f"Failed to search semantic memories: {e}")
+            return []
+
+    def get_semantic_domains(self, project_id: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Get list of semantic memory domains with counts.
+
+        Args:
+            project_id: Optional project ID to filter by
+
+        Returns:
+            List of domains with counts
+        """
+        try:
+            if project_id:
+                sql = """
+                    SELECT domain, COUNT(*) as count
+                    FROM memory_vectors
+                    WHERE project_id = %s AND domain IS NOT NULL
+                    GROUP BY domain
+                    ORDER BY count DESC
+                """
+                return self._query(sql, (project_id,))
+            else:
+                sql = """
+                    SELECT domain, COUNT(*) as count
+                    FROM memory_vectors
+                    WHERE domain IS NOT NULL
+                    GROUP BY domain
+                    ORDER BY count DESC
+                """
+                return self._query(sql)
+        except Exception as e:
+            logger.warning(f"Failed to get semantic domains: {e}")
+            return []
+
+    def get_memory_quality_score(self, project_id: Optional[int] = None) -> Optional[float]:
         """Get overall memory quality score.
+
+        Args:
+            project_id: Optional project ID to filter by
 
         Returns:
             Quality score 0.0-1.0 or None if not available
         """
-        sql = """
-            SELECT quality_score
-            FROM memory_quality
-            ORDER BY timestamp DESC
-            LIMIT 1
-        """
-        result = self._query(sql)
-        return result[0]["quality_score"] if result else None
+        try:
+            if project_id:
+                sql = """
+                    SELECT AVG(quality_score) as avg_quality
+                    FROM memory_vectors
+                    WHERE project_id = %s AND memory_type IN ('semantic', 'vector')
+                """
+                result = self._query(sql, (project_id,))
+            else:
+                # Query all semantic vectors to get overall quality score
+                sql = """
+                    SELECT AVG(quality_score) as avg_quality
+                    FROM memory_vectors
+                    WHERE memory_type IN ('semantic', 'vector')
+                """
+                result = self._query(sql)
+
+            if result and result[0].get("avg_quality"):
+                return float(result[0]["avg_quality"])
+            elif result and result[0].get("quality_score"):
+                return float(result[0]["quality_score"])
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to get quality score: {e}")
+            return None
 
     def get_memory_metrics(self) -> Dict[str, Any]:
         """Get latest memory metrics."""
-        sql = """
-            SELECT *
-            FROM memory_quality
-            ORDER BY timestamp DESC
-            LIMIT 1
-        """
-        result = self._query(sql)
-        return dict(result[0]) if result else {}
+        try:
+            # Get aggregated metrics from existing tables
+            sql = """
+                SELECT
+                    COUNT(*) as total_memories,
+                    AVG(quality_score) as avg_quality,
+                    MAX(created_at) as last_updated
+                FROM memory_vectors
+                WHERE memory_type IN ('semantic', 'vector')
+            """
+            result = self._query(sql)
+            return dict(result[0]) if result else {}
+        except Exception as e:
+            logger.warning(f"Failed to get memory metrics: {e}")
+            return {}
 
     # ========================================================================
     # PROCEDURAL MEMORY QUERIES
     # ========================================================================
 
     def count_procedures(self, project_id: Optional[int] = None) -> int:
-        """Count stored procedures, optionally filtered by project.
+        """Count stored procedures.
+
+        Note: Skills are global and not filtered by project.
+        The project_id parameter is accepted for API compatibility but ignored.
 
         Args:
-            project_id: Optional project ID to filter by.
+            project_id: Ignored (skills are global)
 
         Returns:
             Procedure count
         """
         try:
-            if project_id:
-                sql = "SELECT COUNT(*) as count FROM procedures WHERE project_id = %s"
-                result = self._query(sql, (project_id,))
-            else:
-                sql = "SELECT COUNT(*) as count FROM procedures"
-                result = self._query(sql)
+            sql = "SELECT COUNT(*) as count FROM skills"
+            result = self._query(sql)
             return result[0]["count"] if result else 0
         except Exception as e:
             logger.warning(f"Failed to count procedures: {e}")
@@ -209,9 +380,12 @@ class DataLoader:
     def get_top_procedures(self, limit: int = 10, project_id: Optional[int] = None) -> List[Dict[str, Any]]:
         """Get most effective procedures/skills from real database.
 
+        Note: Skills are global and not filtered by project.
+        The project_id parameter is accepted for API compatibility but ignored.
+
         Args:
             limit: Number of procedures to return
-            project_id: Optional project ID to filter by
+            project_id: Ignored (skills are global)
 
         Returns:
             List of top procedures/skills

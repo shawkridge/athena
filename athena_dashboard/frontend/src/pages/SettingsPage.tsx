@@ -7,6 +7,10 @@ export const SettingsPage = () => {
   const [autoRefresh, setAutoRefresh] = useLocalStorage('auto-refresh', true)
   const [refreshInterval, setRefreshInterval] = useLocalStorage('refresh-interval', 30)
   const [itemsPerPage, setItemsPerPage] = useLocalStorage('items-per-page', 10)
+  const [cpuThreshold, setCpuThreshold] = useLocalStorage('perf-cpu-threshold', 80)
+  const [memoryThreshold, setMemoryThreshold] = useLocalStorage('perf-memory-threshold', 85)
+  const [latencyThreshold, setLatencyThreshold] = useLocalStorage('perf-latency-threshold', 200)
+  const [enableAlerts, setEnableAlerts] = useLocalStorage('perf-alerts-enabled', true)
 
   return (
     <div className="p-6 space-y-6 max-w-2xl">
@@ -69,6 +73,76 @@ export const SettingsPage = () => {
                 className="px-3 py-2 bg-gray-700 border border-gray-600 rounded text-gray-50 w-20"
               />
             </div>
+          )}
+        </div>
+      </Card>
+
+      <Card header={<h3 className="text-lg font-semibold text-gray-50">Performance Monitoring</h3>}>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <label className="text-gray-300">Enable Performance Alerts</label>
+            <button
+              onClick={() => setEnableAlerts(!enableAlerts)}
+              className={`px-4 py-2 rounded font-medium transition-colors ${
+                enableAlerts
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {enableAlerts ? 'Enabled' : 'Disabled'}
+            </button>
+          </div>
+          {enableAlerts && (
+            <>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-gray-300">CPU Usage Alert Threshold</label>
+                  <span className="text-blue-400 font-mono">{cpuThreshold}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="50"
+                  max="100"
+                  step="5"
+                  value={cpuThreshold}
+                  onChange={(e) => setCpuThreshold(parseInt(e.target.value))}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500">Alert when CPU exceeds this percentage</p>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-gray-300">Memory Usage Alert Threshold</label>
+                  <span className="text-blue-400 font-mono">{memoryThreshold}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="50"
+                  max="100"
+                  step="5"
+                  value={memoryThreshold}
+                  onChange={(e) => setMemoryThreshold(parseInt(e.target.value))}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500">Alert when memory exceeds this percentage</p>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-gray-300">Query Latency Alert Threshold</label>
+                  <span className="text-blue-400 font-mono">{latencyThreshold}ms</span>
+                </div>
+                <input
+                  type="range"
+                  min="100"
+                  max="500"
+                  step="50"
+                  value={latencyThreshold}
+                  onChange={(e) => setLatencyThreshold(parseInt(e.target.value))}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500">Alert when query latency exceeds this value</p>
+              </div>
+            </>
           )}
         </div>
       </Card>
