@@ -20,6 +20,7 @@ from typing import List, Optional
 
 from .clustering import cluster_events_by_context
 from .pattern_extraction import extract_patterns, Pattern
+from .run_history import ConsolidationRunHistory, ConsolidationRunMetrics, ConsolidationStatus
 from ..episodic.models import EpisodicEvent
 from ..episodic.store import EpisodicStore
 from ..memory.store import MemoryStore
@@ -70,7 +71,8 @@ def consolidate_episodic_to_semantic(
     graph_store: Optional[GraphStore] = None,
     time_window_hours: int = 24,
     min_pattern_confidence: float = 0.7,
-    dry_run: bool = False
+    dry_run: bool = False,
+    database: Optional[object] = None  # Optional Database instance for run tracking
 ) -> ConsolidationReport:
     """
     Consolidate episodic events into semantic patterns and update knowledge graph.
@@ -96,6 +98,7 @@ def consolidate_episodic_to_semantic(
         time_window_hours: How far back to look for events
         min_pattern_confidence: Minimum confidence to store pattern
         dry_run: If True, don't actually store patterns or mark events
+        database: Optional Database instance for recording consolidation runs
 
     Returns:
         ConsolidationReport with results
@@ -107,6 +110,17 @@ def consolidate_episodic_to_semantic(
     - Compression = Intelligence (HN consensus): Lossy compression for generalization
     """
     started_at = datetime.now()
+    run_id = None
+
+    # Create run record if database available
+    if database and not dry_run:
+        try:
+            run_history = ConsolidationRunHistory(database)
+            run_id = run_history.create_run(project_id)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to create consolidation run record: {e}")
 
     # Step 1: Fetch unconsolidated events
     cutoff_time = datetime.now() - timedelta(hours=time_window_hours)
@@ -219,13 +233,37 @@ def consolidate_episodic_to_semantic(
     quality_after = _calculate_memory_quality(semantic_store, project_id)
     quality_improvement = quality_after - quality_before
 
-    # Step 8: Record consolidation run
-    # (TODO: Store in consolidation_runs table once implemented)
-
+    # Step 8: Record consolidation run metrics
     completed_at = datetime.now()
 
+    # Update run record with metrics
+    if database and run_id and not dry_run:
+        try:
+            run_history = ConsolidationRunHistory(database)
+            metrics = ConsolidationRunMetrics(
+                run_id=run_id,
+                project_id=project_id,
+                started_at=started_at,
+                completed_at=completed_at,
+                status=ConsolidationStatus.SUCCESS,
+                events_processed=len(events),
+                events_consolidated=len(events),
+                patterns_extracted=len(stored_pattern_ids),
+                patterns_validated=len([p for p in all_patterns if p.confidence >= min_pattern_confidence]),
+                memories_created=len(stored_pattern_ids),
+                quality_before=quality_before,
+                quality_after=quality_after,
+                throughput_events_per_sec=len(events) / max(completed_at.timestamp() - started_at.timestamp(), 0.001),
+                avg_pattern_confidence=sum(p.confidence for p in all_patterns) / max(len(all_patterns), 1),
+            )
+            run_history.update_run(run_id, metrics)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to update consolidation run {run_id} with metrics: {e}")
+
     return ConsolidationReport(
-        run_id=0,  # TODO: Get from database
+        run_id=run_id or 0,
         project_id=project_id,
         started_at=started_at,
         completed_at=completed_at,

@@ -325,9 +325,19 @@ class UnifiedMemoryManager:
             stored_ids["episodic"] = event_id
 
         if content_type == "procedure":
-            # Procedural memory
-            # Would need full Procedure object - simplified here
-            stored_ids["procedural"] = "procedure_creation_not_implemented_in_store"
+            # Procedural memory - create procedure from content
+            procedure = Procedure(
+                name=metadata.get("name", f"procedure_{int(datetime.now().timestamp())}"),
+                category=metadata.get("category", "general"),
+                description=content,
+                template=metadata.get("template", content),
+                steps=metadata.get("steps", []),
+                examples=metadata.get("examples", []),
+                applicable_contexts=metadata.get("contexts", []),
+                created_by="user",
+            )
+            procedure_id = self.procedural.create_procedure(procedure)
+            stored_ids["procedural"] = procedure_id
 
         if content_type == "task":
             # Prospective memory
@@ -340,13 +350,81 @@ class UnifiedMemoryManager:
             stored_ids["prospective"] = task_id
 
         if metadata.get("entities") or metadata.get("relations"):
-            # Knowledge graph
-            # Would handle entity/relation creation
-            stored_ids["graph"] = "graph_update_not_implemented_in_store"
+            # Knowledge graph - create entities and relations
+            graph_ids = []
 
-        # Update meta-memory
-        # TODO: Implement domain coverage updates when storing content
-        pass
+            # Create entities
+            if metadata.get("entities"):
+                entities = metadata.get("entities", [])
+                if not isinstance(entities, list):
+                    entities = [entities]
+
+                for entity_data in entities:
+                    if isinstance(entity_data, dict):
+                        entity = Entity(
+                            name=entity_data.get("name", "unknown"),
+                            entity_type=entity_data.get("type", "concept"),
+                            project_id=project.id,
+                            metadata=entity_data.get("metadata", {}),
+                        )
+                        entity_id = self.graph.create_entity(entity)
+                        graph_ids.append(("entity", entity_id))
+
+            # Create relations
+            if metadata.get("relations"):
+                relations = metadata.get("relations", [])
+                if not isinstance(relations, list):
+                    relations = [relations]
+
+                for relation_data in relations:
+                    if isinstance(relation_data, dict):
+                        relation = Relation(
+                            from_entity_id=relation_data.get("from_id"),
+                            to_entity_id=relation_data.get("to_id"),
+                            relation_type=relation_data.get("type", "related_to"),
+                            strength=relation_data.get("strength", 1.0),
+                            confidence=relation_data.get("confidence", 1.0),
+                            metadata=relation_data.get("metadata", {}),
+                        )
+                        relation_id = self.graph.create_relation(relation)
+                        graph_ids.append(("relation", relation_id))
+
+            stored_ids["graph"] = graph_ids if graph_ids else None
+
+        # Update meta-memory domain coverage
+        domain_name = metadata.get("domain")
+        if domain_name:
+            from .meta.models import DomainCoverage, ExpertiseLevel
+
+            # Get or create domain coverage
+            existing_domain = self.meta.get_domain(domain_name)
+            if existing_domain:
+                # Update existing domain counts
+                existing_domain.memory_count += 1
+                if content_type == "event":
+                    existing_domain.episodic_count += 1
+                elif content_type == "procedure":
+                    existing_domain.procedural_count += 1
+                elif metadata.get("entities"):
+                    existing_domain.entity_count += len(metadata.get("entities", []))
+                existing_domain.last_updated = datetime.now()
+                self.meta.create_domain(existing_domain)
+            else:
+                # Create new domain coverage
+                new_domain = DomainCoverage(
+                    domain=domain_name,
+                    category=metadata.get("domain_category", "general"),
+                    memory_count=1,
+                    episodic_count=1 if content_type == "event" else 0,
+                    procedural_count=1 if content_type == "procedure" else 0,
+                    entity_count=len(metadata.get("entities", [])) if metadata.get("entities") else 0,
+                    avg_confidence=metadata.get("confidence", 0.8),
+                    avg_usefulness=metadata.get("usefulness", 0.5),
+                    first_encounter=datetime.now(),
+                    last_updated=datetime.now(),
+                    expertise_level=metadata.get("expertise_level", ExpertiseLevel.BEGINNER),
+                )
+                self.meta.create_domain(new_domain)
 
         return stored_ids
 
