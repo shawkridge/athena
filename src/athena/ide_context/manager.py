@@ -1,10 +1,14 @@
 """Manager for IDE context tracking and integration."""
 
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 from athena.core.database import Database
+from athena.core.exceptions import ResourceError
+
+logger = logging.getLogger(__name__)
 
 from .git_tracker import GitTracker
 from .models import (
@@ -56,7 +60,8 @@ class IDEContextManager:
             if Path(file_path).exists():
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     line_count = len(f.readlines())
-        except:
+        except (OSError, IOError, UnicodeDecodeError) as e:
+            logger.debug(f"Failed to read file metadata for {file_path}: {e}")
             size = None
             line_count = None
 
