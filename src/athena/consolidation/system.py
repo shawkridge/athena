@@ -311,6 +311,21 @@ class ConsolidationSystem:
             # Get recent successful events
             recent_events = self.episodic_store.get_recent_events(project_id, hours=168)  # 1 week
 
+            # PRIORITIZATION: Score and filter high-value events for consolidation
+            from .event_prioritization import EventPrioritizer
+            prioritizer = EventPrioritizer()
+
+            # Filter to high-priority events (top 70% by priority score)
+            # This focuses consolidation on actionable, relevant, surprising events
+            if recent_events:
+                prioritized_events = prioritizer.filter_by_priority(
+                    recent_events,
+                    min_score=0.3,           # Keep events with priority >= 0.3
+                    max_events=len(recent_events),  # Use all, but in priority order
+                )
+                recent_events = prioritized_events
+                logger.info(f"Prioritized {len(recent_events)} events for consolidation")
+
             patterns_found = 0
 
             # STEP 1: Surprise-based segmentation (research-backed approach)
