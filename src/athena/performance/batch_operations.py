@@ -1,10 +1,14 @@
 """Batch operations for high-throughput database operations."""
 
+import logging
 import time
 from datetime import datetime
 from typing import Any, Callable, Optional
 
 from athena.core.database import Database
+from athena.core.exceptions import TransactionError
+
+logger = logging.getLogger(__name__)
 
 
 class BatchOperation:
@@ -186,8 +190,8 @@ class BatchExecutor:
         except Exception as e:
             try:
                 cursor.execute("ROLLBACK")
-            except:
-                pass
+            except (TransactionError, Exception) as rollback_error:
+                logger.debug(f"ROLLBACK failed during batch error handling: {rollback_error}")
 
             print(f"✗ Batch execution failed: {e}")
 
@@ -328,8 +332,8 @@ class BulkInsertBuilder:
         except Exception as e:
             try:
                 cursor.execute("ROLLBACK")
-            except:
-                pass
+            except (TransactionError, Exception) as rollback_error:
+                logger.debug(f"ROLLBACK failed during bulk insert error handling: {rollback_error}")
 
             print(f"✗ Bulk insert failed: {e}")
 
