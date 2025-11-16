@@ -81,7 +81,7 @@ class PlanLearner:
                     templates[task_type] = template
 
             return templates
-        except Exception:
+        except (OSError, ValueError, TypeError, KeyError, AttributeError):
             return {}
 
     def _group_by_type(self, tasks: List) -> Dict[str, List]:

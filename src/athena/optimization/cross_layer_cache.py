@@ -291,7 +291,7 @@ class CrossLayerCache:
         try:
             json_str = json.dumps(results, default=str)
             return len(json_str.encode())
-        except Exception:
+        except (json.JSONDecodeError, ValueError, TypeError, KeyError):
             # Fallback
             return 1024
 

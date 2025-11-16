@@ -247,7 +247,7 @@ class CodeAnalyzer:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 tree = ast.parse(f.read())
-        except Exception:
+        except (AttributeError, ValueError, TypeError, IndexError):
             return imports
 
         for node in ast.walk(tree):

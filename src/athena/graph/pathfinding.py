@@ -46,7 +46,7 @@ class PathFinder:
 
         try:
             relations = self.graph_store.get_entity_relations(entity_id, direction=direction)
-        except Exception:
+        except (ValueError, TypeError, KeyError, AttributeError, IndexError):
             # If entity doesn't exist or query fails, return empty list
             neighbors = []
             self._relation_cache[cache_key] = neighbors

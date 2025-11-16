@@ -238,7 +238,7 @@ class FieldPolicy:
             else:
                 return path_str
 
-        except Exception:
+        except (AttributeError, ValueError, TypeError):
             # If path handling fails, return original
             return path_str
 

@@ -334,7 +334,7 @@ Provide the enhanced document."""
 
         try:
             return self.llm_client.query(refine_prompt)
-        except Exception:
+        except (AttributeError, ValueError, TypeError, KeyError):
             return document_content
 
 

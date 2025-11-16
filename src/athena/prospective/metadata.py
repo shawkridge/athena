@@ -53,7 +53,7 @@ class MetadataStore(BaseStore):
             try:
                 cursor.execute(f"ALTER TABLE prospective_tasks ADD COLUMN {col_name} {col_def}")
                 logger.debug(f"Added column: {col_name}")
-            except Exception:
+            except (OSError, ValueError, TypeError):
                 # Column already exists, continue
                 pass
 

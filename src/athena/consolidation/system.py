@@ -515,7 +515,7 @@ class ConsolidationSystem:
 
             return pattern
 
-        except Exception:
+        except (json.JSONDecodeError, ValueError, TypeError, KeyError, AttributeError):
             return None
 
     def _maybe_create_procedure(self, pattern: ExtractedPattern, events: list):

@@ -509,7 +509,7 @@ class CentralExecutive:
                         context_events=context_events,
                     )
                     saliency_scores.append(saliency)
-                except Exception:
+                except (AttributeError, ValueError, TypeError):
                     # Skip if saliency computation fails
                     continue
 
@@ -562,7 +562,7 @@ class CentralExecutive:
                     context_events=context_events,
                 )
                 results.append(result)
-            except Exception:
+            except (AttributeError, ValueError, TypeError):
                 # Include failed items with neutral score
                 results.append({
                     "memory_id": memory_id,

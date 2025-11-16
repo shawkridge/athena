@@ -151,7 +151,7 @@ class ProjectCoordinatorAgent:
             )
             result = cursor.fetchone()
             return result[0] if result else 0
-        except Exception:
+        except (OSError, ValueError, TypeError, KeyError, IndexError):
             return 0
 
     def _extract_bottleneck_persons(
@@ -354,7 +354,7 @@ class ProjectCoordinatorAgent:
                     )
 
             return suggestions[:5]  # Top 5 suggestions
-        except Exception:
+        except (OSError, ValueError, TypeError, KeyError, IndexError):
             return [
                 {
                     "action": "review",

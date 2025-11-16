@@ -258,7 +258,7 @@ class ContextInjector:
         try:
             # Try to get attention state for current project
             attention_scores = self._get_attention_scores()
-        except Exception:
+        except (AttributeError, ValueError, TypeError, KeyError):
             # Graceful degradation if attention system unavailable
             attention_scores = {}
 
@@ -464,7 +464,7 @@ class ContextInjector:
             recency = max(0.0, 1.0 - (age_days / 30))
             return min(1.0, recency)
 
-        except Exception:
+        except (AttributeError, ValueError, TypeError, KeyError):
             return 0.5
 
     def _estimate_tokens(self, text: str) -> int:

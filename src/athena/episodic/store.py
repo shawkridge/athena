@@ -129,7 +129,7 @@ class EpisodicStore(BaseStore):
         try:
             from ..core.error_handling import safe_json_loads
             return safe_json_loads(data, default)
-        except Exception:
+        except (json.JSONDecodeError, ValueError, TypeError):
             return default
 
     def _get_embedding_model(self):

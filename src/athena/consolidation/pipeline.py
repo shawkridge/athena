@@ -324,7 +324,7 @@ def _calculate_memory_quality(semantic_store: MemoryStore, project_id: int) -> f
 
         return quality
 
-    except Exception:
+    except (OSError, ValueError, TypeError, KeyError, AttributeError):
         return 0.0
 
 

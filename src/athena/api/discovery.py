@@ -114,7 +114,7 @@ class APIDiscovery:
             spec.loader.exec_module(module)
 
             return module
-        except Exception:
+        except (OSError, ValueError, TypeError, AttributeError):
             return None
 
     def _is_api_function(self, obj: Any) -> bool:
@@ -172,7 +172,7 @@ class APIDiscovery:
                 examples=examples,
                 category=category,
             )
-        except Exception:
+        except (OSError, ValueError, TypeError, AttributeError):
             return None
 
     def _extract_parameters(self, func: Callable, sig: inspect.Signature, doc: str) -> List[APIParameter]:

@@ -927,7 +927,7 @@ class ProspectiveStore(BaseStore):
         try:
             from athena.core.error_handling import safe_json_loads
             return safe_json_loads(data, default)
-        except Exception:
+        except (ImportError, AttributeError):
             return default
 
     def _row_to_task(self, row) -> ProspectiveTask:

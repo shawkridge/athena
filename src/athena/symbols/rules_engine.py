@@ -228,7 +228,7 @@ class RulesEngine:
         try:
             if rule.auto_fix_fn:
                 return rule.auto_fix_fn(symbol)
-        except Exception:
+        except (AttributeError, ValueError, TypeError, KeyError):
             pass
         return None
 

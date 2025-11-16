@@ -177,7 +177,7 @@ class GraphStore(BaseStore[Entity]):
             self.commit()
             result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
             return result[0] if result else None
-        except Exception:
+        except (OSError, ValueError, TypeError):
             # Entity already exists, return its ID
             row = self.execute(
                 """

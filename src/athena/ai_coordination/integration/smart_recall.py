@@ -400,7 +400,7 @@ class SmartRecall:
                 })
 
             return procedures
-        except Exception:
+        except (OSError, ValueError, TypeError):
             # Table doesn't exist yet - return empty list
             return []
 

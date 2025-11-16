@@ -473,7 +473,7 @@ class GoalOrchestrator:
 
             # In production, would query database
             return None
-        except Exception:
+        except (OSError, ValueError, TypeError, AttributeError):
             return None
 
     async def _check_dependencies(self, goal: GoalContext) -> Dict[str, Any]:

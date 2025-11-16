@@ -346,7 +346,7 @@ class PlanningConsolidator:
                 source="learned",
             )
             return pattern
-        except Exception:
+        except (OSError, ValueError, TypeError, KeyError, IndexError):
             return None
 
 

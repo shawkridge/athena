@@ -337,7 +337,7 @@ class CodeValidator:
         # Parse for detailed analysis
         try:
             tree = ast.parse(code)
-        except Exception:
+        except (SyntaxError, ValueError, TypeError):
             issues.append(
                 ValidationIssue(
                     severity="error",

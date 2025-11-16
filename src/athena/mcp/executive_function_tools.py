@@ -220,7 +220,7 @@ class ExecutiveFunctionMCPHandlers:
                     context = self.orchestration.prepare_goal_for_planner(goal_id)
                     strategy = StrategyType(context["strategy"])
                     reasoning = context.get("reasoning", "Goal-based strategy selection")
-                except Exception:
+                except (AttributeError, ValueError, TypeError, KeyError):
                     strategy = StrategyType.TOP_DOWN
                     reasoning = "Goal context unavailable, defaulting to TOP_DOWN"
             else:

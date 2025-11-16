@@ -210,5 +210,5 @@ class HealthMonitorAgent:
                 return issue_count >= 2
 
             return False
-        except Exception:
+        except (OSError, ValueError, TypeError, KeyError, AttributeError):
             return False

@@ -119,7 +119,7 @@ class Tier1OrchestrationPipeline:
             results["metrics"] = self._compute_pipeline_metrics(results)
             results["status"] = "success"
 
-        except Exception as e:
+        except (OSError, ValueError, TypeError, KeyError, AttributeError) as e:
             logger.error(f"Error in Tier 1 pipeline: {e}", exc_info=True)
             results["status"] = "error"
             results["error"] = str(e)
@@ -178,7 +178,7 @@ class Tier1OrchestrationPipeline:
                 "quality_score": consolidation_stats["quality_score"],
             }
 
-        except Exception as e:
+        except (OSError, ValueError, TypeError, KeyError, IndexError) as e:
             logger.error(f"Error in consolidation stage: {e}", exc_info=True)
             return {"error": str(e)}
 
@@ -247,7 +247,7 @@ class Tier1OrchestrationPipeline:
                                     }
                                 )
                                 surprise_count += 1
-                    except Exception:
+                    except (ValueError, TypeError, AttributeError, ZeroDivisionError):
                         pass
 
             return {
@@ -261,7 +261,7 @@ class Tier1OrchestrationPipeline:
                 ),
             }
 
-        except Exception as e:
+        except (OSError, ValueError, TypeError, KeyError, IndexError) as e:
             logger.error(f"Error in surprise detection stage: {e}", exc_info=True)
             return {"error": str(e)}
 
@@ -315,7 +315,7 @@ class Tier1OrchestrationPipeline:
 
                     if saliency >= 0.7:
                         high_salience_count += 1
-                except Exception:
+                except (AttributeError, ValueError, TypeError):
                     pass
 
             return {
@@ -333,7 +333,7 @@ class Tier1OrchestrationPipeline:
                 },
             }
 
-        except Exception as e:
+        except (OSError, ValueError, TypeError, KeyError, IndexError) as e:
             logger.error(f"Error in saliency assessment stage: {e}", exc_info=True)
             return {"error": str(e)}
 
@@ -369,7 +369,7 @@ class Tier1OrchestrationPipeline:
                 "avg_focus_weight": 0.75,  # Approximate
             }
 
-        except Exception as e:
+        except (OSError, ValueError, TypeError, KeyError, AttributeError) as e:
             logger.error(f"Error in auto-focus stage: {e}", exc_info=True)
             return {"error": str(e)}
 

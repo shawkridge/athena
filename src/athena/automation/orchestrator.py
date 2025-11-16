@@ -380,7 +380,7 @@ class AutomationOrchestrator:
                         actions.append(
                             "Auto-optimized plan due to health degradation"
                         )
-                    except Exception:
+                    except (OSError, ValueError, TypeError, KeyError, AttributeError):
                         pass
 
                 actions.append("Generated alert: Critical health degradation")

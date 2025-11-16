@@ -192,7 +192,7 @@ class EstimationImprover:
             )
             result = cursor.fetchone()
             return result[0] if result else 0
-        except Exception:
+        except (OSError, ValueError, TypeError, KeyError, IndexError):
             return 0
 
     def _generate_recommendations(
@@ -316,7 +316,7 @@ class EstimationImprover:
                 lower = max(int(estimate_minutes * 0.7), 15)
                 upper = int(estimate_minutes * 1.5)
                 return (lower, upper)
-        except Exception:
+        except (OSError, ValueError, TypeError, KeyError, IndexError):
             # Fallback
             lower = max(int(estimate_minutes * 0.7), 15)
             upper = int(estimate_minutes * 1.5)

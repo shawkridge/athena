@@ -386,7 +386,7 @@ class ConsolidationQualityMetrics:
                 )
                 if results:
                     answerable += 1
-            except Exception:
+            except (ValueError, TypeError, AttributeError, KeyError):
                 # Fallback: check via database directly
                 cursor = self.semantic_store.db.get_cursor()
                 cursor.execute(

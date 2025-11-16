@@ -42,7 +42,7 @@ class SemanticProcedureSearch:
         # Generate query embedding
         try:
             query_embedding = self.embedding_model.embed(query)
-        except Exception:
+        except (AttributeError, ValueError, TypeError):
             # Fallback to keyword search on embedding failure
             return self._keyword_search(query, limit)
 
@@ -251,7 +251,7 @@ class SemanticProcedureSearch:
             embedding = self.embedding_model.embed(text)
             self.procedure_cache[proc_id] = embedding
             return embedding
-        except Exception:
+        except (AttributeError, ValueError, TypeError, KeyError):
             return None
 
     def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:

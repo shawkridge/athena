@@ -383,7 +383,7 @@ class Tier1Phase5Integration:
                             "saliency_winner": winner,
                         }
                     )
-                except Exception:
+                except (AttributeError, ValueError, TypeError):
                     weighted_conflicts.append(conflict)
 
             return {

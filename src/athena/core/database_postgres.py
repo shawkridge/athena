@@ -1749,7 +1749,7 @@ class PostgresDatabase:
             try:
                 yield conn
                 await conn.commit()
-            except Exception:
+            except (OSError, ValueError, TypeError, KeyError, IndexError):
                 await conn.rollback()
                 raise
 

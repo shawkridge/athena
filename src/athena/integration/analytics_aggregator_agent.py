@@ -147,7 +147,7 @@ class AnalyticsAggregatorAgent:
             )
             result = cursor.fetchone()
             return result[0] if result else 0
-        except Exception:
+        except (OSError, ValueError, TypeError, KeyError, IndexError):
             return 0
 
     def _extract_patterns(self, patterns_data) -> list[str]:
@@ -377,7 +377,7 @@ class AnalyticsAggregatorAgent:
                 if summary.average_health_score > 0.5
                 else "high",
             }
-        except Exception:
+        except (OSError, ValueError, TypeError, KeyError, IndexError):
             return {
                 "error": "Unable to generate forecast",
                 "active_tasks": 0,

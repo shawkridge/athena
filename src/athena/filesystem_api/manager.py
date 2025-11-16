@@ -217,7 +217,7 @@ class FilesystemAPIManager:
                         "docstring": docstring,
                         "size_bytes": op_file.stat().st_size
                     })
-                except Exception:
+                except (OSError, IOError, PermissionError):
                     pass
 
             if operations:

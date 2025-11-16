@@ -493,5 +493,5 @@ class ReportGenerator:
                 f.write(content)
 
             return True
-        except Exception:
+        except (OSError, ValueError, TypeError, KeyError):
             return False

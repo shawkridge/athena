@@ -583,7 +583,7 @@ class LibraryDependencyAnalyzer:
                 return 1
             else:
                 return 0
-        except Exception:
+        except (AttributeError, ValueError, TypeError, ImportError):
             # Fallback to string comparison
             return -1 if version1 < version2 else (1 if version1 > version2 else 0)
 

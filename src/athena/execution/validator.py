@@ -338,7 +338,7 @@ class AssumptionValidator:
                 return abs(len(actual) - len(expected)) / len(expected)
 
             return 1.0 if actual != expected else 0.0
-        except Exception:
+        except (SyntaxError, ValueError, TypeError, AttributeError):
             return 0.5
 
     def _create_violation(

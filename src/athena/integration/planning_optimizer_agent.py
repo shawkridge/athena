@@ -209,7 +209,7 @@ class PlanningOptimizerAgent:
                     return True
 
             return False
-        except Exception:
+        except (OSError, ValueError, TypeError, KeyError, IndexError):
             return False
 
     async def get_alternative_plans(

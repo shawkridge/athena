@@ -443,7 +443,7 @@ class MemoryAPI:
         try:
             results = self.manager.retrieve(query, k=limit)
             return results.get("episodic", [])
-        except Exception:
+        except (json.JSONDecodeError, ValueError, TypeError, KeyError, AttributeError):
             return []
 
     # ===== PROCEDURAL MEMORY OPERATIONS =====
@@ -1727,7 +1727,7 @@ class MemoryAPI:
         try:
             from ..semantic.embeddings import EmbeddingManager
             return EmbeddingManager.create()
-        except Exception:
+        except (json.JSONDecodeError, ValueError, TypeError, KeyError, AttributeError):
             return None
 
     def search_marketplace(self, query: str, limit: int = 10, semantic: bool = True) -> List[Dict[str, Any]]:

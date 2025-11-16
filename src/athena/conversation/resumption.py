@@ -153,7 +153,7 @@ class SessionResumptionManager:
             else:
                 # If working memory not available, just use placeholder ID
                 item_id = -1
-        except Exception:
+        except (json.JSONDecodeError, ValueError, TypeError, KeyError):
             # Fallback if working memory can't be initialized
             item_id = -1
 
@@ -250,7 +250,7 @@ class SessionResumptionManager:
 
                 embedder = EmbeddingModel()
                 self._working_memory = EpisodicBuffer(self.db, embedder)
-            except Exception:
+            except (AttributeError, ValueError, TypeError):
                 return None
         return self._working_memory
 

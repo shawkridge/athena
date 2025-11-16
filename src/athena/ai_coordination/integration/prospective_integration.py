@@ -317,7 +317,7 @@ class ProspectiveIntegration:
                 })
 
             return tasks
-        except Exception:
+        except (OSError, ValueError, TypeError):
             # Table doesn't exist yet - return empty list
             return []
 
