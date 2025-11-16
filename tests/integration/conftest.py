@@ -24,18 +24,22 @@ from athena.manager import UnifiedMemoryManager
 
 
 @pytest.fixture(autouse=True)
-def disable_llm_features_for_tests():
-    """Disable LLM features for all tests.
+def disable_llm_for_tests():
+    """Disable LLM features for tests (use fallback validation instead).
 
-    LLM calls (to local servers or APIs) are disabled in tests to:
-    - Avoid external dependencies
-    - Speed up test execution
-    - Use deterministic fallback validation
-    - Allow tests to run without LLM services
+    Rationale:
+    - Tests should not depend on external services (no LLM servers, API calls)
+    - Fallback validation is equally tested code (same class as LLM path)
+    - Prevents 30-second timeouts when LLM service is unavailable
+    - Ensures deterministic, fast test execution
+    - Enables tests to run in any environment (CI/CD, offline, etc.)
+
+    To test LLM integration specifically, either:
+    1. Run with ENABLE_LLM_FEATURES=true and local LLM server running
+    2. Mock requests.post in individual tests
     """
     os.environ["ENABLE_LLM_FEATURES"] = "false"
     yield
-    # Cleanup if needed
     if "ENABLE_LLM_FEATURES" in os.environ:
         del os.environ["ENABLE_LLM_FEATURES"]
 
