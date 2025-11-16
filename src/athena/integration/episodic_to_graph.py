@@ -170,6 +170,10 @@ class EpisodicGraphExtractor:
         Uses System 1 (fast heuristics) to extract concepts. High-uncertainty
         extractions can be validated using System 2 (LLM).
 
+        Extracts both abstract concepts and code-aware entities:
+        - Abstract: Concepts, Patterns, Components, Decisions
+        - Code: Functions, Classes, Files, Modules
+
         Args:
             events: List of episodic events
 
@@ -181,9 +185,12 @@ class EpisodicGraphExtractor:
             "Pattern": set(),
             "Component": set(),
             "Decision": set(),
+            "Function": set(),
+            "Class": set(),
+            "File": set(),
         }
 
-        # Keywords for concept extraction
+        # Keywords for abstract concept extraction
         concept_patterns = {
             "Concept": [
                 r"\b(memory|learning|pattern|consolidation|knowledge|graph|embedding)\b",
@@ -208,7 +215,7 @@ class EpisodicGraphExtractor:
             content = event.get("content", "").lower()
             event_type = event.get("event_type", "").lower()
 
-            # Extract from content and event type
+            # Extract abstract concepts from content and event type
             text_to_analyze = f"{content} {event_type}"
 
             for concept_type, patterns in concept_patterns.items():
@@ -216,6 +223,27 @@ class EpisodicGraphExtractor:
                     matches = re.findall(pattern, text_to_analyze, re.IGNORECASE)
                     for match in matches:
                         concepts[concept_type].add(match.capitalize())
+
+            # Extract code-aware entities (System 1 + code metadata)
+            # Functions: from symbol_name when event involves function calls
+            if event.get("symbol_type") == "function" and event.get("symbol_name"):
+                func_name = event["symbol_name"].strip()
+                if func_name and len(func_name) > 1:  # Avoid single char names
+                    concepts["Function"].add(func_name)
+
+            # Classes: from symbol_type and symbol_name
+            if event.get("symbol_type") == "class" and event.get("symbol_name"):
+                class_name = event["symbol_name"].strip()
+                if class_name:
+                    concepts["Class"].add(class_name)
+
+            # Files: extract from file_path (last component)
+            if event.get("file_path"):
+                file_path = event["file_path"]
+                # Extract filename without full path
+                filename = file_path.split("/")[-1]
+                if filename and not filename.startswith("."):
+                    concepts["File"].add(filename)
 
         # Remove duplicates and empty sets
         return {k: v for k, v in concepts.items() if v}
@@ -269,40 +297,82 @@ class EpisodicGraphExtractor:
             Validated/refined concept dictionary
         """
         if not self.llm_client:
+            logger.debug("No LLM client available, using System 1 results")
             return concepts
 
         try:
             # Build prompt for LLM validation
             event_summaries = "\n".join([
-                f"Event: {e.get('event_type', 'unknown')}: {e.get('content', '')[:200]}"
+                f"[{e.get('event_type', 'unknown')}] {e.get('content', '')[:200]}"
                 for e in events[:5]  # Use first 5 events
             ])
 
             extracted_str = "\n".join([
                 f"- {ctype}: {', '.join(sorted(names))}"
-                for ctype, names in concepts.items()
+                for ctype, names in concepts.items() if names
             ])
 
-            prompt = f"""Analyze these episodic events and concepts:
+            prompt = f"""You are analyzing episodic events from a knowledge consolidation system.
 
 EVENTS:
 {event_summaries}
 
-EXTRACTED CONCEPTS:
+SYSTEM-1 EXTRACTED CONCEPTS:
 {extracted_str}
 
-Are these concepts appropriate? Should any be removed or added?
-Reply with JSON: {{"confirmed": ["concept1", ...], "remove": ["concept2", ...], "add": {{"ConceptType": ["new1", ...]}}}}"""
+Task: Validate these extracted concepts. For each concept type, identify which should be kept, removed, or added.
 
-            # Call LLM - this is a placeholder for actual implementation
-            logger.info("Validating extracted concepts with LLM (high-uncertainty case)")
+Respond with ONLY valid JSON (no markdown, no extra text):
+{{
+  "confirmed": ["concept1", "concept2"],
+  "remove": ["spurious_concept"],
+  "add": {{"ConceptType": ["new_concept1"], "Pattern": ["new_pattern"]}}
+}}"""
 
-            # In production, would call: response = self.llm_client.generate(prompt)
-            # For now, return original (graceful fallback)
-            return concepts
+            logger.info("Validating extracted concepts with LLM (System 2)")
+            response = self.llm_client.generate(prompt)
+
+            if not response:
+                logger.warning("LLM returned empty response, using System 1 results")
+                return concepts
+
+            # Parse JSON from LLM response
+            import json
+            try:
+                # Try to extract JSON from response (handle markdown formatting)
+                json_str = response
+                if "```json" in json_str:
+                    json_str = json_str.split("```json")[1].split("```")[0]
+                elif "```" in json_str:
+                    json_str = json_str.split("```")[1].split("```")[0]
+
+                validation = json.loads(json_str.strip())
+            except (json.JSONDecodeError, IndexError) as e:
+                logger.warning(f"Failed to parse LLM response as JSON: {e}, using System 1 results")
+                return concepts
+
+            # Apply validation results
+            validated_concepts = {k: v.copy() for k, v in concepts.items()}
+
+            # Remove spurious concepts
+            to_remove = set(validation.get("remove", []))
+            for concept_type in validated_concepts:
+                validated_concepts[concept_type] -= to_remove
+
+            # Add new concepts suggested by LLM
+            for concept_type, new_concepts in validation.get("add", {}).items():
+                if concept_type not in validated_concepts:
+                    validated_concepts[concept_type] = set()
+                validated_concepts[concept_type].update(new_concepts)
+
+            # Clean up empty sets
+            validated_concepts = {k: v for k, v in validated_concepts.items() if v}
+
+            logger.info(f"LLM validation complete: removed {len(to_remove)}, added {sum(len(v) for v in validation.get('add', {}).values())}")
+            return validated_concepts
 
         except Exception as e:
-            logger.warning(f"LLM validation failed, using System 1 results: {e}")
+            logger.warning(f"LLM validation failed: {e}, using System 1 results")
             return concepts
 
     def _add_observation(
