@@ -1,7 +1,14 @@
 """System health check tool - monitor memory system status."""
 import time
+import logging
 from typing import Any, Dict
 from athena.tools import BaseTool, ToolMetadata
+from athena.core.exceptions import (
+    DatabaseError,
+    handle_database_error,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class HealthCheckTool(BaseTool):
@@ -204,29 +211,29 @@ class HealthCheckTool(BaseTool):
                     try:
                         cursor.execute("SELECT COUNT(*) FROM episodic_events")
                         memory_stats["episodic"]["count"] = cursor.fetchone()[0]
-                    except:
-                        pass
+                    except (DatabaseError, Exception) as e:
+                        logger.debug(f"Table episodic_events not accessible: {e}")
 
                     # Get semantic memories count
                     try:
                         cursor.execute("SELECT COUNT(*) FROM semantic_memories")
                         memory_stats["semantic"]["count"] = cursor.fetchone()[0]
-                    except:
-                        pass
+                    except (DatabaseError, Exception) as e:
+                        logger.debug(f"Table semantic_memories not accessible: {e}")
 
                     # Get procedural procedures count
                     try:
                         cursor.execute("SELECT COUNT(*) FROM procedures")
                         memory_stats["procedural"]["count"] = cursor.fetchone()[0]
-                    except:
-                        pass
+                    except (DatabaseError, Exception) as e:
+                        logger.debug(f"Table procedures not accessible: {e}")
 
                     # Get prospective tasks count
                     try:
                         cursor.execute("SELECT COUNT(*) FROM tasks")
                         memory_stats["prospective"]["count"] = cursor.fetchone()[0]
-                    except:
-                        pass
+                    except (DatabaseError, Exception) as e:
+                        logger.debug(f"Table tasks not accessible: {e}")
 
                     # Get graph entities and relations
                     try:
@@ -234,8 +241,8 @@ class HealthCheckTool(BaseTool):
                         memory_stats["graph"]["entities"] = cursor.fetchone()[0]
                         cursor.execute("SELECT COUNT(*) FROM relations")
                         memory_stats["graph"]["relations"] = cursor.fetchone()[0]
-                    except:
-                        pass
+                    except (DatabaseError, Exception) as e:
+                        logger.debug(f"Graph tables not accessible: {e}")
 
                     # Database integrity check if requested (PostgreSQL)
                     if check_db:
@@ -244,7 +251,8 @@ class HealthCheckTool(BaseTool):
                             cursor.execute("SELECT 1")
                             cursor.fetchone()
                             db_integrity = "ok"  # If query succeeds, database is healthy
-                        except:
+                        except (DatabaseError, Exception) as e:
+                            logger.debug(f"Database integrity check failed: {e}")
                             db_integrity = "error"
 
                 except Exception as db_err:
