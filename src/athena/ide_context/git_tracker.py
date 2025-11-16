@@ -35,7 +35,7 @@ class GitTracker:
                 timeout=5,
             )
             return result.stdout.strip() if result.returncode == 0 else None
-        except Exception:
+        except (subprocess.SubprocessError, OSError, ValueError):
             return None
 
     def get_file_status(self, file_path: str) -> Optional[GitStatus]:
@@ -113,7 +113,7 @@ class GitTracker:
                 last_commit_message=last_commit_message,
                 last_commit_date=last_commit_date,
             )
-        except Exception as e:
+        except (subprocess.SubprocessError, OSError, ValueError, IndexError) as e:
             print(f"Error getting git status for {file_path}: {e}")
             return None
 
@@ -163,7 +163,7 @@ class GitTracker:
                 lines_deleted=lines_deleted,
                 change_type=GitChangeType.MODIFIED,
             )
-        except Exception as e:
+        except (subprocess.SubprocessError, OSError, ValueError, IndexError) as e:
             print(f"Error getting git diff for {file_path}: {e}")
             return None
 
@@ -191,7 +191,7 @@ class GitTracker:
                     files.append(str(self.repo_path / file_path))
 
             return files
-        except Exception:
+        except (subprocess.SubprocessError, OSError, ValueError):
             return []
 
     def get_untracked_files(self) -> list[str]:
@@ -216,7 +216,7 @@ class GitTracker:
                 for f in result.stdout.strip().split("\n")
                 if f.strip()
             ]
-        except Exception:
+        except (subprocess.SubprocessError, OSError, ValueError):
             return []
 
     def is_file_tracked(self, file_path: str) -> bool:
@@ -233,7 +233,7 @@ class GitTracker:
                 timeout=5,
             )
             return result.returncode == 0
-        except Exception:
+        except (subprocess.SubprocessError, OSError, ValueError):
             return False
 
     @staticmethod

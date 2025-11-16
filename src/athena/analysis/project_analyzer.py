@@ -182,7 +182,7 @@ class ProjectAnalyzer:
                 metrics = self._analyze_file(file_path)
                 relative_path = str(file_path.relative_to(self.project_path))
                 self.files[relative_path] = metrics
-            except Exception as e:
+            except (OSError, IOError, UnicodeDecodeError, ValueError) as e:
                 logger.warning(f"Failed to analyze {file_path}: {e}")
 
         logger.info(f"Scanned {len(self.files)} files")
@@ -203,7 +203,7 @@ class ProjectAnalyzer:
         try:
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 lines = len(f.readlines())
-        except Exception:
+        except (OSError, IOError, UnicodeDecodeError):
             lines = 0
 
         # Determine language
@@ -404,7 +404,7 @@ class ProjectAnalyzer:
                 with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()
                     count += len(re.findall(pattern, content))
-            except Exception:
+            except (OSError, IOError, UnicodeDecodeError):
                 pass
 
         return count
@@ -428,7 +428,7 @@ class ProjectAnalyzer:
                 import re
                 imports = re.findall(r'(?:import|require)\s+["\']([^"\']+)["\']', content)
                 dependencies.extend(imports)
-        except Exception:
+        except (OSError, IOError, UnicodeDecodeError):
             pass
 
         return list(set(dependencies))[:10]  # Limit to top 10
@@ -451,7 +451,7 @@ class ProjectAnalyzer:
                     # Filter public (not starting with _)
                     public = [f for f in funcs + classes if not f.startswith('_')]
                     interfaces.extend(public)
-            except Exception:
+            except (OSError, IOError, UnicodeDecodeError):
                 pass
 
         return list(set(interfaces))[:20]
@@ -486,7 +486,7 @@ class ProjectAnalyzer:
         try:
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
-        except Exception:
+        except (OSError, IOError, UnicodeDecodeError):
             return 0.5
 
         # Simple heuristic: count keywords that indicate complexity

@@ -96,7 +96,7 @@ class SaliencyCalculator:
             # Clamp to [0, 1]
             return max(0.0, min(1.0, saliency))
 
-        except Exception as e:
+        except (AttributeError, KeyError, ValueError, TypeError) as e:
             # Log error but return neutral score
             import logging
             logging.warning(f"Error computing saliency for memory {memory_id}: {e}")
@@ -163,7 +163,7 @@ class SaliencyCalculator:
             frequency_score = min(1.0, access_count / max(max_count, 1))
             return frequency_score
 
-        except Exception:
+        except (AttributeError, TypeError, ValueError, ZeroDivisionError):
             return 0.5  # Default to neutral
 
     def _compute_recency_score(
@@ -220,7 +220,7 @@ class SaliencyCalculator:
             recency_score = math.exp(-age_days / self.recency_half_life)
             return max(0.0, min(1.0, recency_score))
 
-        except Exception:
+        except (ValueError, TypeError, AttributeError, OverflowError):
             return 0.5
 
     def _compute_relevance_score(
@@ -297,11 +297,11 @@ class SaliencyCalculator:
                 relevance_score = (similarity + 1.0) / 2.0
                 return max(0.0, min(1.0, relevance_score))
 
-            except Exception:
+            except (AttributeError, ValueError, TypeError, ZeroDivisionError):
                 # Fallback if embedding fails
                 return 0.5
 
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             return 0.5
 
     def _compute_surprise_score(
@@ -387,10 +387,10 @@ class SaliencyCalculator:
                 surprise_score = 1.0 - (avg_similarity + 1.0) / 2.0
                 return max(0.0, min(1.0, surprise_score))
 
-            except Exception:
+            except (AttributeError, ValueError, TypeError, ZeroDivisionError):
                 return 0.0
 
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             return 0.0
 
 

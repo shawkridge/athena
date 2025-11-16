@@ -221,7 +221,7 @@ class PythonSymbolParser:
                 metrics=metrics
             )
 
-        except Exception as e:
+        except (AttributeError, ValueError, TypeError, IndexError):
             # Handle parsing errors gracefully
             return None
 
@@ -269,7 +269,7 @@ class PythonSymbolParser:
                 metrics=metrics
             )
 
-        except Exception:
+        except (AttributeError, ValueError, TypeError, IndexError):
             return None
 
     @staticmethod
@@ -400,7 +400,7 @@ class JavaScriptSymbolParser:
                 if symbol:
                     symbols.append(symbol)
 
-        except Exception as e:
+        except (AttributeError, ValueError, TypeError) as e:
             return SymbolAnalysisResult(
                 file_path=file_path,
                 language=language,
@@ -451,7 +451,7 @@ class JavaScriptSymbolParser:
                 visibility="public"
             )
 
-        except Exception:
+        except (AttributeError, ValueError, TypeError, IndexError):
             return None
 
     @staticmethod
@@ -494,7 +494,7 @@ class JavaScriptSymbolParser:
                 is_async=is_async
             )
 
-        except Exception:
+        except (AttributeError, ValueError, TypeError, IndexError):
             return None
 
     @staticmethod
@@ -522,7 +522,7 @@ class JavaScriptSymbolParser:
                 visibility="public"
             )
 
-        except Exception:
+        except (AttributeError, ValueError, TypeError, IndexError):
             return None
 
 

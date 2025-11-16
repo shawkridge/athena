@@ -954,7 +954,7 @@ class PlanningStore:
                 last_used=datetime.fromtimestamp(row[16]) if row[16] else None,
                 feedback_count=row[17],
             )
-        except Exception:
+        except (json.JSONDecodeError, ValueError, TypeError, IndexError, KeyError):
             return None
 
     @staticmethod
@@ -983,7 +983,7 @@ class PlanningStore:
                 last_used=datetime.fromtimestamp(row[15]) if row[15] else None,
                 usage_count=row[16],
             )
-        except Exception:
+        except (json.JSONDecodeError, ValueError, TypeError, IndexError, KeyError):
             return None
 
     @staticmethod
@@ -1012,7 +1012,7 @@ class PlanningStore:
                 execution_count=row[15],
                 successful_executions=row[16],
             )
-        except Exception:
+        except (json.JSONDecodeError, ValueError, TypeError, IndexError, KeyError):
             return None
 
     @staticmethod
@@ -1043,7 +1043,7 @@ class PlanningStore:
                 execution_count=row[17],
                 violations_caught=row[18],
             )
-        except Exception:
+        except (json.JSONDecodeError, ValueError, TypeError, IndexError, KeyError):
             return None
 
     @staticmethod
@@ -1074,5 +1074,5 @@ class PlanningStore:
                 executor_agent=row[17],
                 phase_number=row[18],
             )
-        except Exception:
+        except (json.JSONDecodeError, ValueError, TypeError, IndexError, KeyError):
             return None
