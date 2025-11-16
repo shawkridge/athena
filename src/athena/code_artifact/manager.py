@@ -311,10 +311,13 @@ class CodeArtifactManager:
         import ast
 
         # Check for signature changes
+        import logging
+        logger = logging.getLogger(__name__)
         try:
             old_tree = ast.parse(old_content) if old_content else None
             new_tree = ast.parse(new_content)
-        except:
+        except SyntaxError as e:
+            logger.debug(f"Code syntax error during breaking change check: {e}")
             return False
 
         if not old_tree:
@@ -496,11 +499,14 @@ class CodeArtifactManager:
 
     def _get_entity_source(self, entity: CodeEntity) -> Optional[str]:
         """Get source code for entity."""
+        import logging
+        logger = logging.getLogger(__name__)
         try:
             with open(entity.file_path, "r", encoding="utf-8") as f:
                 lines = f.readlines()
                 return "".join(lines[entity.start_line - 1 : entity.end_line])
-        except:
+        except (OSError, IOError, UnicodeDecodeError) as e:
+            logger.debug(f"Failed to read entity source from {entity.file_path}: {e}")
             return None
 
     def _calculate_halstead_difficulty(self, dist_op: int, dist_opd: int, tot_opd: int) -> float:
