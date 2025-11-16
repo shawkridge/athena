@@ -80,9 +80,15 @@ class EpisodicEvent(BaseModel):
     learned: Optional[str] = None
     confidence: float = 1.0
 
-    # Consolidation tracking
+    # Consolidation tracking (legacy, kept for backward compatibility)
     consolidation_status: Optional[str] = None  # 'unconsolidated', 'consolidated'
     consolidated_at: Optional[datetime] = None
+
+    # Lifecycle management (new activation-based system)
+    lifecycle_status: str = "active"  # 'active', 'consolidated', 'archived'
+    consolidation_score: float = Field(default=0.0, ge=0.0, le=1.0)  # Likelihood pattern was extracted
+    last_activation: datetime = Field(default_factory=datetime.now)  # Last time accessed
+    activation_count: int = 0  # How many times retrieved
 
     # Code-aware tracking (optional fields for code events)
     code_event_type: Optional[CodeEventType] = None

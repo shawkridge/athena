@@ -428,6 +428,183 @@ class UnifiedMemoryManager:
 
         return stored_ids
 
+    async def complete_task_with_consolidation(
+        self, task_id: int, project_id: Optional[int] = None
+    ) -> dict:
+        """Complete a task and consolidate related episodic events.
+
+        When a task is completed, this method:
+        1. Marks the task as completed in prospective memory
+        2. Finds all episodic events related to this task
+        3. Extracts patterns via consolidation
+        4. Marks related events as "consolidated"
+        5. Archives old events with low importance
+
+        Args:
+            task_id: Task ID to complete
+            project_id: Project ID (default: current project)
+
+        Returns:
+            Dict with consolidation results
+        """
+        if not project_id:
+            project = self.project_manager.get_or_create_project()
+            project_id = project.id if project else None
+
+        if not project_id:
+            return {"error": "No project available"}
+
+        # 1. Mark task as completed
+        task = self.prospective.get(task_id)
+        if not task:
+            return {"error": f"Task {task_id} not found"}
+
+        from .prospective.models import TaskStatus
+
+        self.prospective.update_task_status(task_id, TaskStatus.COMPLETED)
+
+        # 2. Find related episodic events
+        # Events are related if they occurred between task creation and completion
+        related_events = []
+        all_events = self.episodic.list_all()
+        task_start = task.created_at.timestamp() if hasattr(task.created_at, "timestamp") else 0
+        task_end = datetime.now().timestamp()
+
+        for event in all_events:
+            event_ts = event.timestamp.timestamp() if hasattr(event.timestamp, "timestamp") else 0
+            # Consider events in the task's time window
+            if task_start <= event_ts <= task_end:
+                related_events.append(event)
+
+        if not related_events:
+            return {
+                "task_id": task_id,
+                "status": "completed",
+                "consolidated_events": 0,
+                "patterns_extracted": 0,
+            }
+
+        # 3. Extract patterns via consolidation
+        consolidation_result = await self.consolidation.consolidate_async(
+            events=related_events, consolidation_type="task_completion"
+        )
+
+        # 4. Mark related events as consolidated
+        consolidation_score = consolidation_result.get("confidence", 0.0) if consolidation_result else 0.0
+        from .episodic.activation import should_archive
+
+        archived_count = 0
+        for event in related_events:
+            event.lifecycle_status = "consolidated"
+            event.consolidation_score = consolidation_score
+            event.last_activation = datetime.now()
+
+            # Archive if old and low importance
+            if should_archive(event):
+                event.lifecycle_status = "archived"
+                archived_count += 1
+
+            self.episodic.update(event)
+
+        return {
+            "task_id": task_id,
+            "status": "completed",
+            "consolidated_events": len(related_events),
+            "archived_events": archived_count,
+            "patterns_extracted": consolidation_result.get("pattern_count", 0)
+            if consolidation_result
+            else 0,
+            "consolidation_score": consolidation_score,
+        }
+
+    async def run_periodic_archival(
+        self,
+        consolidation_threshold_days: int = 7,
+        archive_threshold_days: int = 30,
+        project_id: Optional[int] = None,
+    ) -> dict:
+        """Run sleep-like consolidation and archival job.
+
+        This is typically called nightly or at session end to:
+        1. Find events ready for consolidation (7+ days old, accessed)
+        2. Find events to archive (30+ days old, low importance)
+        3. Extract patterns from consolidatable events
+        4. Update lifecycle status and activation counts
+
+        Args:
+            consolidation_threshold_days: Days before consolidation eligible
+            archive_threshold_days: Days before archival eligible
+            project_id: Project ID (default: current project)
+
+        Returns:
+            Dict with consolidation/archival results
+        """
+        if not project_id:
+            project = self.project_manager.get_or_create_project()
+            project_id = project.id if project else None
+
+        if not project_id:
+            return {"error": "No project available"}
+
+        # Get all active events
+        all_events = self.episodic.list_all()
+        active_events = [e for e in all_events if e.lifecycle_status == "active"]
+
+        if not active_events:
+            return {
+                "project_id": project_id,
+                "status": "no_events_to_process",
+                "consolidation_stats": {"total": 0, "consolidated": 0, "archived": 0},
+            }
+
+        # Identify candidates for consolidation/archival
+        from .episodic.activation import consolidate_and_archive_batch
+
+        batch_result = consolidate_and_archive_batch(
+            active_events,
+            consolidation_threshold_days=consolidation_threshold_days,
+            archive_threshold_days=archive_threshold_days,
+        )
+
+        to_consolidate = batch_result["to_consolidate"]
+        to_archive = batch_result["to_archive"]
+
+        # Extract patterns from consolidatable events
+        consolidation_count = 0
+        if to_consolidate:
+            consolidation_result = await self.consolidation.consolidate_async(
+                events=to_consolidate, consolidation_type="periodic_archival"
+            )
+            consolidation_score = consolidation_result.get("confidence", 0.0) if consolidation_result else 0.0
+
+            # Update consolidatable events
+            for event in to_consolidate:
+                event.lifecycle_status = "consolidated"
+                event.consolidation_score = consolidation_score
+                event.last_activation = datetime.now()
+                self.episodic.update(event)
+                consolidation_count += 1
+
+        # Archive old, low-importance events
+        archived_count = 0
+        for event in to_archive:
+            event.lifecycle_status = "archived"
+            event.last_activation = datetime.now()
+            self.episodic.update(event)
+            archived_count += 1
+
+        return {
+            "project_id": project_id,
+            "status": "completed",
+            "consolidation_stats": {
+                "total_processed": len(active_events),
+                "consolidated": consolidation_count,
+                "archived": archived_count,
+                "remaining_active": len(batch_result["keep_active"]),
+            },
+            "consolidation_details": batch_result["stats"],
+        }
+
     def _classify_query(self, query: str) -> str:
         """Classify query type.
 

@@ -143,12 +143,18 @@ class MemoryBridge:
     def get_active_memories(
         self, project_id: int, limit: int = 7
     ) -> Dict[str, Any]:
-        """Get active working memory items (7±2 cognitive limit) with optimal ranking.
+        """Get active working memory items (7±2 cognitive limit) with activation-based ranking.
 
         Returns summary only (300 tokens max).
 
-        RANKING: Uses combined score = importance × contextuality × actionability
-        This ensures items with full context are ranked highest.
+        RANKING: Uses ACT-R style activation decay based on:
+        - Recency (time since last access)
+        - Frequency (access count)
+        - Importance (user-provided score)
+        - Actionability (whether item has clear next steps)
+        - Consolidation likelihood (whether pattern was extracted)
+
+        Only includes items with lifecycle_status='active' (not consolidated/archived).
 
         OPTIMIZATION (Phase 2): Results are cached with 5-minute L1 TTL and
         persistent L2 cache. Repeated calls within 5 minutes return from memory
@@ -159,23 +165,39 @@ class MemoryBridge:
             limit: Maximum items to return (default 7±2)
 
         Returns:
-            Dict with summary of active items (ranked optimally)
+            Dict with summary of active items (ranked by activation)
         """
         try:
             with PerformanceTimer("get_active_memories"):
-                # Enhanced query using combined ranking score for optimal working memory
-                # Ranking formula: importance × contextuality × actionability
+                # Activation-based ranking for lifecycle management
+                # Filter by lifecycle_status='active' to exclude consolidated/archived
+                # Compute activation using ACT-R decay function
                 query = """
                 SELECT
                     id, event_type, content, timestamp,
                     importance_score, actionability_score, context_completeness_score,
                     project_name, project_goal, project_phase_status,
-                    (COALESCE(importance_score, 0.5) *
-                     COALESCE(context_completeness_score, 0.5) *
-                     COALESCE(actionability_score, 0.5)) as combined_rank
+                    lifecycle_status, consolidation_score, last_activation, activation_count,
+                    -- ACT-R activation decay formula
+                    -- base_level = -d * ln(t) where d=0.5, t=hours_since_access
+                    (-0.5 * LN(GREATEST(
+                        EXTRACT(EPOCH FROM (NOW() - last_activation)) / 3600.0,
+                        0.1
+                    ))) +
+                    -- Frequency bonus: ln(activation_count)
+                    (LN(GREATEST(activation_count, 1)) * 0.1) +
+                    -- Consolidation boost
+                    (COALESCE(consolidation_score, 0.0) * 1.0) +
+                    -- Importance boost
+                    (CASE WHEN COALESCE(importance_score, 0.0) > 0.7 THEN 1.5 ELSE 0.0 END) +
+                    -- Actionability boost
+                    (CASE WHEN COALESCE(actionability_score, 0.0) > 0.7 THEN 1.0 ELSE 0.0 END) +
+                    -- Success boost
+                    (CASE WHEN outcome = 'success' THEN 0.5 ELSE 0.0 END)
+                    as activation
                 FROM episodic_events
-                WHERE project_id = %s
-                ORDER BY combined_rank DESC, timestamp DESC
+                WHERE project_id = %s AND lifecycle_status = 'active'
+                ORDER BY activation DESC, timestamp DESC
                 LIMIT %s
                 """
                 params = (project_id, limit)
@@ -198,6 +220,7 @@ class MemoryBridge:
                 items = []
                 for row in rows:
                     importance = row[4] or 0.5
+                    activation = row[14] or 0.0  # Computed activation score
                     items.append({
                         "id": row[0],
                         "type": row[1],
@@ -209,16 +232,20 @@ class MemoryBridge:
                         "project": row[7],
                         "goal": row[8],
                         "phase": row[9],
-                        "combined_rank": row[10] or 0.0,
+                        "lifecycle_status": row[10],  # active, consolidated, archived
+                        "consolidation_score": row[11] or 0.0,
+                        "activation_count": row[13] or 0,
+                        "activation": activation,  # ACT-R computed score
                     })
 
                 return {
                     "count": len(items),
                     "items": items,
-                    "ranking_method": "importance × contextuality × actionability",
+                    "ranking_method": "ACT-R activation decay (recency + frequency + importance + actionability)",
+                    "lifecycle_filter": "active only",
                     "activation_range": [
-                        min(i["importance"] for i in items) if items else 0,
-                        max(i["importance"] for i in items) if items else 1,
+                        min(i["activation"] for i in items) if items else 0,
+                        max(i["activation"] for i in items) if items else 1,
                     ],
                 }
         except Exception as e:
