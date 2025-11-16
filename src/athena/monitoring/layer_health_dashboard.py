@@ -16,7 +16,11 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 import json
 import time
+import logging
 from athena.core.database import Database
+from athena.core.exceptions import DatabaseError
+
+logger = logging.getLogger(__name__)
 
 
 class HealthStatus(str, Enum):
@@ -282,7 +286,8 @@ class LayerHealthMonitor:
 
             self._get_cursor().execute(query, params)
             domain_count = self._get_cursor().fetchone()[0]
-        except:
+        except (DatabaseError, Exception) as e:
+            logger.debug(f"Failed to query meta-memory domains: {e}")
             domain_count = 0
 
         # Meta-memory is always active if system is running
@@ -331,7 +336,8 @@ class LayerHealthMonitor:
                 if last_run_timestamp
                 else float("inf")
             )
-        except:
+        except (DatabaseError, Exception) as e:
+            logger.debug(f"Failed to query consolidation runs: {e}")
             consolidation_count = 0
             last_run_age = float("inf")
 
@@ -377,7 +383,8 @@ class LayerHealthMonitor:
 
             self._get_cursor().execute(query, params)
             active_items = self._get_cursor().fetchone()[0]
-        except:
+        except (DatabaseError, Exception) as e:
+            logger.debug(f"Failed to query working memory items: {e}")
             active_items = 0
 
         # Working memory target is 7 items (Miller's Law)
