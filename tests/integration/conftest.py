@@ -23,9 +23,17 @@ from athena.graph.store import GraphStore
 from athena.manager import UnifiedMemoryManager
 
 
+def pytest_configure(config):
+    """Register custom pytest markers."""
+    config.addinivalue_line(
+        "markers",
+        "e2e: mark test as end-to-end (requires external services like LLM)"
+    )
+
+
 @pytest.fixture(autouse=True)
-def disable_llm_for_tests():
-    """Disable LLM features for tests (use fallback validation instead).
+def disable_llm_for_tests(request):
+    """Disable LLM features for tests UNLESS marked with @pytest.mark.e2e.
 
     Rationale:
     - Tests should not depend on external services (no LLM servers, API calls)
@@ -34,14 +42,21 @@ def disable_llm_for_tests():
     - Ensures deterministic, fast test execution
     - Enables tests to run in any environment (CI/CD, offline, etc.)
 
-    To test LLM integration specifically, either:
-    1. Run with ENABLE_LLM_FEATURES=true and local LLM server running
-    2. Mock requests.post in individual tests
+    E2E tests (marked with @pytest.mark.e2e) ENABLE LLM to validate real integration.
+
+    Run tests:
+    - Fast unit/integration: pytest tests/integration/test_task_learning_pipeline.py
+    - Full E2E with LLM: pytest -m e2e tests/e2e/
     """
-    os.environ["ENABLE_LLM_FEATURES"] = "false"
-    yield
-    if "ENABLE_LLM_FEATURES" in os.environ:
-        del os.environ["ENABLE_LLM_FEATURES"]
+    # Skip LLM disabling for E2E tests (they need real LLM)
+    if "e2e" in request.keywords:
+        yield
+    else:
+        # Fast tests: disable LLM features
+        os.environ["ENABLE_LLM_FEATURES"] = "false"
+        yield
+        if "ENABLE_LLM_FEATURES" in os.environ:
+            del os.environ["ENABLE_LLM_FEATURES"]
 
 
 @pytest.fixture
