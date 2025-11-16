@@ -4,10 +4,173 @@ from typing import Any, Dict, Optional, Callable
 import logging
 import sys
 from io import StringIO
+import re
 
 from .models import Skill, SkillParameter
 
 logger = logging.getLogger(__name__)
+
+
+class ParameterTypeChecker:
+    """Validates parameter types at runtime.
+
+    Supports basic types (str, int, float, bool), complex types (List[T], Dict[K,V]),
+    and Optional types. Provides clear error messages for mismatches.
+    """
+
+    # Mapping of type string names to Python types
+    BUILTIN_TYPES = {
+        'str': str,
+        'int': int,
+        'float': float,
+        'bool': bool,
+        'bytes': bytes,
+        'list': list,
+        'dict': dict,
+        'tuple': tuple,
+        'set': set,
+        'frozenset': frozenset,
+    }
+
+    @classmethod
+    def check_type(cls, value: Any, type_spec: str) -> tuple[bool, Optional[str]]:
+        """Check if a value matches the specified type.
+
+        Args:
+            value: The value to check
+            type_spec: Type specification string (e.g., 'str', 'List[int]', 'Optional[Dict[str,Any]]')
+
+        Returns:
+            Tuple of (is_valid, error_message)
+            - is_valid: True if value matches type
+            - error_message: None if valid, error description if invalid
+        """
+        # Handle None for Optional types
+        if value is None:
+            if 'Optional' in type_spec or '?' in type_spec:
+                return True, None
+            if type_spec in ('NoneType', 'None'):
+                return True, None
+            return False, f"None not allowed for type '{type_spec}'"
+
+        # Clean up type spec
+        type_spec = type_spec.strip()
+
+        # Handle Optional[T] → T or None
+        if type_spec.startswith('Optional[') and type_spec.endswith(']'):
+            inner_type = type_spec[9:-1]  # Extract T from Optional[T]
+            is_valid, error = cls.check_type(value, inner_type)
+            return is_valid, error
+
+        # Handle List[T]
+        if type_spec.startswith('List[') and type_spec.endswith(']'):
+            if not isinstance(value, list):
+                return False, f"Expected list, got {type(value).__name__}"
+            inner_type = type_spec[5:-1]  # Extract T from List[T]
+            for i, item in enumerate(value):
+                is_valid, error = cls.check_type(item, inner_type)
+                if not is_valid:
+                    return False, f"List item {i}: {error}"
+            return True, None
+
+        # Handle Dict[K,V]
+        if type_spec.startswith('Dict[') and type_spec.endswith(']'):
+            if not isinstance(value, dict):
+                return False, f"Expected dict, got {type(value).__name__}"
+            # Parse key and value types (handles nested generics)
+            inner = type_spec[5:-1]
+            key_type, val_type = cls._split_generic_params(inner)
+            for k, v in value.items():
+                is_valid, error = cls.check_type(k, key_type)
+                if not is_valid:
+                    return False, f"Dict key {k}: {error}"
+                is_valid, error = cls.check_type(v, val_type)
+                if not is_valid:
+                    return False, f"Dict value for key {k}: {error}"
+            return True, None
+
+        # Handle Tuple[T1, T2, ...]
+        if type_spec.startswith('Tuple[') and type_spec.endswith(']'):
+            if not isinstance(value, tuple):
+                return False, f"Expected tuple, got {type(value).__name__}"
+            inner = type_spec[6:-1]
+            types = cls._split_generic_params(inner, split_all=True)
+            if len(types) == 1 and types[0].endswith('...'):
+                # Tuple[T, ...] means variable-length tuple
+                elem_type = types[0][:-3]
+                for i, item in enumerate(value):
+                    is_valid, error = cls.check_type(item, elem_type)
+                    if not is_valid:
+                        return False, f"Tuple item {i}: {error}"
+            else:
+                # Fixed-length tuple
+                if len(value) != len(types):
+                    return False, f"Expected tuple of length {len(types)}, got {len(value)}"
+                for i, (item, expected_type) in enumerate(zip(value, types)):
+                    is_valid, error = cls.check_type(item, expected_type)
+                    if not is_valid:
+                        return False, f"Tuple item {i}: {error}"
+            return True, None
+
+        # Handle Union[T1, T2, ...]
+        if type_spec.startswith('Union[') and type_spec.endswith(']'):
+            inner = type_spec[6:-1]
+            types = cls._split_generic_params(inner, split_all=True)
+            for t in types:
+                is_valid, _ = cls.check_type(value, t)
+                if is_valid:
+                    return True, None
+            return False, f"Value does not match any type in Union: {', '.join(types)}"
+
+        # Handle simple/builtin types
+        if type_spec in cls.BUILTIN_TYPES:
+            expected_type = cls.BUILTIN_TYPES[type_spec]
+            if isinstance(value, expected_type):
+                return True, None
+            return False, f"Expected {type_spec}, got {type(value).__name__}"
+
+        # Handle Any type
+        if type_spec in ('Any', 'typing.Any', 'object'):
+            return True, None
+
+        # If we don't recognize the type, log warning but allow it
+        # (may be custom class or forward reference)
+        logger.debug(f"Unknown type spec '{type_spec}', allowing value of type {type(value).__name__}")
+        return True, None
+
+    @staticmethod
+    def _split_generic_params(params_str: str, split_all: bool = False) -> list[str]:
+        """Split generic type parameters, respecting nested brackets.
+
+        Examples:
+            'str, int' → ['str', 'int']
+            'List[str], Dict[str,int]' → ['List[str]', 'Dict[str,int]']
+        """
+        params = []
+        current = []
+        depth = 0
+
+        for char in params_str:
+            if char in '[{(':
+                depth += 1
+                current.append(char)
+            elif char in ']})':
+                depth -= 1
+                current.append(char)
+            elif char == ',' and depth == 0:
+                param = ''.join(current).strip()
+                if param:
+                    params.append(param)
+                current = []
+            else:
+                current.append(char)
+
+        if current:
+            param = ''.join(current).strip()
+            if param:
+                params.append(param)
+
+        return params
 
 
 class SkillExecutor:
@@ -111,7 +274,14 @@ class SkillExecutor:
         for param in skill.metadata.parameters:
             if param.name in provided:
                 value = provided[param.name]
-                # TODO: Add type checking if needed
+
+                # Type check the provided value
+                is_valid, error = ParameterTypeChecker.check_type(value, param.type)
+                if not is_valid:
+                    raise TypeError(
+                        f"Parameter '{param.name}': {error} (expected type: {param.type})"
+                    )
+
                 bound[param.name] = value
 
             elif param.default is not None:

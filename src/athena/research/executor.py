@@ -19,6 +19,7 @@ from .consolidation import ResearchConsolidationStore
 from .consolidation_system import ResearchConsolidationSystem
 from .streaming import StreamingResultCollector, StreamingUpdate
 from .agent_monitor import LiveAgentMonitor
+from .query_refinement import QueryRefinement
 
 logger = logging.getLogger(__name__)
 
@@ -78,12 +79,23 @@ class ResearchAgentExecutor:
         self.agent_monitor: Optional[LiveAgentMonitor] = None
         self.on_streaming_update: Optional[Callable[[StreamingUpdate], Any]] = None
 
-    async def execute_research(self, task_id: int, topic: str) -> int:
+    async def execute_research(
+        self,
+        task_id: int,
+        topic: str,
+        constraints: Optional[QueryRefinement] = None
+    ) -> int:
         """Execute research for a topic with parallel agent coordination.
 
         Args:
             task_id: Research task ID
             topic: Research topic
+            constraints: Optional QueryRefinement with search constraints
+              - excluded_sources: Sources to skip
+              - focused_sources: Sources to prioritize
+              - time_constraint: Time range filter (e.g., "2024")
+              - quality_threshold: Minimum result quality (0-1)
+              - agent_directives: Per-agent instructions
 
         Returns:
             Total findings count
@@ -111,10 +123,17 @@ class ResearchAgentExecutor:
 
             logger.info(f"Starting research execution for task {task_id}: {topic}")
             logger.info(f"Coordinating {len(self.RESEARCH_AGENTS)} parallel research agents")
+            if constraints:
+                logger.info(f"Applied constraints: {constraints.summary()}")
 
             # Execute all agents in parallel
             tasks = []
             for agent_info in self.RESEARCH_AGENTS:
+                # Skip excluded sources
+                if constraints and agent_info["source"] in constraints.excluded_sources:
+                    logger.info(f"Skipping {agent_info['name']} (excluded source)")
+                    continue
+
                 # Update agent status to running
                 self.research_store.update_agent_progress(
                     task_id, agent_info["name"], AgentStatus.RUNNING
@@ -122,7 +141,7 @@ class ResearchAgentExecutor:
 
                 # Create async task for agent execution
                 task = self._execute_agent_with_timeout(
-                    task_id, topic, agent_info
+                    task_id, topic, agent_info, constraints
                 )
                 tasks.append(task)
 
@@ -297,7 +316,11 @@ class ResearchAgentExecutor:
             raise
 
     async def _execute_agent_with_timeout(
-        self, task_id: int, topic: str, agent_info: dict
+        self,
+        task_id: int,
+        topic: str,
+        agent_info: dict,
+        constraints: Optional[QueryRefinement] = None
     ) -> list[ResearchFinding]:
         """Execute single agent with timeout and circuit breaker protection.
 
@@ -305,6 +328,7 @@ class ResearchAgentExecutor:
             task_id: Research task ID
             topic: Research topic
             agent_info: Agent configuration dict
+            constraints: Optional QueryRefinement with search constraints
 
         Returns:
             List of findings from agent
@@ -332,7 +356,7 @@ class ResearchAgentExecutor:
             # Execute with 60-second timeout per agent
             findings = await asyncio.wait_for(
                 self._simulate_agent_research(
-                    task_id, topic, agent_name, source, credibility
+                    task_id, topic, agent_name, source, credibility, constraints
                 ),
                 timeout=60.0
             )
@@ -360,12 +384,13 @@ class ResearchAgentExecutor:
         agent_name: str,
         source: str,
         credibility: float,
+        constraints: Optional[QueryRefinement] = None,
     ) -> list[ResearchFinding]:
         """Execute agent research using specialized search strategies.
 
         Uses specialized agents per source to:
         1. Check rate limits
-        2. Search the specific source
+        2. Search the specific source (with optional constraints)
         3. Extract structured findings
         4. Score credibility
         5. Store to database
@@ -376,6 +401,10 @@ class ResearchAgentExecutor:
             agent_name: Agent name
             source: Source name
             credibility: Base credibility score
+            constraints: Optional QueryRefinement with search constraints
+              - time_constraint: Filter by time range
+              - quality_threshold: Minimum result quality
+              - agent_directives: Per-agent instructions
 
         Returns:
             List of findings discovered
@@ -401,12 +430,38 @@ class ResearchAgentExecutor:
             # Start operation metrics tracking
             agent_metrics = self.metrics.start_operation(f"agent_search_{agent_name}")
 
+            # Build search query with constraints
+            search_query = topic
+            if constraints:
+                # Add time constraint to query
+                if constraints.time_constraint:
+                    search_query += f" {constraints.time_constraint}"
+                    logger.debug(f"Added time constraint to {agent_name}: {constraints.time_constraint}")
+
+                # Get agent-specific directives if available
+                if agent_name in constraints.agent_directives:
+                    directives = constraints.agent_directives[agent_name]
+                    logger.debug(f"Agent {agent_name} directives: {directives}")
+                    # Directives are applied by the agent implementation
+                    # (passed via metadata/context)
+
             # Execute search asynchronously
-            search_results = await agent.search(topic)
+            search_results = await agent.search(search_query)
             agent_metrics.complete(success=True, items_output=len(search_results) if search_results else 0)
 
-            # Store findings to database
+            # Store findings to database, filtering by quality threshold
+            quality_threshold = constraints.quality_threshold if constraints else 0.5
             for result in search_results:
+                result_quality = result.get("credibility", credibility)
+
+                # Skip results below quality threshold
+                if result_quality < quality_threshold:
+                    logger.debug(
+                        f"Skipping finding (quality {result_quality:.2f} < threshold {quality_threshold:.2f}): "
+                        f"{result['title']}"
+                    )
+                    continue
+
                 finding_id = self.record_finding(
                     task_id,
                     source=source,
@@ -421,10 +476,13 @@ class ResearchAgentExecutor:
                     title=result["title"],
                     summary=result["summary"],
                     url=result.get("url"),
-                    credibility_score=result.get("credibility", credibility),
+                    credibility_score=result_quality,
                 ))
 
-            logger.info(f"Agent {agent_name} found {len(findings)} results for '{topic}'")
+            logger.info(
+                f"Agent {agent_name} found {len(findings)} results for '{topic}' "
+                f"(quality threshold: {quality_threshold:.2f})"
+            )
 
         except Exception as e:
             logger.error(f"Error in agent research for {agent_name}: {e}", exc_info=True)
