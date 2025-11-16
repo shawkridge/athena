@@ -107,7 +107,7 @@ class BottleneckDetector:
                     )
 
             return bottlenecks
-        except Exception:
+        except (OSError, ValueError, TypeError, KeyError, IndexError):
             return []
 
     def detect_blocked_tasks(self, project_id: int) -> List[Bottleneck]:
@@ -184,7 +184,7 @@ class BottleneckDetector:
                     seen_blockers.add(blocker_reason)
 
             return bottlenecks
-        except Exception:
+        except (OSError, ValueError, TypeError, KeyError, IndexError):
             return []
 
     def detect_tool_contention(self, project_id: int) -> List[Bottleneck]:
@@ -248,7 +248,7 @@ class BottleneckDetector:
                     )
 
             return bottlenecks
-        except Exception:
+        except (OSError, ValueError, TypeError, KeyError, IndexError):
             return []
 
     def get_project_bottlenecks(

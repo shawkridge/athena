@@ -222,7 +222,7 @@ class LibraryDependencyAnalyzer:
                 # Parse JSON response
                 metadata = json.loads(content) if isinstance(content, str) else content
                 return metadata.get("info", {})
-            except Exception as e:
+            except (json.JSONDecodeError, ValueError, TypeError, KeyError, AttributeError) as e:
                 logger.debug(f"PyPI fetch failed: {e}")
                 return None
 
@@ -417,13 +417,13 @@ class LibraryDependencyAnalyzer:
                             })
                     except asyncio.TimeoutError:
                         continue
-                    except Exception:
+                    except (json.JSONDecodeError, ValueError, TypeError, KeyError, AttributeError):
                         continue
 
                 self.vulnerability_cache[library_name] = vulnerabilities
                 return vulnerabilities
 
-            except Exception:
+            except (OSError, ValueError, TypeError, AttributeError):
                 return []
 
         except Exception as e:

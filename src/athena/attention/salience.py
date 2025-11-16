@@ -122,7 +122,7 @@ Respond with only a number between 0.0 (completely expected) and 1.0 (very surpr
             response = llm_client.complete(prompt)
             score = float(response.strip())
             return max(0.0, min(1.0, score))
-        except Exception:
+        except (ValueError, TypeError, AttributeError):
             return 0.5  # Default to neutral if error
 
     def detect_contradiction(
@@ -181,12 +181,12 @@ Response:"""
                     if len(parts) > 1:
                         conflicting_id = int(parts[1].strip().split()[0])
                         return 1.0, conflicting_id
-                except Exception:
+                except (ValueError, TypeError, IndexError):
                     pass
                 return 1.0, None
             else:
                 return 0.0, None
-        except Exception:
+        except (ValueError, TypeError, AttributeError, IndexError, KeyError):
             return 0.0, None
 
     def mark_salient(

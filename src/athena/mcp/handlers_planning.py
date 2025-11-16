@@ -5131,7 +5131,7 @@ Anomalies:
                     (project_id,)
                 )
                 avg_progress = cursor.fetchone()[0] or 0
-            except Exception:
+            except (OSError, ValueError, TypeError, KeyError, IndexError, AttributeError):
                 total_tasks = 0
                 completed_tasks = 0
                 avg_progress = 0
@@ -5144,7 +5144,7 @@ Anomalies:
                     (project_id,)
                 )
                 total_procedures = cursor.fetchone()[0]
-            except Exception:
+            except (OSError, ValueError, TypeError, KeyError, IndexError, AttributeError):
                 total_procedures = 0
 
             # Get cognitive load metrics (PHASE 5.4: Working Memory Integration)
@@ -5177,7 +5177,7 @@ Anomalies:
                             "Reduce concurrent task context",
                             "Take a short break to allow cognitive processing"
                         ]
-            except Exception:
+            except (OSError, ValueError, TypeError, KeyError, AttributeError):
                 pass
 
             # Build dashboard

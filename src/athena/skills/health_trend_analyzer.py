@@ -144,7 +144,7 @@ class HealthTrendAnalyzer:
                     scores.append(0.5)
 
             return scores if scores else [0.5]
-        except Exception:
+        except (OSError, ValueError, TypeError, KeyError, IndexError):
             return [0.5]
 
     def _calculate_trend(
@@ -348,7 +348,7 @@ class HealthTrendAnalyzer:
                         improving_count += 1
                     elif trend.trend == "degrading":
                         degrading_count += 1
-                except Exception:
+                except (OSError, ValueError, TypeError, AttributeError):
                     pass
 
             project_trend = (
@@ -377,7 +377,7 @@ class HealthTrendAnalyzer:
                     else "Stable - monitor for changes"
                 ),
             }
-        except Exception:
+        except (OSError, ValueError, TypeError, AttributeError, KeyError):
             return {
                 "error": "Unable to analyze project trends",
                 "project_id": project_id,

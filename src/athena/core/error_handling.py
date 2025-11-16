@@ -178,7 +178,7 @@ def safe_getattr(
     """
     try:
         return getattr(obj, attr, default)
-    except Exception:
+    except (AttributeError, TypeError):
         return default
 
 

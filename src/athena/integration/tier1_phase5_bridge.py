@@ -145,7 +145,7 @@ class Tier1Phase5Integration:
                 cursor.execute("DELETE FROM memories WHERE id = ?", (temp_mem_id,))
                 # commit handled by cursor context
 
-            except Exception as e:
+            except (OSError, ValueError, TypeError, AttributeError, KeyError) as e:
                 logger.warning(f"Failed to compute saliency for task {task_id}: {e}")
                 saliency = 0.5
 
@@ -211,7 +211,7 @@ class Tier1Phase5Integration:
                         task_id, "semantic", project_id
                     )
                     saliency_scores[task_id] = saliency
-                except Exception:
+                except (OSError, ValueError, TypeError, AttributeError, KeyError):
                     saliency_scores[task_id] = 0.5
 
             # Weight patterns by average saliency
@@ -301,7 +301,7 @@ class Tier1Phase5Integration:
                     step_saliencies.append(
                         {"step": step, "saliency": saliency, "index": i}
                     )
-                except Exception:
+                except (OSError, ValueError, TypeError, AttributeError, KeyError):
                     step_saliencies.append({"step": step, "saliency": 0.5, "index": i})
 
             # Sort steps by priority (maintain dependencies but elevate high-salience)
