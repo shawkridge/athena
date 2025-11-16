@@ -10,6 +10,7 @@ Provides:
 
 import pytest
 import tempfile
+import os
 from pathlib import Path
 from unittest.mock import Mock, MagicMock
 
@@ -20,6 +21,23 @@ from athena.procedural.store import ProceduralStore
 from athena.prospective.store import ProspectiveStore
 from athena.graph.store import GraphStore
 from athena.manager import UnifiedMemoryManager
+
+
+@pytest.fixture(autouse=True)
+def disable_llm_features_for_tests():
+    """Disable LLM features for all tests.
+
+    LLM calls (to local servers or APIs) are disabled in tests to:
+    - Avoid external dependencies
+    - Speed up test execution
+    - Use deterministic fallback validation
+    - Allow tests to run without LLM services
+    """
+    os.environ["ENABLE_LLM_FEATURES"] = "false"
+    yield
+    # Cleanup if needed
+    if "ENABLE_LLM_FEATURES" in os.environ:
+        del os.environ["ENABLE_LLM_FEATURES"]
 
 
 @pytest.fixture
