@@ -491,6 +491,7 @@ class PostgresDatabase:
                 id BIGSERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
                 memory_vector_id BIGINT REFERENCES memory_vectors(id) ON DELETE SET NULL,
+                entity_id INT REFERENCES entities(id) ON DELETE SET NULL,
                 session_id VARCHAR(255) NOT NULL,
                 timestamp BIGINT NOT NULL,
                 duration_ms INT,
@@ -545,6 +546,7 @@ class PostgresDatabase:
                 priority INT DEFAULT 5,
                 goal_id BIGINT REFERENCES prospective_goals(id) ON DELETE SET NULL,
                 parent_task_id BIGINT REFERENCES prospective_tasks(id) ON DELETE SET NULL,
+                learned_pattern_id INT REFERENCES extracted_patterns(id) ON DELETE SET NULL,
                 estimated_effort_hours FLOAT,
                 actual_effort_hours FLOAT,
                 due_date DATE,
@@ -639,6 +641,7 @@ class PostgresDatabase:
             CREATE TABLE IF NOT EXISTS procedures (
                 id BIGSERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                learned_from_event_id BIGINT REFERENCES episodic_events(id) ON DELETE CASCADE,
                 name VARCHAR(255) NOT NULL,
                 category VARCHAR(100),
                 description TEXT,
@@ -975,6 +978,39 @@ class PostgresDatabase:
         await conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_consolidation_runs
             ON research_consolidation_runs(task_id, status)
+        """)
+
+        # =====================================================================
+        # COMPOSITE INDICES FOR PERFORMANCE OPTIMIZATION (P0 BLOCKERS)
+        # =====================================================================
+
+        # Temporal queries: episodic_events(project_id, timestamp DESC)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_episodic_temporal
+            ON episodic_events(project_id, timestamp DESC)
+        """)
+
+        # Consolidation pipeline: episodic_events(consolidation_status, confidence)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_episodic_consolidation
+            ON episodic_events(consolidation_status, confidence)
+        """)
+
+        # Knowledge graph traversal: entity_relations(from_entity_id, relation_type)
+        # NOTE: This index assumes an entity_relations table exists in the schema
+        try:
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_entity_relations_from
+                ON entity_relations(from_entity_id, relation_type)
+            """)
+        except Exception:
+            # Table may not exist yet; this is optional if knowledge graph is not used
+            pass
+
+        # Task filtering: prospective_tasks(status, priority, due_date)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_prospective_active
+            ON prospective_tasks(status, priority, due_date)
         """)
 
         # Create IVFFlat index for fast semantic search with pgvector
