@@ -177,7 +177,7 @@ class ResearchConsolidationSystem:
             run.completed_at = int(time.time())
             try:
                 self.consolidation_store.update_consolidation_run(run)
-            except:
+            except (AttributeError, TypeError, ValueError):
                 pass  # Best effort
             return run
 

@@ -215,7 +215,7 @@ def _bucket_by_time(events: List, bucket_by: str) -> Dict[str, int]:
                 key = dt.date().isoformat()
 
             buckets[key] = buckets.get(key, 0) + 1
-        except:
+        except (ValueError, TypeError, AttributeError):
             pass
 
     return buckets

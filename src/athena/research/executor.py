@@ -489,7 +489,7 @@ class ResearchAgentExecutor:
             # Record failure in metrics
             try:
                 agent_metrics.complete(success=False, error=str(e))
-            except:
+            except (AttributeError, TypeError):
                 pass  # Metrics tracking failed, but continue
 
         return findings

@@ -131,7 +131,7 @@ class ConsolidationHandlersMixin:
             try:
                 project = await self.project_manager.require_project()
                 project_id = project.id
-            except:
+            except (AttributeError, ValueError, RuntimeError):
                 project_id = None  # Allow global consolidation without project
 
         dry_run = args.get("dry_run", False)

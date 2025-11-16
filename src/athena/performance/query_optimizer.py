@@ -151,7 +151,7 @@ class QueryOptimizer:
                         cursor.execute(f"SELECT pg_total_relation_size('{table}') / 1024")
                         size_kb_row = cursor.fetchone()
                         size_kb = size_kb_row[0] if size_kb_row else 0
-                    except:
+                    except (TypeError, IndexError, AttributeError):
                         size_kb = 0
 
                     stats["tables"][table] = {

@@ -99,7 +99,7 @@ class BaseCache(ABC):
                 return len(json.dumps(obj))
             else:
                 return 1000  # Default estimate
-        except:
+        except (ValueError, TypeError, AttributeError):
             return 1000
 
 

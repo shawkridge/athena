@@ -189,7 +189,7 @@ async def retrieve_event_details(
         if "context" in event and isinstance(event["context"], str):
             try:
                 event["context"] = json.loads(event["context"])
-            except:
+            except (json.JSONDecodeError, ValueError):
                 pass
 
         return event
