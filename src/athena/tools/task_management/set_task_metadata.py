@@ -54,11 +54,16 @@ def set_task_metadata(
                                  complexity_score, priority_score, tags)
     """
 
-    raise NotImplementedError(
-        "Use MetadataStore directly:\n"
-        "  from athena.prospective.metadata import MetadataStore\n"
-        "  from athena.core.database import Database\n"
-        "  db = Database()\n"
-        "  store = MetadataStore(db)\n"
-        "  store.set_metadata(project_id, task_id, effort_estimate, ...)"
-    )
+    try:
+        from athena.prospective.metadata import MetadataStore
+        from athena.core.database import Database
+
+        db = Database()
+        store = MetadataStore(db)
+        success = store.set_metadata(
+            project_id, task_id, effort_estimate,
+            complexity_score, priority_score, tags
+        )
+        return success
+    except Exception as e:
+        raise RuntimeError(f"Failed to set task metadata: {str(e)}") from e

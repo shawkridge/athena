@@ -29,21 +29,14 @@ def check_task_blocked(project_id: int, task_id: int):
         >>> check_task_blocked(project_id=1, task_id=2)
         # Returns: (True, [1])
         # Task 2 is blocked by Task 1
-
-    Implementation:
+    """
+    try:
         from athena.prospective.dependencies import DependencyStore
         from athena.core.database import Database
 
         db = Database()
         store = DependencyStore(db)
         is_blocked, blocking_ids = store.is_task_blocked(project_id, task_id)
-    """
-
-    raise NotImplementedError(
-        "Use DependencyStore directly:\n"
-        "  from athena.prospective.dependencies import DependencyStore\n"
-        "  from athena.core.database import Database\n"
-        "  db = Database()\n"
-        "  store = DependencyStore(db)\n"
-        "  is_blocked, blocking_ids = store.is_task_blocked(project_id, task_id)"
-    )
+        return (is_blocked, blocking_ids)
+    except Exception as e:
+        raise RuntimeError(f"Failed to check task blocked status: {str(e)}") from e

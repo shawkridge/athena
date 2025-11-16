@@ -51,11 +51,13 @@ def get_project_analytics(project_id: int) -> dict:
         return store.get_project_analytics(project_id)
     """
 
-    raise NotImplementedError(
-        "Use MetadataStore directly:\n"
-        "  from athena.prospective.metadata import MetadataStore\n"
-        "  from athena.core.database import Database\n"
-        "  db = Database()\n"
-        "  store = MetadataStore(db)\n"
-        "  return store.get_project_analytics(project_id)"
-    )
+    try:
+        from athena.prospective.metadata import MetadataStore
+        from athena.core.database import Database
+
+        db = Database()
+        store = MetadataStore(db)
+        analytics = store.get_project_analytics(project_id)
+        return analytics
+    except Exception as e:
+        raise RuntimeError(f"Failed to get project analytics: {str(e)}") from e

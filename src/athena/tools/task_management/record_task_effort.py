@@ -42,11 +42,13 @@ def record_task_effort(
         return store.record_actual_effort(project_id, task_id, actual_minutes)
     """
 
-    raise NotImplementedError(
-        "Use MetadataStore directly:\n"
-        "  from athena.prospective.metadata import MetadataStore\n"
-        "  from athena.core.database import Database\n"
-        "  db = Database()\n"
-        "  store = MetadataStore(db)\n"
-        "  store.record_actual_effort(project_id, task_id, actual_minutes)"
-    )
+    try:
+        from athena.prospective.metadata import MetadataStore
+        from athena.core.database import Database
+
+        db = Database()
+        store = MetadataStore(db)
+        success = store.record_actual_effort(project_id, task_id, actual_minutes)
+        return success
+    except Exception as e:
+        raise RuntimeError(f"Failed to record task effort: {str(e)}") from e

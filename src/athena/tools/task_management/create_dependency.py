@@ -35,21 +35,14 @@ def create_dependency(
         >>> create_dependency(project_id=1, from_task_id=1, to_task_id=2)
         # Returns: dependency_id
         # Task 1 now blocks Task 2
-
-    Implementation:
+    """
+    try:
         from athena.prospective.dependencies import DependencyStore
         from athena.core.database import Database
 
         db = Database()
         store = DependencyStore(db)
-        return store.create_dependency(project_id, from_task_id, to_task_id, dependency_type)
-    """
-
-    raise NotImplementedError(
-        "Use DependencyStore directly:\n"
-        "  from athena.prospective.dependencies import DependencyStore\n"
-        "  from athena.core.database import Database\n"
-        "  db = Database()\n"
-        "  store = DependencyStore(db)\n"
-        "  store.create_dependency(project_id, from_task_id, to_task_id)"
-    )
+        dep_id = store.create_dependency(project_id, from_task_id, to_task_id, dependency_type)
+        return dep_id
+    except Exception as e:
+        raise RuntimeError(f"Failed to create task dependency: {str(e)}") from e

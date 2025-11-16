@@ -54,11 +54,14 @@ def get_unblocked_tasks(
         return store.get_unblocked_tasks(project_id, statuses, limit)
     """
 
-    raise NotImplementedError(
-        "Use DependencyStore directly:\n"
-        "  from athena.prospective.dependencies import DependencyStore\n"
-        "  from athena.core.database import Database\n"
-        "  db = Database()\n"
-        "  store = DependencyStore(db)\n"
-        "  return store.get_unblocked_tasks(project_id, statuses, limit)"
-    )
+    try:
+        from athena.prospective.dependencies import DependencyStore
+        from athena.core.database import Database
+
+        db = Database()
+        store = DependencyStore(db)
+        statuses = statuses or ['pending', 'in_progress']
+        tasks = store.get_unblocked_tasks(project_id, statuses, limit)
+        return tasks
+    except Exception as e:
+        raise RuntimeError(f"Failed to get unblocked tasks: {str(e)}") from e
