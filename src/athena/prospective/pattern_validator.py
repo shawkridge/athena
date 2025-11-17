@@ -66,24 +66,24 @@ class PatternValidator:
                 'recommendations': [str],
             }
         """
+        # Check if validation is even needed (applies regardless of LLM availability)
+        if pattern.confidence_score >= self.CONFIDENCE_THRESHOLD:
+            logger.debug(
+                f"Pattern {pattern.pattern_name} already high confidence "
+                f"({pattern.confidence_score:.2f}), skipping validation"
+            )
+            return {
+                "is_valid": True,
+                "confidence_adjustment": 0.0,
+                "validation_notes": "already high confidence from statistical analysis",
+                "contradictions": [],
+                "recommendations": [],
+            }
+
         if not self.enable_llm:
             return self._fallback_validation(pattern, existing_patterns)
 
         try:
-            # Check if validation is even needed
-            if pattern.confidence_score >= self.CONFIDENCE_THRESHOLD:
-                logger.debug(
-                    f"Pattern {pattern.pattern_name} already high confidence "
-                    f"({pattern.confidence_score:.2f}), skipping validation"
-                )
-                return {
-                    "is_valid": True,
-                    "confidence_adjustment": 0.0,
-                    "validation_notes": "Already high confidence from statistical analysis",
-                    "contradictions": [],
-                    "recommendations": [],
-                }
-
             # Perform LLM validation
             if self.provider == "claude":
                 return self._validate_with_claude(pattern, existing_patterns)
@@ -367,28 +367,31 @@ Validate now:
             validation_result: Validation results from validate_pattern()
 
         Returns:
-            Updated pattern with validation applied
+            Updated copy of pattern with validation applied
         """
+        # Create a copy to avoid modifying the original
+        updated_pattern = pattern.model_copy()
+
         # Update confidence score
-        new_confidence = pattern.confidence_score + validation_result.get(
+        new_confidence = updated_pattern.confidence_score + validation_result.get(
             "confidence_adjustment", 0.0
         )
-        pattern.confidence_score = min(max(new_confidence, 0.0), 1.0)
+        updated_pattern.confidence_score = min(max(new_confidence, 0.0), 1.0)
 
         # Mark as validated
-        pattern.system_2_validated = True
-        pattern.extraction_method = ExtractionMethod.LLM_VALIDATED
+        updated_pattern.system_2_validated = True
+        updated_pattern.extraction_method = ExtractionMethod.LLM_VALIDATED
 
         # Set validation notes
-        pattern.validation_notes = validation_result.get(
+        updated_pattern.validation_notes = validation_result.get(
             "validation_notes", "System 2 validation applied"
         )
 
         # Adjust status if validation found issues
         if not validation_result.get("is_valid", True):
-            if pattern.confidence_score < 0.5:
-                pattern.status = PatternStatus.DEPRECATED
+            if updated_pattern.confidence_score < 0.5:
+                updated_pattern.status = PatternStatus.DEPRECATED
             else:
-                pattern.status = PatternStatus.ACTIVE
+                updated_pattern.status = PatternStatus.ACTIVE
 
-        return pattern
+        return updated_pattern

@@ -149,7 +149,7 @@ def event_loop():
 # Logging Configuration
 # ============================================================================
 
-def pytest_configure_logging(config):
+def configure_logging(config):
     """Configure logging for tests."""
     import logging
     logging.basicConfig(
@@ -162,11 +162,6 @@ def pytest_configure_logging(config):
 # Test Timeout Configuration
 # ============================================================================
 
-pytest_plugins = ["pytest-asyncio"]
-
-# Configure pytest-asyncio
-def pytest_configure(config):
-    """Configure pytest settings."""
-    config.addinivalue_line(
-        "asyncio_mode", "auto"
-    )
+# pytest_asyncio disabled - tests don't require async async
+# (You can re-enable if needed: pytest_plugins = ["pytest-asyncio"])
+pytest_plugins = []

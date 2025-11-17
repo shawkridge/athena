@@ -27,15 +27,19 @@ def ensure_llm_available(llm_provider):
 
     if llm_provider == "llamacpp":
         try:
-            # Quick health check
-            response = requests.get(
-                LLAMACPP_REASONING_URL.replace("/completion", ""),
-                timeout=2
+            # Quick health check - test actual endpoint with short timeout
+            response = requests.post(
+                LLAMACPP_REASONING_URL + "/completion",
+                json={
+                    "prompt": "test",
+                    "n_predict": 1,
+                },
+                timeout=3
             )
             if response.status_code != 200:
                 pytest.skip(f"LLM server not responding: {LLAMACPP_REASONING_URL}")
-        except (requests.ConnectionError, requests.Timeout):
-            pytest.skip(f"LLM server not accessible: {LLAMACPP_REASONING_URL}")
+        except (requests.ConnectionError, requests.Timeout, requests.RequestException) as e:
+            pytest.skip(f"LLM server not accessible: {LLAMACPP_REASONING_URL} ({e})")
 
     elif llm_provider == "claude":
         if not CLAUDE_API_KEY:

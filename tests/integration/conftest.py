@@ -17,6 +17,7 @@ from unittest.mock import Mock, MagicMock
 from athena.core.database import Database
 from athena.memory.store import MemoryStore
 from athena.episodic.store import EpisodicStore
+from athena.semantic.store import SemanticStore
 from athena.procedural.store import ProceduralStore
 from athena.prospective.store import ProspectiveStore
 from athena.graph.store import GraphStore

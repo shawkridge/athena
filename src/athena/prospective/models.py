@@ -107,6 +107,9 @@ class ProspectiveTask(BaseModel):
     failure_reason: Optional[str] = None              # Why task failed (if failed)
     lessons_learned: Optional[str] = None             # What we learned from this task
 
+    # Learning Integration (FK to extracted_patterns)
+    learned_pattern_id: Optional[int] = None          # Pattern that informed this task
+
     model_config = ConfigDict(use_enum_values=True)
 
 

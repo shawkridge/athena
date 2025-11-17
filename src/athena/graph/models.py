@@ -46,6 +46,12 @@ class Entity(BaseModel):
     name: str
     entity_type: EntityType
     project_id: Optional[int] = None
+
+    # FK: Source integration (for episodic→graph bridge)
+    source: Optional[str] = None  # episodic_event|manual|imported|inferred
+    source_id: Optional[int] = None  # FK to episodic_events.id (if source=episodic_event)
+    description: Optional[str] = None  # Detailed description
+
     created_at: Optional[datetime] = Field(default_factory=datetime.now)
     updated_at: Optional[datetime] = Field(default_factory=datetime.now)
     metadata: dict = Field(default_factory=dict)

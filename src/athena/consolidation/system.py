@@ -151,6 +151,9 @@ class ConsolidationSystem:
     ) -> int:
         """Run full consolidation process with quality metrics measurement.
 
+        **TRANSACTION SAFETY**: All consolidation steps are wrapped in a single transaction.
+        If any step fails, the entire consolidation is rolled back.
+
         Args:
             project_id: Optional project ID (None for global)
             consolidation_type: Type of consolidation
@@ -166,7 +169,12 @@ class ConsolidationSystem:
         )
         run_id = self._create_run(run)
 
+        cursor = None
         try:
+            # BEGIN TRANSACTION: All consolidation steps must succeed together
+            cursor = self.db.get_cursor()
+            cursor.execute("BEGIN")
+
             # 1. Score all memories
             avg_before = self._score_memories(project_id)
 
@@ -229,8 +237,21 @@ class ConsolidationSystem:
                 avg_information_density=metrics.get("avg_information_density"),
             )
 
+            # COMMIT TRANSACTION: All steps succeeded, persist changes
+            cursor.execute("COMMIT")
+            self.db.conn.commit()
+
         except Exception as e:
-            self._complete_run(run_id, status="failed", notes=str(e))
+            # ROLLBACK TRANSACTION: Any error means consolidation doesn't persist
+            if cursor:
+                try:
+                    cursor.execute("ROLLBACK")
+                    self.db.conn.rollback()
+                except Exception as rollback_error:
+                    import logging
+                    logging.error(f"Error rolling back consolidation transaction: {rollback_error}")
+
+            self._complete_run(run_id, status="failed", notes=f"Rolled back: {str(e)}")
             raise
 
         return run_id

@@ -16,6 +16,7 @@ from .graph.models import Entity, Observation, Relation
 from .graph.store import GraphStore
 from .memory.store import MemoryStore
 from .meta.store import MetaMemoryStore
+from .meta.quality_reweighter import QualityReweighter, LayerQualitySelector
 from .optimization.auto_tuner import AutoTuner, TuningStrategy
 from .optimization.parallel_tier1 import ParallelTier1Executor
 from .optimization.performance_profiler import PerformanceProfiler, QueryMetrics
@@ -97,6 +98,10 @@ class UnifiedMemoryManager:
 
         # Initialize confidence scorer for result quality assessment
         self.confidence_scorer = ConfidenceScorer(meta_store=meta)
+
+        # Initialize quality-based reweighting (Gap 3 fix)
+        self.quality_reweighter = QualityReweighter(meta_store=meta)
+        self.layer_quality_selector = LayerQualitySelector(meta_store=meta)
 
         # Initialize performance optimization components
         self.tier_selector = TierSelector()
@@ -1223,6 +1228,14 @@ class UnifiedMemoryManager:
                     ],
                     "filters": "session_context" if "session_id" in context else "none",
                 }
+
+            # Apply quality-based reweighting (Gap 3 fix)
+            # Rerank results from all layers based on historical quality scores
+            results = self.quality_reweighter.reweight_results(
+                results,
+                query_context=context,
+                apply_confidence_boost=include_scores,
+            )
 
         except Exception as e:
             logger.error(f"Error in cascading recall: {e}")
