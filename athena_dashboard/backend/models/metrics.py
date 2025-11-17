@@ -318,6 +318,98 @@ class SystemHealth(BaseModel):
     last_update: datetime
 
 
+# ============================================================================
+# PHASE 5: ADAPTIVE LEARNING SYSTEM METRICS
+# ============================================================================
+
+class CircuitBreakerStatus(BaseModel):
+    """Status of a circuit breaker for service resilience."""
+
+    service_name: str = Field(..., description="e.g., database, llm")
+    state: str = Field(..., description="CLOSED | OPEN | HALF_OPEN")
+    failure_count: int = Field(..., ge=0)
+    failure_threshold: int = Field(..., ge=1)
+    last_failure_time: Optional[datetime] = None
+    recovery_timeout_seconds: int
+    is_available: bool
+
+
+class ResilientSystemHealth(BaseModel):
+    """Health status of resilience layer."""
+
+    database_breaker: CircuitBreakerStatus
+    llm_breaker: CircuitBreakerStatus
+    local_cache_items: int = Field(..., ge=0)
+    local_cache_status: str = Field(..., description="empty | active")
+    overall_status: str = Field(..., description="healthy | degraded | critical")
+
+
+class AdaptiveTaskEstimation(BaseModel):
+    """Task estimation metrics from adaptive learning."""
+
+    task_type: str
+    samples_collected: int
+    avg_estimate_minutes: float = Field(..., ge=0.0)
+    avg_actual_minutes: float = Field(..., ge=0.0)
+    estimation_accuracy_percent: float = Field(..., ge=0.0, le=100.0)
+    success_rate: float = Field(..., ge=0.0, le=1.0)
+    trend: str = Field(..., description="improving | stable | degrading")
+    confidence_level: str = Field(..., description="low | medium | high")
+    last_updated: datetime
+
+
+class AgentStrategyPerformance(BaseModel):
+    """Performance metrics for agent decision strategies."""
+
+    agent_name: str
+    strategy_name: str
+    use_count: int = Field(..., ge=0)
+    success_rate: float = Field(..., ge=0.0, le=1.0)
+    avg_execution_time_ms: float = Field(..., ge=0.0)
+    recent_trend: str = Field(..., description="improving | stable | degrading")
+    confidence_score: float = Field(..., ge=0.0, le=1.0, description="Based on sample size")
+    last_used: Optional[datetime] = None
+
+
+class AgentLearningFeedback(BaseModel):
+    """Feedback loop metrics for agent learning."""
+
+    agent_name: str
+    total_decisions_tracked: int
+    strategies_tested: int
+    best_strategy: str
+    best_strategy_rate: float = Field(..., ge=0.0, le=1.0)
+    strategies: Dict[str, AgentStrategyPerformance]
+    exploration_rate_percent: float = Field(..., ge=0.0, le=100.0)
+    learning_curve_quality: str = Field(..., description="steep | moderate | flat")
+
+
+class LearningOutcomeStatistics(BaseModel):
+    """Statistics on tracked learning outcomes."""
+
+    outcomes_tracked: int
+    success_count: int
+    failure_count: int
+    partial_count: int
+    error_count: int
+    success_rate: float = Field(..., ge=0.0, le=1.0)
+    most_common_decision: str
+    timestamp_range_days: int
+
+
+class LearningSystemStatus(BaseModel):
+    """Complete Phase 5 learning system status."""
+
+    resilience: ResilientSystemHealth
+    task_estimation: Dict[str, AdaptiveTaskEstimation] = Field(default_factory=dict)
+    agent_feedback: Dict[str, AgentLearningFeedback] = Field(default_factory=dict)
+    outcome_stats: LearningOutcomeStatistics
+    llm_analysis_enabled: bool
+    fallback_usage_percent: float = Field(..., ge=0.0, le=100.0)
+    last_outcome_recorded: Optional[datetime] = None
+    system_health_score: float = Field(..., ge=0.0, le=1.0)
+
+
 class DashboardOverview(BaseModel):
     """Complete dashboard overview."""
 
@@ -331,6 +423,7 @@ class DashboardOverview(BaseModel):
     active_tasks: int
     completion_rate: float = Field(..., ge=0.0, le=1.0)
     learning_velocity: float
+    learning_system_status: Optional[LearningSystemStatus] = None
     recent_events: List[Dict[str, str]] = Field(
         ..., description="Last N events with timestamp, type, status"
     )
