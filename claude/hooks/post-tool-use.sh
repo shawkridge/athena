@@ -243,10 +243,10 @@ try:
                     print(f"⚠ Could not enhance event metadata: {e}", file=sys.stderr)
 
             if event_id:
-                if validation_passed:
-                    print(f"✓ Tool execution recorded: {tool_result.tool_name} (Status: {validated_status}, Duration: {time_ms}ms, ID: {event_id})", file=sys.stderr)
+                if tool_result.valid:
+                    print(f"✓ Tool execution recorded: {tool_result.tool_name} (Status: success, ID: {event_id})", file=sys.stderr)
                 else:
-                    print(f"✓ Tool execution recorded with available metadata (tool_name={tool_name_status}, status={status_status}, duration={duration_status}, ID: {event_id})", file=sys.stderr)
+                    print(f"✓ Tool execution recorded with available metadata (tool_name={tool_name_raw}, ID: {event_id})", file=sys.stderr)
             else:
                 print(f"⚠ Event recording may have failed (returned None)", file=sys.stderr)
         else:
@@ -254,6 +254,41 @@ try:
 
 except Exception as e:
     print(f"⚠ Event recording failed: {str(e)}", file=sys.stderr)
+
+# Phase 5: Prepare tool execution for response capture threading
+# This will be used by session-end.sh to thread complete conversations
+try:
+    import json
+    from pathlib import Path
+
+    # Store tool execution in a session-local buffer for later threading
+    tool_buffer_file = Path(f"/tmp/.claude_tool_buffer_{os.getpid()}.json")
+
+    execution_record = {
+        "tool_name": tool_result.tool_name if tool_result.valid else (tool_name_raw or "unknown"),
+        "tool_status": "success" if tool_result.valid else (tool_status_raw or "unknown"),
+        "execution_time_ms": 0,
+        "timestamp": datetime.utcnow().isoformat(),
+        "success": tool_result.valid if 'tool_result' in locals() else (tool_status_raw == "success")
+    }
+
+    # Append to buffer (create if not exists)
+    if tool_buffer_file.exists():
+        with open(tool_buffer_file, 'r') as f:
+            buffer = json.load(f)
+    else:
+        buffer = []
+
+    buffer.append(execution_record)
+
+    with open(tool_buffer_file, 'w') as f:
+        json.dump(buffer, f)
+
+    print(f"✓ Tool buffered for response threading", file=sys.stderr)
+
+except Exception as e:
+    print(f"⚠ Could not buffer tool for threading: {str(e)}", file=sys.stderr)
+PYTHON_EOF
 
 # Phase 4.5: Notify MemoryCoordinatorAgent of tool execution
 # The agent will decide if this tool execution should be remembered
@@ -302,40 +337,74 @@ except Exception as e:
 
 MEMORY_COORD_EOF
 
-# Phase 5: Prepare tool execution for response capture threading
-# This will be used by session-end.sh to thread complete conversations
+# Phase 4.6: Track decision outcome and performance in learning system
+# This enables the adaptive learning system to learn from agent decisions
+python3 << 'LEARNING_TRACK_EOF'
+import sys
+import os
+import json
+import time
+
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
+
 try:
-    import json
-    from pathlib import Path
+    from learning_bridge import track_decision, record_perf, get_success_rate
 
-    # Store tool execution in a session-local buffer for later threading
-    tool_buffer_file = Path(f"/tmp/.claude_tool_buffer_{os.getpid()}.json")
+    # Extract tool details from hook input
+    hook_input_str = os.environ.get('HOOK_INPUT_JSON', '{}')
+    try:
+        hook_input = json.loads(hook_input_str)
+    except:
+        hook_input = {}
 
-    execution_record = {
-        "tool_name": tool_result.tool_name if validation_passed else (tool_name_raw or "unknown"),
-        "tool_status": validated_status if validation_passed else (tool_status_raw or "unknown"),
-        "execution_time_ms": time_ms if validation_passed else 0,
-        "timestamp": datetime.utcnow().isoformat(),
-        "success": (validated_status == "success") if validation_passed else False
+    tool_name = hook_input.get('tool_name', 'unknown')
+    tool_status = hook_input.get('tool_response', {}).get('status', 'success')
+    duration_ms = hook_input.get('tool_response', {}).get('duration_ms', 0)
+
+    # Determine success rate based on tool status
+    success_rate = 1.0 if tool_status in ['success', 'completed'] else 0.0
+
+    # Track MemoryCoordinatorAgent decision
+    # Agent decides whether to remember this tool execution
+    agent_decision_context = {
+        'tool_name': tool_name,
+        'tool_status': tool_status,
+        'importance_determined_by': 'memory-coordinator-heuristics'
     }
 
-    # Append to buffer (create if not exists)
-    if tool_buffer_file.exists():
-        with open(tool_buffer_file, 'r') as f:
-            buffer = json.load(f)
+    result = track_decision(
+        agent_name='memory-coordinator',
+        decision='should_remember',
+        outcome='success' if success_rate > 0.5 else 'failure',
+        success_rate=success_rate,
+        execution_time_ms=float(duration_ms) if duration_ms else 0.0,
+        context=agent_decision_context
+    )
+
+    if result.get('status') == 'success':
+        print(f"✓ Learning tracked: memory-coordinator decision (rate: {success_rate:.2f})", file=sys.stderr)
     else:
-        buffer = []
+        print(f"· Learning tracking skipped: {result.get('error', 'unknown error')}", file=sys.stderr)
 
-    buffer.append(execution_record)
+    # Record performance metrics for this agent operation
+    perf_result = record_perf(
+        agent_name='memory-coordinator',
+        operation=f'notify_{tool_name.lower()}',
+        execution_time_ms=50.0,  # Approximate: agent notification is fast
+        memory_mb=None,
+        result_size=None
+    )
 
-    with open(tool_buffer_file, 'w') as f:
-        json.dump(buffer, f)
-
-    print(f"✓ Tool buffered for response threading", file=sys.stderr)
+    if perf_result.get('status') == 'success':
+        perf_score = perf_result.get('perf_score', 0.0)
+        perf_status = perf_result.get('perf_status', 'unknown')
+        print(f"✓ Performance recorded: {perf_status} (score: {perf_score:.2f})", file=sys.stderr)
 
 except Exception as e:
-    print(f"⚠ Could not buffer tool for threading: {str(e)}", file=sys.stderr)
-PYTHON_EOF
+    # Don't fail hook if learning tracking fails
+    print(f"· Learning tracking skipped: {str(e)}", file=sys.stderr)
+
+LEARNING_TRACK_EOF
 
 # Check for anomalies/errors
 if [ "$TOOL_STATUS" != "success" ] && [ "$TOOL_STATUS" != "completed" ]; then
@@ -384,7 +453,7 @@ invoker.invoke_agent("attention-optimizer", {
     "should_consolidate": status["should_consolidate"]
 })
 
-log "✓ Attention optimization check complete (load: {status['items']}/7)"
+print(f"✓ Attention optimization check complete (load: {status['items']}/7)", file=sys.stderr)
 PYTHON_EOF
 fi
 
