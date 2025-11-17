@@ -1,7 +1,7 @@
 """CLI module for Athena memory system.
 
 Provides command-line interface for slash commands following Anthropic's
-code-execution-with-MCP pattern:
+code-execution pattern:
 - Discover operations
 - Execute locally
 - Return summaries (300 tokens max)
@@ -15,7 +15,7 @@ from .commands import (
     ManageGoalCommand,
 )
 
-# Import CLI classes from cli.py module to support mcp handlers
+# Import CLI classes from cli.py module
 # This resolves the naming conflict between cli.py (module) and cli/ (package)
 try:
     import importlib.util
