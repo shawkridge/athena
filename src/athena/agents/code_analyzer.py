@@ -18,11 +18,13 @@ from dataclasses import dataclass, asdict
 
 # Import coordinator base class
 from .coordinator import AgentCoordinator
+from ..orchestration.adaptive_agent import AdaptiveAgent
 
 # Import core memory operations
 from ..episodic.operations import remember as remember_event
 from ..memory.operations import store as store_fact, search as search_facts
 from ..graph.operations import add_entity as add_graph_entity
+from ..core.database import Database
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +52,7 @@ class CodeMetrics:
     test_coverage: float = 0.0
 
 
-class CodeAnalyzerAgent(AgentCoordinator):
+class CodeAnalyzerAgent(AgentCoordinator, AdaptiveAgent):
     """Autonomous code quality and optimization analyzer.
 
     Analyzes code for:
@@ -59,6 +61,11 @@ class CodeAnalyzerAgent(AgentCoordinator):
     - Code style violations
     - Complexity metrics
     - Learning coding conventions
+
+    Adaptive features:
+    - Learns which analysis strategies work best
+    - Chooses deep vs. quick analysis based on success rates
+    - Tracks accuracy of pattern detection
     """
 
     # Common anti-patterns
@@ -121,8 +128,12 @@ class CodeAnalyzerAgent(AgentCoordinator):
         },
     }
 
-    def __init__(self):
-        """Initialize the Code Analyzer Agent."""
+    def __init__(self, db: Optional[Database] = None):
+        """Initialize the Code Analyzer Agent.
+
+        Args:
+            db: Optional database for adaptive learning. If provided, enables learning.
+        """
         super().__init__(
             agent_id="code-analyzer",
             agent_type="code-analyzer",
@@ -131,6 +142,11 @@ class CodeAnalyzerAgent(AgentCoordinator):
         self.issues_found = 0
         self.optimizations_suggested = 0
         self.learned_styles: Dict[str, Any] = {}
+
+        # Initialize adaptive learning if database provided
+        self._adaptive_enabled = db is not None
+        if self._adaptive_enabled:
+            AdaptiveAgent.__init__(self, agent_name="code-analyzer", db=db)
 
     async def analyze_code_changes(self, diff: str) -> Dict[str, Any]:
         """Analyze code changes from git diff.
@@ -497,3 +513,79 @@ class CodeAnalyzerAgent(AgentCoordinator):
             return max(0.0, min(100.0, index))
         except Exception:
             return 50.0  # default
+
+    # Adaptive learning methods (from AdaptiveAgent)
+    async def decide(self, context: dict) -> str:
+        """Decide analysis strategy based on learning history.
+
+        Strategies:
+        - deep_analysis: Full anti-pattern detection, metrics, optimizations
+        - quick_analysis: Only critical anti-patterns
+        - style_check: Only style violations
+
+        Uses success rates to pick the best strategy.
+        """
+        if not self._adaptive_enabled:
+            return "deep_analysis"  # Default if no learning
+
+        # Check success rates for each strategy
+        deep_rate = self.tracker.get_success_rate(self.agent_name, "deep_analysis", time_window_hours=24)
+        quick_rate = self.tracker.get_success_rate(self.agent_name, "quick_analysis", time_window_hours=24)
+
+        # If deep analysis has high success rate, use it
+        if deep_rate > 0.8:
+            return "deep_analysis"
+        # If quick analysis is faster and nearly as good
+        elif quick_rate > 0.7:
+            return "quick_analysis"
+        # Default to deep
+        else:
+            return "deep_analysis"
+
+    async def execute(self, decision: str, context: dict) -> Any:
+        """Execute analysis with chosen strategy."""
+        if decision == "quick_analysis":
+            # Only check critical issues
+            code = context.get('code', '')
+            language = context.get('language', 'python')
+            issues = await self.find_anti_patterns(code, language)
+            return {'issues': [i for i in issues if i.severity == 'critical']}
+
+        elif decision == "style_check":
+            code = context.get('code', '')
+            style = await self.extract_coding_style(code)
+            return {'style': style}
+
+        else:  # deep_analysis
+            # Full analysis
+            code = context.get('code', '')
+            language = context.get('language', 'python')
+
+            issues = await self.find_anti_patterns(code, language)
+            optimizations = await self.suggest_optimizations(code, language)
+            style = await self.extract_coding_style(code)
+            metrics = await self.calculate_metrics(code)
+
+            return {
+                'issues': issues,
+                'optimizations': optimizations,
+                'style': style,
+                'metrics': asdict(metrics)
+            }
+
+    async def _evaluate_outcome(self, result: Any, decision: str, context: dict) -> tuple[float, str]:
+        """Evaluate analysis result quality."""
+        if not result:
+            return 0.0, 'failure'
+
+        # Success if we found substantive analysis
+        if isinstance(result, dict):
+            issues_found = len(result.get('issues', []))
+            if issues_found > 0:
+                # Found real issues - high confidence
+                return 0.9, 'success'
+            elif result.get('style') or result.get('metrics'):
+                # Found some analysis even if no issues
+                return 0.7, 'success'
+
+        return 0.5, 'partial'

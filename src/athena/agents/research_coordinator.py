@@ -18,6 +18,7 @@ from dataclasses import dataclass, asdict
 
 # Import coordinator base class
 from .coordinator import AgentCoordinator
+from ..orchestration.adaptive_agent import AdaptiveAgent
 
 # Import core memory operations
 from ..episodic.operations import remember as remember_event
@@ -60,7 +61,7 @@ class ResearchSynthesis:
     confidence: float
 
 
-class ResearchCoordinatorAgent(AgentCoordinator):
+class ResearchCoordinatorAgent(AgentCoordinator, AdaptiveAgent):
     """Multi-step research workflow coordinator.
 
     Manages complex research tasks including:

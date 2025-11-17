@@ -19,6 +19,7 @@ from enum import Enum
 
 # Import coordinator base class
 from .coordinator import AgentCoordinator
+from ..orchestration.adaptive_agent import AdaptiveAgent
 
 # Import core memory operations
 from ..episodic.operations import remember as remember_event
@@ -72,7 +73,7 @@ class AgentLoad:
     health_status: str  # healthy, busy, overloaded
 
 
-class WorkflowOrchestratorAgent(AgentCoordinator):
+class WorkflowOrchestratorAgent(AgentCoordinator, AdaptiveAgent):
     """Dynamic task routing and agent orchestration.
 
     Manages workflow by:

@@ -18,6 +18,7 @@ from enum import Enum
 
 # Import coordinator base class
 from .coordinator import AgentCoordinator
+from ..orchestration.adaptive_agent import AdaptiveAgent
 
 # Import core memory operations
 from ..episodic.operations import remember as remember_event
@@ -68,7 +69,7 @@ class Optimization:
     rationale: str
 
 
-class MetacognitionAgent(AgentCoordinator):
+class MetacognitionAgent(AgentCoordinator, AdaptiveAgent):
     """System health monitoring and adaptive optimization.
 
     Monitors:
