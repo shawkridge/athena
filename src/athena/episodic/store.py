@@ -1781,3 +1781,32 @@ class EpisodicStore(BaseStore):
             fetch_one=False
         )
         return cursor and cursor.rowcount > 0 if hasattr(cursor, 'rowcount') else False
+
+    # ==================== ASYNC WRAPPER API ====================
+    # These methods provide async wrappers for operations.py compatibility
+    # Map generic naming to domain-specific store methods
+
+    async def list(self, filters: Dict[str, Any] | None = None, limit: int = 100, **kwargs) -> list[EpisodicEvent]:
+        """List episodic events (async wrapper for list_events).
+
+        Args:
+            filters: Optional filters (not currently used)
+            limit: Maximum events to return
+            **kwargs: Additional parameters
+
+        Returns:
+            List of episodic events
+        """
+        # Use list_events with sensible defaults
+        return self.list_events(project_id=1, limit=limit)
+
+    async def delete(self, event_id: int) -> bool:
+        """Delete an event (async wrapper for delete_event).
+
+        Args:
+            event_id: Event ID to delete
+
+        Returns:
+            True if deleted successfully
+        """
+        return self.delete_event(event_id)

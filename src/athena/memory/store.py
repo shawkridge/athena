@@ -522,3 +522,54 @@ class MemoryStore(BaseStore):
     def close(self):
         """Close database connection."""
         self.db.close()
+
+    # ==================== ASYNC WRAPPER API ====================
+    # These methods provide async wrappers for operations.py compatibility
+    # Map generic naming to domain-specific store methods
+
+    async def store(
+        self,
+        content: str,
+        memory_type: str | MemoryType = "fact",
+        project_id: int = 1,
+        tags: Optional[list[str]] = None,
+    ) -> int:
+        """Store a memory (async wrapper for remember).
+
+        Args:
+            content: Memory content
+            memory_type: Type of memory (default: fact)
+            project_id: Project ID (default: 1)
+            tags: Optional tags
+
+        Returns:
+            Memory ID
+        """
+        return await self.remember(
+            content=content,
+            memory_type=memory_type,
+            project_id=project_id,
+            tags=tags,
+        )
+
+    async def search(
+        self,
+        query: str,
+        limit: int = 10,
+        project_id: int = 1,
+    ) -> list[Memory]:
+        """Search memories (async wrapper for recall).
+
+        Args:
+            query: Search query
+            limit: Maximum results (default: 10)
+            project_id: Project ID (default: 1)
+
+        Returns:
+            List of matching memories
+        """
+        return self.recall(
+            query=query,
+            project_id=project_id,
+            limit=limit,
+        )
