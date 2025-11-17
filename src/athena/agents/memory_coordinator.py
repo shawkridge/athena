@@ -21,6 +21,9 @@ import logging
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
+# Import coordinator base class
+from .coordinator import AgentCoordinator
+
 # Import core memory operations
 from ..episodic.operations import remember as remember_event
 from ..memory.operations import store as store_fact
@@ -29,11 +32,18 @@ from ..procedural.operations import extract_procedure as extract_proc
 logger = logging.getLogger(__name__)
 
 
-class MemoryCoordinatorAgent:
-    """Autonomously manages memory storage decisions."""
+class MemoryCoordinatorAgent(AgentCoordinator):
+    """Autonomously manages memory storage decisions.
+
+    Inherits from AgentCoordinator to coordinate with other agents via shared memory.
+    """
 
     def __init__(self):
         """Initialize the Memory Coordinator Agent."""
+        super().__init__(
+            agent_id="memory-coordinator",
+            agent_type="memory-coordinator",
+        )
         self.decisions_made = 0
         self.memories_stored = 0
         self.skipped = 0
@@ -221,6 +231,29 @@ class MemoryCoordinatorAgent:
                 logger.info(
                     f"Coordinator decided: {memory_type} memory for {context.get('type')} -> {memory_id}"
                 )
+
+                # Emit event for other agents to observe
+                try:
+                    await self.emit_event(
+                        event_type="memory_stored",
+                        content=f"Stored {memory_type} memory: {content[:100]}...",
+                        tags=[memory_type, "memory_coordination"],
+                        importance=importance,
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to emit event: {e}")
+
+                # Share knowledge if semantic memory
+                if memory_type == "semantic" and importance > 0.7:
+                    try:
+                        await self.share_knowledge(
+                            content=content,
+                            topics=tags,
+                            confidence=importance,
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to share knowledge: {e}")
+
                 return memory_id
             else:
                 logger.warning(f"Failed to store {memory_type} memory")

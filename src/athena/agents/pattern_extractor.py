@@ -19,6 +19,9 @@ import logging
 from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime, timedelta
 
+# Import coordinator base class
+from .coordinator import AgentCoordinator
+
 # Import core operations
 from ..episodic.operations import recall_recent, get_by_session
 from ..consolidation.operations import consolidate, extract_patterns
@@ -27,11 +30,18 @@ from ..procedural.operations import extract_procedure as extract_proc
 logger = logging.getLogger(__name__)
 
 
-class PatternExtractorAgent:
-    """Autonomously extracts and learns patterns from session events."""
+class PatternExtractorAgent(AgentCoordinator):
+    """Autonomously extracts and learns patterns from session events.
+
+    Inherits from AgentCoordinator to coordinate with other agents via shared memory.
+    """
 
     def __init__(self):
         """Initialize the Pattern Extractor Agent."""
+        super().__init__(
+            agent_id="pattern-extractor",
+            agent_type="pattern-extractor",
+        )
         self.patterns_extracted = 0
         self.consolidation_runs = 0
         self.last_run: Optional[datetime] = None
@@ -84,6 +94,32 @@ class PatternExtractorAgent:
             logger.info(f"Extracted {len(patterns_result)} high-confidence patterns")
 
             self.patterns_extracted += len(patterns_result)
+
+            # Emit event for other agents to observe
+            if len(patterns_result) > 0:
+                try:
+                    await self.emit_event(
+                        event_type="patterns_extracted",
+                        content=(
+                            f"Extracted {len(patterns_result)} patterns from "
+                            f"{len(events)} events in session {session_id}"
+                        ),
+                        tags=["consolidation", "learning", f"session:{session_id}"],
+                        importance=0.85,
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to emit pattern extraction event: {e}")
+
+                # Share high-confidence patterns as knowledge
+                for pattern in patterns_result[:3]:  # Share top 3
+                    try:
+                        await self.share_knowledge(
+                            content=f"Pattern: {pattern}",
+                            topics=["consolidation", "pattern"],
+                            confidence=0.8,
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to share pattern: {e}")
 
             return {
                 "status": "success",

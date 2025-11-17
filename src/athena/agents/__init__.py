@@ -2,12 +2,15 @@
 Memory Coordination Agents
 
 This module provides agents that autonomously manage memory operations:
+- AgentCoordinator: Base class for coordinated agents
 - MemoryCoordinatorAgent: Decides what to remember and where
 - PatternExtractorAgent: Extracts reusable procedures from episodic events
 
-Both agents follow the direct Python import paradigm (zero MCP overhead).
+All agents follow the direct Python import paradigm (zero MCP overhead)
+and coordinate via shared memory layers.
 """
 
+from .coordinator import AgentCoordinator
 from .memory_coordinator import (
     MemoryCoordinatorAgent,
     get_coordinator,
@@ -21,6 +24,8 @@ from .pattern_extractor import (
 )
 
 __all__ = [
+    # Agent Coordination Base
+    "AgentCoordinator",
     # Memory Coordination Agents
     "MemoryCoordinatorAgent",
     "get_coordinator",
