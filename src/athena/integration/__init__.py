@@ -44,6 +44,28 @@ from .sync_operations import (
     export_plans_as_todos,
 )
 
+# Phase 3: Advanced sync with learning
+from .conflict_resolver import (
+    AdaptiveConflictResolver,
+    ConflictResolutionStore,
+    DirectResolutionStrategy,
+    HistoricalLearningStrategy,
+    SemanticSimilarityStrategy,
+    initialize as initialize_conflict_resolver,
+    get_resolver as get_conflict_resolver,
+    get_resolution_store,
+)
+
+from .sync_scheduler import (
+    SyncScheduler,
+    SyncNotifier,
+    SyncJob,
+    SyncTriggerType,
+    initialize as initialize_sync_scheduler,
+    get_scheduler as get_sync_scheduler,
+    get_notifier as get_sync_notifier,
+)
+
 __all__ = [
     # Phase 1: Mapping
     "convert_todo_to_plan",
@@ -72,4 +94,20 @@ __all__ = [
     "get_sync_summary",
     "cleanup_completed_plans",
     "export_plans_as_todos",
+    # Phase 3: Advanced sync
+    "AdaptiveConflictResolver",
+    "ConflictResolutionStore",
+    "DirectResolutionStrategy",
+    "HistoricalLearningStrategy",
+    "SemanticSimilarityStrategy",
+    "initialize_conflict_resolver",
+    "get_conflict_resolver",
+    "get_resolution_store",
+    "SyncScheduler",
+    "SyncNotifier",
+    "SyncJob",
+    "SyncTriggerType",
+    "initialize_sync_scheduler",
+    "get_sync_scheduler",
+    "get_sync_notifier",
 ]
