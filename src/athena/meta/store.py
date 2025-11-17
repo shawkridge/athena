@@ -1,8 +1,10 @@
 """Meta-memory storage and quality tracking."""
 
+from __future__ import annotations
+
 import json
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict
 
 from ..core.database import Database
 from ..core.base_store import BaseStore
