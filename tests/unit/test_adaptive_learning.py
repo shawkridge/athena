@@ -34,8 +34,22 @@ class MockDatabase:
 
         # Handle INSERT
         if "INSERT INTO learning_outcomes" in sql and "RETURNING id" in sql:
-            # Return ID
-            return [[len(self.data) + 1]]
+            # Create new outcome record
+            outcome_id = len(self.data) + 1
+            if params:
+                self.data[outcome_id] = {
+                    'id': outcome_id,
+                    'agent_name': params[0],
+                    'decision': params[1],
+                    'outcome': params[2],
+                    'success_rate': params[3],
+                    'execution_time_ms': params[4],
+                    'context': params[5] if len(params) > 5 else {},
+                    'session_id': params[6] if len(params) > 6 else None,
+                    'timestamp': datetime.now()
+                }
+            # Return ID as list of list (mimics psycopg2)
+            return [(outcome_id,)]
 
         # Handle SELECT AVG(success_rate)
         if "SELECT AVG(success_rate)" in sql:
@@ -63,19 +77,21 @@ class MockDatabase:
                 for o in outcomes
             ]
 
-        # Handle statistics query
-        if "SELECT COUNT(*) as total" in sql or "GROUP BY outcome" in sql:
+        # Handle statistics query (COUNT, AVG, MIN, MAX, successes, failures)
+        if "COUNT(*) as total" in sql and "AVG(success_rate)" in sql:
             outcomes = [v for v in self.data.values()]
-            return [[len(outcomes), sum(o['success_rate'] for o in outcomes) / len(outcomes) if outcomes else 0.0]]
+            if outcomes:
+                total = len(outcomes)
+                avg_rate = sum(o['success_rate'] for o in outcomes) / len(outcomes)
+                min_rate = min(o['success_rate'] for o in outcomes)
+                max_rate = max(o['success_rate'] for o in outcomes)
+                avg_time = sum(o['execution_time_ms'] for o in outcomes) / len(outcomes)
+                successes = len([o for o in outcomes if o['outcome'] == 'success'])
+                failures = len([o for o in outcomes if o['outcome'] == 'failure'])
+                return [(total, avg_rate, min_rate, max_rate, avg_time, successes, failures)]
+            return [(0, None, None, None, None, 0, 0)]
 
         return None
-
-    def store_outcome(self, **kwargs):
-        """Store an outcome in memory."""
-        outcome_id = len(self.data) + 1
-        kwargs['id'] = outcome_id
-        self.data[outcome_id] = kwargs
-        return outcome_id
 
 
 @pytest.fixture
@@ -90,6 +106,7 @@ def learning_tracker(mock_db):
     return LearningTracker(mock_db)
 
 
+@pytest.mark.asyncio
 class TestLearningTracker:
     """Tests for LearningTracker persistence and querying."""
 
@@ -240,6 +257,7 @@ class TestLearningTracker:
         assert mock_db.execution_count >= 2
 
 
+@pytest.mark.asyncio
 class TestAdaptiveAgent:
     """Tests for AdaptiveAgent base class."""
 
@@ -365,6 +383,7 @@ class TestAdaptiveAgent:
         assert mock_db.execution_count > 0
 
 
+@pytest.mark.asyncio
 class TestCodeAnalyzerAdaptive:
     """Integration tests for CodeAnalyzer with adaptive learning."""
 
@@ -421,6 +440,7 @@ class TestCodeAnalyzerAdaptive:
         assert success_rate > 0.5
 
 
+@pytest.mark.asyncio
 class TestIntegration:
     """Integration tests across components."""
 

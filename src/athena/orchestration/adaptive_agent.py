@@ -222,7 +222,7 @@ class AdaptiveAgent(ABC):
         Returns:
             Dict with: total_decisions, success_rate, decision_breakdown
         """
-        stats = await self.tracker.get_statistics(self.agent_name)
+        stats = self.tracker.get_statistics(self.agent_name)  # get_statistics is synchronous
         return {
             'agent_name': self.agent_name,
             'total_decisions': stats['total_decisions'],

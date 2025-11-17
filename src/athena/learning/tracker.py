@@ -231,6 +231,7 @@ class LearningTracker:
             Dict with: total_decisions, success_rate, avg_time_ms,
                        outcomes breakdown, recent_performance
         """
+        # Get overall statistics
         sql = """
         SELECT
             COUNT(*) as total,
@@ -238,12 +239,10 @@ class LearningTracker:
             MIN(success_rate) as min_success,
             MAX(success_rate) as max_success,
             AVG(execution_time_ms) as avg_time,
-            outcome,
             COUNT(CASE WHEN outcome = 'success' THEN 1 END) as successes,
             COUNT(CASE WHEN outcome = 'failure' THEN 1 END) as failures
         FROM learning_outcomes
         WHERE agent_name = %s
-        GROUP BY outcome
         """
 
         try:
@@ -261,18 +260,23 @@ class LearningTracker:
                 'failures': 0
             }
 
-            if results:
-                for row in results:
-                    total, avg_success, min_success, max_success, avg_time, outcome, successes, failures = row
+            if results and len(results) > 0:
+                row = results[0]
+                total, avg_success, min_success, max_success, avg_time, successes, failures = row
 
-                    stats['total_decisions'] = int(total) if total else 0
-                    stats['success_rate'] = float(avg_success) if avg_success else 0.0
-                    stats['min_success'] = float(min_success) if min_success else 0.0
-                    stats['max_success'] = float(max_success) if max_success else 0.0
-                    stats['avg_execution_time_ms'] = float(avg_time) if avg_time else 0.0
-                    stats['outcome_breakdown'][outcome] = int(total) if total else 0
-                    stats['successes'] = int(successes) if successes else 0
-                    stats['failures'] = int(failures) if failures else 0
+                stats['total_decisions'] = int(total) if total else 0
+                stats['success_rate'] = float(avg_success) if avg_success else 0.0
+                stats['min_success'] = float(min_success) if min_success else 0.0
+                stats['max_success'] = float(max_success) if max_success else 0.0
+                stats['avg_execution_time_ms'] = float(avg_time) if avg_time else 0.0
+                stats['successes'] = int(successes) if successes else 0
+                stats['failures'] = int(failures) if failures else 0
+
+                # Calculate outcome breakdown
+                if stats['successes'] > 0:
+                    stats['outcome_breakdown']['success'] = stats['successes']
+                if stats['failures'] > 0:
+                    stats['outcome_breakdown']['failure'] = stats['failures']
 
             return stats
         except Exception as e:
