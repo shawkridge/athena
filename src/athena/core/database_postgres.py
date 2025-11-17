@@ -636,6 +636,42 @@ class PostgresDatabase:
             )
         """)
 
+        # 10a. Knowledge graph entities
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS entities (
+                id SERIAL PRIMARY KEY,
+                project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                entity_type VARCHAR(100) NOT NULL,
+                entity_name TEXT NOT NULL,
+                description TEXT,
+                properties JSONB DEFAULT '{}',
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE(project_id, entity_type, entity_name)
+            )
+        """)
+
+        # 10b. Research tasks (for research domain)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS research_tasks (
+                id BIGSERIAL PRIMARY KEY,
+                project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                research_goal VARCHAR(255) NOT NULL,
+                research_domain VARCHAR(255) NOT NULL,
+                research_query TEXT NOT NULL,
+                status VARCHAR(50) DEFAULT 'pending',
+                priority INT DEFAULT 5,
+                start_time TIMESTAMP DEFAULT NOW(),
+                end_time TIMESTAMP,
+                findings_found INT DEFAULT 0,
+                patterns_extracted INT DEFAULT 0,
+                total_findings INT DEFAULT 0,
+                avg_credibility FLOAT DEFAULT 0.0,
+                error_message TEXT,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+
         # 11. Procedures (learned workflows)
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS procedures (
@@ -932,6 +968,38 @@ class PostgresDatabase:
         await conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_decision_status
             ON planning_decisions(validation_status)
+        """)
+
+        # Entity indices
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_entities_project
+            ON entities(project_id)
+        """)
+
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_entities_type
+            ON entities(entity_type)
+        """)
+
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_entities_project_type
+            ON entities(project_id, entity_type)
+        """)
+
+        # Research task indices
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_research_tasks_project
+            ON research_tasks(project_id)
+        """)
+
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_research_tasks_status
+            ON research_tasks(status)
+        """)
+
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_research_tasks_domain
+            ON research_tasks(research_domain)
         """)
 
         # Research consolidation indices (Phase 3.3)

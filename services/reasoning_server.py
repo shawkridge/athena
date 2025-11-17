@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 llama.cpp HTTP server for text generation (reasoning/completion).
-Heavy server for Qwen3-VL model - handles query expansion and reasoning tasks.
+Handles query expansion, reasoning tasks, and temporal inference.
+Runs Qwen3-4B-Instruct (non-VL) model for faster inference.
 """
 
 import os
@@ -41,7 +42,7 @@ class CompletionRequest(BaseModel):
 class CompletionResponse(BaseModel):
     content: str
     tokens_predicted: int
-    model: str = "Qwen3-VL-4B-Instruct"
+    model: str = "Qwen3-4B-Instruct"
 
 
 @app.get("/health")
@@ -49,14 +50,14 @@ async def health_check():
     """Health check endpoint."""
     return {
         "status": "healthy",
-        "model": "Qwen3-VL-4B-Instruct",
+        "model": "Qwen3-4B-Instruct",
         "server": "reasoning-only"
     }
 
 
 @app.post("/completion", response_model=CompletionResponse)
 async def generate_completion(request: CompletionRequest):
-    """Generate text completion using Qwen3-VL model."""
+    """Generate text completion using Qwen3-4B-Instruct model."""
     try:
         # Configure stop sequences
         stop_sequences = request.stop or ["\n\nUser:", "Human:"]
