@@ -75,7 +75,7 @@ class AthenaHTTPLoader:
                     "patterns_extracted": health_data.get("patterns_extracted", 0),
                 }
             # If text response, use mock data
-            logger.debug("Got text response from MCP, using mock data")
+            logger.debug("Got text response from Memory System, using mock data")
             return self._mock_memory_health()
         except Exception as e:
             logger.error(f"Failed to get memory health: {e}")
@@ -118,7 +118,7 @@ class AthenaHTTPLoader:
                     "status": load_data.get("status", "normal"),
                 }
             # If text response, use mock data
-            logger.debug("Got text response from MCP, using mock data")
+            logger.debug("Got text response from Memory System, using mock data")
             return self._mock_cognitive_load()
         except Exception as e:
             logger.error(f"Failed to get cognitive load: {e}")
@@ -176,7 +176,7 @@ class AthenaHTTPLoader:
                     "strategy_effectiveness": metrics.get("strategy_effectiveness", {}),
                 }
             # If text response, use mock data
-            logger.debug("Got text response from MCP, using mock data")
+            logger.debug("Got text response from Memory System, using mock data")
             return self._mock_learning_metrics()
         except Exception as e:
             logger.error(f"Failed to get learning metrics: {e}")
@@ -342,7 +342,7 @@ class AthenaHTTPLoader:
 
         try:
             # For now, return mock data since we don't have a direct endpoint
-            # TODO: Add get_consolidation_history operation to MCP
+            # TODO: Add get_consolidation_history operation to Athena
             return {
                 "timestamp": "2025-11-06T10:00:00Z",
                 "duration_seconds": 2.5,
@@ -435,7 +435,7 @@ class AthenaHTTPLoader:
 
         try:
             # For now, return basic stats
-            # TODO: Add get_project_stats operation to MCP
+            # TODO: Add get_project_stats operation to Athena
             return {
                 "total_projects": 1,
                 "active_projects": 1,
@@ -463,7 +463,7 @@ class AthenaHTTPLoader:
 
         try:
             # For now, return empty list
-            # TODO: Add get_hook_executions operation to MCP
+            # TODO: Add get_hook_executions operation to Athena
             return []
         except Exception as e:
             logger.error(f"Failed to get hook executions: {e}")

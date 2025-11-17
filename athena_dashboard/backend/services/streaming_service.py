@@ -1,4 +1,4 @@
-"""Streaming service for real-time research results from Athena MCP."""
+"""Streaming service for real-time research results from Athena Memory System."""
 
 import asyncio
 import json
@@ -76,7 +76,7 @@ class StreamingUpdate:
 
 
 class StreamingService:
-    """Service for streaming research results from Athena MCP."""
+    """Service for streaming research results from Athena Memory System."""
 
     def __init__(self, athena_url: str = "http://localhost:3000"):
         """Initialize streaming service.
@@ -156,8 +156,8 @@ class StreamingService:
 
             while task_id in self.active_streams:
                 try:
-                    # Simulate polling from Athena MCP
-                    # TODO: Replace with actual MCP client calls
+                    # Simulate polling from Athena Memory System
+                    # TODO: Replace with actual operations calls
                     # - Call stream_results(task_id)
                     # - Call agent_progress(task_id)
                     await asyncio.sleep(poll_interval)

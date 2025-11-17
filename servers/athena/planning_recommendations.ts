@@ -1,10 +1,10 @@
 /**
  * Planning Recommendations Tool Wrapper
  *
- * This module wraps the PlanningRecommendationService as an MCP-callable tool.
+ * This module wraps the PlanningRecommendationService as an operations tool.
  * Agents discover this via filesystem and import it to use planning strategies.
  *
- * Architecture: Follows Anthropic's filesystem-based MCP paradigm
+ * Architecture: Follows Anthropic's filesystem-based operations discovery
  * - Tool definitions NOT in context (stored in this file)
  * - Agents import this module and call functions
  * - Data stays in execution environment, only summaries return

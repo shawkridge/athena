@@ -2,7 +2,7 @@
  * Execution Feedback Tool Wrapper
  *
  * Agents use this to record task completion feedback and trigger learning.
- * Follows filesystem-based MCP paradigm: discoverable via ./servers/ directory.
+ * Follows filesystem-based operations discovery: discoverable via ./servers/ directory.
  */
 
 interface CompletionFeedback {

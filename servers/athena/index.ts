@@ -1,11 +1,11 @@
 /**
- * Athena MCP Tools - Filesystem-Based Module Index
+ * Athena Operations - Filesystem-Based Module Index
  *
  * This index exposes all Athena planning and execution tools.
  * Agents discover tools by exploring ./servers/athena/ directory
  * and importing from these modules.
  *
- * Architecture: Anthropic's filesystem-based MCP paradigm
+ * Architecture: Anthropic's filesystem-based operations discovery
  * - Tool definitions stored as TS files (NOT in context)
  * - Agents discover via directory listing
  * - Agents import and use functions
