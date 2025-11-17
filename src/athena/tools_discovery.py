@@ -1,8 +1,8 @@
-"""Tools discovery and generation system.
+"""Operations discovery and generation system.
 
-Generates callable Python files in /athena/tools/ for filesystem-based agent discovery.
+Generates callable Python files for filesystem-based agent discovery.
 
-This implements the Anthropic MCP code execution pattern where agents discover tools
+This implements the Anthropic code execution pattern where agents discover operations
 by exploring the filesystem structure and reading callable Python files.
 
 Architecture:
@@ -181,17 +181,14 @@ Example:
 def {metadata.entry_point}({param_str}):
     {docstring}
 
-    # To use this tool properly:
-    # 1. Import from the manager: from athena.manager import UnifiedMemoryManager
-    # 2. Create an instance: manager = UnifiedMemoryManager()
-    # 3. Call the method: result = manager.{metadata.entry_point}({', '.join(metadata.parameters.keys())})
-    #
-    # OR import the MCP tools directly:
-    # from athena.mcp.tools import {metadata.entry_point}
+    # To use this tool, import from operations modules:
+    # from athena.episodic.operations import remember, recall
+    # from athena.semantic.operations import store, search
+    # from athena.consolidation.operations import consolidate
 
     raise NotImplementedError(
-        "Use manager directly: from athena.manager import UnifiedMemoryManager\\n"
-        "Or import MCP tools: from athena.mcp.tools import {metadata.entry_point}"
+        "Use operations directly: from athena.episodic.operations import recall, remember\\n"
+        "from athena.semantic.operations import store, search"
     )
 """
 

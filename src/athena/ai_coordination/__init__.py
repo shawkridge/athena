@@ -1,6 +1,6 @@
 """AI coordination layer for agent-driven development.
 
-This layer sits on top of memory-mcp and provides:
+This layer provides:
 - ProjectContext: Centralized project state
 - ExecutionTraces: Tracking what AI tried and outcomes
 - ThinkingTraces: AI reasoning storage
@@ -29,7 +29,6 @@ from .thinking_traces import (
     ReasoningStep,
 )
 from .thinking_trace_store import ThinkingTraceStore
-from .thinking_trace_mcp_tools import ThinkingTraceMCPTools
 from .code_context import (
     CodeContext,
     FileInfo,
@@ -42,7 +41,6 @@ from .code_context import (
     IssueStatus,
 )
 from .code_context_store import CodeContextStore
-from .code_context_mcp_tools import CodeContextMCPTools
 from .action_cycles import (
     ActionCycle,
     CycleStatus,
@@ -52,7 +50,6 @@ from .action_cycles import (
     PlanAssumption,
 )
 from .action_cycle_store import ActionCycleStore
-from .action_cycle_mcp_tools import ActionCycleMCPTools
 from .session_continuity import (
     SessionSnapshot,
     SessionStatus,
@@ -64,7 +61,6 @@ from .session_continuity import (
     ProjectContextSnapshot,
 )
 from .session_continuity_store import SessionContinuityStore
-from .session_continuity_mcp_tools import SessionContinuityMCPTools
 from .learning_integration import (
     LessonToProcedure,
     ProcedureCandidate,
@@ -75,7 +71,6 @@ from .learning_integration import (
     FeedbackUpdateType,
 )
 from .learning_integration_store import LearningIntegrationStore
-from .learning_integration_mcp_tools import LearningIntegrationMCPTools
 
 __all__ = [
     # ProjectContext
@@ -99,7 +94,6 @@ __all__ = [
     "ProblemType",
     "ReasoningStep",
     "ThinkingTraceStore",
-    "ThinkingTraceMCPTools",
     # CodeContext
     "CodeContext",
     "FileInfo",
@@ -111,7 +105,6 @@ __all__ = [
     "IssueSeverity",
     "IssueStatus",
     "CodeContextStore",
-    "CodeContextMCPTools",
     # ActionCycle
     "ActionCycle",
     "CycleStatus",
@@ -120,7 +113,6 @@ __all__ = [
     "PlanAdjustment",
     "PlanAssumption",
     "ActionCycleStore",
-    "ActionCycleMCPTools",
     # SessionContinuity
     "SessionSnapshot",
     "SessionStatus",
@@ -131,7 +123,6 @@ __all__ = [
     "ExecutionTraceSnapshot",
     "ProjectContextSnapshot",
     "SessionContinuityStore",
-    "SessionContinuityMCPTools",
     # LearningIntegration
     "LessonToProcedure",
     "ProcedureCandidate",
@@ -141,5 +132,4 @@ __all__ = [
     "PatternType",
     "FeedbackUpdateType",
     "LearningIntegrationStore",
-    "LearningIntegrationMCPTools",
 ]

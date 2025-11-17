@@ -121,7 +121,6 @@ class SessionEndOptimizer:
         try:
             import time
             from ..consolidation.system import ConsolidationSystem
-            from ..mcp.handlers_consolidation_tools import ConsolidationTools
 
             consolidation_start = time.time()
             consolidation_events = 0

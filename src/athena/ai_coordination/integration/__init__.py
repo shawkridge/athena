@@ -1,6 +1,6 @@
-"""Integration module: Phase 7 (AI Coordination ↔ Memory-MCP)
+"""Integration module: Phase 7 (AI Coordination ↔ Athena Memory)
 
-Bridges AI Coordination system (Phases 1-6) with Memory-MCP (8 layers).
+Bridges AI Coordination system (Phases 1-6) with Athena Memory System (8 layers).
 
 Phase 7 sub-phases:
 - Phase 7.1: Event Forwarding - Convert coordination events to episodic events
@@ -29,7 +29,6 @@ from athena.ai_coordination.integration.graph_linking import (
     EntityType,
     RelationType,
 )
-from athena.ai_coordination.integration.phase7_2_mcp_tools import Phase72MCPTools
 
 # Phase 7.3: Consolidation Triggers
 from athena.ai_coordination.integration.consolidation_trigger import (
@@ -42,7 +41,6 @@ from athena.ai_coordination.integration.procedure_auto_creator import (
     ProcedureAutoCreator,
     ProcedureCandidate,
 )
-from athena.ai_coordination.integration.phase7_3_mcp_tools import Phase73MCPTools
 
 # Phase 7.4: Recall & Reuse
 from athena.ai_coordination.integration.smart_recall import SmartRecall, RecallContext
@@ -54,7 +52,6 @@ from athena.ai_coordination.integration.prospective_integration import (
     ProspectiveIntegration,
     ProspectiveTask,
 )
-from athena.ai_coordination.integration.phase7_4_mcp_tools import Phase74MCPTools
 
 __all__ = [
     # Phase 7.1
@@ -68,7 +65,6 @@ __all__ = [
     "GraphLinker",
     "EntityType",
     "RelationType",
-    "Phase72MCPTools",
     # Phase 7.3
     "ConsolidationTrigger",
     "ConsolidationTriggerType",
@@ -76,7 +72,6 @@ __all__ = [
     "LearningPathway",
     "ProcedureAutoCreator",
     "ProcedureCandidate",
-    "Phase73MCPTools",
     # Phase 7.4
     "SmartRecall",
     "RecallContext",
@@ -84,5 +79,4 @@ __all__ = [
     "PlanEnhancement",
     "ProspectiveIntegration",
     "ProspectiveTask",
-    "Phase74MCPTools",
 ]
