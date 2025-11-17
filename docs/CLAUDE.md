@@ -2,7 +2,7 @@
 
 This file guides development **on** the Athena memory system.
 
-For guidance on **using** Athena from other projects, see `~/.claude/CLAUDE.md`.
+For guidance on **using** Athena from other projects, see `~/.claude/CLAUDE.md` or `README.md`.
 
 ---
 
@@ -12,10 +12,10 @@ For guidance on **using** Athena from other projects, see `~/.claude/CLAUDE.md`.
 # Install in development mode
 pip install -e .
 
-# Fast feedback (unit + integration, no benchmarks)
-pytest tests/unit/ tests/integration/ -v -m "not benchmark"
+# Run unit tests
+pytest tests/unit/ -v
 
-# Full test suite
+# Full test suite (6,133 core tests)
 pytest tests/ -v --timeout=300
 
 # Format and lint
@@ -24,10 +24,64 @@ ruff check --fix src/ tests/
 
 # Type checking
 mypy src/athena
-
-# Start MCP server
-memory-mcp
 ```
+
+---
+
+## Architecture: Direct Python Imports (Optimal Design)
+
+**NO MCP SERVER. NO PROTOCOL OVERHEAD.**
+
+### How It Works
+
+All memory operations are exposed as clean async Python functions:
+
+```python
+# Import operations directly
+from athena.episodic.operations import remember, recall
+from athena.semantic.operations import store, search
+
+# Use them
+event_id = await remember("User asked about timeline", tags=["meeting"])
+results = await recall("timeline", limit=5)
+
+fact_id = await store("Python is dynamically typed", topics=["programming"])
+facts = await search("programming", limit=10)
+```
+
+### Operations Modules
+
+Each memory layer has an `operations.py` module:
+- `src/athena/episodic/operations.py` - Remember, recall, get_recent, get_by_session, get_by_tags, etc.
+- `src/athena/memory/operations.py` - Semantic: store, search
+- `src/athena/procedural/operations.py` - Workflows (upcoming)
+- `src/athena/prospective/operations.py` - Tasks (upcoming)
+- `src/athena/graph/operations.py` - Knowledge graph (upcoming)
+- `src/athena/meta/operations.py` - Meta-memory (upcoming)
+- `src/athena/consolidation/operations.py` - Pattern extraction (upcoming)
+- `src/athena/planning/operations.py` - Planning (upcoming)
+
+### Discovery (TypeScript Stubs)
+
+Agents discover available operations by reading TypeScript files in `src/servers/`:
+```typescript
+// src/servers/episodic/remember.ts
+export async function remember(
+  content: string,
+  tags?: string[],
+  context?: Record<string, unknown>
+): Promise<string>
+```
+
+These are pure type definitions. Agents read them to discover operations, then import Python functions directly.
+
+### Why This Works
+
+✅ **Token efficiency**: No serialization, no protocol overhead
+✅ **Type safety**: Python types, not JSON
+✅ **Performance**: Direct function calls, not network round-trips
+✅ **Simplicity**: Import and call, no server process
+✅ **Follows Anthropic paradigm**: Discover from code → Import → Execute locally
 
 ---
 
