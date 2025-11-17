@@ -60,7 +60,7 @@ async def sync_todo_to_athena(
     todo: Dict[str, Any],
     project_id: int = 1,
 ) -> Tuple[bool, Optional[str]]:
-    """Sync a single TodoWrite item to Athena planning.
+    """Sync a single TodoWrite item to Athena planning with database persistence.
 
     Args:
         todo: TodoWrite todo item {content, status, activeForm}
@@ -70,25 +70,21 @@ async def sync_todo_to_athena(
         (success, plan_id or error_message)
     """
     try:
-        from athena.integration.todowrite_sync import (
-            convert_todo_to_plan,
-            get_sync_metadata,
-        )
+        from athena.integration.sync_operations import sync_todo_to_database
+        from athena.core.database import Database
 
-        # Convert todo to plan
-        plan = await convert_todo_to_plan(todo, project_id=project_id)
+        # Initialize database if needed
+        db = Database()
 
-        # In a real implementation, this would call the Athena planning API
-        # to store the plan in the database
-        logger.info(f"Synced todo to Athena plan: {plan.get('goal')}")
+        # Sync todo to database
+        success, result = await sync_todo_to_database(todo, project_id=project_id)
 
-        # Record the mapping
-        metadata = get_sync_metadata()
-        todo_id = todo.get("id", str(hash(todo.get("content", ""))))
-        plan_id = plan.get("id", f"plan_{todo_id}")
-        metadata.map_todo_to_plan(todo_id, plan_id)
-
-        return True, plan_id
+        if success:
+            logger.info(f"Synced todo to Athena database: {result}")
+            return True, result
+        else:
+            logger.error(f"Failed to sync todo: {result}")
+            return False, result
 
     except ImportError as e:
         logger.warning(f"Athena not available: {e}")
@@ -296,7 +292,7 @@ async def inject_todos_as_working_memory(
 async def on_session_start(session_id: str) -> Dict[str, Any]:
     """Called when a Claude Code session starts.
 
-    Injects active todos as working memory context.
+    Injects active todos from database as working memory context.
 
     Args:
         session_id: Session ID from Claude Code
@@ -307,12 +303,25 @@ async def on_session_start(session_id: str) -> Dict[str, Any]:
     try:
         logger.info(f"Session start hook for {session_id}")
 
-        # Load active todos (would come from Claude Code state)
-        todos = await load_active_todos()
+        from athena.integration.sync_operations import get_active_plans
+        from athena.integration.todowrite_sync import (
+            convert_plan_to_todo,
+            _map_athena_to_todowrite_status,
+        )
 
-        if not todos:
-            logger.info("No active todos to inject")
+        # Get active plans from database
+        try:
+            active_plans = await get_active_plans(project_id=1, limit=7)
+        except Exception:
+            # Fall back to empty if database not available
+            active_plans = []
+
+        if not active_plans:
+            logger.info("No active plans to inject")
             return {"todos_injected": 0}
+
+        # Convert plans back to todos
+        todos = [convert_plan_to_todo(plan) for plan in active_plans]
 
         # Format for injection
         memory_lines = await inject_todos_as_working_memory(todos)

@@ -4,8 +4,11 @@ Provides integration between Athena and external systems like Claude Code's Todo
 
 This module contains:
 - todowrite_sync: Bidirectional sync between TodoWrite and Athena planning
+- database_sync: Database persistence layer for synced plans
+- sync_operations: High-level sync operations and workflows
 """
 
+# Phase 1: Mapping layer
 from .todowrite_sync import (
     convert_todo_to_plan,
     convert_plan_to_todo,
@@ -21,7 +24,28 @@ from .todowrite_sync import (
     PriorityLevel,
 )
 
+# Phase 2: Database layer
+from .database_sync import (
+    TodoWritePlanStore,
+    initialize as initialize_database_store,
+    get_store as get_database_store,
+)
+
+# Phase 2: Sync operations
+from .sync_operations import (
+    sync_todo_to_database,
+    sync_todo_status_change,
+    detect_database_conflicts,
+    resolve_database_conflict,
+    get_completed_plans,
+    get_active_plans,
+    get_sync_summary,
+    cleanup_completed_plans,
+    export_plans_as_todos,
+)
+
 __all__ = [
+    # Phase 1: Mapping
     "convert_todo_to_plan",
     "convert_plan_to_todo",
     "convert_todo_list_to_plans",
@@ -34,4 +58,18 @@ __all__ = [
     "TodoWriteStatus",
     "AthenaTaskStatus",
     "PriorityLevel",
+    # Phase 2: Database
+    "TodoWritePlanStore",
+    "initialize_database_store",
+    "get_database_store",
+    # Phase 2: Operations
+    "sync_todo_to_database",
+    "sync_todo_status_change",
+    "detect_database_conflicts",
+    "resolve_database_conflict",
+    "get_completed_plans",
+    "get_active_plans",
+    "get_sync_summary",
+    "cleanup_completed_plans",
+    "export_plans_as_todos",
 ]
