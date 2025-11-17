@@ -1,0 +1,429 @@
+"""Episodic Memory Operations - Direct Python API
+
+This module provides clean async functions for episodic memory operations.
+These are extracted from MCP handlers and wrapped for direct use.
+
+Functions can be imported and called directly by agents:
+  from athena.episodic.operations import remember, recall
+  event_id = await remember("User asked about timeline", tags=["meeting"])
+  results = await recall("timeline", limit=5)
+
+No MCP protocol, no wrapper overhead. Just Python async functions.
+"""
+
+import logging
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
+from ..core.database import Database
+from .store import EpisodicStore
+from .models import EpisodicEvent, EventType, EventContext, EventOutcome
+
+logger = logging.getLogger(__name__)
+
+
+class EpisodicOperations:
+    """Encapsulates all episodic memory operations.
+
+    This class is instantiated with a database and episodic store,
+    providing all operations as methods.
+    """
+
+    def __init__(self, db: Database, store: EpisodicStore):
+        """Initialize with database and episodic store.
+
+        Args:
+            db: Database instance
+            store: EpisodicStore instance
+        """
+        self.db = db
+        self.store = store
+        self.logger = logger
+
+    async def remember(
+        self,
+        content: str,
+        context: Dict[str, Any] | None = None,
+        tags: List[str] | None = None,
+        source: str = "agent",
+        importance: float = 0.5,
+        session_id: str = "default",
+        spatial_context: str = "/",
+    ) -> str:
+        """Store an episodic event.
+
+        Args:
+            content: Event description
+            context: Additional context information
+            tags: Tags for categorization
+            source: Source identifier (e.g., "agent", "user", "system")
+            importance: Importance score (0.0-1.0)
+            session_id: Session identifier
+            spatial_context: File path or spatial location
+
+        Returns:
+            Memory ID of stored event
+
+        Raises:
+            ValueError: If content is empty
+        """
+        if not content or not isinstance(content, str):
+            raise ValueError("content is required and must be a string")
+
+        importance = max(0.0, min(1.0, importance))
+
+        event = EpisodicEvent(
+            timestamp=datetime.now(),
+            content=content,
+            event_type=EventType.AGENT_INTERACTION,
+            context=EventContext(cwd=spatial_context),
+            outcome=EventOutcome.SUCCESS,
+            session_id=session_id,
+            tags=tags or [],
+            importance=importance,
+            metadata={
+                "source": source,
+                "recorded_at": datetime.now().isoformat(),
+                "context_length": len(content),
+                **(context or {})
+            }
+        )
+
+        return await self.store.store(event)
+
+    async def recall(
+        self,
+        query: str,
+        limit: int = 10,
+        min_confidence: float = 0.5,
+        time_range: Dict[str, datetime] | None = None,
+        tags: List[str] | None = None,
+        session_id: str | None = None,
+    ) -> List[EpisodicEvent]:
+        """Search episodic memories.
+
+        Args:
+            query: Search query string
+            limit: Maximum results to return
+            min_confidence: Minimum confidence threshold
+            time_range: Optional time range with 'start' and 'end' keys
+            tags: Optional tag filters
+            session_id: Optional session filter
+
+        Returns:
+            List of matching episodic events
+        """
+        if not query:
+            return []
+
+        # Build query filters
+        filters = {
+            "limit": limit,
+            "min_confidence": min_confidence,
+        }
+
+        if time_range:
+            if "start" in time_range:
+                filters["start_time"] = time_range["start"]
+            if "end" in time_range:
+                filters["end_time"] = time_range["end"]
+
+        if tags:
+            filters["tags"] = tags
+
+        if session_id:
+            filters["session_id"] = session_id
+
+        # Use store's search capability
+        return await self.store.search(query, **filters)
+
+    async def recall_recent(
+        self,
+        limit: int = 5,
+        session_id: str | None = None,
+    ) -> List[EpisodicEvent]:
+        """Get most recent episodic events.
+
+        Args:
+            limit: Number of events to return
+            session_id: Optional session filter
+
+        Returns:
+            List of recent events, most recent first
+        """
+        filters = {"limit": limit, "order_by": "timestamp DESC"}
+        if session_id:
+            filters["session_id"] = session_id
+
+        return await self.store.list(**filters)
+
+    async def get_by_session(
+        self,
+        session_id: str,
+        limit: int = 100,
+    ) -> List[EpisodicEvent]:
+        """Get all events from a session.
+
+        Args:
+            session_id: Session identifier
+            limit: Maximum events to return
+
+        Returns:
+            List of events from session
+        """
+        return await self.store.list(
+            filters={"session_id": session_id},
+            limit=limit,
+            order_by="timestamp DESC"
+        )
+
+    async def get_by_tags(
+        self,
+        tags: List[str],
+        limit: int = 100,
+    ) -> List[EpisodicEvent]:
+        """Get events matching tags.
+
+        Args:
+            tags: Tags to search for
+            limit: Maximum events to return
+
+        Returns:
+            List of matching events
+        """
+        if not tags:
+            return []
+
+        return await self.store.search(
+            query=" OR ".join(tags),
+            limit=limit,
+            tags=tags
+        )
+
+    async def get_by_time_range(
+        self,
+        start: datetime,
+        end: datetime,
+        limit: int = 100,
+    ) -> List[EpisodicEvent]:
+        """Get events within time range.
+
+        Args:
+            start: Start datetime
+            end: End datetime
+            limit: Maximum events to return
+
+        Returns:
+            List of events in time range
+        """
+        return await self.store.list(
+            filters={
+                "start_time": start,
+                "end_time": end,
+            },
+            limit=limit,
+            order_by="timestamp DESC"
+        )
+
+    async def delete_old(
+        self,
+        days: int = 30,
+        batch_size: int = 100,
+    ) -> int:
+        """Delete events older than N days.
+
+        Args:
+            days: Delete events older than this many days
+            batch_size: Number of events to delete per batch
+
+        Returns:
+            Number of events deleted
+        """
+        cutoff_date = datetime.now() - timedelta(days=days)
+        deleted = 0
+
+        # Get events to delete in batches
+        while True:
+            events = await self.store.list(
+                filters={"end_time": cutoff_date},
+                limit=batch_size,
+                order_by="timestamp ASC"
+            )
+
+            if not events:
+                break
+
+            for event in events:
+                await self.store.delete(event.id)
+                deleted += 1
+
+        return deleted
+
+    async def get_statistics(
+        self,
+        session_id: str | None = None,
+    ) -> Dict[str, Any]:
+        """Get statistics about episodic memories.
+
+        Args:
+            session_id: Optional session filter
+
+        Returns:
+            Dictionary with statistics
+        """
+        filters = {}
+        if session_id:
+            filters["session_id"] = session_id
+
+        all_events = await self.store.list(filters=filters, limit=10000)
+
+        if not all_events:
+            return {
+                "total_events": 0,
+                "avg_importance": 0.0,
+                "time_span_days": 0,
+            }
+
+        importances = [e.importance for e in all_events if e.importance]
+        timestamps = [e.timestamp for e in all_events if e.timestamp]
+
+        return {
+            "total_events": len(all_events),
+            "avg_importance": sum(importances) / len(importances) if importances else 0.0,
+            "min_importance": min(importances) if importances else 0.0,
+            "max_importance": max(importances) if importances else 0.0,
+            "earliest": min(timestamps).isoformat() if timestamps else None,
+            "latest": max(timestamps).isoformat() if timestamps else None,
+            "time_span_days": (max(timestamps) - min(timestamps)).days if len(timestamps) > 1 else 0,
+        }
+
+
+# Global singleton instance (lazy-initialized by manager)
+_operations: EpisodicOperations | None = None
+
+
+def initialize(db: Database, store: EpisodicStore) -> None:
+    """Initialize the global episodic operations instance.
+
+    Called by UnifiedMemoryManager during setup.
+
+    Args:
+        db: Database instance
+        store: EpisodicStore instance
+    """
+    global _operations
+    _operations = EpisodicOperations(db, store)
+
+
+def get_operations() -> EpisodicOperations:
+    """Get the global episodic operations instance.
+
+    Returns:
+        EpisodicOperations instance
+
+    Raises:
+        RuntimeError: If not initialized
+    """
+    if _operations is None:
+        raise RuntimeError(
+            "Episodic operations not initialized. "
+            "Call initialize(db, store) first."
+        )
+    return _operations
+
+
+# Convenience functions that delegate to global instance
+async def remember(
+    content: str,
+    context: Dict[str, Any] | None = None,
+    tags: List[str] | None = None,
+    source: str = "agent",
+    importance: float = 0.5,
+    session_id: str = "default",
+    spatial_context: str = "/",
+) -> str:
+    """Store an episodic event. See EpisodicOperations.remember for details."""
+    ops = get_operations()
+    return await ops.remember(
+        content=content,
+        context=context,
+        tags=tags,
+        source=source,
+        importance=importance,
+        session_id=session_id,
+        spatial_context=spatial_context,
+    )
+
+
+async def recall(
+    query: str,
+    limit: int = 10,
+    min_confidence: float = 0.5,
+    time_range: Dict[str, datetime] | None = None,
+    tags: List[str] | None = None,
+    session_id: str | None = None,
+) -> List[EpisodicEvent]:
+    """Search episodic memories. See EpisodicOperations.recall for details."""
+    ops = get_operations()
+    return await ops.recall(
+        query=query,
+        limit=limit,
+        min_confidence=min_confidence,
+        time_range=time_range,
+        tags=tags,
+        session_id=session_id,
+    )
+
+
+async def recall_recent(
+    limit: int = 5,
+    session_id: str | None = None,
+) -> List[EpisodicEvent]:
+    """Get most recent events. See EpisodicOperations.recall_recent for details."""
+    ops = get_operations()
+    return await ops.recall_recent(limit=limit, session_id=session_id)
+
+
+async def get_by_session(
+    session_id: str,
+    limit: int = 100,
+) -> List[EpisodicEvent]:
+    """Get all events from session. See EpisodicOperations.get_by_session for details."""
+    ops = get_operations()
+    return await ops.get_by_session(session_id=session_id, limit=limit)
+
+
+async def get_by_tags(
+    tags: List[str],
+    limit: int = 100,
+) -> List[EpisodicEvent]:
+    """Get events by tags. See EpisodicOperations.get_by_tags for details."""
+    ops = get_operations()
+    return await ops.get_by_tags(tags=tags, limit=limit)
+
+
+async def get_by_time_range(
+    start: datetime,
+    end: datetime,
+    limit: int = 100,
+) -> List[EpisodicEvent]:
+    """Get events in time range. See EpisodicOperations.get_by_time_range for details."""
+    ops = get_operations()
+    return await ops.get_by_time_range(start=start, end=end, limit=limit)
+
+
+async def delete_old(
+    days: int = 30,
+    batch_size: int = 100,
+) -> int:
+    """Delete old events. See EpisodicOperations.delete_old for details."""
+    ops = get_operations()
+    return await ops.delete_old(days=days, batch_size=batch_size)
+
+
+async def get_statistics(
+    session_id: str | None = None,
+) -> Dict[str, Any]:
+    """Get statistics. See EpisodicOperations.get_statistics for details."""
+    ops = get_operations()
+    return await ops.get_statistics(session_id=session_id)
