@@ -1179,8 +1179,23 @@ class UnifiedMemoryManager:
                 return cached_results
 
         # Auto-select cascade depth if not specified
+        tier_selection_explanation = None
         if cascade_depth is None and auto_select_depth:
-            cascade_depth = self.tier_selector.select_depth(query, context)
+            # Enhanced: Use quality-aware tier selection (Gap 3)
+            # This considers both query complexity AND layer quality metrics
+            try:
+                layer_quality_scores = self.quality_reweighter._compute_layer_quality_scores(
+                    {}, context
+                )
+                cascade_depth, tier_selection_explanation = self.tier_selector.select_depth_with_quality(
+                    query,
+                    layer_quality_scores=layer_quality_scores,
+                    context=context,
+                )
+            except Exception as e:
+                # Fallback to complexity-only selection if quality scoring fails
+                logger.debug(f"Quality-based tier selection failed, using complexity-only: {e}")
+                cascade_depth = self.tier_selector.select_depth(query, context)
         else:
             cascade_depth = cascade_depth or 3
 
@@ -1221,6 +1236,7 @@ class UnifiedMemoryManager:
                     "query": query,
                     "context_keys": list(context.keys()),
                     "depth": cascade_depth,
+                    "depth_selection_reasoning": tier_selection_explanation,  # Quality-based reasoning
                     "tiers_used": [
                         "tier_1",
                         "tier_2" if cascade_depth >= 2 else None,
