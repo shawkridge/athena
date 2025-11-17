@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -109,6 +109,11 @@ class ProspectiveTask(BaseModel):
 
     # Learning Integration (FK to extracted_patterns)
     learned_pattern_id: Optional[int] = None          # Pattern that informed this task
+
+    # Effort Prediction (Phase 1) - NEW FIELDS
+    effort_prediction: Optional[Dict[str, Any]] = None    # {effort, confidence, range, bias_factor, explanation}
+    effort_base_estimate: Optional[int] = None           # User's initial estimate in minutes
+    effort_task_type: Optional[str] = None               # Task type for prediction (feature, bugfix, etc)
 
     model_config = ConfigDict(use_enum_values=True)
 

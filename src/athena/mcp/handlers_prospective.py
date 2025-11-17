@@ -48,14 +48,15 @@ class ProspectiveHandlersMixin:
     """
 
     async def _handle_create_task(self, args: dict) -> list[TextContent]:
-        """Handle create_task tool call with auto-entity creation.
+        """Handle create_task tool call with auto-effort-prediction.
 
-        PHASE 5 AUTO-INTEGRATION: Automatically creates Knowledge Graph entity
-        for the task to enable cross-layer linking and graph queries.
+        PHASE 1 AUTO-INTEGRATION: Automatically predicts effort with confidence
+        based on historical task data. Also creates Knowledge Graph entity.
         """
         project = self.project_manager.get_or_create_project()
 
         from ..prospective.models import TaskTrigger, TriggerType
+        from ..services.effort_predictor import EffortPredictorService
 
         # Auto-generate active_form if not provided (convert imperative to present continuous)
         content = args.get("content", "")
@@ -71,6 +72,24 @@ class ProspectiveHandlersMixin:
             else:
                 active_form = "Working"
 
+        # PHASE 1: Predict effort
+        task_type = args.get("task_type", "general")
+        base_estimate = args.get("estimated_minutes")
+
+        effort_prediction = None
+        try:
+            predictor_service = EffortPredictorService(self.db)
+            effort_prediction = await predictor_service.predict_for_task(
+                project_id=project.id,
+                task_description=content,
+                task_type=task_type,
+                base_estimate=base_estimate
+            )
+            logger.info(f"Effort prediction: {effort_prediction['effort']}m (confidence: {effort_prediction['confidence']})")
+        except Exception as e:
+            logger.error(f"Error predicting effort: {e}", exc_info=True)
+            # Continue without prediction if error occurs
+
         task = ProspectiveTask(
             project_id=project.id,
             content=content,
@@ -78,6 +97,10 @@ class ProspectiveHandlersMixin:
             priority=TaskPriority(args.get("priority", "medium")),
             status=TaskStatus.PENDING,
             created_at=datetime.now(),
+            # NEW: Effort prediction fields
+            effort_prediction=effort_prediction,
+            effort_base_estimate=base_estimate,
+            effort_task_type=task_type
         )
 
         task_id = self.prospective_store.create_task(task)
@@ -134,6 +157,18 @@ class ProspectiveHandlersMixin:
         response = f"✓ Created task (ID: {task_id})\n"
         response += f"Content: {task.content}\n"
         response += f"Priority: {task.priority}\n"
+
+        # PHASE 1: Include effort prediction in response
+        if effort_prediction:
+            response += f"\nEffort Estimate:\n"
+            response += f"  Predicted: {effort_prediction['effort']} minutes\n"
+            response += f"  Confidence: {effort_prediction['confidence']}\n"
+            response += f"  Bias Factor: {effort_prediction['bias_factor']}x\n"
+            response += f"  Range: {effort_prediction['range']['optimistic']}-{effort_prediction['range']['pessimistic']} minutes\n"
+            response += f"  Rationale: {effort_prediction['explanation']}\n"
+            if effort_prediction['sample_count'] > 0:
+                response += f"  Based on: {effort_prediction['sample_count']} similar tasks\n"
+
         if "triggers" in args:
             response += f"Triggers: {len(args['triggers'])} added\n"
         if entity_created:
@@ -1518,4 +1553,273 @@ class ProspectiveHandlersMixin:
         """Forward to Phase 2 handler: create_task_from_template."""
         from . import handlers_system
         return await handlers_system.handle_create_task_from_template(self, args)
+
+    # ============================================================================
+    # PHASE 3: Planning Recommendations with RAG (Smart Planning)
+    # ============================================================================
+
+    async def _handle_create_task_with_smart_planning(self, args: dict) -> list[TextContent]:
+        """Create task and get intelligent planning strategy recommendations.
+
+        Args:
+            args: Tool args including:
+                - content: Task description
+                - task_type: Type (feature, bugfix, refactor, etc.)
+                - complexity: Complexity level (1-10)
+                - domain: Domain (web, mobile, infra, etc.)
+        """
+        try:
+            project = self.project_manager.get_or_create_project()
+
+            # Extract args
+            content = args.get("content", "")
+            task_type = args.get("task_type", "general")
+            complexity = args.get("complexity", 5)
+            domain = args.get("domain", "general")
+
+            # Create task
+            task = ProspectiveTask(
+                project_id=project.id,
+                content=content,
+                active_form=f"Planning {content.split()[0] if content else 'task'}",
+                priority=TaskPriority(args.get("priority", "medium")),
+                status=TaskStatus.PENDING,
+                phase=TaskPhase.PLANNING,
+                created_at=datetime.now(),
+            )
+            task_id = self.prospective_store.create_task(task)
+
+            # Get planning recommendations
+            recommendations = await self.planning_recommendation_service.recommend_for_task(
+                project_id=project.id,
+                task_description=content,
+                task_type=task_type,
+                complexity=complexity,
+                domain=domain,
+            )
+
+            # Format response
+            response = f"✓ Task created (ID: {task_id}): {content}\n\n"
+            response += "Recommended planning strategies:\n"
+
+            if recommendations:
+                for i, rec in enumerate(recommendations, 1):
+                    response += (
+                        f"\n{i}. {rec.pattern_name}\n"
+                        f"   Success Rate: {int(rec.success_rate * 100)}%\n"
+                        f"   Confidence: {rec.confidence}\n"
+                        f"   Rationale: {rec.rationale}\n"
+                    )
+                response += f"\nTo plan using the top strategy:\n"
+                response += f"/plan-task --task-id {task_id} --strategy {recommendations[0].pattern_name}\n"
+            else:
+                response += "No recommendations available yet (system needs more historical data).\n"
+
+            return [TextContent(type="text", text=response)]
+
+        except Exception as e:
+            logger.error(f"Error in _handle_create_task_with_smart_planning: {e}")
+            return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+    async def _handle_get_planning_recommendations(self, args: dict) -> list[TextContent]:
+        """Get planning strategy recommendations for a task.
+
+        Args:
+            args: Tool args including:
+                - task_id: Task ID
+                - task_type: Type of task
+                - complexity: Complexity level (1-10)
+        """
+        try:
+            project = self.project_manager.get_or_create_project()
+            task_id = args.get("task_id")
+
+            if not task_id:
+                return [TextContent(type="text", text="Error: task_id required")]
+
+            task = self.prospective_store.get_task(task_id)
+            if not task:
+                return [TextContent(type="text", text=f"Error: Task {task_id} not found")]
+
+            # Get recommendations
+            task_type = args.get("task_type", "general")
+            complexity = args.get("complexity", 5)
+            domain = args.get("domain", "general")
+
+            recommendations = await self.planning_recommendation_service.recommend_for_task(
+                project_id=project.id,
+                task_description=task.content,
+                task_type=task_type,
+                complexity=complexity,
+                domain=domain,
+            )
+
+            # Format response
+            response = f"Planning recommendations for task {task_id}:\n\n"
+            if recommendations:
+                for i, rec in enumerate(recommendations, 1):
+                    response += f"{i}. {rec.pattern_name} ({int(rec.success_rate * 100)}% success)\n"
+            else:
+                response += "No recommendations available yet.\n"
+
+            return [TextContent(type="text", text=response)]
+
+        except Exception as e:
+            logger.error(f"Error in _handle_get_planning_recommendations: {e}")
+            return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+    # ============================================================================
+    # PHASE 4: Execution Feedback Capture
+    # ============================================================================
+
+    async def _handle_verify_task_completion(self, args: dict) -> list[TextContent]:
+        """Record task completion with execution feedback.
+
+        Args:
+            args: Tool args including:
+                - task_id: Task ID
+                - actual_minutes: Actual duration (minutes)
+                - success: Whether task succeeded (default: True)
+                - blockers: List of blockers encountered
+                - lessons_learned: Lessons from execution
+        """
+        try:
+            task_id = args.get("task_id")
+            if not task_id:
+                return [TextContent(type="text", text="Error: task_id required")]
+
+            actual_minutes = args.get("actual_minutes", 0)
+            success = args.get("success", True)
+            blockers = args.get("blockers", [])
+            lessons = args.get("lessons_learned", "")
+
+            # Capture feedback
+            feedback = await self.execution_feedback_service.capture_on_task_completion(
+                task_id=task_id,
+                actual_duration_minutes=int(actual_minutes),
+                success=success,
+                blockers=blockers if isinstance(blockers, list) else [blockers],
+                lessons_learned=lessons,
+            )
+
+            if "error" in feedback:
+                return [TextContent(type="text", text=f"Error: {feedback['error']}")]
+
+            # Format response
+            response = f"✓ Task {task_id} completion recorded\n\n"
+            response += f"Duration: {feedback['actual_duration_minutes']}m "
+            response += f"(estimated: {feedback['estimated_duration_minutes']}m)\n"
+            response += f"Variance: {feedback['variance_percent']:.1f}%\n"
+            response += f"Status: {'Success' if success else 'Failed'}\n"
+
+            if blockers:
+                response += f"Blockers: {', '.join(blockers)}\n"
+
+            if lessons:
+                response += f"Lessons: {lessons}\n"
+
+            response += f"\nFeedback recorded for learning system.\n"
+
+            return [TextContent(type="text", text=response)]
+
+        except Exception as e:
+            logger.error(f"Error in _handle_verify_task_completion: {e}")
+            return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+    async def _handle_get_task_feedback(self, args: dict) -> list[TextContent]:
+        """Get execution feedback summary for a task.
+
+        Args:
+            args: Tool args including:
+                - task_id: Task ID
+        """
+        try:
+            task_id = args.get("task_id")
+            if not task_id:
+                return [TextContent(type="text", text="Error: task_id required")]
+
+            summary = await self.execution_feedback_service.get_task_feedback_summary(task_id)
+
+            if not summary:
+                return [TextContent(type="text", text=f"No feedback found for task {task_id}")]
+
+            # Format response
+            response = f"Feedback summary for task {task_id}:\n\n"
+            response += f"Status: {summary.get('status', 'unknown')}\n"
+            response += f"Actual Duration: {summary.get('actual_duration_minutes', 'N/A')}m\n"
+            response += f"Lessons: {summary.get('lessons_learned', 'None recorded')}\n"
+
+            if summary.get("blockers"):
+                response += f"Blockers: {', '.join(summary['blockers'])}\n"
+
+            return [TextContent(type="text", text=response)]
+
+        except Exception as e:
+            logger.error(f"Error in _handle_get_task_feedback: {e}")
+            return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+    # ============================================================================
+    # PHASE 5: Execution Deviation Monitoring & Adaptive Replanning
+    # ============================================================================
+
+    async def _handle_check_task_deviation(self, args: dict) -> list[TextContent]:
+        """Check if a task is deviating from its estimated duration.
+
+        Args:
+            args: Tool args including:
+                - task_id: Task ID to check
+        """
+        try:
+            task_id = args.get("task_id")
+            if not task_id:
+                return [TextContent(type="text", text="Error: task_id required")]
+
+            alert = await self.deviation_monitor.check_deviation(task_id)
+
+            if not alert:
+                return [TextContent(
+                    type="text",
+                    text=f"Task {task_id} is on track (no significant deviation)"
+                )]
+
+            # Format response
+            response = f"⚠ Task {task_id} is deviating from plan\n\n"
+            response += f"Elapsed: {alert.elapsed_minutes}m\n"
+            response += f"Estimated: {alert.estimated_minutes}m\n"
+            response += f"Deviation: {alert.deviation_percent:.1f}%\n"
+            response += f"Recommended Action: {alert.recommended_action.upper()}\n"
+
+            if alert.reason:
+                response += f"Reason: {alert.reason}\n"
+
+            return [TextContent(type="text", text=response)]
+
+        except Exception as e:
+            logger.error(f"Error in _handle_check_task_deviation: {e}")
+            return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+    async def _handle_get_active_deviations(self, args: dict) -> list[TextContent]:
+        """Get all currently deviating tasks.
+
+        Returns list of tasks that are significantly off their estimates.
+        """
+        try:
+            deviations = await self.deviation_monitor.get_active_deviations()
+
+            if not deviations:
+                return [TextContent(type="text", text="No tasks are currently deviating")]
+
+            # Format response
+            response = f"Active deviations ({len(deviations)} tasks):\n\n"
+            for task_id, alert in sorted(deviations.items()):
+                response += (
+                    f"Task {task_id}: {alert.deviation_percent:.1f}% deviation "
+                    f"({alert.recommended_action})\n"
+                )
+
+            return [TextContent(type="text", text=response)]
+
+        except Exception as e:
+            logger.error(f"Error in _handle_get_active_deviations: {e}")
+            return [TextContent(type="text", text=f"Error: {str(e)}")]
 

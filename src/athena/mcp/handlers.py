@@ -427,6 +427,53 @@ class MemoryMCPServer(
         )
         logger.info("Knowledge graph consolidation orchestrator initialized and running")
 
+        # Initialize background trigger evaluation service (Phase 2)
+        from ..services import (
+            BackgroundTriggerService,
+            PlanningRecommendationService,
+            ExecutionFeedbackService,
+            ExecutionDeviationMonitor,
+        )
+
+        self.trigger_service = BackgroundTriggerService(
+            prospective_store=self.prospective_store,
+            episodic_store=self.episodic_store.episodic_store if self.episodic_store else None,
+            notification_service=None  # Can be configured later if needed
+        )
+        logger.info("Background trigger evaluation service initialized (not yet running)")
+
+        # Initialize execution deviation monitor (Phase 5) early for trigger service
+        deviation_monitor_temp = ExecutionDeviationMonitor(
+            prospective_store=self.prospective_store,
+            planning_store=self.planning_store,
+            deviation_threshold_percent=20.0,
+        )
+        # Attach to trigger service for integrated evaluation
+        self.trigger_service.deviation_monitor = deviation_monitor_temp
+
+        # Initialize planning recommendation service (Phase 3)
+        self.planning_recommendation_service = PlanningRecommendationService(
+            planning_store=self.planning_store,
+            planning_rag=None  # Can be configured later if RAG available
+        )
+        logger.info("Planning recommendation service initialized")
+
+        # Initialize execution feedback service (Phase 4)
+        self.execution_feedback_service = ExecutionFeedbackService(
+            prospective_store=self.prospective_store,
+            episodic_store=self.episodic_store.episodic_store if self.episodic_store else None,
+            planning_store=self.planning_store,
+        )
+        logger.info("Execution feedback service initialized")
+
+        # Initialize execution deviation monitor (Phase 5)
+        self.deviation_monitor = ExecutionDeviationMonitor(
+            prospective_store=self.prospective_store,
+            planning_store=self.planning_store,
+            deviation_threshold_percent=20.0,
+        )
+        logger.info("Execution deviation monitor initialized")
+
         self.server = Server("athena")
 
         # Initialize OperationRouter as singleton (avoid recreating on every tool call - saves ~100ms per call)
@@ -1371,10 +1418,43 @@ class MemoryMCPServer(
     # based on the "operation" parameter in the meta-tool args.
         return [result.as_optimized_content(schema_name="semantic_search")]
 
+    # ============================================================================
+    # Server Lifecycle Management (startup/shutdown hooks)
+    # ============================================================================
+
+    async def startup(self) -> None:
+        """Called when MCP server starts.
+
+        Initializes background services like trigger evaluation.
+        """
+        try:
+            logger.info("Starting MCP server background services")
+            await self.trigger_service.start(evaluation_interval_seconds=30)
+            logger.info("MCP server startup complete")
+        except Exception as e:
+            logger.error(f"Error during server startup: {e}", exc_info=True)
+            raise
+
+    async def shutdown(self) -> None:
+        """Called when MCP server shuts down.
+
+        Gracefully stops background services.
+        """
+        try:
+            logger.info("Stopping MCP server background services")
+            await self.trigger_service.stop()
+            logger.info("MCP server shutdown complete")
+        except Exception as e:
+            logger.error(f"Error during server shutdown: {e}", exc_info=True)
+
     # Episodic memory handlers
     async def run(self):
         """Run the MCP server."""
         from mcp.server.stdio import stdio_server
 
-        async with stdio_server() as (read_stream, write_stream):
-            await self.server.run(read_stream, write_stream, self.server.create_initialization_options())
+        try:
+            await self.startup()
+            async with stdio_server() as (read_stream, write_stream):
+                await self.server.run(read_stream, write_stream, self.server.create_initialization_options())
+        finally:
+            await self.shutdown()

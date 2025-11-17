@@ -342,3 +342,141 @@ This way both of us understand progress. Complexity gets tackled incrementally, 
 Don't just tell me how you'll solve it. *Show me* why this solution is the only solution that makes sense. Make me see the future you're creating.
 
 </collaboration-model>
+
+<mcp-paradigm>
+
+## MCP Architecture: The Anthropic Paradigm (98.7% Token Efficiency)
+
+**Reference**: https://www.anthropic.com/engineering/code-execution-with-mcp
+
+### The Problem Being Solved
+
+Traditional MCP implementations suffer from two inefficiencies:
+1. **Context bloat**: All tool schemas loaded upfront (150K+ tokens) even when unused
+2. **Intermediate data duplication**: Results pass through context multiple times
+
+### The Paradigm (NOT what you might think)
+
+**This is NOT**: "Replace tools with code execution"
+**This IS**: "Organize MCP tools as filesystem files, let agents discover and call them from code"
+
+### Architecture
+
+```
+servers/
+├── athena/
+│   ├── planning_recommendations.ts     # Tool wrapper
+│   ├── execution_feedback.ts          # Tool wrapper
+│   ├── deviation_monitor.ts           # Tool wrapper
+│   └── index.ts
+
+// planning_recommendations.ts
+export async function recommend(taskId, complexity) {
+  return callMCPTool('planning:recommend',
+    { task_id: taskId, complexity });
+}
+```
+
+### Key Mechanisms
+
+**1. Progressive Disclosure of Tool Definitions**
+- Tools stored as files in `./servers/`, NOT in context
+- Agent discovers by listing directory: `ls ./servers/athena/`
+- Agent reads only needed tool files: `cat ./servers/athena/planning_recommendations.ts`
+- Agent imports functions: `import { recommend } from './servers/athena/planning_recommendations.ts'`
+- Cost: 0 tokens (files aren't in context)
+
+**2. Data Filtering in Execution Environment**
+- Agent retrieves data, filters locally, returns only summary
+- Example:
+  ```typescript
+  const allResults = await recommend(taskId, 5);
+  const filtered = allResults.filter(r => r.success_rate > 0.8);
+  console.log(`Found ${filtered.length} recommendations`);
+  // Only this output goes to context!
+  ```
+
+**3. State Persistence**
+- Agent writes results to files for resumption
+- Build reusable "Skills" (functions that reliably work)
+- Cache expensive computations
+- Enable incremental task completion
+
+### Why This Works
+
+```
+Old (150,000 tokens):
+  • Tool definitions: 100K tokens
+  • Data round-trips: 40K tokens
+  • Model reasoning: 10K tokens
+
+New (2,000 tokens):
+  • Tool definitions: 0 tokens (in files, not context)
+  • Data round-trips: 0 tokens (stays in execution env)
+  • Model reasoning: 2K tokens (only summaries)
+
+Savings: 98.7%
+```
+
+### Implementation for Projects
+
+1. **Create file-based tool structure**
+   ```
+   servers/
+   └── [domain]/
+       ├── tool1.ts      # export async function...
+       ├── tool2.ts      # export async function...
+       └── index.ts
+   ```
+
+2. **Each tool file wraps an MCP tool**
+   - Exports functions, not schemas
+   - Functions call underlying MCP tools
+   - Discoverable via filesystem navigation
+
+3. **Agent discovers via exploration**
+   - Lists `./servers/` directory
+   - Reads tool files to understand parameters
+   - Imports functions from files
+   - Calls them in code
+
+4. **Agent writes code that filters/aggregates**
+   - Imports tool wrappers
+   - Calls them
+   - Processes results locally
+   - Returns only summary to context
+
+5. **MCP tools work underneath unchanged**
+   - Tool definitions stay OFF context
+   - Agent calls from code, not via direct MCP calls
+   - Results stay in execution environment
+
+### CRITICAL: What This Is NOT
+
+- ✗ Replacing MCP tools with a code execution tool
+- ✗ Tools defined in code context
+- ✗ Agents writing standalone Python
+- ✗ Dynamic tool schema loading
+
+### CRITICAL: What This IS
+
+- ✓ MCP tools organized as filesystem files
+- ✓ Tool definitions NOT in context
+- ✓ Agents discover by exploring filesystem
+- ✓ Agents import wrappers and call from code
+- ✓ Data processing in execution environment
+- ✓ Only summaries returned to context
+
+### Applying This Paradigm
+
+When architecting systems with MCP:
+1. **Don't register all tools upfront**
+2. **Organize tools as filesystem files** (servers/{domain}/*.ts)
+3. **Each file exports wrapper functions**
+4. **Agents discover by exploring filesystem**
+5. **Agents call tools from code, filter locally**
+6. **Only summaries return to context**
+
+Result: 98.7% token reduction + cleaner agent code + better composability
+
+</mcp-paradigm>

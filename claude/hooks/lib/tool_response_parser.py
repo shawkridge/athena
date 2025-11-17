@@ -42,8 +42,11 @@ class ToolResponseParser:
                 summary=f"No response from {tool_name}"
             )
 
-        status = tool_response.get("status", "unknown")
-        success = status == "success"
+        # Claude Code provides no explicit status field
+        # PostToolUse hooks are only called for successful executions
+        # So we assume success=True if tool_response is present
+        status = tool_response.get("status", "success")
+        success = True  # PostToolUse = successful execution
 
         # Route to tool-specific parser
         parser_method = getattr(
@@ -59,15 +62,18 @@ class ToolResponseParser:
         tool_name: str, response: Dict, status: str, success: bool
     ) -> ParsedResponse:
         """Parse Read tool response."""
-        content = response.get("content", "")
-        line_count = response.get("line_count", 0)
-        encoding = response.get("encoding", "utf-8")
+        # Claude Code nests file info under 'file' key
+        file_info = response.get("file", {})
+        content = file_info.get("content", "")
+        line_count = file_info.get("numLines", 0)
+        total_lines = file_info.get("totalLines", 0)
+        file_path = file_info.get("filePath", response.get("file_path", "unknown"))
 
         metadata = {
             "content_length": len(content),
             "line_count": line_count,
-            "encoding": encoding,
-            "file_path": response.get("file_path", "unknown"),
+            "total_lines": total_lines,
+            "file_path": file_path,
         }
 
         if success:
@@ -88,15 +94,15 @@ class ToolResponseParser:
         tool_name: str, response: Dict, status: str, success: bool
     ) -> ParsedResponse:
         """Parse Write tool response."""
-        file_path = response.get("file_path", "unknown")
-        bytes_written = response.get("bytes_written", 0)
-        content_length = response.get("content_length", 0)
+        file_path = response.get("filePath", response.get("file_path", "unknown"))
+        content = response.get("content", "")
+        bytes_written = len(content)
+        write_type = response.get("type", "write")
 
         metadata = {
             "file_path": file_path,
             "bytes_written": bytes_written,
-            "content_length": content_length,
-            "mode": response.get("mode", "write"),
+            "write_type": write_type,
         }
 
         if success:
@@ -117,15 +123,14 @@ class ToolResponseParser:
         tool_name: str, response: Dict, status: str, success: bool
     ) -> ParsedResponse:
         """Parse Edit tool response."""
-        file_path = response.get("file_path", "unknown")
-        replacements = response.get("replacements_made", 0)
-        content_changed = response.get("content_changed", False)
+        file_path = response.get("filePath", response.get("file_path", "unknown"))
+        structured_patch = response.get("structuredPatch", [])
+        replacements = len(structured_patch) if isinstance(structured_patch, list) else 0
 
         metadata = {
             "file_path": file_path,
             "replacements_made": replacements,
-            "content_changed": content_changed,
-            "lines_affected": response.get("lines_affected", 0),
+            "user_modified": response.get("userModified", False),
         }
 
         if success:
@@ -146,21 +151,25 @@ class ToolResponseParser:
         tool_name: str, response: Dict, status: str, success: bool
     ) -> ParsedResponse:
         """Parse Bash tool response."""
-        exit_code = response.get("exit_code", -1)
-        stdout_len = len(response.get("stdout", ""))
-        stderr_len = len(response.get("stderr", ""))
-        duration_ms = response.get("duration_ms", 0)
+        stdout = response.get("stdout", "")
+        stderr = response.get("stderr", "")
+        interrupted = response.get("interrupted", False)
+
+        stdout_len = len(stdout)
+        stderr_len = len(stderr)
+
+        # Infer exit code from interruption status (Claude Code doesn't provide it)
+        exit_code = -1 if interrupted else 0 if success else -1
 
         metadata = {
             "exit_code": exit_code,
             "stdout_length": stdout_len,
             "stderr_length": stderr_len,
-            "duration_ms": duration_ms,
-            "command": response.get("command", "unknown")[:100],  # First 100 chars
+            "interrupted": interrupted,
         }
 
         if success:
-            summary = f"Command completed with exit code {exit_code} ({duration_ms}ms)"
+            summary = f"Command completed with exit code {exit_code}"
         else:
             summary = f"Command failed with exit code {exit_code}"
 
@@ -177,20 +186,24 @@ class ToolResponseParser:
         tool_name: str, response: Dict, status: str, success: bool
     ) -> ParsedResponse:
         """Parse Glob tool response."""
-        matches = response.get("matches", [])
-        match_count = response.get("match_count", len(matches))
-        pattern = response.get("pattern", "unknown")
+        filenames = response.get("filenames", [])
+        match_count = response.get("numFiles", len(filenames))
+        truncated = response.get("truncated", False)
+        duration_ms = response.get("durationMs", 0)
 
         metadata = {
-            "pattern": pattern,
             "match_count": match_count,
-            "matches": matches[:10],  # First 10 matches
+            "truncated": truncated,
+            "duration_ms": duration_ms,
+            "sample_files": filenames[:5],  # First 5 files
         }
 
         if success:
-            summary = f"Found {match_count} matches for pattern: {pattern}"
+            summary = f"Found {match_count} files"
+            if truncated:
+                summary += " (results truncated)"
         else:
-            summary = f"Glob search failed for pattern: {pattern}"
+            summary = f"Glob search failed"
 
         return ParsedResponse(
             tool_name=tool_name,
@@ -225,6 +238,62 @@ class ToolResponseParser:
             summary = f"Found {total_matches} matches for '{pattern}' in {len(files_with_matches)} files"
         else:
             summary = f"Grep search failed for pattern: {pattern}"
+
+        return ParsedResponse(
+            tool_name=tool_name,
+            status=status,
+            success=success,
+            metadata=metadata,
+            summary=summary,
+        )
+
+    @staticmethod
+    def _parse_askuserquestion(
+        tool_name: str, response: Dict, status: str, success: bool
+    ) -> ParsedResponse:
+        """Parse AskUserQuestion tool response."""
+        answers = response.get("answers", {})
+        question_count = 1  # One question asked
+
+        metadata = {
+            "answers_received": len(answers),
+            "response_keys": list(answers.keys()),
+        }
+
+        if success:
+            summary = f"Collected {len(answers)} answer(s) from user"
+        else:
+            summary = f"Failed to collect user answers"
+
+        return ParsedResponse(
+            tool_name=tool_name,
+            status=status,
+            success=success,
+            metadata=metadata,
+            summary=summary,
+        )
+
+    @staticmethod
+    def _parse_todowrite(
+        tool_name: str, response: Dict, status: str, success: bool
+    ) -> ParsedResponse:
+        """Parse TodoWrite tool response."""
+        new_todos = response.get("newTodos", [])
+        old_todos = response.get("oldTodos", [])
+
+        new_count = len(new_todos) if isinstance(new_todos, list) else 0
+        old_count = len(old_todos) if isinstance(old_todos, list) else 0
+
+        metadata = {
+            "new_todos": new_count,
+            "old_todos": old_count,
+            "items": [t.get("content", "unknown")[:50] for t in new_todos[:3]],
+        }
+
+        if success:
+            summary = f"Updated todo list ({new_count} new, {old_count} previous)"
+        else:
+            summary = f"Failed to update todo list"
 
         return ParsedResponse(
             tool_name=tool_name,
