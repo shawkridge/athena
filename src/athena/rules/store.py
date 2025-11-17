@@ -59,13 +59,14 @@ class RulesStore(BaseStore):
             ValueError: If rule with same name already exists for project
         """
         try:
-            self.execute("""
+            result = self.execute("""
                 INSERT INTO project_rules (
                     project_id, name, description, category, rule_type, severity,
                     condition, exception_condition, created_at, updated_at,
                     created_by, enabled, auto_block, can_override,
                     override_requires_approval, tags, related_rules, documentation_url
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
             """, (
                 rule.project_id,
                 rule.name,
@@ -85,10 +86,9 @@ class RulesStore(BaseStore):
                 self.serialize_json(rule.tags),
                 self.serialize_json(rule.related_rules),
                 rule.documentation_url,
-            ))
+            ), fetch_one=True)
 
             self.commit()
-            result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
             rule.id = result[0] if result else None
             return rule
 
@@ -304,7 +304,7 @@ class RulesStore(BaseStore):
                 ))
                 config.id = existing.id
             else:
-                self.execute("""
+                result = self.execute("""
                     INSERT INTO project_rule_config (
                         project_id, enforcement_level,
                         auto_suggest_compliant_alternatives, auto_block_violations,
@@ -312,7 +312,8 @@ class RulesStore(BaseStore):
                         approval_ttl_hours, notify_on_violation, notify_channels,
                         auto_generate_rules_from_patterns,
                         confidence_threshold_for_auto_rules, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
                 """, (
                     config.project_id,
                     config.enforcement_level,
@@ -327,8 +328,7 @@ class RulesStore(BaseStore):
                     config.confidence_threshold_for_auto_rules,
                     config.created_at,
                     config.updated_at,
-                ))
-                result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
+                ), fetch_one=True)
                 config.id = result[0] if result else None
 
             self.commit()
@@ -347,12 +347,13 @@ class RulesStore(BaseStore):
             Override with ID populated
         """
         try:
-            self.execute("""
+            result = self.execute("""
                 INSERT INTO rule_overrides (
                     project_id, rule_id, task_id, overridden_at,
                     overridden_by, justification, approved_by,
                     approval_at, expires_at, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
             """, (
                 override.project_id,
                 override.rule_id,
@@ -364,10 +365,9 @@ class RulesStore(BaseStore):
                 override.approval_at,
                 override.expires_at,
                 override.status,
-            ))
+            ), fetch_one=True)
 
             self.commit()
-            result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
             override.id = result[0] if result else None
             return override
 
@@ -423,10 +423,11 @@ class RulesStore(BaseStore):
             Template with ID populated
         """
         try:
-            self.execute("""
+            result = self.execute("""
                 INSERT INTO rule_templates (
                     name, description, category, rules, usage_count, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                ) VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id
             """, (
                 template.name,
                 template.description,
@@ -434,10 +435,9 @@ class RulesStore(BaseStore):
                 self.serialize_json([rule.model_dump() for rule in template.rules]),
                 template.usage_count,
                 template.created_at,
-            ))
+            ), fetch_one=True)
 
             self.commit()
-            result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
             template.id = result[0] if result else None
             return template
 

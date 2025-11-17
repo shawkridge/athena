@@ -384,13 +384,14 @@ class ProceduralStore(BaseStore[Procedure]):
         Returns:
             ID of created execution record
         """
-        self.execute(
+        result = self.execute(
             """
             INSERT INTO procedure_executions (
                 procedure_id, project_id, timestamp, outcome,
                 duration_ms, variables, learned
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         """,
             (
                 execution.procedure_id,
@@ -401,9 +402,9 @@ class ProceduralStore(BaseStore[Procedure]):
                 self.serialize_json(execution.variables),
                 execution.learned,
             ),
+            fetch_one=True,
         )
 
-        result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
         execution_id = result[0] if result else None
         self.commit()
 
@@ -469,12 +470,13 @@ class ProceduralStore(BaseStore[Procedure]):
             else parameter.param_type
         )
 
-        self.execute(
+        result = self.execute(
             """
             INSERT INTO procedure_params (
                 procedure_id, param_name, param_type, required, default_value, description
             )
             VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING id
         """,
             (
                 parameter.procedure_id,
@@ -484,9 +486,9 @@ class ProceduralStore(BaseStore[Procedure]):
                 parameter.default_value,
                 parameter.description,
             ),
+            fetch_one=True,
         )
         self.commit()
-        result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
         return result[0] if result else None
 
     def get_parameters(self, procedure_id: int) -> list[ProcedureParameter]:

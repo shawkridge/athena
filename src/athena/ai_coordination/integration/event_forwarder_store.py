@@ -138,11 +138,12 @@ class EventForwarderStore(BaseStore[ForwardingLogEntry]):
         """
         timestamp = self.now_timestamp()
 
-        self.execute(
+        result = self.execute(
             """
             INSERT INTO forwarding_log
             (source_type, source_id, target_type, target_id, status, timestamp, metadata_json, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
             """,
             (
                 source_type,
@@ -154,12 +155,12 @@ class EventForwarderStore(BaseStore[ForwardingLogEntry]):
                 self.serialize_json(metadata or {}),
                 timestamp,
             ),
+            fetch_one=True,
         )
 
         self.commit()
 
-        # Get the last inserted ID
-        result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
+        # Get the inserted ID
         last_id = result[0] if result else None
 
         # Update statistics

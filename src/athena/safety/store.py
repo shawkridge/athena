@@ -233,7 +233,7 @@ class SafetyStore(BaseStore):
         """Create a new safety policy."""
         now = self.now_timestamp()
 
-        self.execute(
+        result = self.execute(
             """
             INSERT INTO safety_policies (
                 project_id, name, description,
@@ -242,7 +242,8 @@ class SafetyStore(BaseStore):
                 audit_enabled, keep_pre_modification_snapshot, require_human_approval,
                 max_approval_time_hours, enable_rollback, keep_rollback_snapshots,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         """,
             (
                 policy.project_id,
@@ -262,9 +263,9 @@ class SafetyStore(BaseStore):
                 now,
                 now,
             ),
+            fetch_one=True,
         )
         self.commit()
-        result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
         policy.id = result[0] if result else None
         return policy
 
@@ -327,14 +328,15 @@ class SafetyStore(BaseStore):
         """Create a new approval request."""
         now = self.now_timestamp()
 
-        self.execute(
+        result = self.execute(
             """
             INSERT INTO approval_requests (
                 project_id, agent_id, change_type, change_description,
                 confidence_score, risk_level, affected_files, affected_lines,
                 pre_snapshot_id, status, requested_at, auto_approved,
                 auto_approved_reason, policy_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         """,
             (
                 request.project_id,
@@ -352,9 +354,9 @@ class SafetyStore(BaseStore):
                 request.auto_approved_reason,
                 request.policy_id,
             ),
+            fetch_one=True,
         )
         self.commit()
-        result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
         request.id = result[0] if result else None
         request.requested_at = self.from_timestamp(now)
         return request
@@ -453,14 +455,15 @@ class SafetyStore(BaseStore):
         """Create a new audit entry."""
         now = self.now_timestamp()
 
-        self.execute(
+        result = self.execute(
             """
             INSERT INTO audit_entries (
                 project_id, timestamp, agent_id, user_id, change_type,
                 affected_files, description, approval_request_id,
                 pre_snapshot_id, post_snapshot_id, success, error_message,
                 risk_level, confidence_score
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         """,
             (
                 entry.project_id,
@@ -478,9 +481,9 @@ class SafetyStore(BaseStore):
                 entry.risk_level,
                 entry.confidence_score,
             ),
+            fetch_one=True,
         )
         self.commit()
-        result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
         entry.id = result[0] if result else None
         entry.timestamp = self.from_timestamp(now)
         return entry
@@ -537,13 +540,14 @@ class SafetyStore(BaseStore):
         """Create a code snapshot for rollback."""
         now = self.now_timestamp()
 
-        self.execute(
+        result = self.execute(
             """
             INSERT INTO code_snapshots (
                 project_id, created_at, file_path, file_hash, content_preview,
                 full_content, change_type, change_id, agent_id,
                 expires_at, keep_indefinitely
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         """,
             (
                 snapshot.project_id,
@@ -558,9 +562,9 @@ class SafetyStore(BaseStore):
                 int(snapshot.expires_at.timestamp()) if snapshot.expires_at else None,
                 int(snapshot.keep_indefinitely),
             ),
+            fetch_one=True,
         )
         self.commit()
-        result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
         snapshot.id = result[0] if result else None
         snapshot.created_at = self.from_timestamp(now)
         return snapshot
@@ -598,13 +602,14 @@ class SafetyStore(BaseStore):
         """Create a change recommendation."""
         now = self.now_timestamp()
 
-        self.execute(
+        result = self.execute(
             """
             INSERT INTO change_recommendations (
                 approval_request_id, recommendation, reasoning, confidence,
                 suggested_tests, suggested_reviewers, risk_mitigation_steps,
                 created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         """,
             (
                 recommendation.approval_request_id,
@@ -616,9 +621,9 @@ class SafetyStore(BaseStore):
                 self.serialize_json(recommendation.risk_mitigation_steps),
                 now,
             ),
+            fetch_one=True,
         )
         self.commit()
-        result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
         recommendation.id = result[0] if result else None
         recommendation.created_at = self.from_timestamp(now)
         return recommendation

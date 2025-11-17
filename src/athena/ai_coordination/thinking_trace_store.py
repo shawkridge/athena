@@ -161,13 +161,14 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
             else trace.primary_pattern
         )
 
-        self.execute("""
+        result = self.execute("""
             INSERT INTO thinking_traces
             (problem, problem_type, problem_complexity, reasoning_steps_json, conclusion,
              reasoning_quality, primary_pattern, secondary_patterns_json, pattern_effectiveness,
              linked_execution_id, was_reasoning_correct, execution_outcome_quality,
              session_id, timestamp, duration_seconds, ai_model_used, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         """, (
             trace.problem,
             problem_type_value,
@@ -189,10 +190,9 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
             trace.duration_seconds,
             trace.ai_model_used,
             now,
-        ))
+        ), fetch_one=True)
 
         self.commit()
-        result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
         return result[0] if result else None
 
     def get_thinking(self, thinking_id: int) -> Optional[ThinkingTrace]:

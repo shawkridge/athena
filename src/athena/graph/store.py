@@ -160,10 +160,11 @@ class GraphStore(BaseStore[Entity]):
         )
 
         try:
-            self.execute(
+            result = self.execute(
                 """
                 INSERT INTO entities (name, entity_type, project_id, created_at, updated_at, metadata)
                 VALUES (%s, %s, %s, %s, %s, %s)
+                RETURNING id
             """,
                 (
                     entity.name,
@@ -173,9 +174,9 @@ class GraphStore(BaseStore[Entity]):
                     int(entity.updated_at.timestamp()),
                     self.serialize_json(entity.metadata),
                 ),
+                fetch_one=True,
             )
             self.commit()
-            result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
             return result[0] if result else None
         except (OSError, ValueError, TypeError):
             # Entity already exists, return its ID
@@ -273,13 +274,14 @@ class GraphStore(BaseStore[Entity]):
             else relation.relation_type
         )
 
-        self.execute(
+        result = self.execute(
             """
             INSERT INTO entity_relations (
                 from_entity_id, to_entity_id, relation_type,
                 strength, confidence, created_at, valid_from, valid_until, metadata
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         """,
             (
                 relation.from_entity_id,
@@ -292,9 +294,9 @@ class GraphStore(BaseStore[Entity]):
                 int(relation.valid_until.timestamp()) if relation.valid_until else None,
                 self.serialize_json(relation.metadata),
             ),
+            fetch_one=True,
         )
         self.commit()
-        result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
         return result[0] if result else None
 
     def create_relations(self, relations: list[Relation]) -> list[int]:
@@ -330,13 +332,14 @@ class GraphStore(BaseStore[Entity]):
         Returns:
             ID of created observation
         """
-        self.execute(
+        result = self.execute(
             """
             INSERT INTO entity_observations (
                 entity_id, content, observation_type,
                 confidence, source, timestamp, superseded_by
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         """,
             (
                 observation.entity_id,
@@ -347,9 +350,9 @@ class GraphStore(BaseStore[Entity]):
                 int(observation.timestamp.timestamp()),
                 observation.superseded_by,
             ),
+            fetch_one=True,
         )
         self.commit()
-        result = self.execute("SELECT last_insert_rowid()", fetch_one=True)
         return result[0] if result else None
 
     def add_observations(self, observations: list[Observation]) -> list[int]:
