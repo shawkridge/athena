@@ -64,7 +64,7 @@ class PlanningBridge:
         """Create a plan for a goal.
 
         Decomposes a goal into hierarchical steps with effort estimates.
-        Plans are stored in planning_patterns table for future reference.
+        Plans are stored as prospective_goals for future reference.
 
         Args:
             goal: Goal to plan for
@@ -86,37 +86,24 @@ class PlanningBridge:
                 project_row = cursor.fetchone()
                 project_id = project_row[0] if project_row else 1
 
-                # Create plan as a planning_pattern
+                # Create plan as a prospective_goal
                 now = int(datetime.now().timestamp())
-                pattern_type = "plan"
-                name = goal[:100]  # Truncate long goals
 
                 cursor.execute(
                     """
-                    INSERT INTO planning_patterns
-                    (project_id, pattern_type, name, description, success_rate,
-                     quality_score, execution_count, applicable_domains,
-                     applicable_task_types, complexity_min, complexity_max,
-                     conditions, source, created_at, feedback_count)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO prospective_goals
+                    (project_id, name, description, status, priority,
+                     estimated_completion_date)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
                     (
                         project_id,
-                        pattern_type,
-                        name,
+                        goal[:255],  # name - truncate long goals
                         description,
-                        0.0,  # success_rate
-                        0.0,  # quality_score
-                        0,  # execution_count
-                        json.dumps(["general"]),  # applicable_domains
-                        json.dumps(["planning"]),  # applicable_task_types
-                        1,  # complexity_min
-                        depth,  # complexity_max (use depth as complexity indicator)
-                        json.dumps({"depth": depth, "tags": tags or []}),  # conditions
-                        "planning_bridge",  # source
-                        now,  # created_at
-                        0,  # feedback_count
+                        "active",  # status
+                        3,  # priority (1=highest, 10=lowest, 5=medium, 3=high)
+                        None,  # estimated_completion_date
                     ),
                 )
 
@@ -131,7 +118,7 @@ class PlanningBridge:
                     "description": description,
                     "depth": depth,
                     "tags": tags or [],
-                    "status": "draft",
+                    "status": "planning",
                     "created_at": datetime.fromtimestamp(now).isoformat(),
                 }
 
@@ -145,9 +132,8 @@ class PlanningBridge:
         description: str = "",
         priority: str = "medium",
         status: str = "pending",
-        tags: Optional[List[str]] = None,
         due_date: Optional[datetime] = None,
-        estimated_effort_minutes: int = 0,
+        estimated_effort_hours: float = 0,
     ) -> Dict[str, Any]:
         """Create a prospective task.
 
@@ -159,9 +145,8 @@ class PlanningBridge:
             description: Detailed description
             priority: Priority level (low, medium, high, critical)
             status: Initial status (pending, in_progress, completed, blocked)
-            tags: Optional tags for categorization
             due_date: Optional due date
-            estimated_effort_minutes: Estimated effort in minutes
+            estimated_effort_hours: Estimated effort in hours
 
         Returns:
             Task dict with id, title, status, created_at
@@ -177,35 +162,39 @@ class PlanningBridge:
                 project_row = cursor.fetchone()
                 project_id = project_row[0] if project_row else 1
 
-                now = int(datetime.now().timestamp())
-                due_timestamp = int(due_date.timestamp()) if due_date else None
+                # Map string priority to integer (medium=5)
+                priority_map = {
+                    "low": 8,
+                    "medium": 5,
+                    "high": 2,
+                    "critical": 1,
+                }
+                priority_int = priority_map.get(priority.lower(), 5)
+
+                due_date_obj = due_date.date() if due_date else None
 
                 cursor.execute(
                     """
                     INSERT INTO prospective_tasks
                     (project_id, title, description, priority, status,
-                     tags, due_date, estimated_effort_minutes, created_at,
-                     phase, phase_started_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    RETURNING id
+                     due_date, estimated_effort_hours)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id, created_at
                     """,
                     (
                         project_id,
                         title,
                         description,
-                        priority,
+                        priority_int,
                         status,
-                        json.dumps(tags or []),
-                        due_timestamp,
-                        estimated_effort_minutes,
-                        now,
-                        "planning",
-                        now if status == "in_progress" else None,
+                        due_date_obj,
+                        estimated_effort_hours,
                     ),
                 )
 
                 result = cursor.fetchone()
                 task_id = result[0] if result else None
+                created_at = result[1] if result else None
 
                 conn.commit()
 
@@ -215,9 +204,9 @@ class PlanningBridge:
                     "description": description,
                     "priority": priority,
                     "status": status,
-                    "tags": tags or [],
                     "due_date": due_date.isoformat() if due_date else None,
-                    "created_at": datetime.fromtimestamp(now).isoformat(),
+                    "estimated_effort_hours": estimated_effort_hours,
+                    "created_at": created_at.isoformat() if created_at else None,
                 }
 
         except Exception as e:
@@ -230,7 +219,7 @@ class PlanningBridge:
         """List plans, optionally filtered by status.
 
         Args:
-            status: Optional status filter (draft, active, completed, failed)
+            status: Optional status filter (planning, active, completed, failed)
             limit: Maximum plans to return
 
         Returns:
@@ -241,25 +230,23 @@ class PlanningBridge:
                 cursor = conn.cursor()
 
                 if status:
-                    # Plans stored as planning_patterns with conditions containing status
                     cursor.execute(
                         """
-                        SELECT id, name, description, created_at, last_used,
-                               success_rate, quality_score, execution_count
-                        FROM planning_patterns
-                        WHERE pattern_type = 'plan'
+                        SELECT id, name, description, status, created_at,
+                               priority, completion_percentage, estimated_completion_date
+                        FROM prospective_goals
+                        WHERE status = %s
                         ORDER BY created_at DESC
                         LIMIT %s
                         """,
-                        (limit,),
+                        (status, limit),
                     )
                 else:
                     cursor.execute(
                         """
-                        SELECT id, name, description, created_at, last_used,
-                               success_rate, quality_score, execution_count
-                        FROM planning_patterns
-                        WHERE pattern_type = 'plan'
+                        SELECT id, name, description, status, created_at,
+                               priority, completion_percentage, estimated_completion_date
+                        FROM prospective_goals
                         ORDER BY created_at DESC
                         LIMIT %s
                         """,
@@ -273,11 +260,11 @@ class PlanningBridge:
                         "id": str(row[0]),
                         "goal": row[1],
                         "description": row[2],
-                        "created_at": datetime.fromtimestamp(row[3]).isoformat() if row[3] else None,
-                        "last_used": datetime.fromtimestamp(row[4]).isoformat() if row[4] else None,
-                        "success_rate": row[5],
-                        "quality_score": row[6],
-                        "execution_count": row[7],
+                        "status": row[3],
+                        "created_at": row[4].isoformat() if row[4] else None,
+                        "priority": row[5],
+                        "completion_percentage": row[6],
+                        "estimated_completion_date": row[7].isoformat() if row[7] else None,
                     })
 
                 return plans
@@ -306,7 +293,7 @@ class PlanningBridge:
                     cursor.execute(
                         """
                         SELECT id, title, description, priority, status,
-                               tags, due_date, estimated_effort_minutes, created_at
+                               due_date, estimated_effort_hours, created_at
                         FROM prospective_tasks
                         WHERE status = %s
                         ORDER BY priority DESC, created_at DESC
@@ -318,7 +305,7 @@ class PlanningBridge:
                     cursor.execute(
                         """
                         SELECT id, title, description, priority, status,
-                               tags, due_date, estimated_effort_minutes, created_at
+                               due_date, estimated_effort_hours, created_at
                         FROM prospective_tasks
                         ORDER BY priority DESC, created_at DESC
                         LIMIT %s
@@ -329,16 +316,19 @@ class PlanningBridge:
                 rows = cursor.fetchall()
                 tasks = []
                 for row in rows:
+                    # Map priority int to string
+                    priority_map = {1: "critical", 2: "high", 5: "medium", 8: "low"}
+                    priority_str = priority_map.get(row[3], "medium")
+
                     tasks.append({
                         "id": str(row[0]),
                         "title": row[1],
                         "description": row[2],
-                        "priority": row[3],
+                        "priority": priority_str,
                         "status": row[4],
-                        "tags": json.loads(row[5]) if row[5] else [],
-                        "due_date": datetime.fromtimestamp(row[6]).isoformat() if row[6] else None,
-                        "estimated_effort_minutes": row[7],
-                        "created_at": datetime.fromtimestamp(row[8]).isoformat() if row[8] else None,
+                        "due_date": row[5].isoformat() if row[5] else None,
+                        "estimated_effort_hours": row[6],
+                        "created_at": row[7].isoformat() if row[7] else None,
                     })
 
                 return tasks
@@ -348,14 +338,13 @@ class PlanningBridge:
             return []
 
     def update_task_status(
-        self, task_id: str, status: str, notes: str = ""
+        self, task_id: str, status: str
     ) -> bool:
         """Update task status.
 
         Args:
             task_id: Task ID
             status: New status (pending, in_progress, completed, blocked)
-            notes: Optional notes about status change
 
         Returns:
             True if successful, False otherwise
@@ -364,15 +353,18 @@ class PlanningBridge:
             with PooledConnection() as conn:
                 cursor = conn.cursor()
 
-                now = int(datetime.now().timestamp())
+                # Update started_at if transitioning to in_progress
+                started_at_sql = ""
+                if status == "in_progress":
+                    started_at_sql = ", started_at = now()"
 
                 cursor.execute(
-                    """
+                    f"""
                     UPDATE prospective_tasks
-                    SET status = %s, notes = %s
+                    SET status = %s{started_at_sql}
                     WHERE id = %s
                     """,
-                    (status, notes, int(task_id)),
+                    (status, int(task_id)),
                 )
 
                 conn.commit()
@@ -416,14 +408,13 @@ def create_task(
     description: str = "",
     priority: str = "medium",
     status: str = "pending",
-    tags: Optional[List[str]] = None,
     due_date: Optional[datetime] = None,
-    estimated_effort_minutes: int = 0,
+    estimated_effort_hours: float = 0,
 ) -> Dict[str, Any]:
     """Create a task. See PlanningBridge.create_task for details."""
     bridge = get_planning_bridge()
     return bridge.create_task(
-        title, description, priority, status, tags, due_date, estimated_effort_minutes
+        title, description, priority, status, due_date, estimated_effort_hours
     )
 
 
@@ -439,7 +430,7 @@ def list_tasks(status: Optional[str] = None, limit: int = 20) -> List[Dict[str, 
     return bridge.list_tasks(status, limit)
 
 
-def update_task_status(task_id: str, status: str, notes: str = "") -> bool:
+def update_task_status(task_id: str, status: str) -> bool:
     """Update task status. See PlanningBridge.update_task_status for details."""
     bridge = get_planning_bridge()
-    return bridge.update_task_status(task_id, status, notes)
+    return bridge.update_task_status(task_id, status)
