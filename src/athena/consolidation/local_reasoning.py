@@ -548,33 +548,113 @@ class ConsolidationWithDualProcess:
     def _merge_patterns(
         self, system_1: List[Pattern], system_2: List[Pattern]
     ) -> List[Pattern]:
-        """Merge patterns from System 1 and System 2.
+        """Merge patterns from System 1 and System 2 using conflict resolution.
 
-        Deduplicates similar patterns and combines evidence.
+        Uses intelligent conflict resolution when patterns disagree:
+        - Higher confidence wins (if diff > 0.2)
+        - Evidence overlap determines merge strategy
+        - Defers uncertain conflicts for human review
+        - Preserves confidence in final patterns
 
         Args:
             system_1: Patterns from heuristics
             system_2: Patterns from local reasoning
 
         Returns:
-            Merged pattern list
+            Merged pattern list with resolved conflicts
         """
-        merged = dict()  # Use description as key for deduplication
+        # Import conflict resolver (avoid circular imports)
+        try:
+            from .pattern_conflict_resolver import PatternConflictResolver
+            use_conflict_resolver = True
+        except ImportError:
+            use_conflict_resolver = False
+            logger.debug("Pattern conflict resolver not available, using basic merge")
 
-        for pattern in system_1 + system_2:
-            key = pattern.description.lower()
+        merged = dict()  # Use description as key for grouping
+        conflicts = []  # Track conflicts for learning
 
-            if key in merged:
-                # Update existing pattern
-                existing = merged[key]
-                # Average confidence
-                existing.confidence = (existing.confidence + pattern.confidence) / 2
-                # Combine tags
-                existing.tags = list(set(existing.tags + pattern.tags))
-                # Add to evidence
-                existing.evidence = f"{existing.evidence}; {pattern.evidence}"
+        # Group patterns by description (approximate match)
+        s1_map = {p.description.lower(): p for p in system_1}
+        s2_map = {p.description.lower(): p for p in system_2}
+
+        # Find all unique patterns
+        all_descriptions = set(s1_map.keys()) | set(s2_map.keys())
+
+        for desc_key in all_descriptions:
+            s1_pattern = s1_map.get(desc_key)
+            s2_pattern = s2_map.get(desc_key)
+
+            if s1_pattern and s2_pattern:
+                # Both systems extracted pattern - potential conflict
+                if use_conflict_resolver:
+                    # Use intelligent conflict resolution
+                    resolver = PatternConflictResolver()
+
+                    # Convert to conflict resolver format
+                    s1_dict = {
+                        "description": s1_pattern.description,
+                        "pattern_type": "pattern",
+                        "confidence": s1_pattern.confidence,
+                        "tags": s1_pattern.tags or [],
+                        "evidence": s1_pattern.evidence or "",
+                    }
+
+                    s2_dict = {
+                        "description": s2_pattern.description,
+                        "pattern_type": "pattern",
+                        "confidence": s2_pattern.confidence,
+                        "tags": s2_pattern.tags or [],
+                        "evidence": s2_pattern.evidence or "",
+                    }
+
+                    # Detect and resolve conflicts
+                    conflict = resolver.detect_conflict(
+                        cluster_id=0,  # Placeholder
+                        system_1_pattern=s1_dict,
+                        system_2_pattern=s2_dict,
+                    )
+
+                    if conflict:
+                        # Resolve the conflict
+                        resolution = resolver.resolve_conflict(conflict)
+                        conflicts.append((conflict, resolution))
+
+                        # Convert resolved pattern back
+                        resolved_dict = resolution.selected_pattern
+                        resolved_pattern = Pattern(
+                            description=resolved_dict["description"],
+                            pattern_type=resolved_dict.get("pattern_type", "pattern"),
+                            confidence=resolved_dict.get("confidence", 0.75),
+                            tags=resolved_dict.get("tags", []),
+                            evidence=resolved_dict.get("evidence", ""),
+                        )
+                        merged[desc_key] = resolved_pattern
+                    else:
+                        # No conflict - use higher confidence
+                        if s1_pattern.confidence >= s2_pattern.confidence:
+                            merged[desc_key] = s1_pattern
+                        else:
+                            merged[desc_key] = s2_pattern
+                else:
+                    # Basic merge: use higher confidence
+                    if s1_pattern.confidence >= s2_pattern.confidence:
+                        merged[desc_key] = s1_pattern
+                    else:
+                        merged[desc_key] = s2_pattern
+
+            elif s1_pattern:
+                merged[desc_key] = s1_pattern
             else:
-                merged[key] = pattern
+                merged[desc_key] = s2_pattern
+
+        # Log conflict resolution statistics
+        if conflicts:
+            logger.info(
+                f"Resolved {len(conflicts)} pattern conflicts: "
+                f"{sum(1 for _, r in conflicts if r.requires_human_review)} "
+                f"require human review"
+            )
 
         return list(merged.values())
 
