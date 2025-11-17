@@ -32,74 +32,33 @@ interface PatternRecommendation {
 /**
  * Get planning strategy recommendations for a task
  *
+ * Retrieves recommended planning patterns based on task characteristics and historical success rates.
+ * Patterns are ranked by effectiveness for similar task types.
+ *
  * @param input - Task characteristics and filtering parameters
  * @returns List of recommended patterns ranked by effectiveness
  *
- * Example usage in agent code:
- * ```typescript
- * import { recommend } from './servers/athena/planning_recommendations.ts';
+ * @implementation src/athena/planning/operations.py:create_plan
  *
- * const recommendations = await recommend({
- *   taskId: 1,
- *   taskDescription: "Implement API",
- *   taskType: "feature",
- *   complexity: 7,
- *   domain: "backend"
- * });
+ * @example
+ * ```python
+ * from athena.planning.operations import create_plan
  *
- * // Agent filters locally - keeps only top 1
- * const topRec = recommendations[0];
- * console.log(`Recommended: ${topRec.patternName} (${topRec.successRate * 100}%)`);
+ * plan = await create_plan(
+ *   goal="Implement user authentication",
+ *   description="Add OAuth + JWT to API",
+ *   depth=3
+ * )
  * ```
  */
-export async function recommend(input: RecommendationInput): Promise<PatternRecommendation[]> {
-  // This would call the actual MCP tool underneath
-  // return callMCPTool('planning:get_recommendations', input);
-
-  // For now, return mock data to demonstrate the wrapper
-  return [
-    {
-      patternName: "Hierarchical Decomposition",
-      patternType: "decomposition",
-      successRate: 0.92,
-      executionCount: 45,
-      confidence: 'high',
-      rationale: "Works well for feature implementation tasks with high complexity.",
-      alternatives: ["Test-Driven Development", "Incremental Integration"]
-    },
-    {
-      patternName: "Test-Driven Development",
-      patternType: "testing",
-      successRate: 0.88,
-      executionCount: 38,
-      confidence: 'high',
-      rationale: "Excellent for ensuring code quality and preventing regressions."
-    },
-    {
-      patternName: "Agile Iteration",
-      patternType: "iteration",
-      successRate: 0.75,
-      executionCount: 22,
-      confidence: 'medium',
-      rationale: "Good for exploratory work but requires frequent feedback."
-    }
-  ];
-}
+export async function recommend(input: RecommendationInput): Promise<PatternRecommendation[]>;
 
 /**
  * Get strategy details for implementing a specific pattern
  *
  * @param patternType - Type of pattern to get details for
  * @returns Detailed strategy information
+ *
+ * @implementation src/athena/planning/operations.py:validate_plan
  */
-export async function getStrategyDetails(patternType: string): Promise<Record<string, any>> {
-  // return callMCPTool('planning:get_strategy_details', { pattern_type: patternType });
-
-  return {
-    patternType,
-    decompositionType: "hierarchical",
-    chunkSizeMinutes: 120,
-    maxDepth: 3,
-    steps: []
-  };
-}
+export async function getStrategyDetails(patternType: string): Promise<Record<string, any>>;

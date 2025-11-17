@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 
 from ..core.database import Database
 from .store import ProspectiveStore
-from .models import Task, TaskStatus
+from .models import ProspectiveTask, TaskStatus
 
 logger = logging.getLogger(__name__)
 
@@ -52,22 +52,22 @@ class ProspectiveOperations:
         """Create a new task.
 
         Args:
-            title: Task title
-            description: Task description
+            title: ProspectiveTask title
+            description: ProspectiveTask description
             due_date: Optional due date
             priority: Priority (1-10, default 5)
             tags: Tags for categorization
-            status: Task status (pending, in_progress, completed, cancelled)
+            status: ProspectiveTask status (pending, in_progress, completed, cancelled)
 
         Returns:
-            Task ID
+            ProspectiveTask ID
         """
         if not title:
             raise ValueError("title is required")
 
         priority = max(1, min(10, priority))
 
-        task = Task(
+        task = ProspectiveTask(
             title=title,
             description=description,
             due_date=due_date,
@@ -86,7 +86,7 @@ class ProspectiveOperations:
         status: str | None = None,
         limit: int = 20,
         sort_by: str = "priority",
-    ) -> List[Task]:
+    ) -> List[ProspectiveTask]:
         """List tasks, optionally filtered by status.
 
         Args:
@@ -107,14 +107,14 @@ class ProspectiveOperations:
 
         return await self.store.list(**filters)
 
-    async def get_task(self, task_id: str) -> Optional[Task]:
+    async def get_task(self, task_id: str) -> Optional[ProspectiveTask]:
         """Get a specific task by ID.
 
         Args:
-            task_id: Task ID
+            task_id: ProspectiveTask ID
 
         Returns:
-            Task object or None if not found
+            ProspectiveTask object or None if not found
         """
         return await self.store.get(task_id)
 
@@ -126,7 +126,7 @@ class ProspectiveOperations:
         """Update task status.
 
         Args:
-            task_id: Task ID
+            task_id: ProspectiveTask ID
             status: New status (pending, in_progress, completed, cancelled)
 
         Returns:
@@ -143,7 +143,7 @@ class ProspectiveOperations:
         await self.store.update(task)
         return True
 
-    async def get_active_tasks(self, limit: int = 10) -> List[Task]:
+    async def get_active_tasks(self, limit: int = 10) -> List[ProspectiveTask]:
         """Get active (pending or in-progress) tasks.
 
         Args:
@@ -159,7 +159,7 @@ class ProspectiveOperations:
         # Sort by priority descending
         return sorted(all_tasks, key=lambda t: t.priority, reverse=True)[:limit]
 
-    async def get_overdue_tasks(self, limit: int = 10) -> List[Task]:
+    async def get_overdue_tasks(self, limit: int = 10) -> List[ProspectiveTask]:
         """Get tasks that are overdue.
 
         Args:
@@ -254,13 +254,13 @@ async def list_tasks(
     status: str | None = None,
     limit: int = 20,
     sort_by: str = "priority",
-) -> List[Task]:
+) -> List[ProspectiveTask]:
     """List tasks. See ProspectiveOperations.list_tasks for details."""
     ops = get_operations()
     return await ops.list_tasks(status=status, limit=limit, sort_by=sort_by)
 
 
-async def get_task(task_id: str) -> Optional[Task]:
+async def get_task(task_id: str) -> Optional[ProspectiveTask]:
     """Get a task. See ProspectiveOperations.get_task for details."""
     ops = get_operations()
     return await ops.get_task(task_id)
@@ -272,13 +272,13 @@ async def update_task_status(task_id: str, status: str) -> bool:
     return await ops.update_task_status(task_id=task_id, status=status)
 
 
-async def get_active_tasks(limit: int = 10) -> List[Task]:
+async def get_active_tasks(limit: int = 10) -> List[ProspectiveTask]:
     """Get active tasks. See ProspectiveOperations.get_active_tasks for details."""
     ops = get_operations()
     return await ops.get_active_tasks(limit=limit)
 
 
-async def get_overdue_tasks(limit: int = 10) -> List[Task]:
+async def get_overdue_tasks(limit: int = 10) -> List[ProspectiveTask]:
     """Get overdue tasks. See ProspectiveOperations.get_overdue_tasks for details."""
     ops = get_operations()
     return await ops.get_overdue_tasks(limit=limit)

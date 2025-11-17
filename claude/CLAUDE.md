@@ -208,6 +208,67 @@ This gives you access to:
 
 **Athena learns so CLAUDE.md doesn't have to.** When you fail and recover, Athena captures it. When you find a pattern, Athena extracts it. Don't manually update this file on errors—future sessions get better context from the memory system automatically. This file stays stable; Athena handles the learning.
 
+### Using Athena Operations Across Projects
+
+Athena is installed globally as a Python package and accessible from ANY project. When you need memory operations (store events, retrieve facts, manage tasks, etc.), discover and use Athena directly:
+
+**Discovery**: Athena provides 51 async operations across 8 memory layers
+- Location: `/home/user/.work/athena/servers/athena/` (TypeScript stubs for discovery)
+- Implementation: `/home/user/.work/athena/src/athena/[layer]/operations.py` (Python functions)
+
+**How to use**:
+```python
+# Direct import (works from any project)
+from athena import remember, recall, store, search, create_task, get_active_tasks
+
+# Or layer-specific imports
+from athena.episodic.operations import remember, recall
+from athena.semantic.operations import store, search
+from athena.procedural.operations import extract_procedure
+from athena.prospective.operations import create_task, get_active_tasks
+from athena.graph.operations import add_entity, find_related
+from athena.meta.operations import rate_memory, get_expertise
+from athena.consolidation.operations import consolidate, extract_patterns
+from athena.planning.operations import create_plan, validate_plan
+```
+
+**Usage pattern**:
+```python
+# All operations are async functions - initialize once, then use freely
+import asyncio
+from athena import initialize_athena, remember, recall, store, search, create_task, get_active_tasks
+
+async def use_athena():
+    # Initialize Athena (safe to call multiple times)
+    success = await initialize_athena()
+    if not success:
+        print("Failed to initialize Athena")
+        return
+
+    # Store an event
+    event_id = await remember(
+        content="What happened",
+        tags=["project"],
+        importance=0.8
+    )
+
+    # Retrieve events
+    results = await recall("search query", limit=5)
+
+    # Other operations work the same way
+    tasks = await get_active_tasks()
+    fact_id = await store("A learned fact", topics=["topic"])
+
+    return event_id, results, tasks
+
+# Run in your script
+asyncio.run(use_athena())
+```
+
+**Critical**: Call `await initialize_athena()` once before using operations. It's safe to call multiple times (idempotent). Do NOT try to instantiate managers—just initialize and use.
+
+When users ask for memory operations, discover available operations by reading the TypeScript stubs in `/home/user/.work/athena/servers/athena/` (episodic.ts, semantic.ts, procedural.ts, etc.), then import and use the corresponding Python functions directly. Data processing happens locally—return only summaries to context.
+
 </memory-system>
 
 ## Athena Tools & Skills Available Globally

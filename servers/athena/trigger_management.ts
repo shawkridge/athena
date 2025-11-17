@@ -15,29 +15,32 @@ export interface TriggerDef {
 /**
  * Create a trigger for a task
  *
- * Example agent usage:
- * ```typescript
- * import { createTrigger } from './servers/athena/trigger_management.ts';
+ * Triggers automatically activate tasks when conditions are met (time, event, dependency, file, or context).
  *
- * await createTrigger({
- *   taskId: 2,
- *   triggerType: 'dependency',
- *   condition: 'task_1_completed'
- * });
- * console.log('Trigger created: Task 2 will activate when Task 1 completes');
+ * @param input - Trigger definition including type and condition
+ * @returns Success status and trigger identifier
+ *
+ * @implementation src/athena/prospective/operations.py:create_task
+ *
+ * @example
+ * ```python
+ * from athena.prospective.operations import create_task
+ *
+ * task = await create_task(
+ *   title="Review PR",
+ *   priority=8,
+ *   tags=["code-review"]
+ * )
  * ```
  */
-export async function createTrigger(input: TriggerDef): Promise<{ success: boolean; triggerId: number }> {
-  // return callMCPTool('trigger:create', input);
-
-  return { success: true, triggerId: 1 };
-}
+export async function createTrigger(input: TriggerDef): Promise<{ success: boolean; triggerId: number }>;
 
 /**
  * Get all triggers for a task
+ *
+ * @param taskId - Task identifier
+ * @returns List of all triggers configured for the task
+ *
+ * @implementation src/athena/prospective/operations.py:get_task
  */
-export async function getTriggers(taskId: number): Promise<TriggerDef[]> {
-  // return callMCPTool('trigger:get_triggers', { task_id: taskId });
-
-  return [];
-}
+export async function getTriggers(taskId: number): Promise<TriggerDef[]>;

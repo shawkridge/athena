@@ -1,83 +1,32 @@
 """
-Tier 2: Autonomous Agent Intelligence System
+Memory Coordination Agents
 
-This module provides 5 specialized agents that collaborate to:
-- Plan tasks intelligently (Planner)
-- Execute plans with error handling (Executor)
-- Monitor execution health (Monitor)
-- Predict future needs (Predictor)
-- Learn from outcomes (Learner)
+This module provides agents that autonomously manage memory operations:
+- MemoryCoordinatorAgent: Decides what to remember and where
+- PatternExtractorAgent: Extracts reusable procedures from episodic events
+
+Both agents follow the direct Python import paradigm (zero MCP overhead).
 """
 
-from .base import BaseAgent, AgentType, AgentStatus, AgentMetrics
-from .message_bus import Message, MessageBus, MessageType
-from .orchestrator import AgentOrchestrator
-from .planner import PlannerAgent, ExecutionPlan, PlanStep
-from .executor import ExecutorAgent, ExecutionRecord, ExecutionResult
-from .monitor import MonitorAgent, Anomaly, ExecutionMetric
-from .learner import LearnerAgent, ExecutionPattern, Improvement, LearningOutcome
-from .predictor import PredictorAgent
-from .predictor_models import (
-    PredictionResult,
-    ConfidenceInterval,
-    TemporalPattern,
-    DurationPrediction,
-    ResourceForecast,
-    BottleneckAlert,
-    PredictionAccuracy,
-    RiskLevel,
-    PatternType,
-    ResourceType,
+from .memory_coordinator import (
+    MemoryCoordinatorAgent,
+    get_coordinator,
+    coordinate_memory_storage,
 )
-from .temporal_reasoner import TemporalReasoner
-from .bottleneck_detector import BottleneckDetector
-from .timeseries import ARIMAModel, ExponentialSmoothingModel, HybridEnsembleModel
+from .pattern_extractor import (
+    PatternExtractorAgent,
+    get_extractor,
+    extract_session_patterns,
+    run_consolidation,
+)
 
 __all__ = [
-    # Base and Communication
-    "BaseAgent",
-    "AgentType",
-    "AgentStatus",
-    "AgentMetrics",
-    "Message",
-    "MessageBus",
-    "MessageType",
-    "AgentOrchestrator",
-    # Planner Agent
-    "PlannerAgent",
-    "ExecutionPlan",
-    "PlanStep",
-    # Executor Agent
-    "ExecutorAgent",
-    "ExecutionRecord",
-    "ExecutionResult",
-    # Monitor Agent
-    "MonitorAgent",
-    "Anomaly",
-    "ExecutionMetric",
-    # Learner Agent
-    "LearnerAgent",
-    "ExecutionPattern",
-    "Improvement",
-    "LearningOutcome",
-    # Predictor Agent (NEW)
-    "PredictorAgent",
-    "PredictionResult",
-    "ConfidenceInterval",
-    "TemporalPattern",
-    "DurationPrediction",
-    "ResourceForecast",
-    "BottleneckAlert",
-    "PredictionAccuracy",
-    "RiskLevel",
-    "PatternType",
-    "ResourceType",
-    # Time Series Models (NEW)
-    "ARIMAModel",
-    "ExponentialSmoothingModel",
-    "HybridEnsembleModel",
-    # Temporal Reasoning (NEW)
-    "TemporalReasoner",
-    # Bottleneck Detection (NEW)
-    "BottleneckDetector",
+    # Memory Coordination Agents
+    "MemoryCoordinatorAgent",
+    "get_coordinator",
+    "coordinate_memory_storage",
+    "PatternExtractorAgent",
+    "get_extractor",
+    "extract_session_patterns",
+    "run_consolidation",
 ]

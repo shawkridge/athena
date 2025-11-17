@@ -100,7 +100,7 @@ class EpisodicGraphBridge:
 
             # COMMIT TRANSACTION: All steps succeeded, persist changes
             cursor.execute("COMMIT")
-            self.db.conn.commit()
+            # PostgreSQL auto-commits; no need for self.db.conn.commit()
 
             logger.info(
                 f"Integrated {len(events)} events: {len(entity_ids)} entities, "

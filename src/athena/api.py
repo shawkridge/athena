@@ -4,9 +4,12 @@ This module provides the primary entry point for using Athena.
 All memory operations are available through clean direct imports.
 
 Simple usage:
-    from athena.episodic.operations import remember, recall
-    from athena.semantic.operations import store, search
+    from athena import remember, recall, initialize_athena
 
+    # Initialize once at startup (or first use)
+    await initialize_athena()
+
+    # Then use operations directly
     event_id = await remember("User asked about timeline", tags=["meeting"])
     results = await recall("timeline", limit=5)
 
@@ -14,8 +17,11 @@ All operations are direct Python async functions with zero protocol overhead.
 Perfect for AI agents, scripts, and applications that need to remember things.
 """
 
+import asyncio
+from typing import Optional
+
 # Re-export all operations for convenient importing
-from .episodic.operations import (
+from athena.episodic.operations import (
     get_by_session as episodic_get_by_session,
     get_by_tags as episodic_get_by_tags,
     get_by_time_range as episodic_get_by_time_range,
@@ -24,8 +30,8 @@ from .episodic.operations import (
     recall_recent,
     remember,
 )
-from .semantic.operations import search, store
-from .procedural.operations import (
+from athena.memory.operations import search, store
+from athena.procedural.operations import (
     extract_procedure,
     get_procedures_by_tags,
     get_procedure,
@@ -34,7 +40,7 @@ from .procedural.operations import (
     search_procedures,
     update_procedure_success,
 )
-from .prospective.operations import (
+from athena.prospective.operations import (
     create_task,
     get_active_tasks,
     get_overdue_tasks,
@@ -43,7 +49,7 @@ from .prospective.operations import (
     list_tasks,
     update_task_status,
 )
-from .graph.operations import (
+from athena.graph.operations import (
     add_entity,
     add_relationship,
     find_entity,
@@ -53,7 +59,7 @@ from .graph.operations import (
     search_entities,
     update_entity_importance,
 )
-from .meta.operations import (
+from athena.meta.operations import (
     get_cognitive_load,
     get_expertise,
     get_memory_quality,
@@ -61,7 +67,7 @@ from .meta.operations import (
     rate_memory,
     update_cognitive_load,
 )
-from .consolidation.operations import (
+from athena.consolidation.operations import (
     consolidate,
     extract_patterns,
     extract_procedures,
@@ -69,7 +75,7 @@ from .consolidation.operations import (
     get_consolidation_metrics,
     get_statistics as consolidation_get_statistics,
 )
-from .planning.operations import (
+from athena.planning.operations import (
     create_plan,
     estimate_effort,
     get_plan,
@@ -80,6 +86,8 @@ from .planning.operations import (
 )
 
 __all__ = [
+    # Initialization
+    "initialize_athena",
     # Episodic operations
     "remember",
     "recall",
@@ -141,51 +149,135 @@ __all__ = [
 ]
 
 
-# Quick reference guide
-"""
-## Quick Reference
+"""Quick reference guide for using Athena operations.
 
 ### Store & Retrieve Events
-from athena import remember, recall
-event_id = await remember("User did something", tags=["work"])
-memories = await recall("work activities", limit=10)
+    from athena import remember, recall
+    event_id = await remember("User did something", tags=["work"])
+    memories = await recall("work activities", limit=10)
 
 ### Store & Search Facts
-from athena import store, search
-fact_id = await store("Python is dynamically typed", topics=["programming"])
-facts = await search("programming", limit=5)
+    from athena import store, search
+    fact_id = await store("Python is dynamically typed", topics=["programming"])
+    facts = await search("programming", limit=5)
 
 ### Extract & Track Procedures
-from athena import extract_procedure, list_procedures
-proc_id = await extract_procedure("code review", description="...", steps=[...])
-procedures = await list_procedures(limit=10)
+    from athena import extract_procedure, list_procedures
+    proc_id = await extract_procedure("code review", description="...", steps=[...])
+    procedures = await list_procedures(limit=10)
 
 ### Create & Manage Tasks
-from athena import create_task, list_tasks, get_active_tasks
-task_id = await create_task("Implement feature X", priority=8)
-active = await get_active_tasks(limit=5)
+    from athena import create_task, list_tasks, get_active_tasks
+    task_id = await create_task("Implement feature X", priority=8)
+    active = await get_active_tasks(limit=5)
 
 ### Build Knowledge Graph
-from athena import add_entity, add_relationship, find_related
-entity_id = await add_entity("Python", entity_type="language")
-rel_id = await add_relationship(entity_id, other_id, "is_similar_to")
-related = await find_related(entity_id, limit=10)
+    from athena import add_entity, add_relationship, find_related
+    entity_id = await add_entity("Python", entity_type="language")
+    rel_id = await add_relationship(entity_id, other_id, "is_similar_to")
+    related = await find_related(entity_id, limit=10)
 
 ### Track Quality & Expertise
-from athena import rate_memory, get_expertise
-await rate_memory(memory_id, quality=0.9, confidence=0.95)
-expertise = await get_expertise(topic="coding")
+    from athena import rate_memory, get_expertise
+    await rate_memory(memory_id, quality=0.9, confidence=0.95)
+    expertise = await get_expertise(topic="coding")
 
 ### Extract Patterns & Consolidate
-from athena import consolidate, extract_patterns
-result = await consolidate(strategy="balanced")
-patterns = await extract_patterns(memory_limit=100)
+    from athena import consolidate, extract_patterns
+    result = await consolidate(strategy="balanced")
+    patterns = await extract_patterns(memory_limit=100)
 
 ### Plan & Decompose Tasks
-from athena import create_plan, validate_plan
-plan = await create_plan("Build feature", depth=3)
-validation = await validate_plan(plan["id"])
+    from athena import create_plan, validate_plan
+    plan = await create_plan("Build feature", depth=3)
+    validation = await validate_plan(plan["id"])
 
-All operations work directly—no protocol overhead, no server process needed.
-Just import and call.
+All operations are direct async functions—zero protocol overhead, no server process.
+Just import and call. See src/athena/[layer]/operations.py for full documentation.
 """
+
+# Global initialization flag
+_initialized = False
+
+
+async def initialize_athena() -> bool:
+    """Initialize all Athena layers (safe to call multiple times).
+
+    This initializes the database connection and all memory layers.
+    Safe to call multiple times - idempotent.
+
+    Returns:
+        True if initialization was successful, False otherwise.
+
+    Usage:
+        await initialize_athena()
+        event_id = await remember("content", tags=["tag"])
+    """
+    global _initialized
+
+    if _initialized:
+        return True
+
+    try:
+        # Import and initialize all layer stores
+        from athena.core.database import Database
+        from athena.episodic.store import EpisodicStore
+        from athena.memory.store import MemoryStore
+        from athena.procedural.store import ProceduralStore
+        from athena.prospective.store import ProspectiveStore
+        from athena.graph.store import GraphStore
+        from athena.meta.store import MetaMemoryStore
+        from athena.consolidation.system import ConsolidationSystem
+
+        # Import each layer's operations module for initialization
+        from athena.episodic import operations as episodic_ops
+        from athena.memory import operations as memory_ops
+        from athena.procedural import operations as procedural_ops
+        from athena.prospective import operations as prospective_ops
+        from athena.graph import operations as graph_ops
+        from athena.meta import operations as meta_ops
+        from athena.consolidation import operations as consolidation_ops
+        from athena.planning import operations as planning_ops
+
+        # Create database instance and initialize schema
+        db = Database()
+        await db.initialize()
+
+        # Create stores (no .initialize() call needed - schema created above)
+        from athena.planning.store import PlanningStore
+
+        episodic_store = EpisodicStore(db)
+        memory_store = MemoryStore(db)
+        procedural_store = ProceduralStore(db)
+        prospective_store = ProspectiveStore(db)
+        graph_store = GraphStore(db)
+        meta_store = MetaMemoryStore(db)
+        planning_store = PlanningStore(db)
+
+        # Initialize operations modules with their stores
+        episodic_ops.initialize(db, episodic_store)
+        memory_ops.initialize(db, memory_store)
+        procedural_ops.initialize(db, procedural_store)
+        prospective_ops.initialize(db, prospective_store)
+        graph_ops.initialize(db, graph_store)
+        meta_ops.initialize(db, meta_store)
+
+        # ConsolidationSystem requires multiple stores
+        consolidation_system = ConsolidationSystem(
+            db=db,
+            memory_store=memory_store,
+            episodic_store=episodic_store,
+            procedural_store=procedural_store,
+            meta_store=meta_store
+        )
+        consolidation_ops.initialize(db, consolidation_system)
+        planning_ops.initialize(db, planning_store)
+
+        _initialized = True
+        return True
+
+    except Exception as e:
+        print(f"Error initializing Athena: {e}")
+        import traceback
+        traceback.print_exc()
+        return False

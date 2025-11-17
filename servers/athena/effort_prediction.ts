@@ -17,34 +17,23 @@ export interface PredictionResult {
 }
 
 /**
- * Predict effort for a task
+ * Predict effort for a task based on historical data and task characteristics
  *
- * Example agent usage:
- * ```typescript
- * import { predictEffort } from './servers/athena/effort_prediction.ts';
+ * @param input - Task type, description, and complexity
+ * @returns Effort estimate with confidence bounds
  *
- * const estimate = await predictEffort({
- *   taskType: "feature",
- *   description: "Implement user authentication"
- * });
- * console.log(`Estimated: ${estimate.estimatedMinutes}m (±${estimate.estimatedRange.max - estimate.estimatedRange.min}m)`);
+ * @implementation src/athena/planning/operations.py:estimate_effort
+ *
+ * @example
+ * ```python
+ * from athena.planning.operations import estimate_effort
+ *
+ * result = await estimate_effort(plan_id="plan-123")
+ * print(f"Estimated: {result['estimated_minutes']}m")
  * ```
  */
 export async function predictEffort(input: {
   taskType: string;
   description: string;
   complexity?: number;
-}): Promise<PredictionResult> {
-  // return callMCPTool('effort:predict', input);
-
-  return {
-    estimatedMinutes: 120,
-    confidence: 'medium',
-    confidenceScore: 0.72,
-    biasFacto: 1.05,
-    estimatedRange: {
-      min: 90,
-      max: 150
-    }
-  };
-}
+}): Promise<PredictionResult>;

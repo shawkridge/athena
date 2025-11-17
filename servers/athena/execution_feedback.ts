@@ -24,42 +24,32 @@ export interface FeedbackResult {
 /**
  * Record task completion and feedback for learning
  *
- * Example agent usage:
- * ```typescript
- * import { recordCompletion } from './servers/athena/execution_feedback.ts';
+ * Stores completion feedback for effort prediction and pattern refinement.
+ * Calculates variance from estimate and triggers consolidation if useful.
  *
- * const feedback = await recordCompletion({
- *   taskId: 1,
- *   actualMinutes: 140,
- *   success: true,
- *   lessonsLearned: "API design was simpler than expected"
- * });
- * console.log(`Task 1: ${feedback.variancePercent.toFixed(1)}% variance`);
+ * @param input - Completion feedback including actual duration and outcomes
+ * @returns Feedback result with variance analysis
+ *
+ * @implementation src/athena/prospective/operations.py:update_task_status
+ *
+ * @example
+ * ```python
+ * from athena.prospective.operations import update_task_status
+ *
+ * success = await update_task_status(
+ *   task_id="task-123",
+ *   status="completed"
+ * )
  * ```
  */
-export async function recordCompletion(input: CompletionFeedback): Promise<FeedbackResult> {
-  // return callMCPTool('execution:record_completion', input);
-
-  return {
-    taskId: input.taskId,
-    variance: input.actualMinutes - 120, // Assuming 120 min estimate
-    variancePercent: ((input.actualMinutes - 120) / 120) * 100,
-    success: input.success,
-    message: `Task ${input.taskId} completed with feedback recorded`
-  };
-}
+export async function recordCompletion(input: CompletionFeedback): Promise<FeedbackResult>;
 
 /**
  * Get feedback summary for a task
+ *
+ * @param taskId - Task identifier
+ * @returns Feedback summary with outcomes and lessons learned
+ *
+ * @implementation src/athena/prospective/operations.py:get_task
  */
-export async function getFeedback(taskId: number): Promise<Record<string, any>> {
-  // return callMCPTool('execution:get_feedback', { task_id: taskId });
-
-  return {
-    taskId,
-    status: "completed",
-    actualDurationMinutes: 140,
-    lessonsLearned: null,
-    blockers: []
-  };
-}
+export async function getFeedback(taskId: number): Promise<Record<string, any>>;

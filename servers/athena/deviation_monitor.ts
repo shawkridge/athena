@@ -17,38 +17,41 @@ export interface DeviationAlert {
 /**
  * Check if a task is deviating from its estimate
  *
- * Example agent usage:
- * ```typescript
- * import { checkDeviation } from './servers/athena/deviation_monitor.ts';
+ * Compares actual elapsed time to estimated duration and returns alert if exceeding threshold.
  *
- * const deviations = [];
- * for (const taskId of [1, 2, 3]) {
- *   const alert = await checkDeviation(taskId);
- *   if (alert) deviations.push(alert);
- * }
- * console.log(`Found ${deviations.length} deviating tasks`);
+ * @param taskId - Task identifier to check
+ * @returns Deviation alert if task exceeds estimate, null otherwise
+ *
+ * @implementation src/athena/prospective/operations.py:get_task
+ *
+ * @example
+ * ```python
+ * from athena.prospective.operations import get_task
+ *
+ * task = await get_task(task_id="task-123")
+ * if task and task['status'] == 'in_progress':
+ *   print(f"Task: {task['title']}")
  * ```
  */
-export async function checkDeviation(taskId: number): Promise<DeviationAlert | null> {
-  // return callMCPTool('deviation:check_deviation', { task_id: taskId });
-
-  return null; // No deviation
-}
+export async function checkDeviation(taskId: number): Promise<DeviationAlert | null>;
 
 /**
  * Get all currently deviating tasks
+ *
+ * @returns List of all tasks currently exceeding their time estimates
+ *
+ * @implementation src/athena/prospective/operations.py:get_active_tasks
  */
-export async function getActiveDeviations(): Promise<DeviationAlert[]> {
-  // return callMCPTool('deviation:get_active_deviations', {});
-
-  return [];
-}
+export async function getActiveDeviations(): Promise<DeviationAlert[]>;
 
 /**
  * Trigger replanning for an off-track task
+ *
+ * Initiates a replanning cycle for a task that has deviated significantly from estimates.
+ *
+ * @param taskId - Task identifier to replan
+ * @returns Success status and message
+ *
+ * @implementation src/athena/planning/operations.py:create_plan
  */
-export async function triggerReplanning(taskId: number): Promise<{ success: boolean; message: string }> {
-  // return callMCPTool('deviation:trigger_replanning', { task_id: taskId });
-
-  return { success: false, message: "No deviation detected" };
-}
+export async function triggerReplanning(taskId: number): Promise<{ success: boolean; message: string }>;

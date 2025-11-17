@@ -73,23 +73,19 @@ class EpisodicOperations:
         importance = max(0.0, min(1.0, importance))
 
         event = EpisodicEvent(
+            project_id=1,  # Default project
             timestamp=datetime.now(),
             content=content,
-            event_type=EventType.AGENT_INTERACTION,
+            event_type=EventType.ACTION,
             context=EventContext(cwd=spatial_context),
             outcome=EventOutcome.SUCCESS,
             session_id=session_id,
-            tags=tags or [],
             importance=importance,
-            metadata={
-                "source": source,
-                "recorded_at": datetime.now().isoformat(),
-                "context_length": len(content),
-                **(context or {})
-            }
         )
 
-        return await self.store.store(event)
+        await self.db.initialize()  # Ensure schema
+        event_id = self.store.record_event(event)
+        return str(event_id)
 
     async def recall(
         self,
@@ -105,10 +101,10 @@ class EpisodicOperations:
         Args:
             query: Search query string
             limit: Maximum results to return
-            min_confidence: Minimum confidence threshold
-            time_range: Optional time range with 'start' and 'end' keys
-            tags: Optional tag filters
-            session_id: Optional session filter
+            min_confidence: Minimum confidence threshold (0.0-1.0), filters by importance
+            time_range: Optional time range with 'start' and 'end' keys (not used in basic search)
+            tags: Optional tag filters (not used in basic search)
+            session_id: Optional session filter (not used in basic search)
 
         Returns:
             List of matching episodic events
@@ -116,26 +112,37 @@ class EpisodicOperations:
         if not query:
             return []
 
-        # Build query filters
-        filters = {
-            "limit": limit,
-            "min_confidence": min_confidence,
-        }
+        # Use store's search_events which requires project_id, query, and limit
+        project_id = 1  # Default project
+        results = self.store.search_events(project_id, query, limit=limit)
 
+        # Apply client-side filtering
+        filtered = results
+
+        # Filter by confidence (importance score)
+        filtered = [
+            r for r in filtered
+            if getattr(r, 'importance_score', 0.5) >= min_confidence
+        ]
+
+        # Filter by time range if provided
         if time_range:
-            if "start" in time_range:
-                filters["start_time"] = time_range["start"]
-            if "end" in time_range:
-                filters["end_time"] = time_range["end"]
+            start = time_range.get("start")
+            end = time_range.get("end")
+            filtered = [
+                r for r in filtered
+                if (not start or r.timestamp >= start) and (not end or r.timestamp <= end)
+            ]
 
+        # Filter by tags if provided
         if tags:
-            filters["tags"] = tags
+            filtered = [r for r in filtered if any(tag in tags for tag in (getattr(r, 'tags', []) or []))]
 
+        # Filter by session_id if provided
         if session_id:
-            filters["session_id"] = session_id
+            filtered = [r for r in filtered if r.session_id == session_id]
 
-        # Use store's search capability
-        return await self.store.search(query, **filters)
+        return filtered
 
     async def recall_recent(
         self,

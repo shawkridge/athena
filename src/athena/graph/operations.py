@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 
 from ..core.database import Database
 from .store import GraphStore
-from .models import Entity, Relationship
+from .models import Entity, Relation
 
 logger = logging.getLogger(__name__)
 
@@ -84,18 +84,18 @@ class GraphOperations:
             source_id: Source entity ID
             target_id: Target entity ID
             relationship_type: Type of relationship
-            strength: Relationship strength (0.0-1.0)
+            strength: Relation strength (0.0-1.0)
             metadata: Optional metadata
 
         Returns:
-            Relationship ID
+            Relation ID
         """
         if not source_id or not target_id or not relationship_type:
             raise ValueError("source_id, target_id, and relationship_type are required")
 
         strength = max(0.0, min(1.0, strength))
 
-        relationship = Relationship(
+        relationship = Relation(
             source_id=source_id,
             target_id=target_id,
             relationship_type=relationship_type,

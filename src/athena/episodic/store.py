@@ -615,7 +615,7 @@ class EpisodicStore(BaseStore):
             SELECT * FROM episodic_events
             WHERE project_id = %s AND ({where_clause})
             ORDER BY timestamp DESC
-            LIMIT ?
+            LIMIT %s
         """
 
         rows = self.execute(sql, params + [limit], fetch_all=True)
