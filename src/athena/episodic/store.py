@@ -330,6 +330,22 @@ class EpisodicStore(BaseStore):
             event_id = None
 
         self.commit()
+
+        # Wire to EpisodicGraphBridge for automatic entity extraction
+        # This integrates the event into the knowledge graph automatically
+        if event_id:
+            try:
+                from ..integration.episodic_graph_bridge import EpisodicGraphBridge
+                bridge = EpisodicGraphBridge(self.db)
+                bridge.integrate_events_to_graph(event_ids=[event_id])
+            except ImportError:
+                # Graph integration optional (degradation)
+                pass
+            except Exception as e:
+                # Log but don't fail on graph integration errors
+                import logging
+                logging.warning(f"Failed to integrate event {event_id} to graph: {e}")
+
         return event_id
 
     def batch_record_events(self, events: List[EpisodicEvent]) -> List[int]:

@@ -296,6 +296,31 @@ class ProspectiveStore(BaseStore):
 
         self.commit()
 
+        # Wire to ConsolidationHook for task pattern learning
+        # This triggers learning when a task completes
+        if status == TaskStatus.COMPLETED:
+            try:
+                from .consolidation_hook import ConsolidationHook
+                hook = ConsolidationHook(self.db)
+
+                # Get task to check if it has a learned_pattern_id
+                task = self.get_task(task_id)
+                if task and hasattr(task, 'learned_pattern_id') and task.learned_pattern_id:
+                    # Success if status is COMPLETED
+                    hook.on_task_completed_with_pattern(
+                        task_id=task_id,
+                        pattern_id=task.learned_pattern_id,
+                        success=True,
+                        actual_outcome=reason,
+                    )
+            except ImportError:
+                # Task pattern consolidation optional (degradation)
+                pass
+            except Exception as e:
+                # Log but don't fail on consolidation errors
+                import logging
+                logging.warning(f"Failed to consolidate task {task_id}: {e}")
+
     def update_task_phase(
         self, task_id: int, new_phase: TaskPhase, plan: Optional[Plan] = None
     ) -> Optional[ProspectiveTask]:
