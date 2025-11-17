@@ -79,17 +79,14 @@ class AgentCoordinator:
         Returns:
             Task ID
         """
+        # Create a descriptive title and convert to active form
+        title = description[:50] if len(description) > 50 else description
+        active_form = f"Executing: {title.lower()}"
+
         task_id = await create_prospective_task(
-            title=description,
+            title=title,
             description=description,
-            task_type="agent_task",
-            metadata={
-                "created_by": self.agent_id,
-                "required_skills": required_skills,
-                "parameters": parameters or {},
-                "depends_on": depends_on or [],
-                "deadline": deadline,
-            },
+            tags=required_skills + ["agent_task", f"created_by_{self.agent_id}"],
         )
 
         self.statistics["tasks_created"] += 1

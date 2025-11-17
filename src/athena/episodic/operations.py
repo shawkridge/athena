@@ -178,11 +178,15 @@ class EpisodicOperations:
         Returns:
             List of events from session
         """
-        return await self.store.list(
-            filters={"session_id": session_id},
+        project_id = 1  # Default project
+        # Get all events for the project and filter by session
+        all_events = self.store.list_events(
+            project_id=project_id,
             limit=limit,
             order_by="timestamp DESC"
         )
+        # Filter by session_id client-side
+        return [e for e in all_events if e.session_id == session_id]
 
     async def get_by_tags(
         self,
@@ -201,11 +205,10 @@ class EpisodicOperations:
         if not tags:
             return []
 
-        return await self.store.search(
-            query=" OR ".join(tags),
-            limit=limit,
-            tags=tags
-        )
+        # Use search_events to find events matching tags
+        project_id = 1  # Default project
+        query = " OR ".join(tags)
+        return self.store.search_events(project_id, query, limit=limit)
 
     async def get_by_time_range(
         self,

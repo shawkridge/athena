@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 
 from ..core.database import Database
 from .store import ProspectiveStore
-from .models import ProspectiveTask, TaskStatus
+from .models import ProspectiveTask, TaskStatus, TaskPriority
 
 logger = logging.getLogger(__name__)
 
@@ -72,14 +72,14 @@ class ProspectiveOperations:
             description=description,
             due_date=due_date,
             priority=priority,
-            tags=tags or [],
             status=TaskStatus(status),
             created_at=datetime.now(),
             completed_at=None,
-            metadata={}
         )
 
-        return await self.store.store(task)
+        # Store.create_task returns int (task_id), so convert to str
+        task_id = self.store.create_task(task)
+        return str(task_id)
 
     async def list_tasks(
         self,
