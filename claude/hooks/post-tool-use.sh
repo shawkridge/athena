@@ -255,6 +255,53 @@ try:
 except Exception as e:
     print(f"⚠ Event recording failed: {str(e)}", file=sys.stderr)
 
+# Phase 4.5: Notify MemoryCoordinatorAgent of tool execution
+# The agent will decide if this tool execution should be remembered
+python3 << 'MEMORY_COORD_EOF'
+import sys
+import os
+import json
+
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
+
+try:
+    from agent_bridge import notify_tool_execution
+
+    # Extract tool details from hook input
+    hook_input_str = os.environ.get('HOOK_INPUT_JSON', '{}')
+    try:
+        hook_input = json.loads(hook_input_str)
+    except:
+        hook_input = {}
+
+    tool_name = hook_input.get('tool_name', 'unknown')
+    tool_status = hook_input.get('tool_response', {}).get('status', 'unknown')
+    duration_ms = hook_input.get('tool_response', {}).get('duration_ms', 0)
+
+    # Get input and output summaries
+    input_summary = str(hook_input.get('parameters', {}))[:100]
+    output_summary = str(hook_input.get('tool_response', {}).get('content', ''))[:100]
+    success = tool_status == 'success'
+
+    # Notify agent
+    result = notify_tool_execution(
+        tool_name=tool_name,
+        input_summary=input_summary,
+        output_summary=output_summary,
+        success=success,
+    )
+
+    if result.get('decided'):
+        print(f"✓ MemoryCoordinatorAgent decided to remember this ({result.get('memory_type')})", file=sys.stderr)
+    else:
+        print(f"· MemoryCoordinatorAgent: Skipped (not important enough)", file=sys.stderr)
+
+except Exception as e:
+    # Don't fail hook if agent notification fails
+    print(f"· MemoryCoordinatorAgent notification skipped: {str(e)}", file=sys.stderr)
+
+MEMORY_COORD_EOF
+
 # Phase 5: Prepare tool execution for response capture threading
 # This will be used by session-end.sh to thread complete conversations
 try:

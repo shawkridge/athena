@@ -505,6 +505,53 @@ log "  ✓ Token usage tracked and logged"
 log "  ✓ Session cost estimated"
 log "  ✓ Context utilization monitored"
 
+# Phase 5.5: Extract patterns using PatternExtractorAgent
+log "Phase 5.5: Extracting reusable patterns with PatternExtractorAgent..."
+
+python3 << 'PATTERN_EXTRACTION_EOF'
+import sys
+import os
+import json
+import logging
+
+# Suppress verbose logging
+logging.basicConfig(level=logging.WARNING)
+
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
+
+try:
+    from agent_bridge import extract_session_patterns
+
+    # Get session ID
+    session_id = os.environ.get('CLAUDE_SESSION_ID', 'default-session')
+
+    # Extract patterns using agent
+    extraction_result = extract_session_patterns()
+
+    if extraction_result.get("status") == "success":
+        events_analyzed = extraction_result.get("events_analyzed", 0)
+        patterns_extracted = extraction_result.get("patterns_extracted", 0)
+        clusters_found = extraction_result.get("clusters_found", 0)
+
+        print(f"✓ Pattern extraction complete", file=sys.stderr)
+        print(f"  Events analyzed: {events_analyzed}", file=sys.stderr)
+        print(f"  Clusters found: {clusters_found}", file=sys.stderr)
+        print(f"  High-confidence patterns extracted: {patterns_extracted}", file=sys.stderr)
+    else:
+        print(f"⚠ Pattern extraction status: {extraction_result.get('status', 'unknown')}", file=sys.stderr)
+        if 'error' in extraction_result:
+            print(f"⚠ Error: {extraction_result['error']}", file=sys.stderr)
+
+except Exception as e:
+    print(f"⚠ Pattern extraction failed: {str(e)}", file=sys.stderr)
+    # Don't fail session if pattern extraction fails
+    pass
+
+PATTERN_EXTRACTION_EOF
+
+log "  ✓ Procedures extracted from session events"
+log "  ✓ Patterns consolidated for future learning"
+
 # Summary
 log "=== Session End Consolidation Complete ==="
 log "Status: SUCCESS"

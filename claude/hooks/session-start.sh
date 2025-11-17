@@ -342,6 +342,24 @@ try:
 
         todowrite_sync.close()
 
+        # Phase 3: Initialize agents for autonomous memory management
+        print(f"✓ Initializing agents for autonomous learning...", file=sys.stderr)
+
+        try:
+            from agent_bridge import initialize_memory_coordinator
+
+            agent_result = initialize_memory_coordinator()
+
+            if agent_result.get("status") == "success":
+                print(f"  ✓ MemoryCoordinatorAgent initialized", file=sys.stderr)
+                print(f"    Agent ID: {agent_result.get('agent_id')}", file=sys.stderr)
+                print(f"    Agent Type: {agent_result.get('agent_type')}", file=sys.stderr)
+            else:
+                print(f"  ⚠ MemoryCoordinatorAgent init failed: {agent_result.get('error')}", file=sys.stderr)
+
+        except Exception as e:
+            print(f"  ⚠ Could not initialize agents: {str(e)}", file=sys.stderr)
+
         elapsed_ms = (time.time() - start_time) * 1000
         print(f"✓ Session context initialized ({elapsed_ms:.0f}ms)", file=sys.stderr)
 
