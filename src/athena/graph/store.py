@@ -569,3 +569,189 @@ class GraphStore(BaseStore[Entity]):
             relations = []
 
         return {"entities": entities, "relations": relations}
+
+    # ==================== ASYNC WRAPPER API ====================
+    # These methods provide async wrappers for operations.py compatibility
+    # They maintain the operations API contract while using existing store methods
+
+    async def add_entity(self, entity: Entity) -> int:
+        """Add entity (async wrapper for create_entity).
+
+        Args:
+            entity: Entity to add
+
+        Returns:
+            Entity ID
+        """
+        return self.create_entity(entity)
+
+    async def add_relationship(self, relationship: Relation) -> int:
+        """Add relationship (async wrapper for create_relation).
+
+        Args:
+            relationship: Relation to add
+
+        Returns:
+            Relation ID
+        """
+        return self.create_relation(relationship)
+
+    async def find_related(
+        self, entity_id: int, relation_types: Optional[list[str]] = None, limit: int = 100
+    ) -> list[Entity]:
+        """Find entities related to a given entity.
+
+        Args:
+            entity_id: Entity ID to find relations for
+            relation_types: Optional list of relation types to filter
+            limit: Maximum results to return
+
+        Returns:
+            List of related entities
+        """
+        # Get relations for this entity
+        relations = self.get_entity_relations(
+            entity_id=entity_id, relation_type=None, limit=limit
+        )
+
+        # Filter by relation type if specified
+        if relation_types:
+            relations = [r for r in relations if r.relation_type.value in relation_types]
+
+        # Get the related entity IDs
+        related_ids = set()
+        for rel in relations:
+            if rel.from_entity_id == entity_id:
+                related_ids.add(rel.to_entity_id)
+            else:
+                related_ids.add(rel.from_entity_id)
+
+        # Fetch the related entities
+        related_entities = []
+        for eid in list(related_ids)[:limit]:
+            entity = self.get_entity(eid)
+            if entity:
+                related_entities.append(entity)
+
+        return related_entities
+
+    async def get_communities(self, limit: int = 10) -> list[dict]:
+        """Get entity communities (clusters).
+
+        Uses a simple heuristic: entities with strong relationships form communities.
+
+        Args:
+            limit: Maximum communities to return
+
+        Returns:
+            List of community dicts with entities and relations
+        """
+        # Get all entities
+        rows = self.execute("SELECT id FROM entities LIMIT %s", (limit * 10,), fetch_all=True)
+        entity_ids = [row[0] for row in rows] if rows else []
+
+        communities = []
+        visited = set()
+
+        # Simple community detection: group entities by their neighbors
+        for entity_id in entity_ids:
+            if entity_id in visited:
+                continue
+
+            # Get related entities
+            related = await self.find_related(entity_id, limit=5)
+            if related:
+                community = {
+                    "id": len(communities),
+                    "members": [entity_id] + [e.id for e in related],
+                    "size": len(related) + 1,
+                    "strength": 0.5,  # Placeholder
+                }
+                communities.append(community)
+                visited.add(entity_id)
+                visited.update(e.id for e in related)
+
+            if len(communities) >= limit:
+                break
+
+        return communities
+
+    async def update_entity(self, entity: Entity) -> bool:
+        """Update an entity (async wrapper).
+
+        Args:
+            entity: Entity with updated values
+
+        Returns:
+            True if updated successfully
+        """
+        # Update the entity in the database
+        sql = """
+            UPDATE entities
+            SET name = %s, entity_type = %s, metadata = %s, updated_at = %s
+            WHERE id = %s
+        """
+        try:
+            self.execute(
+                sql,
+                (
+                    entity.name,
+                    entity.entity_type.value,
+                    self.serialize_json(entity.metadata),
+                    int(datetime.now().timestamp()),
+                    entity.id,
+                ),
+            )
+            return True
+        except Exception:
+            return False
+
+    async def list_entities(self, limit: int = 100) -> list[Entity]:
+        """List entities (async wrapper).
+
+        Args:
+            limit: Maximum entities to return
+
+        Returns:
+            List of entities
+        """
+        rows = self.execute("SELECT * FROM entities LIMIT %s", (limit,), fetch_all=True)
+        if not rows:
+            return []
+
+        entities = []
+        col_names = ["id", "name", "entity_type", "project_id", "created_at", "updated_at", "metadata"]
+        for row in rows:
+            entity = self._row_to_model(dict(zip(col_names, row)))
+            entities.append(entity)
+
+        return entities
+
+    async def list_relationships(self, limit: int = 100) -> list[Relation]:
+        """List relationships (async wrapper).
+
+        Args:
+            limit: Maximum relationships to return
+
+        Returns:
+            List of relations
+        """
+        rows = self.execute("SELECT * FROM entity_relations LIMIT %s", (limit,), fetch_all=True)
+        if not rows:
+            return []
+
+        relations = []
+        for row in rows:
+            relation = Relation(
+                id=row[0],
+                from_entity_id=row[1],
+                to_entity_id=row[2],
+                relation_type=RelationType(row[3]),
+                strength=row[4],
+                confidence=row[5],
+                created_at=datetime.fromtimestamp(row[6]),
+                metadata=self.deserialize_json(row[9], {}) if row[9] else {},
+            )
+            relations.append(relation)
+
+        return relations
