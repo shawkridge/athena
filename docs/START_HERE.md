@@ -22,13 +22,25 @@ pytest tests/ -v --timeout=300
 pytest tests/unit/test_confidence_integration.py -v
 ```
 
-## Start MCP Server
+## Use Directly in Code
 
-```bash
-memory-mcp
+```python
+# Episodic memory (events, time-based)
+from athena.episodic.operations import remember, recall
+
+event_id = await remember("User asked about timeline", tags=["meeting"])
+results = await recall("timeline", limit=5)
+
+# Semantic memory (facts, knowledge)
+from athena.semantic.operations import store, search
+
+id = await store("Python is dynamically typed", topics=["programming"])
+results = await search("programming", limit=10)
+
+# All operations are async and return typed results
 ```
 
-This starts the Model Context Protocol server that provides all memory operations as tools.
+No MCP server needed. No protocol overhead. Just Python async functions.
 
 ## Architecture
 
