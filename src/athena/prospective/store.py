@@ -1034,3 +1034,60 @@ class ProspectiveStore(BaseStore):
             failure_reason=safe_get(row_dict, "failure_reason"),
             lessons_learned=safe_get(row_dict, "lessons_learned"),
         )
+
+    # ==================== ASYNC WRAPPER API ====================
+    # These methods provide async wrappers for operations.py compatibility
+    # Map generic CRUD operations to domain-specific store methods
+
+    async def get(self, task_id: int) -> Optional["ProspectiveTask"]:
+        """Get a task by ID (async wrapper for get_task).
+
+        Args:
+            task_id: Task ID
+
+        Returns:
+            ProspectiveTask or None if not found
+        """
+        return self.get_task(task_id)
+
+    async def list(
+        self, status: Optional[str] = None, limit: int = 100, **filters
+    ) -> list["ProspectiveTask"]:
+        """List tasks optionally filtered by status (async wrapper for list_tasks).
+
+        Args:
+            status: Optional status filter (pending, in_progress, completed, blocked)
+            limit: Maximum tasks to return
+            **filters: Additional filters
+
+        Returns:
+            List of tasks
+        """
+        tasks = self.list_tasks(limit=limit)
+
+        # Filter by status if specified
+        if status:
+            tasks = [t for t in tasks if t.status.value == status]
+
+        return tasks
+
+    async def update(self, task: "ProspectiveTask") -> bool:
+        """Update a task (async wrapper).
+
+        Args:
+            task: Task with updated values
+
+        Returns:
+            True if updated successfully
+        """
+        # Update task status which persists changes
+        try:
+            if task.status:
+                self.update_task_status(
+                    task_id=task.id,
+                    new_status=task.status.value,
+                    phase=task.phase.value if task.phase else None,
+                )
+            return True
+        except Exception:
+            return False
