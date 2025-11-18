@@ -12,6 +12,7 @@ Commands:
     sync            Sync specifications from filesystem
     validate        Validate a specification
     diff            Compare two specification versions
+    extract         Extract specification from code
     show            Show specification details
 
 Examples:
@@ -416,6 +417,101 @@ def cmd_diff(args):
         sys.exit(1)
 
 
+def cmd_extract(args):
+    """Extract specification from code."""
+    from athena.architecture.extractors import get_extractor, ExtractionConfig
+
+    try:
+        # Create extraction config
+        config = ExtractionConfig(
+            project_id=args.project_id,
+            output_name=args.name,
+            output_version=args.version,
+            output_description=args.description,
+        )
+
+        # Get source path
+        source_path = Path(args.source)
+        if not source_path.exists():
+            print(f"❌ Source not found: {source_path}")
+            sys.exit(1)
+
+        print(f"🔍 Analyzing {source_path}...")
+
+        # Find appropriate extractor
+        extractor = get_extractor(source_path, config)
+        if not extractor:
+            print(f"❌ No extractor found for {source_path}")
+            print("   Supported sources: Python API files (FastAPI/Flask)")
+            sys.exit(1)
+
+        print(f"   Using: {extractor.get_name()}")
+        print()
+
+        # Extract specification
+        result = extractor.extract(source_path, config)
+
+        # Display results
+        print(f"✅ Extracted: {result.spec.name}")
+        print(f"   Type: {result.spec.spec_type.value}")
+        print(f"   Version: {result.spec.version}")
+        print(f"   Confidence: {result.confidence * 100:.0f}%")
+        print(f"   Method: {result.extraction_method}")
+
+        if result.metadata.get("endpoint_count"):
+            print(f"   Endpoints: {result.metadata['endpoint_count']}")
+
+        print()
+
+        # Show warnings
+        if result.warnings:
+            print("⚠️  Warnings:")
+            for warning in result.warnings:
+                print(f"   - {warning}")
+            print()
+
+        # Save to database
+        if not args.dry_run:
+            db = get_database()
+            store = SpecificationStore(db)
+
+            # Set file path if not provided
+            if not result.spec.file_path:
+                file_name = f"{result.spec.name.lower().replace(' ', '-')}.yaml"
+                result.spec.file_path = f"api/{file_name}"
+
+            # Create spec
+            spec_id = store.create(result.spec, write_to_file=not args.no_write_file)
+
+            print(f"💾 Saved to database:")
+            print(f"   Spec ID: {spec_id}")
+            if not args.no_write_file:
+                print(f"   File: specs/{result.spec.file_path}")
+            print()
+
+            # Suggest next steps
+            if result.requires_review:
+                print("📝 Next steps:")
+                print(f"   1. Review extracted spec: athena-spec-manage show --spec-id {spec_id}")
+                print(f"   2. Validate spec: athena-spec-manage validate --spec-id {spec_id}")
+                print(f"   3. Edit if needed: vim specs/{result.spec.file_path}")
+        else:
+            print("🔍 Dry run mode - not saving to database")
+            print()
+            print("Preview of extracted spec:")
+            print("=" * 80)
+            print(result.spec.content[:500])
+            if len(result.spec.content) > 500:
+                print("...")
+                print(f"(Total {len(result.spec.content)} characters)")
+
+    except Exception as e:
+        print(f"❌ Error during extraction: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Manage specifications for spec-driven development",
@@ -488,6 +584,16 @@ def main():
     diff_parser.add_argument("--breaking-only", action="store_true", help="Show only breaking changes")
     diff_parser.add_argument("--strict", action="store_true", help="Exit with error code if breaking changes detected")
 
+    # Extract command
+    extract_parser = subparsers.add_parser("extract", help="Extract specification from code")
+    extract_parser.add_argument("source", help="Source file to extract from (e.g., api/main.py)")
+    extract_parser.add_argument("--project-id", type=int, default=1, help="Project ID")
+    extract_parser.add_argument("--name", help="Override extracted spec name")
+    extract_parser.add_argument("--version", default="1.0.0", help="Spec version (default: 1.0.0)")
+    extract_parser.add_argument("--description", help="Spec description")
+    extract_parser.add_argument("--dry-run", action="store_true", help="Extract but don't save (preview only)")
+    extract_parser.add_argument("--no-write-file", action="store_true", help="Don't write to filesystem (DB only)")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -504,6 +610,7 @@ def main():
         "show": cmd_show,
         "validate": cmd_validate,
         "diff": cmd_diff,
+        "extract": cmd_extract,
     }
 
     try:
