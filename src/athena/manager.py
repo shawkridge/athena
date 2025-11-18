@@ -29,6 +29,13 @@ from .prospective.store import ProspectiveStore
 from .session.context_manager import SessionContextManager
 from .temporal.kg_synthesis import TemporalKGSynthesis
 
+# Import Architecture layer (optional)
+try:
+    from .architecture.manager import ArchitectureManager
+    ARCHITECTURE_AVAILABLE = True
+except ImportError:
+    ARCHITECTURE_AVAILABLE = False
+
 # Import RAG components (optional - graceful degradation if not available)
 try:
     from .rag import RAGConfig, RAGManager
@@ -50,6 +57,7 @@ class QueryType:
     PROSPECTIVE = "prospective"  # What tasks, reminders
     META = "meta"  # What do we know about
     PLANNING = "planning"  # Planning, decomposition, strategy, orchestration
+    ARCHITECTURE = "architecture"  # Architectural decisions, patterns, constraints
 
 
 class UnifiedMemoryManager:
@@ -68,6 +76,7 @@ class UnifiedMemoryManager:
         rag_manager: Optional["RAGManager"] = None,
         enable_advanced_rag: bool = False,
         session_manager: Optional[SessionContextManager] = None,
+        architecture_manager: Optional["ArchitectureManager"] = None,
     ):
         """Initialize unified memory manager.
 
@@ -83,6 +92,7 @@ class UnifiedMemoryManager:
             rag_manager: Optional RAG manager for advanced retrieval
             enable_advanced_rag: If True, attempt to initialize RAG manager with default config
             session_manager: Optional session context manager for query-aware retrieval
+            architecture_manager: Optional architecture manager for ADRs, patterns, constraints
         """
         self.semantic = semantic
         self.episodic = episodic
@@ -94,6 +104,16 @@ class UnifiedMemoryManager:
         self.project_manager = project_manager
         self.session_manager = session_manager
         self.db = semantic.db  # Reference to database from semantic store
+
+        # Initialize architecture manager (Layer 9: Architecture & Design)
+        if architecture_manager:
+            self.architecture = architecture_manager
+        elif ARCHITECTURE_AVAILABLE:
+            self.architecture = ArchitectureManager(self.db)
+            logger.info("Architecture manager initialized")
+        else:
+            self.architecture = None
+            logger.debug("Architecture layer not available")
 
         # Initialize confidence scorer for result quality assessment
         self.confidence_scorer = ConfidenceScorer(meta_store=meta)
