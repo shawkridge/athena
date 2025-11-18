@@ -347,3 +347,99 @@ class Specification(BaseModel):
     updated_at: datetime = Field(default_factory=datetime.now)
 
     model_config = ConfigDict(use_enum_values=True)
+
+
+class DocumentType(str, Enum):
+    """Type of documentation."""
+    # Product Documents
+    PRD_LEAN = "prd_lean"  # Lean PRD (essential features only)
+    PRD_AGILE = "prd_agile"  # Agile PRD (user stories, sprints)
+    PRD_PROBLEM = "prd_problem"  # Problem-focused PRD
+    MRD = "mrd"  # Market Requirements Document
+
+    # Technical Documents
+    TDD = "tdd"  # Technical Design Document
+    HLD = "hld"  # High-Level Design
+    LLD = "lld"  # Low-Level Design
+
+    # Architecture Documents
+    ARC42 = "arc42"  # arc42 template (12 sections)
+    C4_CONTEXT = "c4_context"  # C4 Context diagram
+    C4_CONTAINER = "c4_container"  # C4 Container diagram
+    C4_COMPONENT = "c4_component"  # C4 Component diagram
+
+    # API/Integration Documents
+    API_DOC = "api_doc"  # API documentation
+    API_GUIDE = "api_guide"  # Integration guide
+    SDK_DOC = "sdk_doc"  # SDK documentation
+
+    # Operational Documents
+    RUNBOOK = "runbook"  # Operational runbook
+    DEPLOYMENT_GUIDE = "deployment"  # Deployment guide
+    TROUBLESHOOTING = "troubleshooting"  # Troubleshooting guide
+
+    # Change Documents
+    CHANGELOG = "changelog"  # Release notes
+    MIGRATION_GUIDE = "migration"  # Migration guide for breaking changes
+    UPGRADE_GUIDE = "upgrade"  # Upgrade guide
+
+
+class DocumentStatus(str, Enum):
+    """Status of a document."""
+    DRAFT = "draft"  # Work in progress
+    REVIEW = "review"  # Under review
+    APPROVED = "approved"  # Approved but not yet published
+    PUBLISHED = "published"  # Published and active
+    DEPRECATED = "deprecated"  # No longer maintained
+
+
+class Document(BaseModel):
+    """Documentation generated from or related to specifications.
+
+    Documents provide human-readable explanations of system behavior,
+    architecture, and operations. They can be generated from specs,
+    other documents, or created manually.
+    """
+    id: Optional[int] = None
+    project_id: int
+
+    # Basic metadata
+    name: str = Field(..., description="Document name (e.g., 'User API Documentation')")
+    doc_type: DocumentType = Field(..., description="Type of document")
+    version: str = Field(..., description="Version (SemVer or date)")
+    status: DocumentStatus = Field(default=DocumentStatus.DRAFT)
+
+    # Content
+    content: str = Field(..., description="Document content in Markdown format")
+    file_path: Optional[str] = Field(None, description="Path to doc file in git (e.g., docs/api/users.md)")
+    description: Optional[str] = Field(None, description="Human-readable description")
+
+    # Source relationships (what this document was generated from)
+    based_on_spec_ids: List[int] = Field(default_factory=list, description="Specifications this doc is based on")
+    based_on_doc_ids: List[int] = Field(default_factory=list, description="Other documents this doc is based on (e.g., PRD → TDD)")
+
+    # Architecture relationships
+    related_adr_ids: List[int] = Field(default_factory=list, description="Related ADRs")
+    implements_constraint_ids: List[int] = Field(default_factory=list, description="Constraints documented")
+
+    # Generation metadata
+    generated_by: Optional[str] = Field(None, description="How doc was created: 'ai', 'manual', 'template'")
+    generation_prompt: Optional[str] = Field(None, description="Prompt used for AI generation")
+    generation_model: Optional[str] = Field(None, description="AI model used (e.g., 'claude-3.5-sonnet')")
+    last_synced_at: Optional[datetime] = Field(None, description="When doc was last synced with sources")
+    sync_hash: Optional[str] = Field(None, description="Hash of source specs for drift detection")
+
+    # Validation
+    validation_status: Optional[str] = Field(None, description="Document validation status")
+    validated_at: Optional[datetime] = Field(None, description="When last validated")
+
+    # Review tracking
+    author: Optional[str] = None
+    reviewers: List[str] = Field(default_factory=list, description="Who has reviewed this doc")
+    tags: List[str] = Field(default_factory=list, description="Tags for categorization")
+
+    # Metadata
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+    model_config = ConfigDict(use_enum_values=True)
