@@ -281,3 +281,69 @@ class SystemBoundary(BaseModel):
     updated_at: datetime = Field(default_factory=datetime.now)
 
     model_config = ConfigDict(use_enum_values=True)
+
+
+class SpecType(str, Enum):
+    """Type of specification."""
+    MARKDOWN = "markdown"  # General markdown specs
+    OPENAPI = "openapi"  # OpenAPI/Swagger specs
+    GRAPHQL = "graphql"  # GraphQL schemas
+    PROTO = "proto"  # Protocol Buffer definitions
+    ASYNCAPI = "asyncapi"  # AsyncAPI event specs
+    TLAP = "tla+"  # TLA+ formal specifications
+    ALLOY = "alloy"  # Alloy structural models
+    PRISMA = "prisma"  # Prisma schema
+    SQL = "sql"  # SQL schema definitions
+    JSONSCHEMA = "jsonschema"  # JSON Schema
+
+
+class SpecStatus(str, Enum):
+    """Status of a specification."""
+    DRAFT = "draft"  # Work in progress
+    ACTIVE = "active"  # Current specification
+    DEPRECATED = "deprecated"  # No longer recommended
+    SUPERSEDED = "superseded"  # Replaced by newer spec
+
+
+class Specification(BaseModel):
+    """Specification defining system behavior (WHAT system should do).
+
+    Specifications are the source of truth in spec-driven development,
+    serving as the contract from which code is derived. Supports multiple
+    formats including OpenAPI, TLA+, Alloy, Prisma, and markdown.
+    """
+    id: Optional[int] = None
+    project_id: int
+
+    # Basic metadata
+    name: str = Field(..., description="Specification name (e.g., 'User Authentication API')")
+    spec_type: SpecType = Field(..., description="Type of specification")
+    version: str = Field(..., description="Version (SemVer or date)")
+    status: SpecStatus = Field(default=SpecStatus.DRAFT)
+
+    # Content
+    content: str = Field(..., description="Specification content (format depends on spec_type)")
+    file_path: Optional[str] = Field(None, description="Path to spec file in git (e.g., specs/auth.yaml)")
+    description: Optional[str] = Field(None, description="Human-readable description")
+
+    # Relationships to architecture layer
+    related_adr_ids: List[int] = Field(default_factory=list, description="ADRs addressing WHY decisions")
+    implements_constraint_ids: List[int] = Field(default_factory=list, description="Constraints this spec satisfies")
+    uses_pattern_ids: List[str] = Field(default_factory=list, description="Design patterns used")
+
+    # Validation
+    validation_status: Optional[str] = Field(None, description="Last validation result (valid/invalid/warning)")
+    validated_at: Optional[datetime] = Field(None, description="When last validated")
+    validation_errors: List[str] = Field(default_factory=list, description="Validation errors/warnings")
+
+    # Code generation
+    generated_code_path: Optional[str] = Field(None, description="Path to generated code from spec")
+    generation_accuracy: Optional[float] = Field(None, ge=0.0, le=1.0, description="How well generated code matches spec (0-1)")
+
+    # Metadata
+    tags: List[str] = Field(default_factory=list, description="Tags for categorization")
+    author: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+    model_config = ConfigDict(use_enum_values=True)

@@ -54,6 +54,9 @@ dev = [
 memory-mcp = "athena.cli:main"
 athena-server = "athena.server:main"
 athena-http = "athena.http.server:main"
+athena-fitness-check = "athena.cli.fitness_check:main"
+athena-impact-analysis = "athena.cli.impact_analysis:main"
+athena-spec-manage = "athena.cli.spec_manage:main"
 
 [tool.setuptools]
 packages = ["athena"]
