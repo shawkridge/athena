@@ -1,0 +1,157 @@
+================================================================================
+CONFIGURATION MANAGEMENT - KEY FINDINGS SUMMARY
+================================================================================
+
+CRITICAL ISSUES (2):
+
+1. ENVIRONMENT VARIABLE NAME MISMATCH
+   Documentation (CLAUDE.md): DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+   Actual Code (server.py:25-29): ATHENA_POSTGRES_HOST, ATHENA_POSTGRES_PORT, 
+                                   ATHENA_POSTGRES_DB, ATHENA_POSTGRES_USER, 
+                                   ATHENA_POSTGRES_PASSWORD
+   
+   File: /home/user/athena/src/athena/server.py (lines 25-29)
+   Impact: Users following docs will set wrong env vars, causing connection failures
+
+2. SETTINGS FILE NOT IMPLEMENTED
+   Documentation (CLAUDE.md): "Precedence: Env vars > local settings file > defaults"
+   Documented path: ~/.claude/settings.local.json
+   
+   Actual Code: ZERO file I/O for configuration
+   Files checked:
+   - src/athena/core/config.py (only os.environ.get, no file reading)
+   - src/athena/server.py (only os.getenv, no file reading)  
+   - src/athena/core/database_factory.py (only os.environ.get)
+   
+   Exists but unused: config/local.json in repo root (never imported)
+   Impact: Users cannot use settings files, must use environment variables only
+
+================================================================================
+HIGH SEVERITY ISSUES (1):
+
+3. INCONSISTENT DATABASE DEFAULTS ACROSS 6+ FILES
+   
+   server.py:25-29         -> postgres/athena/athena_dev
+   database.py:21-25       -> localhost/postgres/postgres  
+   database_factory.py:105 -> localhost/postgres/postgres
+   skills/library.py:32    -> localhost/athena (hardcoded)
+   filesystem_api/.../recall.py -> localhost/athena/athena_dev (in docstring)
+   mcp/server_daemon.py:51-52 -> localhost (hardcoded)
+   
+   Issue: No single source of truth for database defaults
+   Impact: Connection failures, confusing error messages when using different modules
+
+================================================================================
+MEDIUM SEVERITY ISSUES (4):
+
+4. NO CONFIGURATION VALIDATION (src/athena/core/config.py)
+   
+   Examples:
+   - Line 36: int(os.environ.get("LLAMACPP_EMBEDDING_DIM", "768"))
+     Problem: Crashes if env var = "abc", no error handling
+   
+   - Line 96: float(os.environ.get("ENTITY_BASE_SCORE", "0.5"))
+     Problem: Should validate 0.0 <= value <= 1.0, doesn't
+   
+   - Line 76: int(os.environ.get("RAG_TOP_K", "5"))
+     Problem: Should validate > 0, doesn't
+   
+   - Line 152: int(os.environ.get("CACHE_SIZE", "1000"))
+     Problem: Should validate > 0, doesn't
+   
+   Impact: Invalid config crashes at import time with cryptic errors
+
+5. SCATTERED DIRECT ENVIRONMENT VARIABLE ACCESS
+   
+   Files accessing os.getenv/os.environ directly:
+   - src/athena/rag/llm_client.py:63
+   - src/athena/consolidation/openrouter_client.py:46
+   - src/athena/pii/config.py:52-59
+   
+   Impact: Cannot implement settings file precedence without changing all files
+
+6. HARDCODED LOCALHOST URLS (5+ files)
+   
+   - src/athena/core/embeddings.py:68 -> "http://localhost:8001"
+   - src/athena/core/llm_client.py:56-57 -> localhost:8001, localhost:8002
+   - src/athena/client/http_client.py:63 -> "http://localhost:3000"
+   - src/athena/http/server.py:74 -> CORS hardcoded to localhost
+   
+   Impact: Cannot run against remote services without code changes
+
+7. DOCUMENTATION GAPS
+   
+   CLAUDE.md missing:
+   - Which modules read which environment variables?
+   - Complete list of 60+ available parameters
+   - How to configure for different environments (dev/staging/prod)
+   - Settings file format and location
+   - Migration guide from old to new config system
+
+================================================================================
+CONFIGURATION PARAMETER COUNT
+
+Total environment variables defined in src/athena/core/config.py: 60+
+Documented in CLAUDE.md: ~10
+Coverage: ~17%
+
+Examples of undocumented parameters:
+- PATTERN_MIN_CONFIDENCE
+- PATTERN_MIN_FREQUENCY  
+- PATTERN_UNCERTAINTY_THRESHOLD
+- COMPRESSION_ENABLED
+- COMPRESSION_RATIO_TARGET
+- COMPRESSION_MIN_RATIO
+- COMPRESSION_MIN_PRESERVATION
+- COMPRESSION_LATENCY_BUDGET_MS
+- PROMPT_CACHING_ENABLED
+- PROMPT_CACHE_TTL_SECONDS
+- PROMPT_CACHE_MAX_SIZE
+- PROMPT_CACHE_BLOCK_TYPES
+- TOON_* (9 parameters)
+- RERANK_* (4 parameters)
+- COMMUNITY_* (3 parameters)
+- ... and 20+ more
+
+================================================================================
+CENTRALIZED ISSUE LOCATIONS
+
+Configuration source locations:
+1. PRIMARY: src/athena/core/config.py (60+ parameters, os.environ.get only)
+2. DIRECT: rag/llm_client.py, pii/config.py, consolidation/openrouter_client.py
+3. HARDCODED: skills/library.py:32, filesystem_api/recall.py, mcp/server_daemon.py
+4. FILE-BASED: cli.py (reads .athena.yml for analysis profiles only)
+5. UNUSED: config/local.json (exists but never imported)
+
+Database configuration specifically:
+- Defined in: server.py, database.py, database_factory.py
+- No centralization in config.py
+- No environment variables prefixed with DB_* (as docs claim)
+
+================================================================================
+RECOMMENDATION
+
+Implement 4-phase fix:
+
+PHASE 1 (CRITICAL):
+- [ ] Add JSON settings file support to config.py
+- [ ] Document actual environment variable names (ATHENA_POSTGRES_*, not DB_*)
+- [ ] Update CLAUDE.md to match implementation
+
+PHASE 2 (HIGH):
+- [ ] Centralize database defaults in config.py
+- [ ] Add configuration validation with try-except and meaningful errors
+- [ ] Add startup config health checks
+
+PHASE 3 (MEDIUM):  
+- [ ] Route all env var access through config module
+- [ ] Make localhost URLs configurable
+- [ ] Remove hardcoded credentials from docstrings
+
+PHASE 4 (LOW):
+- [ ] Complete CLAUDE.md documentation
+- [ ] Document all 60+ parameters
+- [ ] Add environment-specific config examples
+
+================================================================================
+Full detailed analysis available in: CONFIG_MANAGEMENT_ANALYSIS.md
