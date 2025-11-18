@@ -438,3 +438,62 @@ class ResearchCoordinatorAgent(AgentCoordinator, AdaptiveAgent):
             return "Evidence is mixed. Further research recommended."
         else:
             return "Limited supporting evidence. Recommend alternative hypotheses."
+
+    # ========== ABSTRACT METHOD IMPLEMENTATIONS ==========
+
+    async def decide(self, context: dict) -> str:
+        """Decide what research action to take.
+
+        Args:
+            context: Context dictionary with research parameters
+
+        Returns:
+            Decision string (e.g., "plan", "aggregate", "synthesize", "validate")
+        """
+        # Simple decision logic based on context
+        if "query" in context and "depth" not in context:
+            return "plan"
+        elif "topic" in context:
+            return "aggregate"
+        elif "findings" in context:
+            return "synthesize"
+        elif "hypothesis" in context:
+            return "validate"
+        else:
+            return "idle"
+
+    async def execute(self, decision: str, context: dict) -> Any:
+        """Execute the decided research action.
+
+        Args:
+            decision: Decision type to execute
+            context: Context dictionary with action parameters
+
+        Returns:
+            Result of the action
+        """
+        try:
+            if decision == "plan":
+                return await self.plan_research(
+                    query=context.get("query", ""),
+                    depth=context.get("depth", 3),
+                    context=context
+                )
+            elif decision == "aggregate":
+                return await self.aggregate_findings(
+                    topic=context.get("topic", ""),
+                    sources=context.get("sources")
+                )
+            elif decision == "synthesize":
+                findings = context.get("findings", [])
+                theme = context.get("theme", "research")
+                return await self.synthesize_findings(findings, theme)
+            elif decision == "validate":
+                hypothesis = context.get("hypothesis", "")
+                evidence = context.get("evidence", [])
+                return await self.validate_hypothesis(hypothesis, evidence)
+            else:
+                return {"status": "idle", "message": "No action taken"}
+        except Exception as e:
+            logger.error(f"Error executing decision {decision}: {e}")
+            return {"status": "error", "message": str(e)}

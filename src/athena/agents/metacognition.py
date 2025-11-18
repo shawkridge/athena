@@ -411,3 +411,48 @@ class MetacognitionAgent(AgentCoordinator, AdaptiveAgent):
                 rationale="Data-driven optimization",
             ),
         ]
+
+    # ========== ABSTRACT METHOD IMPLEMENTATIONS ==========
+
+    async def decide(self, context: dict) -> str:
+        """Decide what metacognitive analysis to perform.
+
+        Args:
+            context: Context with system metrics/status
+
+        Returns:
+            Decision string (e.g., "analyze", "monitor", "optimize")
+        """
+        if "metrics" in context:
+            return "analyze"
+        elif "agent_health" in context:
+            return "monitor"
+        elif "issues" in context:
+            return "optimize"
+        else:
+            return "idle"
+
+    async def execute(self, decision: str, context: dict) -> Any:
+        """Execute the metacognitive decision.
+
+        Args:
+            decision: Type of analysis to perform
+            context: Context with parameters
+
+        Returns:
+            Result of the analysis
+        """
+        try:
+            if decision == "analyze":
+                metrics = context.get("metrics", {})
+                return await self.analyze_system_health(metrics)
+            elif decision == "monitor":
+                return {"status": "monitoring", "agent_health": context.get("agent_health")}
+            elif decision == "optimize":
+                issues = context.get("issues", [])
+                return await self.recommend_optimizations(issues)
+            else:
+                return {"status": "idle"}
+        except Exception as e:
+            logger.error(f"Error executing decision {decision}: {e}")
+            return {"status": "error", "message": str(e)}

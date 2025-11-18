@@ -403,3 +403,47 @@ class WorkflowOrchestratorAgent(AgentCoordinator, AdaptiveAgent):
             TaskType.UNKNOWN: 1.0,
         }
         return estimates.get(task_type, 1.0)
+
+    # ========== ABSTRACT METHOD IMPLEMENTATIONS ==========
+
+    async def decide(self, context: dict) -> str:
+        """Decide how to orchestrate workflow based on context.
+
+        Args:
+            context: Context dictionary with task information
+
+        Returns:
+            Decision string (e.g., "route", "spawn", "balance")
+        """
+        if "task_description" in context:
+            return "route"
+        elif "agent_loads" in context:
+            return "balance"
+        elif "dependencies" in context:
+            return "resolve"
+        else:
+            return "idle"
+
+    async def execute(self, decision: str, context: dict) -> Any:
+        """Execute the orchestration decision.
+
+        Args:
+            decision: Type of orchestration decision
+            context: Context with parameters
+
+        Returns:
+            Result of the decision
+        """
+        try:
+            if decision == "route":
+                task_desc = context.get("task_description", "")
+                return await self.route_task(task_desc)
+            elif decision == "balance":
+                return {"status": "balanced", "agent_loads": self.agent_loads}
+            elif decision == "resolve":
+                return {"status": "dependencies_resolved"}
+            else:
+                return {"status": "idle"}
+        except Exception as e:
+            logger.error(f"Error executing decision {decision}: {e}")
+            return {"status": "error", "message": str(e)}
