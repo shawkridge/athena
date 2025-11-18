@@ -11,6 +11,7 @@ Commands:
     delete          Delete a specification
     sync            Sync specifications from filesystem
     validate        Validate a specification
+    diff            Compare two specification versions
     show            Show specification details
 
 Examples:
@@ -332,6 +333,89 @@ def cmd_validate(args):
         sys.exit(1)
 
 
+def cmd_diff(args):
+    """Compare two specification versions."""
+    db = get_database()
+    store = SpecificationStore(db)
+
+    try:
+        # Perform diff
+        if args.compare_with_previous:
+            # Compare with previous version
+            result = store.diff_with_previous_version(args.spec_id)
+            if not result:
+                print(f"❌ No previous version found for specification {args.spec_id}")
+                sys.exit(1)
+        else:
+            # Compare two specific specs
+            if not args.new_spec_id:
+                print("❌ Error: --new-spec-id is required (or use --compare-with-previous)")
+                sys.exit(1)
+            result = store.diff(args.spec_id, args.new_spec_id)
+
+        # Print header
+        print(f"\n📊 Specification Diff")
+        print("=" * 80)
+        print(f"Old: [{result.old_spec.id}] {result.old_spec.name} v{result.old_spec.version}")
+        print(f"New: [{result.new_spec.id}] {result.new_spec.name} v{result.new_spec.version}")
+        print()
+
+        # Print summary
+        summary = result.summary
+        print(f"📈 Summary:")
+        print(f"   Total changes: {summary['total_changes']}")
+        print(f"   Breaking: {summary['breaking_changes']}")
+        print(f"   Non-breaking: {summary['non_breaking_changes']}")
+        print(f"   Added: {summary['added']}")
+        print(f"   Removed: {summary['removed']}")
+        print(f"   Modified: {summary['modified']}")
+        print()
+
+        # Show breaking changes warning
+        if result.has_breaking_changes:
+            print("⚠️  WARNING: This update contains BREAKING CHANGES!")
+            print()
+
+        # Print changes by severity
+        if result.breaking_changes:
+            print("💥 Breaking Changes:")
+            for change in result.breaking_changes:
+                icon = {
+                    "added": "➕",
+                    "removed": "➖",
+                    "modified": "✏️",
+                }.get(change.change_type.value, "•")
+                print(f"   {icon} {change.path}")
+                print(f"      {change.description}")
+            print()
+
+        if result.non_breaking_changes and not args.breaking_only:
+            print("✨ Non-Breaking Changes:")
+            for change in result.non_breaking_changes:
+                icon = {
+                    "added": "➕",
+                    "removed": "➖",
+                    "modified": "✏️",
+                }.get(change.change_type.value, "•")
+                print(f"   {icon} {change.path}")
+                print(f"      {change.description}")
+            print()
+
+        if not result.changes:
+            print("✅ No changes detected between versions")
+
+        # Exit with error code if there are breaking changes and strict mode
+        if args.strict and result.has_breaking_changes:
+            print("❌ Exiting with error due to breaking changes (--strict mode)")
+            sys.exit(1)
+
+    except Exception as e:
+        print(f"❌ Error during diff: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Manage specifications for spec-driven development",
@@ -396,6 +480,14 @@ def main():
     validate_parser.add_argument("--spec-id", type=int, required=True, help="Specification ID")
     validate_parser.add_argument("--no-update-db", action="store_true", help="Don't update validation status in database")
 
+    # Diff command
+    diff_parser = subparsers.add_parser("diff", help="Compare two specification versions")
+    diff_parser.add_argument("--spec-id", type=int, required=True, help="Old specification ID")
+    diff_parser.add_argument("--new-spec-id", type=int, help="New specification ID (required unless --compare-with-previous)")
+    diff_parser.add_argument("--compare-with-previous", action="store_true", help="Compare with previous version of same spec")
+    diff_parser.add_argument("--breaking-only", action="store_true", help="Show only breaking changes")
+    diff_parser.add_argument("--strict", action="store_true", help="Exit with error code if breaking changes detected")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -411,6 +503,7 @@ def main():
         "sync": cmd_sync,
         "show": cmd_show,
         "validate": cmd_validate,
+        "diff": cmd_diff,
     }
 
     try:

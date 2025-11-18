@@ -633,3 +633,171 @@ def test_validate_all_specifications(spec_store):
     # All should be valid (markdown has no validator)
     for spec_id, result in results.items():
         assert result.is_valid
+
+
+def test_diff_specifications(spec_store):
+    """Test diffing two specifications."""
+    import json
+
+    # Create v1 OpenAPI spec
+    v1_content = json.dumps({
+        "openapi": "3.0.0",
+        "info": {"title": "Test API", "version": "1.0.0"},
+        "paths": {
+            "/users": {
+                "get": {"responses": {"200": {"description": "Success"}}}
+            }
+        }
+    })
+
+    spec_v1 = Specification(
+        project_id=1,
+        name="Test API",
+        spec_type=SpecType.OPENAPI,
+        version="1.0.0",
+        content=v1_content,
+    )
+    spec_v1_id = spec_store.create(spec_v1, write_to_file=False)
+
+    # Create v2 with changes
+    v2_content = json.dumps({
+        "openapi": "3.0.0",
+        "info": {"title": "Test API", "version": "2.0.0"},
+        "paths": {
+            "/users": {
+                "get": {"responses": {"200": {"description": "Success"}}},
+                "post": {"responses": {"201": {"description": "Created"}}}  # Added
+            }
+        }
+    })
+
+    spec_v2 = Specification(
+        project_id=1,
+        name="Test API",
+        spec_type=SpecType.OPENAPI,
+        version="2.0.0",
+        content=v2_content,
+    )
+    spec_v2_id = spec_store.create(spec_v2, write_to_file=False)
+
+    # Diff the specs
+    result = spec_store.diff(spec_v1_id, spec_v2_id)
+
+    assert result is not None
+    assert result.old_spec.id == spec_v1_id
+    assert result.new_spec.id == spec_v2_id
+    assert result.has_changes
+    assert len(result.changes) > 0
+
+
+def test_diff_with_previous_version(spec_store):
+    """Test diffing a spec with its previous version."""
+    import json
+
+    # Create v1
+    v1_content = json.dumps({
+        "openapi": "3.0.0",
+        "info": {"title": "Test API", "version": "1.0.0"},
+        "paths": {"/test": {"get": {}}}
+    })
+
+    spec_v1 = Specification(
+        project_id=1,
+        name="Test API",
+        spec_type=SpecType.OPENAPI,
+        version="1.0.0",
+        content=v1_content,
+    )
+    spec_store.create(spec_v1, write_to_file=False)
+
+    # Create v2
+    v2_content = json.dumps({
+        "openapi": "3.0.0",
+        "info": {"title": "Test API", "version": "2.0.0"},
+        "paths": {"/test": {"get": {}}, "/new": {"get": {}}}
+    })
+
+    spec_v2 = Specification(
+        project_id=1,
+        name="Test API",
+        spec_type=SpecType.OPENAPI,
+        version="2.0.0",
+        content=v2_content,
+    )
+    spec_v2_id = spec_store.create(spec_v2, write_to_file=False)
+
+    # Diff with previous
+    result = spec_store.diff_with_previous_version(spec_v2_id)
+
+    assert result is not None
+    assert result.old_spec.version == "1.0.0"
+    assert result.new_spec.version == "2.0.0"
+    assert result.has_changes
+
+
+def test_diff_with_no_previous_version(spec_store):
+    """Test diff_with_previous_version when there is no previous version."""
+    spec = Specification(
+        project_id=1,
+        name="New API",
+        spec_type=SpecType.OPENAPI,
+        version="1.0.0",
+        content='{"openapi": "3.0.0"}',
+    )
+    spec_id = spec_store.create(spec, write_to_file=False)
+
+    # Should return None when no previous version exists
+    result = spec_store.diff_with_previous_version(spec_id)
+
+    assert result is None
+
+
+def test_diff_breaking_changes(spec_store):
+    """Test detecting breaking changes in diff."""
+    import json
+
+    # Create v1 with required parameter
+    v1_content = json.dumps({
+        "openapi": "3.0.0",
+        "info": {"title": "Test API", "version": "1.0.0"},
+        "paths": {
+            "/users": {
+                "get": {
+                    "parameters": [
+                        {"name": "limit", "in": "query", "required": True}
+                    ]
+                }
+            }
+        }
+    })
+
+    spec_v1 = Specification(
+        project_id=1,
+        name="Test API",
+        spec_type=SpecType.OPENAPI,
+        version="1.0.0",
+        content=v1_content,
+    )
+    spec_v1_id = spec_store.create(spec_v1, write_to_file=False)
+
+    # Create v2 removing the endpoint (breaking)
+    v2_content = json.dumps({
+        "openapi": "3.0.0",
+        "info": {"title": "Test API", "version": "2.0.0"},
+        "paths": {}  # Removed /users endpoint
+    })
+
+    spec_v2 = Specification(
+        project_id=1,
+        name="Test API",
+        spec_type=SpecType.OPENAPI,
+        version="2.0.0",
+        content=v2_content,
+    )
+    spec_v2_id = spec_store.create(spec_v2, write_to_file=False)
+
+    # Diff should detect breaking changes
+    result = spec_store.diff(spec_v1_id, spec_v2_id)
+
+    assert result.has_breaking_changes
+    assert len(result.breaking_changes) > 0

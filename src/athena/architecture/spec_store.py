@@ -22,6 +22,7 @@ from ..core.database import Database
 from ..core.base_store import BaseStore
 from .models import Specification, SpecType, SpecStatus
 from .spec_validator import SpecificationValidator, ValidationResult
+from .spec_differ import SpecificationDiffer, DiffResult
 
 logger = logging.getLogger(__name__)
 
@@ -716,3 +717,87 @@ For more info, see: docs/SPEC_DRIVEN_DEVELOPMENT.md
                     )
 
         return results
+
+    def diff(self, old_spec_id: int, new_spec_id: int) -> DiffResult:
+        """Compare two specifications and detect changes.
+
+        Args:
+            old_spec_id: ID of the older specification version
+            new_spec_id: ID of the newer specification version
+
+        Returns:
+            DiffResult containing detected changes
+
+        Raises:
+            ValueError: If either specification is not found
+
+        Example:
+            >>> result = store.diff(old_spec_id=5, new_spec_id=6)
+            >>> if result.has_breaking_changes:
+            ...     print(f"Warning: {len(result.breaking_changes)} breaking changes detected!")
+            >>> for change in result.changes:
+            ...     print(f"{change.change_type}: {change.description}")
+        """
+        # Get both specifications
+        old_spec = self.get(old_spec_id)
+        if not old_spec:
+            raise ValueError(f"Specification {old_spec_id} not found")
+
+        new_spec = self.get(new_spec_id)
+        if not new_spec:
+            raise ValueError(f"Specification {new_spec_id} not found")
+
+        # Perform diff
+        differ = SpecificationDiffer()
+        result = differ.diff(old_spec, new_spec)
+
+        logger.info(
+            f"Diffed specs {old_spec_id} -> {new_spec_id}: "
+            f"{len(result.changes)} changes "
+            f"({len(result.breaking_changes)} breaking)"
+        )
+
+        return result
+
+    def diff_with_previous_version(self, spec_id: int) -> Optional[DiffResult]:
+        """Compare a specification with its previous version.
+
+        Attempts to find a previous version by looking for specs with the same name
+        but earlier version numbers.
+
+        Args:
+            spec_id: ID of the specification to compare
+
+        Returns:
+            DiffResult if a previous version is found, None otherwise
+
+        Example:
+            >>> result = store.diff_with_previous_version(spec_id=10)
+            >>> if result:
+            ...     print(f"Changes since v{result.old_spec.version}:")
+            ...     for change in result.breaking_changes:
+            ...         print(f"  ⚠️  {change.description}")
+        """
+        # Get current spec
+        current_spec = self.get(spec_id)
+        if not current_spec:
+            raise ValueError(f"Specification {spec_id} not found")
+
+        # Find previous version (same name, same project, earlier version)
+        cursor = self.db.conn.cursor()
+        cursor.execute("""
+            SELECT id, version FROM specifications
+            WHERE project_id = ? AND name = ? AND id != ?
+            ORDER BY created_at DESC
+        """, (current_spec.project_id, current_spec.name, spec_id))
+
+        rows = cursor.fetchall()
+        if not rows:
+            logger.info(f"No previous version found for spec {spec_id}")
+            return None
+
+        # Get the most recent previous version
+        previous_id = rows[0][0]
+
+        # Perform diff
+        return self.diff(old_spec_id=previous_id, new_spec_id=spec_id)

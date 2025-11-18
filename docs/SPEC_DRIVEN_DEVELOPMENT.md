@@ -1,7 +1,7 @@
 # Spec-Driven Development in Athena
 
-**Status**: Phase 2 Complete (Validation)
-**Version**: 2.0.0
+**Status**: Phase 3 Complete (Diffing)
+**Version**: 3.0.0
 **Last Updated**: November 18, 2025
 
 ## Table of Contents
@@ -352,6 +352,58 @@ athena-spec-manage validate --spec-id 5 --no-update-db
 pip install 'athena[validation]'
 ```
 
+### Compare Specifications (Diff)
+
+```bash
+# Compare two specific versions
+athena-spec-manage diff --spec-id 5 --new-spec-id 8
+
+# Output:
+# 📊 Specification Diff
+# ================================================================================
+# Old: [5] User API v1.0.0
+# New: [8] User API v2.0.0
+#
+# 📈 Summary:
+#    Total changes: 8
+#    Breaking: 2
+#    Non-breaking: 6
+#    Added: 4
+#    Removed: 1
+#    Modified: 3
+#
+# ⚠️  WARNING: This update contains BREAKING CHANGES!
+#
+# 💥 Breaking Changes:
+#    ➖ /paths/api/users/get/parameters/limit
+#       Parameter limit is now required
+#    ➖ /paths/api/legacy
+#       Endpoint /api/legacy was removed
+#
+# ✨ Non-Breaking Changes:
+#    ➕ /paths/api/users/post
+#       Endpoint /api/users/post was added
+#    ➕ /components/schemas/User/properties/created_at
+#       Property created_at was added to User
+
+# Compare with previous version automatically
+athena-spec-manage diff --spec-id 8 --compare-with-previous
+
+# Show only breaking changes
+athena-spec-manage diff --spec-id 5 --new-spec-id 8 --breaking-only
+
+# Strict mode: exit with error if breaking changes detected (CI/CD)
+athena-spec-manage diff --spec-id 5 --new-spec-id 8 --strict
+# Exit code 0: no breaking changes
+# Exit code 1: breaking changes detected
+```
+
+**Use Cases**:
+- **API Evolution**: Track breaking vs non-breaking changes across versions
+- **CI/CD Integration**: Fail builds if breaking changes are introduced
+- **Code Review**: Understand specification changes before deployment
+- **Version Planning**: Decide when to increment major vs minor version
+
 ---
 
 ## Integration with Architecture Layer
@@ -571,6 +623,121 @@ athena-spec-manage validate --spec-id 1
 # Status: invalid
 ```
 
+### Example 5: API Evolution with Diffing
+
+```bash
+# 1. Create initial API specification (v1.0.0)
+cat > specs/api/users-v1.yaml <<'EOF'
+openapi: 3.0.0
+info:
+  title: User API
+  version: 1.0.0
+paths:
+  /users:
+    get:
+      summary: List users
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+EOF
+
+athena-spec-manage create \
+  --name "User API" \
+  --type openapi \
+  --version "1.0.0" \
+  --file-path "api/users-v1.yaml" \
+  --content-file specs/api/users-v1.yaml
+# Created spec ID: 5
+
+# 2. Evolve the API (v2.0.0) with new features
+cat > specs/api/users-v2.yaml <<'EOF'
+openapi: 3.0.0
+info:
+  title: User API
+  version: 2.0.0
+paths:
+  /users:
+    get:
+      summary: List users
+      parameters:
+        - name: limit
+          in: query
+          required: true  # Now required (BREAKING!)
+          schema:
+            type: integer
+        - name: offset  # New parameter (non-breaking)
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+    post:  # New endpoint (non-breaking)
+      summary: Create user
+      responses:
+        '201':
+          description: Created
+EOF
+
+athena-spec-manage create \
+  --name "User API" \
+  --type openapi \
+  --version "2.0.0" \
+  --file-path "api/users-v2.yaml" \
+  --content-file specs/api/users-v2.yaml
+# Created spec ID: 8
+
+# 3. Compare versions to detect breaking changes
+athena-spec-manage diff --spec-id 5 --new-spec-id 8
+
+# Output:
+# 📊 Specification Diff
+# ================================================================================
+# Old: [5] User API v1.0.0
+# New: [8] User API v2.0.0
+#
+# 📈 Summary:
+#    Total changes: 4
+#    Breaking: 1
+#    Non-breaking: 3
+#    Added: 2
+#    Removed: 0
+#    Modified: 1
+#
+# ⚠️  WARNING: This update contains BREAKING CHANGES!
+#
+# 💥 Breaking Changes:
+#    ✏️ /paths//users/get/parameters/limit
+#       Parameter limit is now required
+#
+# ✨ Non-Breaking Changes:
+#    ➕ /paths//users/get/parameters/offset
+#       Parameter offset (query) was added
+#    ➕ /paths//users/post
+#       Method POST on /users was added
+
+# 4. Use in CI/CD pipeline to prevent accidental breaking changes
+athena-spec-manage diff --spec-id 5 --new-spec-id 8 --strict
+# Exit code 1: Breaking changes detected, fail the build!
+
+# 5. Compare with previous version automatically
+athena-spec-manage diff --spec-id 8 --compare-with-previous
+# Automatically finds spec ID 5 as the previous version
+```
+
+**Diff Use Cases**:
+- **Pre-merge Review**: Check spec changes before merging PR
+- **Version Planning**: Determine if version bump should be major (breaking) or minor (non-breaking)
+- **API Documentation**: Generate changelog from spec diffs
+- **CI/CD Gates**: Fail builds if breaking changes are introduced without approval
+
 ---
 
 ## Roadmap
@@ -595,14 +762,25 @@ athena-spec-manage validate --spec-id 1
 - [x] Graceful degradation (optional dependencies)
 - [x] Tests (15 validation tests passing)
 
-### Phase 3: Planning Integration (1 week)
+### Phase 3: Specification Diffing ✅ (Complete)
+
+- [x] OpenAPI diff detection (endpoints, parameters, schemas)
+- [x] JSON Schema diff detection (properties, required fields)
+- [x] GraphQL diff detection (types, fields)
+- [x] Breaking vs non-breaking change classification
+- [x] Diff visualization with summary statistics
+- [x] CLI diff command with --strict and --breaking-only flags
+- [x] Automatic previous version comparison
+- [x] Tests (18 diff tests passing: 14 unit + 4 integration)
+
+### Phase 4: Planning Integration (1 week)
 
 - [ ] Planning layer reads specs
 - [ ] Generate task breakdowns from specs
 - [ ] Validate plans against specs
 - [ ] Track spec-to-plan mappings
 
-### Phase 4: AI Code Generation (1 week)
+### Phase 5: AI Code Generation (1 week)
 
 - [ ] Generate code from OpenAPI specs
 - [ ] Generate code from Prisma schemas
@@ -610,7 +788,7 @@ athena-spec-manage validate --spec-id 1
 - [ ] Track generation accuracy
 - [ ] Detect spec-code drift
 
-### Phase 5: Advanced Formats (Optional, 2 weeks)
+### Phase 6: Advanced Formats (Optional, 2 weeks)
 
 - [ ] TLA+ model checking integration
 - [ ] Alloy analyzer integration
@@ -669,6 +847,37 @@ If validation libraries aren't installed, Athena will show a warning but continu
 - OpenAPI: `openapi-spec-validator spec.yaml`
 - JSON Schema: `ajv validate schema.json`
 - TLA+: `tlc spec.tla`
+
+### Q: How do I compare specification versions?
+
+Use the diff command to detect changes between versions:
+
+```bash
+# Compare two specific versions
+athena-spec-manage diff --spec-id 5 --new-spec-id 8
+
+# Compare with previous version automatically
+athena-spec-manage diff --spec-id 8 --compare-with-previous
+
+# Show only breaking changes
+athena-spec-manage diff --spec-id 5 --new-spec-id 8 --breaking-only
+
+# CI/CD mode: exit with error if breaking changes detected
+athena-spec-manage diff --spec-id 5 --new-spec-id 8 --strict
+```
+
+**Breaking changes** include:
+- Removed endpoints or methods
+- Removed required parameters
+- Added required parameters
+- Removed properties from schemas
+- Made optional parameters required
+
+**Non-breaking changes** include:
+- Added endpoints or methods
+- Added optional parameters
+- Added properties to schemas
+- Made required parameters optional
 
 ---
 
