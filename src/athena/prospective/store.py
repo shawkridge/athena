@@ -572,10 +572,10 @@ class ProspectiveStore(BaseStore):
         params = [phase_str]
 
         if project_id is not None:
-            sql += " AND project_id = ?"
+            sql += " AND project_id = %s"
             params.append(project_id)
 
-        sql += " ORDER BY priority DESC, created_at DESC LIMIT ?"
+        sql += " ORDER BY priority DESC, created_at DESC LIMIT %s"
         params.append(limit)
 
         rows = self.execute(sql, tuple(params), fetch_all=True)
@@ -624,19 +624,19 @@ class ProspectiveStore(BaseStore):
         params = []
 
         if project_id is not None:
-            sql += " AND project_id = ?"
+            sql += " AND project_id = %s"
             params.append(project_id)
 
         if status:
             status_str = status.value if isinstance(status, TaskStatus) else status
-            sql += " AND status = ?"
+            sql += " AND status = %s"
             params.append(status_str)
 
         if assignee:
-            sql += " AND assignee = ?"
+            sql += " AND assignee = %s"
             params.append(assignee)
 
-        sql += " ORDER BY priority DESC, created_at DESC LIMIT ?"
+        sql += " ORDER BY priority DESC, created_at DESC LIMIT %s"
         params.append(limit)
 
         rows = self.execute(sql, tuple(params), fetch_all=True)
@@ -665,7 +665,7 @@ class ProspectiveStore(BaseStore):
 
         params = []
         if project_id is not None:
-            sql += " AND t.project_id = ?"
+            sql += " AND t.project_id = %s"
             params.append(project_id)
 
         sql += " ORDER BY t.priority DESC, t.created_at ASC"
@@ -748,7 +748,7 @@ class ProspectiveStore(BaseStore):
         self.execute(
             """
             UPDATE task_triggers
-            SET fired = 1, fired_at = ?
+            SET fired = 1, fired_at = %s
             WHERE id = %s
         """,
             (int(time.time()), trigger_id),
@@ -890,10 +890,10 @@ class ProspectiveStore(BaseStore):
         params = [status.value if isinstance(status, TaskStatus) else status, task.id or -1]
 
         if project_id is not None:
-            sql += " AND project_id = ?"
+            sql += " AND project_id = %s"
             params.append(project_id)
 
-        sql += " ORDER BY completed_at DESC LIMIT ?"
+        sql += " ORDER BY completed_at DESC LIMIT %s"
         params.append(limit)
 
         rows = self.execute(sql, tuple(params), fetch_all=True)
@@ -926,10 +926,10 @@ class ProspectiveStore(BaseStore):
         params = [TaskStatus.COMPLETED.value, cutoff_time]
 
         if project_id is not None:
-            sql += " AND project_id = ?"
+            sql += " AND project_id = %s"
             params.append(project_id)
 
-        sql += " ORDER BY completed_at DESC LIMIT ?"
+        sql += " ORDER BY completed_at DESC LIMIT %s"
         params.append(limit)
 
         rows = self.execute(sql, tuple(params), fetch_all=True)
@@ -1047,31 +1047,56 @@ class ProspectiveStore(BaseStore):
         phase = TaskPhase(phase_str) if phase_str else TaskPhase.PLANNING
 
         # Get timestamps with safe conversion
+        # PostgreSQL returns datetime objects directly, not timestamps
+        def _to_datetime(val):
+            """Convert value to datetime, handling both timestamps and datetime objects."""
+            if not val:
+                return None
+            if isinstance(val, datetime):
+                return val
+            if isinstance(val, (int, float)):
+                return datetime.fromtimestamp(val)
+            return val
+
         created_at = safe_get(row_dict, "created_at")
         due_at = safe_get(row_dict, "due_at")
         completed_at = safe_get(row_dict, "completed_at")
         plan_created_at = safe_get(row_dict, "plan_created_at")
         phase_started_at = safe_get(row_dict, "phase_started_at")
 
+        # Handle legacy status values: convert "in_progress" to "active"
+        status_val = safe_get(row_dict, "status")
+        if status_val == "in_progress":
+            status_val = "active"
+
+        # Handle priority: convert numeric values to enum strings
+        priority_val = safe_get(row_dict, "priority", "medium")
+        if isinstance(priority_val, int):
+            # Map numeric priority to enum: 1=low, 2=medium, 3=high, 4=critical
+            priority_map = {1: "low", 2: "medium", 3: "high", 4: "critical"}
+            priority_val = priority_map.get(priority_val, "medium")
+        elif priority_val is None or priority_val == "":
+            priority_val = "medium"
+
         return ProspectiveTask(
             id=safe_get(row_dict, "id"),
             project_id=safe_get(row_dict, "project_id"),
-            content=safe_get(row_dict, "content"),
-            active_form=safe_get(row_dict, "active_form"),
-            created_at=datetime.fromtimestamp(created_at) if created_at else None,
-            due_at=datetime.fromtimestamp(due_at) if due_at else None,
-            completed_at=datetime.fromtimestamp(completed_at) if completed_at else None,
-            status=TaskStatus(safe_get(row_dict, "status")),
-            priority=TaskPriority(safe_get(row_dict, "priority")),
+            content=safe_get(row_dict, "content") or "[No content]",
+            active_form=safe_get(row_dict, "active_form") or "[No description]",
+            created_at=_to_datetime(created_at),
+            due_at=_to_datetime(due_at),
+            completed_at=_to_datetime(completed_at),
+            status=TaskStatus(status_val) if status_val else TaskStatus.PENDING,
+            priority=TaskPriority(priority_val) if priority_val else TaskPriority.MEDIUM,
             # Phase tracking
             phase=phase,
             plan=plan,
-            plan_created_at=datetime.fromtimestamp(plan_created_at) if plan_created_at else None,
-            phase_started_at=datetime.fromtimestamp(phase_started_at) if phase_started_at else None,
+            plan_created_at=_to_datetime(plan_created_at),
+            phase_started_at=_to_datetime(phase_started_at),
             phase_metrics=phase_metrics,
             actual_duration_minutes=safe_get(row_dict, "actual_duration_minutes"),
-            assignee=safe_get(row_dict, "assignee"),
-            notes=safe_get(row_dict, "notes"),
+            assignee=safe_get(row_dict, "assignee") or "",
+            notes=safe_get(row_dict, "notes") or "",
             blocked_reason=safe_get(row_dict, "blocked_reason"),
             failure_reason=safe_get(row_dict, "failure_reason"),
             lessons_learned=safe_get(row_dict, "lessons_learned"),
