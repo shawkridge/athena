@@ -194,7 +194,7 @@ class ProceduralStore(BaseStore[Procedure]):
             else procedure.category
         )
 
-        self.execute(
+        result = self.execute(
             """
             INSERT INTO procedures (
                 project_id, name, category, description,
@@ -203,6 +203,7 @@ class ProceduralStore(BaseStore[Procedure]):
                 last_executed, created_by
             )
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
         """,
             (
                 1,  # Default project_id for global procedures
@@ -217,12 +218,9 @@ class ProceduralStore(BaseStore[Procedure]):
                 procedure.last_used,
                 procedure.created_by,
             ),
+            fetch_one=True
         )
         self.commit()
-        # PostgreSQL uses RETURNING clause
-        result = self.execute(
-            "SELECT currval(pg_get_serial_sequence('procedures', 'id'))", fetch_one=True
-        )
         return result[0] if result else None
 
     def get_procedure(self, procedure_id: int) -> Optional[Procedure]:
