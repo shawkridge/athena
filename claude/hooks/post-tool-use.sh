@@ -28,22 +28,20 @@ log_error() {
 # Read hook input from stdin (official Claude Code interface)
 hook_input=$(cat)
 
-# DEBUG: Log raw hook input to a file for inspection (optional, for troubleshooting)
-# Disabled by default - enable with: DEBUG_HOOKS_RECORD=1
-if [ "${DEBUG_HOOKS_RECORD:-0}" = "1" ]; then
-    echo "$hook_input" >> /tmp/claude_hook_inputs.jsonl 2>/dev/null
-fi
-
-# Also log to stderr if DEBUG_HOOKS is set
-if [ "${DEBUG_HOOKS:-0}" = "1" ]; then
-    log "DEBUG: Raw hook input:"
-    echo "$hook_input" | jq '.' >&2 || echo "$hook_input" >&2
-fi
-
-# Extract key variables from hook input for use in shell conditionals later
+# Extract tool metadata from JSON
 TOOL_NAME=$(echo "$hook_input" | jq -r '.tool_name // "unknown"')
-TOOL_STATUS=$(echo "$hook_input" | jq -r '.tool_response.status // "unknown"')
-EXECUTION_TIME_MS=$(echo "$hook_input" | jq -r '.tool_response.duration_ms // 0')
+SESSION_ID=$(echo "$hook_input" | jq -r '.session_id // "unknown"')
+CWD=$(echo "$hook_input" | jq -r '.cwd // "."')
+
+# Extract tool response (contains status, output, and tool-specific metadata)
+TOOL_RESPONSE=$(echo "$hook_input" | jq -r '.tool_response // {}')
+TOOL_STATUS=$(echo "$TOOL_RESPONSE" | jq -r '.status // "completed"')
+
+# For Bash tool, extract execution time if available
+EXECUTION_TIME_MS=$(echo "$TOOL_RESPONSE" | jq -r '.duration_ms // 0')
+if [ "$EXECUTION_TIME_MS" = "0" ]; then
+    EXECUTION_TIME_MS="${EXECUTION_TIME_MS:-0}"
+fi
 
 # Increment operation counter
 OPERATIONS_COUNTER_FILE="/tmp/.claude_operations_counter_$$"
@@ -55,20 +53,26 @@ else
 fi
 echo "$COUNTER" > "$OPERATIONS_COUNTER_FILE"
 
+# Record episodic event to memory via direct Python import
+log "Recording episodic event: $TOOL_NAME ($TOOL_STATUS)"
+
+# Export variables for Python subprocess
+export TOOL_NAME
+export TOOL_STATUS
+export EXECUTION_TIME_MS
+export SESSION_ID
+export CWD
+
 # Source environment variables for database connections
 if [ -f "/home/user/.work/athena/.env.local" ]; then
     export $(grep -v '^#' /home/user/.work/athena/.env.local | xargs)
 fi
 
 # Call Python directly to record episodic event using memory bridge
-# Pass hook input JSON as an environment variable (since heredoc doesn't accept piped stdin)
 # This stores tool execution details in memory for later consolidation and response capture
-export HOOK_INPUT_JSON="$hook_input"
-
 python3 << 'PYTHON_EOF'
 import sys
 import os
-import json
 from datetime import datetime
 
 # Add hooks lib to path
@@ -78,35 +82,19 @@ try:
     from memory_bridge import MemoryBridge
     from tool_validator import validate_tool_name, validate_tool_status, validate_execution_time
     from tool_response_parser import ToolResponseParser
+    import json
 
-    # Parse hook input from environment variable (passed from shell export)
+    # Read tool context from shell variables (populated from stdin JSON)
+    tool_name_raw = os.environ.get('TOOL_NAME', None)
+    tool_status_raw = os.environ.get('TOOL_STATUS', None)
+    duration_raw = os.environ.get('EXECUTION_TIME_MS', None)
+
+    # Parse tool response for enhanced metadata (if available via jq)
+    tool_response_json = os.environ.get('TOOL_RESPONSE', '{}')
     try:
-        hook_input_json = os.environ.get('HOOK_INPUT_JSON', '{}')
-        if not hook_input_json or hook_input_json == '{}':
-            print(f"⚠ HOOK_INPUT_JSON environment variable is empty or missing!", file=sys.stderr)
-            hook_input = {}
-        else:
-            hook_input = json.loads(hook_input_json)
-    except json.JSONDecodeError as e:
-        print(f"⚠ Failed to parse hook input JSON: {e}", file=sys.stderr)
-        print(f"   HOOK_INPUT_JSON (first 200 chars): {hook_input_json[:200]}", file=sys.stderr)
-        hook_input = {}
-
-    # Extract tool metadata directly from hook input
-    tool_name_raw = hook_input.get('tool_name')
-    session_id = hook_input.get('session_id', 'unknown')
-    cwd = hook_input.get('cwd', '.')
-
-    # Extract tool response object (contains tool-specific metadata)
-    # Note: Claude Code does NOT provide 'status' or 'duration_ms' fields
-    tool_response_obj = hook_input.get('tool_response', {})
-
-    # Infer status from tool response presence (no errors means success)
-    # Claude Code only calls PostToolUse hooks for successful tool executions
-    tool_status_raw = "success" if tool_response_obj else "failure"
-
-    # Duration is not provided by Claude Code hooks, so we skip it
-    duration_raw = None
+        tool_response_obj = json.loads(tool_response_json) if tool_response_json and tool_response_json != '{}' else {}
+    except:
+        tool_response_obj = {}
 
     # Use tool response parser for detailed metadata extraction
     if tool_name_raw and tool_response_obj:
@@ -116,90 +104,46 @@ try:
     else:
         tool_summary = None
 
-    # Validate tool name (status and duration not needed since Claude Code doesn't provide them)
+    # Validate each component
     tool_result = validate_tool_name(tool_name_raw)
+    status_result = validate_tool_status(tool_status_raw)
+    time_valid, time_ms, time_error = validate_execution_time(duration_raw)
 
-    # Tool successfully executed (PostToolUse is only called on success)
-    # So we always treat this as "success" outcome
-    if tool_result.valid:
-        # Tool name is valid
-        content_str = f"Tool: {tool_result.tool_name}"
+    # Build content with validated information
+    validation_passed = tool_result.valid and status_result.valid and time_valid
 
-        # Add detailed summary if available from parser
+    if validation_passed:
+        # All context validated and present
+        # For status, extract the validated value from the raw input (it's already validated)
+        validated_status = tool_status_raw.strip().lower() if tool_status_raw else "unknown"
+
+        # Use rich summary from tool response parser if available
         if tool_summary:
             content_str = f"Tool: {tool_result.tool_name} | {tool_summary}"
-
-        outcome = "success"
-    else:
-        # Invalid tool name (log the error)
-        if tool_result.message:
-            print(f"⚠ TOOL_NAME validation failed: {tool_result.message}", file=sys.stderr)
-
-        # Create fallback content with whatever info we have
-        if tool_name_raw:
-            content_str = f"Tool: {tool_name_raw} (validation: {tool_result.error})"
         else:
-            content_str = f"Tool execution recorded (no tool_name in hook input)"
+            content_str = f"Tool: {tool_result.tool_name} | Status: {validated_status} | Duration: {time_ms}ms"
+        outcome = validated_status
+    else:
+        # Log validation errors and use fallback
+        validation_errors = []
+        if not tool_result.valid:
+            validation_errors.append(f"tool_name: {tool_result.error}")
+            print(f"⚠ Invalid TOOL_NAME: {tool_result.message}", file=sys.stderr)
+        if not status_result.valid:
+            validation_errors.append(f"tool_status: {status_result.error}")
+            print(f"⚠ Invalid TOOL_STATUS: {status_result.message}", file=sys.stderr)
+        if not time_valid:
+            validation_errors.append(f"execution_time: {time_error}")
+            print(f"⚠ Invalid EXECUTION_TIME_MS: {time_error}", file=sys.stderr)
 
-        outcome = "recorded"
-
-    # Calculate self-improvement metrics
-    # These help Athena learn and optimize over time
-    importance_score = 0.5  # Default
-    if tool_result.valid:
-        # Successful, validated tool executions are important
-        importance_score = 0.7
-
-    actionability_score = 0.5
-    if tool_name_raw in ("Bash", "Edit", "Write"):
-        # Tools that modify state are more actionable for learning
-        actionability_score = 0.8
-
-    # Extract what was actually done from tool input
-    tool_input_obj = hook_input.get('tool_input', {})
-    context_task = None
-    context_files = None
-    files_changed = 0
-
-    # Extract context based on tool type
-    if tool_name_raw == "Bash":
-        command = tool_input_obj.get('command', '')
-        context_task = f"Execute: {command[:100]}"
-    elif tool_name_raw == "Read":
-        file_path = tool_input_obj.get('file_path', '')
-        context_task = f"Read: {file_path}"
-        context_files = [file_path] if file_path else None
-    elif tool_name_raw == "Write":
-        file_path = tool_input_obj.get('file_path', '')
-        context_task = f"Write: {file_path}"
-        context_files = [file_path] if file_path else None
-        files_changed = 1
-    elif tool_name_raw == "Edit":
-        file_path = tool_input_obj.get('file_path', '')
-        context_task = f"Edit: {file_path}"
-        context_files = [file_path] if file_path else None
-        files_changed = 1
-    elif tool_name_raw == "Glob":
-        pattern = tool_input_obj.get('pattern', '')
-        context_task = f"Search: {pattern}"
-    elif tool_name_raw == "Grep":
-        pattern = tool_input_obj.get('pattern', '')
-        context_task = f"Search: {pattern}"
-    elif tool_name_raw == "TodoWrite":
-        todos = tool_input_obj.get('todos', [])
-        context_task = f"Update todos: {len(todos)} items"
-    elif tool_name_raw == "AskUserQuestion":
-        context_task = "Collect user input"
-
-    # Compute what we learned from this tool execution
-    learned_str = None
-    if tool_result.valid:
-        learned_str = f"Tool {tool_result.tool_name} executed successfully with metadata: {tool_summary if tool_summary else 'generic execution'}"
+        # Claude Code doesn't pass environment variables - record generic tool execution
+        # This is expected behavior; hooks still work and can consolidate these events
+        content_str = f"Tool execution recorded (metadata: tool_name={'present' if tool_name_raw else 'missing'}, status={'present' if tool_status_raw else 'missing'}, duration={'present' if duration_raw else 'missing'})"
+        outcome = "recorded"  # Changed from "context_validation_failed" to allow consolidation
 
     with MemoryBridge() as bridge:
         project = bridge.get_project_by_path(os.getcwd())
         if project:
-            # First, record the basic event
             event_id = bridge.record_event(
                 project_id=project['id'],
                 event_type="tool_execution",
@@ -207,46 +151,11 @@ try:
                 outcome=outcome
             )
 
-            # Then enhance it with self-improvement metadata via direct update
             if event_id:
-                try:
-                    from connection_pool import PooledConnection
-                    with PooledConnection() as conn:
-                        cursor = conn.cursor()
-                        cursor.execute("""
-                            UPDATE episodic_events
-                            SET
-                                importance_score = %s,
-                                actionability_score = %s,
-                                context_cwd = %s,
-                                context_task = %s,
-                                context_files = %s,
-                                files_changed = %s,
-                                learned = %s,
-                                consolidation_status = %s,
-                                context_completeness_score = %s
-                            WHERE id = %s
-                        """, (
-                            importance_score,
-                            actionability_score,
-                            cwd,
-                            context_task,
-                            context_files,
-                            files_changed,
-                            learned_str,
-                            "unconsolidated",  # Fresh events ready for consolidation
-                            0.8 if tool_result.valid else 0.3,  # How much context we captured
-                            event_id
-                        ))
-                        conn.commit()
-                except Exception as e:
-                    print(f"⚠ Could not enhance event metadata: {e}", file=sys.stderr)
-
-            if event_id:
-                if tool_result.valid:
-                    print(f"✓ Tool execution recorded: {tool_result.tool_name} (Status: success, ID: {event_id})", file=sys.stderr)
+                if validation_passed:
+                    print(f"✓ Tool execution recorded: {tool_result.tool_name} (Status: {validated_status}, Duration: {time_ms}ms, ID: {event_id})", file=sys.stderr)
                 else:
-                    print(f"✓ Tool execution recorded with available metadata (tool_name={tool_name_raw}, ID: {event_id})", file=sys.stderr)
+                    print(f"✓ Tool execution recorded (without metadata - Claude Code doesn't pass TOOL_NAME/TOOL_STATUS env vars yet, ID: {event_id})", file=sys.stderr)
             else:
                 print(f"⚠ Event recording may have failed (returned None)", file=sys.stderr)
         else:
@@ -265,11 +174,11 @@ try:
     tool_buffer_file = Path(f"/tmp/.claude_tool_buffer_{os.getpid()}.json")
 
     execution_record = {
-        "tool_name": tool_result.tool_name if tool_result.valid else (tool_name_raw or "unknown"),
-        "tool_status": "success" if tool_result.valid else (tool_status_raw or "unknown"),
-        "execution_time_ms": 0,
+        "tool_name": tool_result.tool_name if validation_passed else (tool_name_raw or "unknown"),
+        "tool_status": validated_status if validation_passed else (tool_status_raw or "unknown"),
+        "execution_time_ms": time_ms if validation_passed else 0,
         "timestamp": datetime.utcnow().isoformat(),
-        "success": tool_result.valid if 'tool_result' in locals() else (tool_status_raw == "success")
+        "success": (validated_status == "success") if validation_passed else False
     }
 
     # Append to buffer (create if not exists)
@@ -289,122 +198,6 @@ try:
 except Exception as e:
     print(f"⚠ Could not buffer tool for threading: {str(e)}", file=sys.stderr)
 PYTHON_EOF
-
-# Phase 4.5: Notify MemoryCoordinatorAgent of tool execution
-# The agent will decide if this tool execution should be remembered
-python3 << 'MEMORY_COORD_EOF'
-import sys
-import os
-import json
-
-sys.path.insert(0, '/home/user/.claude/hooks/lib')
-
-try:
-    from agent_bridge import notify_tool_execution
-
-    # Extract tool details from hook input
-    hook_input_str = os.environ.get('HOOK_INPUT_JSON', '{}')
-    try:
-        hook_input = json.loads(hook_input_str)
-    except:
-        hook_input = {}
-
-    tool_name = hook_input.get('tool_name', 'unknown')
-    tool_status = hook_input.get('tool_response', {}).get('status', 'unknown')
-    duration_ms = hook_input.get('tool_response', {}).get('duration_ms', 0)
-
-    # Get input and output summaries
-    input_summary = str(hook_input.get('parameters', {}))[:100]
-    output_summary = str(hook_input.get('tool_response', {}).get('content', ''))[:100]
-    success = tool_status == 'success'
-
-    # Notify agent
-    result = notify_tool_execution(
-        tool_name=tool_name,
-        input_summary=input_summary,
-        output_summary=output_summary,
-        success=success,
-    )
-
-    if result.get('decided'):
-        print(f"✓ MemoryCoordinatorAgent decided to remember this ({result.get('memory_type')})", file=sys.stderr)
-    else:
-        print(f"· MemoryCoordinatorAgent: Skipped (not important enough)", file=sys.stderr)
-
-except Exception as e:
-    # Don't fail hook if agent notification fails
-    print(f"· MemoryCoordinatorAgent notification skipped: {str(e)}", file=sys.stderr)
-
-MEMORY_COORD_EOF
-
-# Phase 4.6: Track decision outcome and performance in learning system
-# This enables the adaptive learning system to learn from agent decisions
-python3 << 'LEARNING_TRACK_EOF'
-import sys
-import os
-import json
-import time
-
-sys.path.insert(0, '/home/user/.claude/hooks/lib')
-
-try:
-    from learning_bridge import track_decision, record_perf, get_success_rate
-
-    # Extract tool details from hook input
-    hook_input_str = os.environ.get('HOOK_INPUT_JSON', '{}')
-    try:
-        hook_input = json.loads(hook_input_str)
-    except:
-        hook_input = {}
-
-    tool_name = hook_input.get('tool_name', 'unknown')
-    tool_status = hook_input.get('tool_response', {}).get('status', 'success')
-    duration_ms = hook_input.get('tool_response', {}).get('duration_ms', 0)
-
-    # Determine success rate based on tool status
-    success_rate = 1.0 if tool_status in ['success', 'completed'] else 0.0
-
-    # Track MemoryCoordinatorAgent decision
-    # Agent decides whether to remember this tool execution
-    agent_decision_context = {
-        'tool_name': tool_name,
-        'tool_status': tool_status,
-        'importance_determined_by': 'memory-coordinator-heuristics'
-    }
-
-    result = track_decision(
-        agent_name='memory-coordinator',
-        decision='should_remember',
-        outcome='success' if success_rate > 0.5 else 'failure',
-        success_rate=success_rate,
-        execution_time_ms=float(duration_ms) if duration_ms else 0.0,
-        context=agent_decision_context
-    )
-
-    if result.get('status') == 'success':
-        print(f"✓ Learning tracked: memory-coordinator decision (rate: {success_rate:.2f})", file=sys.stderr)
-    else:
-        print(f"· Learning tracking skipped: {result.get('error', 'unknown error')}", file=sys.stderr)
-
-    # Record performance metrics for this agent operation
-    perf_result = record_perf(
-        agent_name='memory-coordinator',
-        operation=f'notify_{tool_name.lower()}',
-        execution_time_ms=50.0,  # Approximate: agent notification is fast
-        memory_mb=None,
-        result_size=None
-    )
-
-    if perf_result.get('status') == 'success':
-        perf_score = perf_result.get('perf_score', 0.0)
-        perf_status = perf_result.get('perf_status', 'unknown')
-        print(f"✓ Performance recorded: {perf_status} (score: {perf_score:.2f})", file=sys.stderr)
-
-except Exception as e:
-    # Don't fail hook if learning tracking fails
-    print(f"· Learning tracking skipped: {str(e)}", file=sys.stderr)
-
-LEARNING_TRACK_EOF
 
 # Check for anomalies/errors
 if [ "$TOOL_STATUS" != "success" ] && [ "$TOOL_STATUS" != "completed" ]; then
@@ -453,7 +246,7 @@ invoker.invoke_agent("attention-optimizer", {
     "should_consolidate": status["should_consolidate"]
 })
 
-print(f"✓ Attention optimization check complete (load: {status['items']}/7)", file=sys.stderr)
+log "✓ Attention optimization check complete (load: {status['items']}/7)"
 PYTHON_EOF
 fi
 

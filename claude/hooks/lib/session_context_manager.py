@@ -5,30 +5,18 @@ Implements Phase 3 optimizations:
 - Token estimation and budget tracking
 - Adaptive formatting based on relevance
 - Enhanced prioritization with recency decay
-- TOON (Token-Oriented Object Notation) serialization for ~40% token savings
 """
 
 import os
 import json
 import time
 import tempfile
-import sys
 from typing import Dict, List, Optional, Set, Tuple
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timedelta
 import logging
 
 logger = logging.getLogger(__name__)
-
-# Try to import TOON encoder (may not be available in all environments)
-try:
-    # Adjust path for hook environment
-    sys.path.insert(0, '/home/user/.work/athena/src')
-    from athena.core.toon_encoder import TOONEncoder
-    TOON_AVAILABLE = True
-except ImportError:
-    TOON_AVAILABLE = False
-    TOONEncoder = None  # type: ignore
 
 # Session cache location (per-session to avoid interference)
 SESSION_CACHE_DIR = os.path.join(tempfile.gettempdir(), ".claude_session_cache")
@@ -449,66 +437,6 @@ class SessionContextManager:
 
         full_text = "".join(formatted_lines) if formatted_lines else ""
         return full_text, injected_ids, total_tokens
-
-    def format_context_toon(
-        self,
-        memories: List[Dict],
-        max_tokens: int = 500,
-    ) -> Tuple[str, List[str], int]:
-        """Format memories as TOON (Token-Oriented Object Notation).
-
-        TOON achieves ~40% token reduction vs JSON for uniform arrays of objects.
-        This is the preferred format for working memory injection.
-
-        Args:
-            memories: List of memory dicts with relevance, content, etc.
-            max_tokens: Maximum tokens to use (TOON uses ~60% of JSON budget)
-
-        Returns:
-            (toon_formatted_text, injected_memory_ids, estimated_tokens_used)
-        """
-        if not TOON_AVAILABLE or TOONEncoder is None:
-            # Fallback to adaptive formatting if TOON not available
-            return self.format_context_adaptive(memories, max_tokens)
-
-        # Rank and filter memories (same as adaptive)
-        ranked = self.prioritizer.rank_memories(memories)
-        candidates = [m for m in ranked if self.should_inject_memory(m["id"])]
-
-        # Filter to high-relevance items for TOON (top-K only)
-        # TOON tabular format works best with consistent data
-        toon_items = []
-        injected_ids = []
-
-        for mem in candidates[:7]:  # TOON works best with 7±2 items (Baddeley's limit)
-            # Include core fields + enhanced project context
-            toon_item = {
-                "id": mem["id"][:8],  # Shorten IDs
-                "title": mem.get("title", "Memory"),
-                "type": mem.get("type", "memory"),
-                "importance": round(mem.get("importance", 0.5), 2),
-                "actionability": round(mem.get("actionability", 0.5), 2),  # NEW: Actionability score
-                "context": round(mem.get("context_completeness", 0.5), 2),  # NEW: Context completeness
-                "score": round(mem.get("composite_score", mem.get("combined_rank", 0.5)), 2),
-                # NEW: Project context for continuity
-                "project": mem.get("project", ""),
-                "goal": mem.get("goal", ""),
-                "phase": mem.get("phase", ""),
-            }
-            toon_items.append(toon_item)
-            injected_ids.append(mem["id"])
-            self.cache.mark_injected(mem["id"], mem.get("composite_score", mem.get("combined_rank", 0.5)), mem.get("content", ""))
-
-        # Encode to TOON
-        if toon_items:
-            toon_text = TOONEncoder.encode_working_memory(toon_items)
-        else:
-            toon_text = ""
-
-        # Estimate tokens (TOON is ~60% of JSON size)
-        estimated_tokens = max(1, len(toon_text) // 4)  # Conservative estimate
-
-        return toon_text, injected_ids, estimated_tokens
 
     def get_session_stats(self) -> Dict:
         """Get statistics about this session."""
