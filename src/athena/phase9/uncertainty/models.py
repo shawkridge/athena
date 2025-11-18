@@ -18,11 +18,11 @@ class UncertaintyType(str, Enum):
 class ConfidenceLevel(str, Enum):
     """Confidence level classifications."""
 
-    VERY_LOW = "very_low"      # < 40%
-    LOW = "low"                # 40-60%
-    MEDIUM = "medium"          # 60-75%
-    HIGH = "high"              # 75-90%
-    VERY_HIGH = "very_high"    # > 90%
+    VERY_LOW = "very_low"  # < 40%
+    LOW = "low"  # 40-60%
+    MEDIUM = "medium"  # 60-75%
+    HIGH = "high"  # 75-90%
+    VERY_HIGH = "very_high"  # > 90%
 
 
 class PlanAlternative(BaseModel):

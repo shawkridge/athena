@@ -125,9 +125,7 @@ class PlanBuilder:
         else:
             return {
                 "strategy": getattr(plan, "strategy", "sequential"),
-                "estimated_duration": getattr(
-                    plan, "estimated_duration", 0
-                ),
+                "estimated_duration": getattr(plan, "estimated_duration", 0),
                 "steps": getattr(plan, "steps", []),
                 "complexity": getattr(plan, "complexity", "medium"),
             }
@@ -184,16 +182,10 @@ class PlanBuilder:
             }
         else:
             return {
-                "parallelization": getattr(
-                    optimizations, "parallelization", []
-                ),
+                "parallelization": getattr(optimizations, "parallelization", []),
                 "risks": getattr(optimizations, "risks", []),
-                "recommendations": getattr(
-                    optimizations, "recommendations", []
-                ),
-                "time_savings": getattr(
-                    optimizations, "time_savings", "0%"
-                ),
+                "recommendations": getattr(optimizations, "recommendations", []),
+                "time_savings": getattr(optimizations, "time_savings", "0%"),
             }
 
     def _format_resources(self, resources) -> Dict[str, Any]:
@@ -216,16 +208,10 @@ class PlanBuilder:
         else:
             return {
                 "time_hours": getattr(resources, "time_hours", 0),
-                "expertise_level": getattr(
-                    resources, "expertise_level", "medium"
-                ),
-                "tools_required": getattr(
-                    resources, "tools_required", []
-                ),
+                "expertise_level": getattr(resources, "expertise_level", "medium"),
+                "tools_required": getattr(resources, "tools_required", []),
                 "dependencies": getattr(resources, "dependencies", []),
-                "capacity_available": getattr(
-                    resources, "capacity_available", True
-                ),
+                "capacity_available": getattr(resources, "capacity_available", True),
             }
 
     def _assess_status(self, result: Dict[str, Any]) -> str:
@@ -321,9 +307,7 @@ class PlanBuilder:
         try:
             saved_task = await self.store.create_task(task)
             if saved_task and saved_task.id:
-                result = await self.build_plan(
-                    saved_task.id, description=description
-                )
+                result = await self.build_plan(saved_task.id, description=description)
                 # Add project info to result
                 result["project_id"] = project_id
                 result["project_name"] = get_project_name(project_id) or "Unknown"

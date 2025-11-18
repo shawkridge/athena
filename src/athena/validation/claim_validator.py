@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class ClaimType(str, Enum):
     """Classification of claim types."""
+
     FACT = "fact"  # Objective, verifiable claim
     OPINION = "opinion"  # Subjective, interpretation
     HYPOTHETICAL = "hypothetical"  # Conditional, if-then
@@ -27,6 +28,7 @@ class ClaimType(str, Enum):
 
 class VerifiabilityScore(str, Enum):
     """How verifiable is a claim?"""
+
     HIGH = "high"  # Directly verifiable (dates, names, quantities)
     MEDIUM = "medium"  # Verifiable but requires research
     LOW = "low"  # Hard to verify (interpretations, vague)
@@ -36,6 +38,7 @@ class VerifiabilityScore(str, Enum):
 @dataclass
 class ValidatedClaim:
     """Result of claim validation."""
+
     claim_text: str
     claim_type: ClaimType
     verifiability: VerifiabilityScore
@@ -66,39 +69,49 @@ class ClaimValidator:
 
     # Patterns indicating uncertainty
     UNCERTAINTY_PATTERNS = [
-        r'\bmight\b', r'\bcould\b', r'\bpossibly\b',
-        r'\bprobably\b', r'\blikely\b', r'\bseems\b',
-        r'\bappears\b', r'\bmay\b', r'\bmaybe\b',
-        r'\bperhaps\b', r'\b(?:is )?(?:said|alleged)\b'
+        r"\bmight\b",
+        r"\bcould\b",
+        r"\bpossibly\b",
+        r"\bprobably\b",
+        r"\blikely\b",
+        r"\bseems\b",
+        r"\bappears\b",
+        r"\bmay\b",
+        r"\bmaybe\b",
+        r"\bperhaps\b",
+        r"\b(?:is )?(?:said|alleged)\b",
     ]
 
     # Patterns indicating strong claims
     STRONG_CLAIM_PATTERNS = [
-        r'\balways\b', r'\bnever\b', r'\bcertainly\b',
-        r'\bprovably\b', r'\bfactually\b', r'\bonline\b'
+        r"\balways\b",
+        r"\bnever\b",
+        r"\bcertainly\b",
+        r"\bprovably\b",
+        r"\bfactually\b",
+        r"\bonline\b",
     ]
 
     # Patterns indicating opinion
     OPINION_PATTERNS = [
-        r'\bi (?:think|believe|feel)\b',
-        r'\bin my (?:opinion|view|experience)\b',
-        r'\b(?:is )?(?:beautiful|ugly|good|bad|great|terrible)\b',
-        r'\bshould\b', r'\boughtto\b'
+        r"\bi (?:think|believe|feel)\b",
+        r"\bin my (?:opinion|view|experience)\b",
+        r"\b(?:is )?(?:beautiful|ugly|good|bad|great|terrible)\b",
+        r"\bshould\b",
+        r"\boughtto\b",
     ]
 
     # Specific fact patterns (high verifiability)
     FACT_PATTERNS = [
-        r'\b(?:year|month|day|date|time):\s*\d+',  # Dates
-        r'\b\d{1,2}(?:/|-)\d{1,2}(?:/|-)\d{4}\b',  # Date formats
-        r'\b\d+\s*(?:percent|%|degrees?|dollars?|euros?)\b',  # Quantities
-        r'\b(?:Dr|Mr|Mrs|Prof)\.\s+[A-Z]',  # Titles
-        r'\b[A-Z][a-z]+\s+[A-Z][a-z]+\b',  # Names
+        r"\b(?:year|month|day|date|time):\s*\d+",  # Dates
+        r"\b\d{1,2}(?:/|-)\d{1,2}(?:/|-)\d{4}\b",  # Date formats
+        r"\b\d+\s*(?:percent|%|degrees?|dollars?|euros?)\b",  # Quantities
+        r"\b(?:Dr|Mr|Mrs|Prof)\.\s+[A-Z]",  # Titles
+        r"\b[A-Z][a-z]+\s+[A-Z][a-z]+\b",  # Names
     ]
 
     def __init__(
-        self,
-        confidence_threshold: float = 0.8,
-        require_low_confidence_citations: bool = True
+        self, confidence_threshold: float = 0.8, require_low_confidence_citations: bool = True
     ):
         """Initialize claim validator.
 
@@ -122,7 +135,7 @@ class ClaimValidator:
             List of claim strings
         """
         # Simple sentence splitting (can be improved with better NLP)
-        sentences = re.split(r'[.!?]+', text.strip())
+        sentences = re.split(r"[.!?]+", text.strip())
         claims = [s.strip() for s in sentences if len(s.strip()) > 10]
         return claims
 
@@ -138,19 +151,19 @@ class ClaimValidator:
         claim_lower = claim_text.lower()
 
         # Check for explicit uncertainty markers
-        if re.search(r'\b(?:I |may|might|possibly|allegedly|reportedly|supposedly)\b', claim_lower):
+        if re.search(r"\b(?:I |may|might|possibly|allegedly|reportedly|supposedly)\b", claim_lower):
             return ClaimType.UNCERTAINTY
 
         # Check for opinions
-        if re.search('|'.join(self.OPINION_PATTERNS), claim_lower):
+        if re.search("|".join(self.OPINION_PATTERNS), claim_lower):
             return ClaimType.OPINION
 
         # Check for hypothetical
-        if re.search(r'\bif\b.*\bthen\b', claim_lower):
+        if re.search(r"\bif\b.*\bthen\b", claim_lower):
             return ClaimType.HYPOTHETICAL
 
         # Check for hearsay
-        if re.search(r'\b(?:according to|says|claimed|reported that|sources say)\b', claim_lower):
+        if re.search(r"\b(?:according to|says|claimed|reported that|sources say)\b", claim_lower):
             return ClaimType.HEARSAY
 
         # Default to fact for concrete claims
@@ -168,7 +181,7 @@ class ClaimValidator:
         claim_lower = claim_text.lower()
 
         # Unfalsifiable claims
-        if re.search(r'\b(?:in the future|eventually|always|never)\b', claim_lower):
+        if re.search(r"\b(?:in the future|eventually|always|never)\b", claim_lower):
             if len(claim_text.split()) < 5:
                 return VerifiabilityScore.IMPOSSIBLE
 
@@ -178,11 +191,13 @@ class ClaimValidator:
             return VerifiabilityScore.HIGH
 
         # Medium verifiability: named entities, specific claims
-        if re.search(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', claim_text):
+        if re.search(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b", claim_text):
             return VerifiabilityScore.MEDIUM
 
         # Low verifiability: vague, general claims
-        if len(claim_text.split()) < 10 or re.search(r'\b(?:thing|stuff|some|many|lots?)\b', claim_lower):
+        if len(claim_text.split()) < 10 or re.search(
+            r"\b(?:thing|stuff|some|many|lots?)\b", claim_lower
+        ):
             return VerifiabilityScore.LOW
 
         return VerifiabilityScore.MEDIUM
@@ -191,7 +206,7 @@ class ClaimValidator:
         self,
         claim_text: str,
         stated_confidence: float = 0.5,
-        known_facts: Optional[Dict[str, Any]] = None
+        known_facts: Optional[Dict[str, Any]] = None,
     ) -> ValidatedClaim:
         """Validate a single claim.
 
@@ -216,17 +231,14 @@ class ClaimValidator:
 
         # Calculate risk score
         risk_score = self._calculate_risk_score(
-            stated_confidence,
-            verifiability,
-            claim_type,
-            confidence_justified
+            stated_confidence, verifiability, claim_type, confidence_justified
         )
 
         # Determine if citation is needed
-        requires_citation = (
-            verifiability in [VerifiabilityScore.MEDIUM, VerifiabilityScore.HIGH] or
-            (self.require_low_confidence_citations and verifiability == VerifiabilityScore.LOW)
-        )
+        requires_citation = verifiability in [
+            VerifiabilityScore.MEDIUM,
+            VerifiabilityScore.HIGH,
+        ] or (self.require_low_confidence_citations and verifiability == VerifiabilityScore.LOW)
 
         # Generate warnings and suggestions
         warnings, suggestions = self._generate_feedback(
@@ -242,14 +254,12 @@ class ClaimValidator:
             requires_citation=requires_citation,
             risk_score=risk_score,
             warnings=warnings,
-            suggestions=suggestions
+            suggestions=suggestions,
         )
 
     @staticmethod
     def _is_confidence_justified(
-        confidence: float,
-        verifiability: VerifiabilityScore,
-        claim_type: ClaimType
+        confidence: float, verifiability: VerifiabilityScore, claim_type: ClaimType
     ) -> bool:
         """Check if stated confidence matches claim characteristics.
 
@@ -287,7 +297,7 @@ class ClaimValidator:
         confidence: float,
         verifiability: VerifiabilityScore,
         claim_type: ClaimType,
-        confidence_justified: bool
+        confidence_justified: bool,
     ) -> float:
         """Calculate hallucination risk score (0=safe, 1=high risk).
 
@@ -307,7 +317,7 @@ class ClaimValidator:
             VerifiabilityScore.HIGH: 0.1,
             VerifiabilityScore.MEDIUM: 0.3,
             VerifiabilityScore.LOW: 0.6,
-            VerifiabilityScore.IMPOSSIBLE: 0.9
+            VerifiabilityScore.IMPOSSIBLE: 0.9,
         }
         risk += verifiability_risks.get(verifiability, 0.5)
 
@@ -321,7 +331,7 @@ class ClaimValidator:
             ClaimType.OPINION: 0.1,
             ClaimType.HYPOTHETICAL: 0.2,
             ClaimType.HEARSAY: 0.3,
-            ClaimType.UNCERTAINTY: -0.2  # Actually lowers risk
+            ClaimType.UNCERTAINTY: -0.2,  # Actually lowers risk
         }
         risk += type_risks.get(claim_type, 0.0)
 
@@ -334,7 +344,7 @@ class ClaimValidator:
         claim_type: ClaimType,
         verifiability: VerifiabilityScore,
         risk_score: float,
-        confidence_justified: bool
+        confidence_justified: bool,
     ) -> Tuple[List[str], List[str]]:
         """Generate warnings and suggestions for claim.
 
@@ -380,7 +390,9 @@ class ClaimValidator:
 
         return warnings, suggestions
 
-    def validate_text(self, text: str, confidences: Optional[List[float]] = None) -> List[ValidatedClaim]:
+    def validate_text(
+        self, text: str, confidences: Optional[List[float]] = None
+    ) -> List[ValidatedClaim]:
         """Validate all claims in text.
 
         Args:

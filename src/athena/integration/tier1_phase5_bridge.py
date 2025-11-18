@@ -19,14 +19,14 @@ Research:
 - Wickens (2008): Resource allocation in cognitive systems
 """
 
-from typing import Optional, List, Dict, Tuple
+from typing import List, Dict
 from datetime import datetime
 import logging
 
 from ..core.database import Database
 from ..core.embeddings import EmbeddingModel
 from ..tier1_bridge import Tier1OrchestrationPipeline, Tier1Monitor
-from ..prospective.monitoring import TaskMonitor, TaskHealth
+from ..prospective.monitoring import TaskMonitor
 from ..integration.analytics import TaskAnalytics
 from ..integration.planning_assistant import PlanningAssistant
 from ..integration.project_coordinator import ProjectCoordinator
@@ -76,9 +76,7 @@ class Tier1Phase5Integration:
     # Phase 5 Integration: Monitoring + Saliency
     # ========================================================================
 
-    def compute_saliency_aware_health(
-        self, task_id: int, project_id: int
-    ) -> Dict:
+    def compute_saliency_aware_health(self, task_id: int, project_id: int) -> Dict:
         """Compute task health with saliency weighting.
 
         Integrates saliency into health scoring by:
@@ -137,9 +135,7 @@ class Tier1Phase5Integration:
                 # commit handled by cursor context
                 temp_mem_id = cursor.lastrowid
 
-                saliency = self.saliency_calc.compute_saliency(
-                    temp_mem_id, "semantic", project_id
-                )
+                saliency = self.saliency_calc.compute_saliency(temp_mem_id, "semantic", project_id)
 
                 # Clean up temp memory
                 cursor.execute("DELETE FROM memories WHERE id = ?", (temp_mem_id,))
@@ -171,9 +167,7 @@ class Tier1Phase5Integration:
     # Phase 6 Integration: Analytics + Saliency
     # ========================================================================
 
-    def analyze_saliency_driven_patterns(
-        self, project_id: int
-    ) -> Dict:
+    def analyze_saliency_driven_patterns(self, project_id: int) -> Dict:
         """Discover patterns focusing on high-salience tasks.
 
         Uses saliency to identify which completed tasks should contribute
@@ -207,18 +201,14 @@ class Tier1Phase5Integration:
 
             for task_id, task_content in high_value_tasks:
                 try:
-                    saliency = self.saliency_calc.compute_saliency(
-                        task_id, "semantic", project_id
-                    )
+                    saliency = self.saliency_calc.compute_saliency(task_id, "semantic", project_id)
                     saliency_scores[task_id] = saliency
                 except (OSError, ValueError, TypeError, AttributeError, KeyError):
                     saliency_scores[task_id] = 0.5
 
             # Weight patterns by average saliency
             avg_saliency = (
-                sum(saliency_scores.values()) / len(saliency_scores)
-                if saliency_scores
-                else 0.5
+                sum(saliency_scores.values()) / len(saliency_scores) if saliency_scores else 0.5
             )
 
             return {
@@ -258,9 +248,7 @@ class Tier1Phase5Integration:
         """
         try:
             # Generate base plan
-            base_plan = self.planning_assistant.generate_task_plan(
-                task_id, task_description
-            )
+            base_plan = self.planning_assistant.generate_task_plan(task_id, task_description)
 
             if not base_plan or "steps" not in base_plan:
                 return base_plan
@@ -298,17 +286,13 @@ class Tier1Phase5Integration:
                     cursor.execute("DELETE FROM memories WHERE id = ?", (temp_mem_id,))
                     # commit handled by cursor context
 
-                    step_saliencies.append(
-                        {"step": step, "saliency": saliency, "index": i}
-                    )
+                    step_saliencies.append({"step": step, "saliency": saliency, "index": i})
                 except (OSError, ValueError, TypeError, AttributeError, KeyError):
                     step_saliencies.append({"step": step, "saliency": 0.5, "index": i})
 
             # Sort steps by priority (maintain dependencies but elevate high-salience)
             # High-salience steps get priority (sorted descending)
-            sorted_steps = sorted(
-                step_saliencies, key=lambda x: x["saliency"], reverse=True
-            )
+            sorted_steps = sorted(step_saliencies, key=lambda x: x["saliency"], reverse=True)
 
             # Optimize plan
             optimized = self.planning_assistant.optimize_plan(task_id)
@@ -334,9 +318,7 @@ class Tier1Phase5Integration:
     # Phase 8 Integration: Coordination + Saliency
     # ========================================================================
 
-    def resolve_conflicts_with_saliency(
-        self, project_ids: List[int]
-    ) -> Dict:
+    def resolve_conflicts_with_saliency(self, project_ids: List[int]) -> Dict:
         """Detect and resolve resource conflicts using saliency weighting.
 
         High-salience tasks get resource priority in conflict resolution.
@@ -400,9 +382,7 @@ class Tier1Phase5Integration:
     # Full Integration: End-to-End Workflow
     # ========================================================================
 
-    def run_integrated_workflow(
-        self, project_id: int, task_id: int, task_description: str
-    ) -> Dict:
+    def run_integrated_workflow(self, project_id: int, task_id: int, task_description: str) -> Dict:
         """Run full integrated workflow: Tier 1 + Phase 5-8.
 
         Pipeline:
@@ -435,9 +415,7 @@ class Tier1Phase5Integration:
 
             # Stage 2: Planning with Saliency
             logger.info("Stage 2: Generating saliency-aware plan...")
-            plan_result = self.generate_saliency_aware_plan(
-                task_id, project_id, task_description
-            )
+            plan_result = self.generate_saliency_aware_plan(task_id, project_id, task_description)
             results["workflow_stages"]["saliency_aware_plan"] = plan_result
 
             # Stage 3: Health Monitoring with Saliency
@@ -453,9 +431,7 @@ class Tier1Phase5Integration:
             # Stage 5: Coordination with Saliency
             logger.info("Stage 5: Resolving conflicts with saliency...")
             coordination_result = self.resolve_conflicts_with_saliency([project_id])
-            results["workflow_stages"]["saliency_aware_coordination"] = (
-                coordination_result
-            )
+            results["workflow_stages"]["saliency_aware_coordination"] = coordination_result
 
             results["status"] = "success"
 

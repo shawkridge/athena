@@ -1,13 +1,11 @@
 """Unified client for local LLM services (embedding + reasoning + compression)."""
 
 import asyncio
-import json
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from dataclasses import dataclass
 
 import httpx
-import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +13,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class EmbeddingResult:
     """Result from embedding operation."""
+
     embedding: List[float]
     dimension: int
     latency_ms: float
@@ -23,6 +22,7 @@ class EmbeddingResult:
 @dataclass
 class ReasoningResult:
     """Result from reasoning operation."""
+
     text: str
     tokens: int
     latency_ms: float
@@ -31,6 +31,7 @@ class ReasoningResult:
 @dataclass
 class CompressionResult:
     """Result from compression operation."""
+
     compressed_prompt: str
     original_tokens: int
     compressed_tokens: int
@@ -83,9 +84,7 @@ class LocalLLMClient:
                 )
                 logger.info("LLMLingua-2 compression enabled")
             except ImportError:
-                logger.warning(
-                    "LLMLingua-2 not installed. Install with: pip install llmlingua"
-                )
+                logger.warning("LLMLingua-2 not installed. Install with: pip install llmlingua")
                 self.enable_compression = False
 
     async def check_health(self) -> Dict[str, bool]:
@@ -236,9 +235,7 @@ class LocalLLMClient:
                 tokens = data.get("tokens_predicted", 0)
                 latency_ms = (time.time() - start_time) * 1000
 
-                logger.debug(
-                    f"Reasoning generated {tokens} tokens in {latency_ms:.1f}ms"
-                )
+                logger.debug(f"Reasoning generated {tokens} tokens in {latency_ms:.1f}ms")
 
                 return ReasoningResult(
                     text=generated_text,

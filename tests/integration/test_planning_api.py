@@ -6,7 +6,6 @@ to ensure the paradigm is properly implemented.
 
 import pytest
 import asyncio
-from unittest.mock import Mock, MagicMock
 from src.athena.planning.store import PlanningStore
 from src.athena.planning.operations import PlanningOperations
 
@@ -45,10 +44,10 @@ class MockCursor:
             # Store pattern data from params
             if params:
                 self.db.patterns[self.db.next_id] = {
-                    'id': self.db.next_id,
-                    'name': params[2] if len(params) > 2 else 'Unnamed',
-                    'description': params[3] if len(params) > 3 else '',
-                    'complexity_max': params[10] if len(params) > 10 else 3,
+                    "id": self.db.next_id,
+                    "name": params[2] if len(params) > 2 else "Unnamed",
+                    "description": params[3] if len(params) > 3 else "",
+                    "complexity_max": params[10] if len(params) > 10 else 3,
                 }
             return
 
@@ -59,20 +58,20 @@ class MockCursor:
                 pattern = self.db.patterns[pattern_id]
                 # Return a full row matching pattern schema
                 self._result = [
-                    pattern['id'],  # id
+                    pattern["id"],  # id
                     1,  # project_id
-                    'hierarchical',  # pattern_type
-                    pattern['name'],  # name
-                    pattern['description'],  # description
+                    "hierarchical",  # pattern_type
+                    pattern["name"],  # name
+                    pattern["description"],  # description
                     0.5,  # success_rate
                     0.5,  # quality_score
                     0,  # execution_count
                     [],  # applicable_domains
-                    ['general'],  # applicable_task_types
+                    ["general"],  # applicable_task_types
                     1,  # complexity_min
-                    pattern['complexity_max'],  # complexity_max
+                    pattern["complexity_max"],  # complexity_max
                     {},  # conditions
-                    'user',  # source
+                    "user",  # source
                     None,  # research_reference
                     0,  # created_at
                     None,  # last_used
@@ -83,25 +82,27 @@ class MockCursor:
         if "SELECT" in sql_upper and "planning_patterns" in sql_upper:
             self._result = []
             for pid, pattern in self.db.patterns.items():
-                self._result.append([
-                    pattern['id'],
-                    1,
-                    'hierarchical',
-                    pattern['name'],
-                    pattern['description'],
-                    0.5,
-                    0.5,
-                    0,
-                    [],
-                    ['general'],
-                    1,
-                    pattern['complexity_max'],
-                    {},
-                    'user',
-                    None,
-                    0,
-                    None,
-                ])
+                self._result.append(
+                    [
+                        pattern["id"],
+                        1,
+                        "hierarchical",
+                        pattern["name"],
+                        pattern["description"],
+                        0.5,
+                        0.5,
+                        0,
+                        [],
+                        ["general"],
+                        1,
+                        pattern["complexity_max"],
+                        {},
+                        "user",
+                        None,
+                        0,
+                        None,
+                    ]
+                )
             return
 
         # Default: skip (for CREATE TABLE, etc.)
@@ -156,10 +157,7 @@ class TestPlanningOperationsAPI:
         """Test that create_plan returns expected structure."""
         # Note: Mock DB means this will return a created pattern
         result = await planning_ops.create_plan(
-            goal="Test goal",
-            description="Test description",
-            depth=3,
-            tags=["test"]
+            goal="Test goal", description="Test description", depth=3, tags=["test"]
         )
 
         # Verify structure matches expected API

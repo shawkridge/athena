@@ -6,22 +6,23 @@ Implements the feedback loop in the agentic diagram.
 
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime
 from collections import defaultdict
 import json
 
-from .gateway import GateResult, GateViolation, GateType, GateSeverity
+from .gateway import GateResult, GateType, GateSeverity
 
 
 @dataclass
 class DecisionOutcome:
     """Record of a verification decision and its outcome."""
+
     decision_id: str
     operation_type: str
     gate_result: GateResult
-    action_taken: str              # "accepted", "rejected", "remediated", "escalated"
+    action_taken: str  # "accepted", "rejected", "remediated", "escalated"
     actual_outcome: Optional[str] = None  # What happened after decision?
-    was_correct: Optional[bool] = None    # Was the decision correct in hindsight?
+    was_correct: Optional[bool] = None  # Was the decision correct in hindsight?
     learned_lessons: List[str] = field(default_factory=list)
     timestamp: datetime = field(default_factory=datetime.now)
 
@@ -29,6 +30,7 @@ class DecisionOutcome:
 @dataclass
 class ViolationPattern:
     """Recurring pattern of gate violations."""
+
     violation_type: str
     gate_type: GateType
     frequency: int
@@ -49,15 +51,11 @@ class VerificationObserver:
             lambda: {"total": 0, "passed": 0, "failed": 0}
         )
         self.gate_type_stats: Dict[GateType, Dict[str, int]] = {
-            gate_type: {"passed": 0, "failed": 0, "warnings": 0}
-            for gate_type in GateType
+            gate_type: {"passed": 0, "failed": 0, "warnings": 0} for gate_type in GateType
         }
 
     def record_decision(
-        self,
-        gate_result: GateResult,
-        action_taken: str,
-        details: Optional[Dict[str, Any]] = None
+        self, gate_result: GateResult, action_taken: str, details: Optional[Dict[str, Any]] = None
     ) -> DecisionOutcome:
         """
         Record a verification decision.
@@ -107,7 +105,7 @@ class VerificationObserver:
         decision_id: str,
         actual_outcome: str,
         was_correct: bool,
-        lessons: Optional[List[str]] = None
+        lessons: Optional[List[str]] = None,
     ) -> None:
         """
         Record the actual outcome of a decision.
@@ -137,7 +135,7 @@ class VerificationObserver:
                     gate_type=violation.gate_type,
                     frequency=0,
                     last_seen=datetime.now(),
-                    severity_distribution={}
+                    severity_distribution={},
                 )
 
             pattern = self.violation_patterns[pattern_key]
@@ -146,8 +144,9 @@ class VerificationObserver:
             pattern.example_operations.append(gate_result.operation_id)
 
             severity_key = violation.severity.value
-            pattern.severity_distribution[severity_key] = \
+            pattern.severity_distribution[severity_key] = (
                 pattern.severity_distribution.get(severity_key, 0) + 1
+            )
 
     def get_decision_accuracy(self, operation_type: Optional[str] = None) -> float:
         """Get accuracy of decisions (% that were correct in hindsight)."""
@@ -169,7 +168,9 @@ class VerificationObserver:
     def get_operation_health(self, operation_type: Optional[str] = None) -> Dict[str, Any]:
         """Get health metrics for operations."""
         if operation_type:
-            stats = self.operation_type_stats.get(operation_type, {"total": 0, "passed": 0, "failed": 0})
+            stats = self.operation_type_stats.get(
+                operation_type, {"total": 0, "passed": 0, "failed": 0}
+            )
             return {
                 "operation_type": operation_type,
                 "total_operations": stats["total"],
@@ -249,7 +250,9 @@ class VerificationObserver:
 
         return insights if insights else ["✅ No actionable issues detected"]
 
-    def get_decision_history(self, limit: int = 10, operation_type: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_decision_history(
+        self, limit: int = 10, operation_type: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """Get recent decision history."""
         decisions = self.decisions
 
@@ -260,17 +263,19 @@ class VerificationObserver:
 
         history = []
         for decision in recent:
-            history.append({
-                "decision_id": decision.decision_id,
-                "operation_type": decision.operation_type,
-                "action_taken": decision.action_taken,
-                "gate_passed": decision.gate_result.passed,
-                "confidence": decision.gate_result.confidence_score,
-                "violations": len(decision.gate_result.violations),
-                "warnings": len(decision.gate_result.warnings),
-                "was_correct": decision.was_correct,
-                "timestamp": decision.timestamp.isoformat(),
-            })
+            history.append(
+                {
+                    "decision_id": decision.decision_id,
+                    "operation_type": decision.operation_type,
+                    "action_taken": decision.action_taken,
+                    "gate_passed": decision.gate_result.passed,
+                    "confidence": decision.gate_result.confidence_score,
+                    "violations": len(decision.gate_result.violations),
+                    "warnings": len(decision.gate_result.warnings),
+                    "was_correct": decision.was_correct,
+                    "timestamp": decision.timestamp.isoformat(),
+                }
+            )
 
         return history
 

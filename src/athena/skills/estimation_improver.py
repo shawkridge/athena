@@ -7,7 +7,7 @@ Uses accuracy data and patterns to improve future task estimates by:
 - Providing estimation heuristics
 """
 
-from typing import Optional, Dict, List
+from typing import Dict, List
 from dataclasses import dataclass
 from ..integration.analytics import TaskAnalytics
 from ..core.database import Database
@@ -52,9 +52,7 @@ class EstimationImprover:
             Dictionary of task_type -> EstimationMultiplier
         """
         # Analyze estimation accuracy
-        accuracy_data = await self.analytics.analyze_estimation_accuracy(
-            project_id, days_back=days
-        )
+        accuracy_data = await self.analytics.analyze_estimation_accuracy(project_id, days_back=days)
 
         # Discover patterns
         patterns_data = await self.analytics.discover_patterns(project_id)
@@ -128,9 +126,7 @@ class EstimationImprover:
         accuracy_score = (
             accuracy_data.accuracy_rate
             if hasattr(accuracy_data, "accuracy_rate")
-            else accuracy_data.get("accuracy_rate", 75)
-            if isinstance(accuracy_data, dict)
-            else 75
+            else accuracy_data.get("accuracy_rate", 75) if isinstance(accuracy_data, dict) else 75
         )
 
         # Calculate confidence based on accuracy
@@ -140,8 +136,7 @@ class EstimationImprover:
         under_rate = (
             accuracy_data.underestimate_count
             / max(
-                accuracy_data.underestimate_count
-                + accuracy_data.overestimate_count,
+                accuracy_data.underestimate_count + accuracy_data.overestimate_count,
                 1,
             )
             if hasattr(accuracy_data, "underestimate_count")
@@ -151,9 +146,7 @@ class EstimationImprover:
 
         # Calculate variance
         variance = (
-            accuracy_data.average_variance
-            if hasattr(accuracy_data, "average_variance")
-            else 0.25
+            accuracy_data.average_variance if hasattr(accuracy_data, "average_variance") else 0.25
         )
 
         # Generate recommendations
@@ -216,31 +209,21 @@ class EstimationImprover:
         recommendations = []
 
         if confidence < 0.5:
-            recommendations.append(
-                f"Low confidence in {task_type} estimates - gather more data"
-            )
+            recommendations.append(f"Low confidence in {task_type} estimates - gather more data")
         elif confidence < 0.7:
-            recommendations.append(
-                f"Moderate confidence in {task_type} estimates"
-            )
+            recommendations.append(f"Moderate confidence in {task_type} estimates")
         else:
-            recommendations.append(
-                f"High confidence in {task_type} estimates"
-            )
+            recommendations.append(f"High confidence in {task_type} estimates")
 
         if under_rate > 0.6:
-            recommendations.append(
-                f"Tendency to underestimate {task_type} - add 20-30% buffer"
-            )
+            recommendations.append(f"Tendency to underestimate {task_type} - add 20-30% buffer")
         elif over_rate > 0.6:
             recommendations.append(
                 f"Tendency to overestimate {task_type} - reduce estimates by 10-15%"
             )
 
         if confidence >= 0.8:
-            recommendations.append(
-                f"Use multiplier adjustments for {task_type} estimates"
-            )
+            recommendations.append(f"Use multiplier adjustments for {task_type} estimates")
 
         return recommendations[:2]
 
@@ -260,9 +243,7 @@ class EstimationImprover:
         Returns:
             Adjusted estimate in minutes
         """
-        multipliers = await self.get_multipliers_by_task_type(
-            project_id
-        )
+        multipliers = await self.get_multipliers_by_task_type(project_id)
 
         if task_type in multipliers:
             multiplier = multipliers[task_type]
@@ -305,9 +286,7 @@ class EstimationImprover:
 
             if result and result[0]:
                 avg = result[0]
-                variance = (
-                    (result[1] - result[2]) / 2 if result[1] and result[2] else avg * 0.5
-                )
+                variance = (result[1] - result[2]) / 2 if result[1] and result[2] else avg * 0.5
                 lower = max(int(estimate_minutes * 0.7), 15)
                 upper = int(estimate_minutes * 1.3)
                 return (lower, upper)
@@ -322,9 +301,7 @@ class EstimationImprover:
             upper = int(estimate_minutes * 1.5)
             return (lower, upper)
 
-    async def suggest_estimate_improvement(
-        self, project_id: int, days: int = 30
-    ) -> Dict[str, any]:
+    async def suggest_estimate_improvement(self, project_id: int, days: int = 30) -> Dict[str, any]:
         """Suggest overall estimation improvements.
 
         Args:
@@ -334,16 +311,12 @@ class EstimationImprover:
         Returns:
             Dictionary with improvement suggestions
         """
-        accuracy_data = await self.analytics.analyze_estimation_accuracy(
-            project_id, days_back=days
-        )
+        accuracy_data = await self.analytics.analyze_estimation_accuracy(project_id, days_back=days)
 
         accuracy_score = (
             accuracy_data.accuracy_rate
             if hasattr(accuracy_data, "accuracy_rate")
-            else accuracy_data.get("accuracy_rate", 0)
-            if isinstance(accuracy_data, dict)
-            else 0
+            else accuracy_data.get("accuracy_rate", 0) if isinstance(accuracy_data, dict) else 0
         )
 
         suggestions = []
@@ -354,16 +327,10 @@ class EstimationImprover:
             )
             suggestions.append("Action: Review recent failed estimates for patterns")
         elif accuracy_score < 75:
-            suggestions.append(
-                "Estimation accuracy below target - apply type-specific multipliers"
-            )
-            suggestions.append(
-                "Action: Use multiplier adjustments for common task types"
-            )
+            suggestions.append("Estimation accuracy below target - apply type-specific multipliers")
+            suggestions.append("Action: Use multiplier adjustments for common task types")
         elif accuracy_score < 85:
-            suggestions.append(
-                "Estimation accuracy is good - fine-tune with variance data"
-            )
+            suggestions.append("Estimation accuracy is good - fine-tune with variance data")
             suggestions.append("Action: Use confidence intervals for planning")
         else:
             suggestions.append("Excellent estimation accuracy - maintain approach")

@@ -9,7 +9,6 @@ This module provides CodeValidator to check:
 """
 
 import ast
-import json
 import logging
 from dataclasses import dataclass, asdict
 from typing import Optional, Dict, List, Set, Tuple

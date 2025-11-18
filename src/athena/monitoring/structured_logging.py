@@ -11,14 +11,13 @@ Includes contextual fields:
 import json
 import logging
 import traceback
-import time
 from typing import Any, Dict, Optional
 from datetime import datetime
 from contextvars import ContextVar
 
 # Context variables for trace propagation
-operation_id_context: ContextVar[Optional[str]] = ContextVar('operation_id', default=None)
-user_context: ContextVar[Optional[str]] = ContextVar('user_id', default=None)
+operation_id_context: ContextVar[Optional[str]] = ContextVar("operation_id", default=None)
+user_context: ContextVar[Optional[str]] = ContextVar("user_id", default=None)
 
 
 class JSONFormatter(logging.Formatter):
@@ -45,47 +44,66 @@ class JSONFormatter(logging.Formatter):
             JSON-formatted log string
         """
         log_data = {
-            'level': record.levelname,
-            'logger': record.name,
-            'message': record.getMessage(),
-            'module': record.module,
-            'function': record.funcName,
-            'line': record.lineno,
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno,
         }
 
         # Add timestamp
         if self.include_timestamp:
-            log_data['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+            log_data["timestamp"] = datetime.utcnow().isoformat() + "Z"
 
         # Add contextual fields from record
-        if hasattr(record, '__dict__'):
+        if hasattr(record, "__dict__"):
             for key, value in record.__dict__.items():
                 # Skip standard logging fields
-                if key not in ['name', 'msg', 'args', 'created', 'filename', 'funcName',
-                             'levelname', 'levelno', 'lineno', 'module', 'msecs',
-                             'message', 'pathname', 'process', 'processName', 'relativeCreated',
-                             'thread', 'threadName', 'exc_info', 'exc_text', 'stack_info']:
+                if key not in [
+                    "name",
+                    "msg",
+                    "args",
+                    "created",
+                    "filename",
+                    "funcName",
+                    "levelname",
+                    "levelno",
+                    "lineno",
+                    "module",
+                    "msecs",
+                    "message",
+                    "pathname",
+                    "process",
+                    "processName",
+                    "relativeCreated",
+                    "thread",
+                    "threadName",
+                    "exc_info",
+                    "exc_text",
+                    "stack_info",
+                ]:
                     log_data[key] = value
 
         # Add operation context
         operation_id = operation_id_context.get()
         if operation_id:
-            log_data['operation_id'] = operation_id
+            log_data["operation_id"] = operation_id
 
         user_id = user_context.get()
         if user_id:
-            log_data['user_id'] = user_id
+            log_data["user_id"] = user_id
 
         # Add exception information
         if record.exc_info:
             exc_type, exc_value, exc_tb = record.exc_info
-            log_data['exception'] = {
-                'type': exc_type.__name__ if exc_type else 'Unknown',
-                'message': str(exc_value) if exc_value else '',
+            log_data["exception"] = {
+                "type": exc_type.__name__ if exc_type else "Unknown",
+                "message": str(exc_value) if exc_value else "",
             }
 
             if self.include_traceback and exc_tb:
-                log_data['traceback'] = traceback.format_tb(exc_tb)
+                log_data["traceback"] = traceback.format_tb(exc_tb)
 
         return json.dumps(log_data)
 
@@ -101,7 +119,9 @@ class StructuredLogger:
         """
         self.logger = logging.getLogger(name)
 
-    def _log_with_extra(self, level: int, msg: str, extra: Optional[Dict[str, Any]] = None, **kwargs):
+    def _log_with_extra(
+        self, level: int, msg: str, extra: Optional[Dict[str, Any]] = None, **kwargs
+    ):
         """Log message with extra fields.
 
         Args:
@@ -142,10 +162,7 @@ class StructuredLogger:
             operation_type: Type of operation
             **fields: Operation-specific fields
         """
-        extra = {
-            'operation_type': operation_type,
-            **fields
-        }
+        extra = {"operation_type": operation_type, **fields}
         self.info(f"Operation: {operation_type}", extra)
 
     def operation_complete(self, operation_type: str, duration_seconds: float, **fields):
@@ -157,10 +174,10 @@ class StructuredLogger:
             **fields: Operation-specific fields
         """
         extra = {
-            'operation_type': operation_type,
-            'duration_seconds': duration_seconds,
-            'status': 'complete',
-            **fields
+            "operation_type": operation_type,
+            "duration_seconds": duration_seconds,
+            "status": "complete",
+            **fields,
         }
         self.info(f"Operation complete: {operation_type} ({duration_seconds:.3f}s)", extra)
 
@@ -173,11 +190,11 @@ class StructuredLogger:
             **fields: Operation-specific fields
         """
         extra = {
-            'operation_type': operation_type,
-            'error_type': type(error).__name__,
-            'error_message': str(error),
-            'status': 'error',
-            **fields
+            "operation_type": operation_type,
+            "error_type": type(error).__name__,
+            "error_message": str(error),
+            "status": "error",
+            **fields,
         }
         self.error(f"Operation error: {operation_type}: {str(error)}", extra, exc_info=True)
 
@@ -188,14 +205,10 @@ class StructuredLogger:
             action: Audit action (store, delete, update, etc.)
             **fields: Audit fields (user_id, project_id, resource, etc.)
         """
-        extra = {
-            'audit_action': action,
-            'audit': True,
-            **fields
-        }
+        extra = {"audit_action": action, "audit": True, **fields}
         self.info(f"Audit: {action}", extra)
 
-    def performance(self, metric_name: str, value: float, unit: str = '', **fields):
+    def performance(self, metric_name: str, value: float, unit: str = "", **fields):
         """Log performance metric.
 
         Args:
@@ -204,19 +217,12 @@ class StructuredLogger:
             unit: Unit of measurement
             **fields: Additional fields
         """
-        extra = {
-            'metric_name': metric_name,
-            'metric_value': value,
-            'metric_unit': unit,
-            **fields
-        }
+        extra = {"metric_name": metric_name, "metric_value": value, "metric_unit": unit, **fields}
         self.info(f"Performance: {metric_name}={value}{unit}", extra)
 
 
 def setup_structured_logging(
-    name: str = 'athena',
-    log_file: Optional[str] = None,
-    log_level: int = logging.INFO
+    name: str = "athena", log_file: Optional[str] = None, log_level: int = logging.INFO
 ) -> logging.Logger:
     """Set up structured logging for application.
 

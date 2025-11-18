@@ -15,12 +15,11 @@ Expected Impact: +40-60% memory relevance through dynamic updates
 """
 
 import logging
-from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Set
+from datetime import datetime
+from typing import Optional, List
 from dataclasses import dataclass
 
 from ..core.database import Database
-from ..core.models import Memory
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +27,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MemoryVersion:
     """Represents a version of a memory."""
+
     version: int
     memory_id: int
     content: str
@@ -39,6 +39,7 @@ class MemoryVersion:
 @dataclass
 class MemoryAttribute:
     """Auto-generated attributes for a memory."""
+
     memory_id: int
     importance_score: float  # 0-1, computed from access frequency + recency
     context_tags: List[str]  # Auto-extracted topic tags
@@ -50,6 +51,7 @@ class MemoryAttribute:
 @dataclass
 class HierarchicalIndex:
     """Index node in the hierarchical memory structure."""
+
     index_id: str  # e.g., "1", "1.1", "1.2.3"
     parent_id: Optional[str]
     memory_ids: List[int]
@@ -74,11 +76,13 @@ class ZettelkastenEvolution:
             db: Database connection
         """
         self.db = db
+
     def _ensure_schema(self):
         """Create schema for versioning, attributes, and indexing."""
         with self.db.get_connection() as conn:
             # Memory versions table
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS memory_versions (
                     id INTEGER PRIMARY KEY,
                     memory_id INTEGER NOT NULL,
@@ -90,10 +94,12 @@ class ZettelkastenEvolution:
                     UNIQUE(memory_id, version),
                     FOREIGN KEY(memory_id) REFERENCES semantic_memories(id)
                 )
-            """)
+            """
+            )
 
             # Memory attributes table
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS memory_attributes (
                     id INTEGER PRIMARY KEY,
                     memory_id INTEGER NOT NULL UNIQUE,
@@ -105,10 +111,12 @@ class ZettelkastenEvolution:
                     updated_at INTEGER NOT NULL,
                     FOREIGN KEY(memory_id) REFERENCES semantic_memories(id)
                 )
-            """)
+            """
+            )
 
             # Hierarchical index table
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS hierarchical_index (
                     id INTEGER PRIMARY KEY,
                     project_id INTEGER NOT NULL,
@@ -120,20 +128,27 @@ class ZettelkastenEvolution:
                     created_at INTEGER NOT NULL,
                     FOREIGN KEY(project_id) REFERENCES projects(id)
                 )
-            """)
+            """
+            )
 
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_memory_versions_id
                 ON memory_versions(memory_id)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_memory_attributes_stage
                 ON memory_attributes(evolution_stage)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_hierarchical_parent
                 ON hierarchical_index(parent_id)
-            """)
+            """
+            )
 
             conn.commit()
 
@@ -163,17 +178,20 @@ class ZettelkastenEvolution:
             # Get current version
             current = conn.execute(
                 "SELECT version FROM memory_versions WHERE memory_id = ? ORDER BY version DESC LIMIT 1",
-                (memory_id,)
+                (memory_id,),
             ).fetchone()
 
             next_version = (current["version"] + 1) if current else 1
 
             # Create version
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO memory_versions (
                     memory_id, version, content, created_at, updated_at, content_hash
                 ) VALUES (?, ?, ?, ?, ?, ?)
-            """, (memory_id, next_version, content, now_ts, now_ts, content_hash))
+            """,
+                (memory_id, next_version, content, now_ts, now_ts, content_hash),
+            )
 
             # Update memory attributes if changed
             if not previous_hash or previous_hash != content_hash:
@@ -189,7 +207,7 @@ class ZettelkastenEvolution:
             content=content,
             created_at=now,
             updated_at=now,
-            hash=content_hash
+            hash=content_hash,
         )
 
     def compute_memory_attributes(self, memory_id: int) -> MemoryAttribute:
@@ -211,7 +229,7 @@ class ZettelkastenEvolution:
             # Get memory access info
             mem = conn.execute(
                 "SELECT access_count, last_accessed, created_at FROM semantic_memories WHERE id = ?",
-                (memory_id,)
+                (memory_id,),
             ).fetchone()
 
             if not mem:
@@ -228,17 +246,19 @@ class ZettelkastenEvolution:
             importance_score = (frequency_score * 0.6) + (recency_score * 0.4)
 
             # Get related memory count (bidirectional links)
-            related = conn.execute("""
+            related = conn.execute(
+                """
                 SELECT COUNT(*) as count FROM association_links
                 WHERE (from_memory_id = ? OR to_memory_id = ?)
-            """, (memory_id, memory_id)).fetchone()
+            """,
+                (memory_id, memory_id),
+            ).fetchone()
 
             related_count = related["count"] or 0
 
             # Determine evolution stage based on versions
             versions = conn.execute(
-                "SELECT COUNT(*) as count FROM memory_versions WHERE memory_id = ?",
-                (memory_id,)
+                "SELECT COUNT(*) as count FROM memory_versions WHERE memory_id = ?", (memory_id,)
             ).fetchone()
 
             version_count = versions["count"] or 0
@@ -253,8 +273,7 @@ class ZettelkastenEvolution:
 
             # Extract context tags (simplified - would use NLP in production)
             mem_data = conn.execute(
-                "SELECT content FROM semantic_memories WHERE id = ?",
-                (memory_id,)
+                "SELECT content FROM semantic_memories WHERE id = ?", (memory_id,)
             ).fetchone()
 
             context_tags = self._extract_tags(mem_data["content"] if mem_data else "")
@@ -263,28 +282,51 @@ class ZettelkastenEvolution:
 
             # Store/update attributes
             existing = conn.execute(
-                "SELECT id FROM memory_attributes WHERE memory_id = ?",
-                (memory_id,)
+                "SELECT id FROM memory_attributes WHERE memory_id = ?", (memory_id,)
             ).fetchone()
 
             if existing:
-                conn.execute("""
+                conn.execute(
+                    """
                     UPDATE memory_attributes
                     SET importance_score = ?, context_tags = ?, related_count = ?,
                         evolution_stage = ?, last_evolved_at = ?, updated_at = ?
                     WHERE memory_id = ?
-                """, (importance_score, str(context_tags), related_count, evolution_stage, now_ts, now_ts, memory_id))
+                """,
+                    (
+                        importance_score,
+                        str(context_tags),
+                        related_count,
+                        evolution_stage,
+                        now_ts,
+                        now_ts,
+                        memory_id,
+                    ),
+                )
             else:
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT INTO memory_attributes (
                         memory_id, importance_score, context_tags, related_count,
                         evolution_stage, last_evolved_at, updated_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (memory_id, importance_score, str(context_tags), related_count, evolution_stage, now_ts, now_ts))
+                """,
+                    (
+                        memory_id,
+                        importance_score,
+                        str(context_tags),
+                        related_count,
+                        evolution_stage,
+                        now_ts,
+                        now_ts,
+                    ),
+                )
 
             conn.commit()
 
-        logger.info(f"Computed attributes for memory {memory_id}: importance={importance_score:.2f}, stage={evolution_stage}")
+        logger.info(
+            f"Computed attributes for memory {memory_id}: importance={importance_score:.2f}, stage={evolution_stage}"
+        )
 
         return MemoryAttribute(
             memory_id=memory_id,
@@ -292,7 +334,7 @@ class ZettelkastenEvolution:
             context_tags=context_tags,
             related_count=related_count,
             evolution_stage=evolution_stage,
-            last_evolved_at=datetime.now()
+            last_evolved_at=datetime.now(),
         )
 
     def _extract_tags(self, content: str, max_tags: int = 5) -> List[str]:
@@ -314,7 +356,7 @@ class ZettelkastenEvolution:
         # Extract capitalized words (potential topics)
         for word in words:
             if word and word[0].isupper() and len(word) > 2:
-                clean_word = word.rstrip('.,;:')
+                clean_word = word.rstrip(".,;:")
                 if clean_word and clean_word not in tags:
                     tags.append(clean_word.lower())
                     if len(tags) >= max_tags:
@@ -347,7 +389,7 @@ class ZettelkastenEvolution:
                 # Root level
                 max_root = conn.execute(
                     "SELECT MAX(CAST(index_id as INTEGER)) FROM hierarchical_index WHERE depth = 0 AND project_id = ?",
-                    (project_id,)
+                    (project_id,),
                 ).fetchone()
 
                 next_num = (max_root[0] or 0) + 1 if max_root[0] else 1
@@ -356,8 +398,7 @@ class ZettelkastenEvolution:
             else:
                 # Child level - append to parent
                 parent_info = conn.execute(
-                    "SELECT depth FROM hierarchical_index WHERE index_id = ?",
-                    (parent_id,)
+                    "SELECT depth FROM hierarchical_index WHERE index_id = ?", (parent_id,)
                 ).fetchone()
 
                 if not parent_info:
@@ -366,7 +407,7 @@ class ZettelkastenEvolution:
                 # Get child count
                 children = conn.execute(
                     "SELECT COUNT(*) as count FROM hierarchical_index WHERE parent_id = ?",
-                    (parent_id,)
+                    (parent_id,),
                 ).fetchone()
 
                 child_num = (children["count"] or 0) + 1
@@ -376,22 +417,21 @@ class ZettelkastenEvolution:
             now_ts = int(datetime.now().timestamp())
 
             # Create index
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO hierarchical_index (
                     project_id, index_id, parent_id, label, depth, created_at
                 ) VALUES (?, ?, ?, ?, ?, ?)
-            """, (project_id, index_id, parent_id, label, depth, now_ts))
+            """,
+                (project_id, index_id, parent_id, label, depth, now_ts),
+            )
 
             conn.commit()
 
         logger.info(f"Created hierarchical index {index_id} (depth={depth})")
 
         return HierarchicalIndex(
-            index_id=index_id,
-            parent_id=parent_id,
-            memory_ids=[],
-            label=label,
-            depth=depth
+            index_id=index_id, parent_id=parent_id, memory_ids=[], label=label, depth=depth
         )
 
     def assign_memory_to_index(self, memory_id: int, index_id: str):
@@ -404,14 +444,14 @@ class ZettelkastenEvolution:
         with self.db.get_connection() as conn:
             # Get current memory IDs
             index = conn.execute(
-                "SELECT memory_ids FROM hierarchical_index WHERE index_id = ?",
-                (index_id,)
+                "SELECT memory_ids FROM hierarchical_index WHERE index_id = ?", (index_id,)
             ).fetchone()
 
             if not index:
                 raise ValueError(f"Index {index_id} not found")
 
             import json
+
             memory_ids = json.loads(index["memory_ids"])
 
             if memory_id not in memory_ids:
@@ -419,7 +459,7 @@ class ZettelkastenEvolution:
 
                 conn.execute(
                     "UPDATE hierarchical_index SET memory_ids = ? WHERE index_id = ?",
-                    (json.dumps(memory_ids), index_id)
+                    (json.dumps(memory_ids), index_id),
                 )
                 conn.commit()
 
@@ -437,13 +477,20 @@ class ZettelkastenEvolution:
             new_content: New content
         """
         # Find all bidirectionally linked memories
-        links = conn.execute("""
+        links = conn.execute(
+            """
             SELECT from_memory_id, to_memory_id FROM association_links
             WHERE from_memory_id = ? OR to_memory_id = ?
-        """, (memory_id, memory_id)).fetchall()
+        """,
+            (memory_id, memory_id),
+        ).fetchall()
 
         for link in links:
-            related_id = link["to_memory_id"] if link["from_memory_id"] == memory_id else link["from_memory_id"]
+            related_id = (
+                link["to_memory_id"]
+                if link["from_memory_id"] == memory_id
+                else link["from_memory_id"]
+            )
 
             # Mark related memory as needing update (in production, trigger consolidation)
             logger.debug(f"Memory {memory_id} changed; related memory {related_id} may need update")
@@ -458,12 +505,15 @@ class ZettelkastenEvolution:
             List of MemoryVersion objects ordered by version
         """
         with self.db.get_connection() as conn:
-            versions = conn.execute("""
+            versions = conn.execute(
+                """
                 SELECT version, memory_id, content, created_at, updated_at, content_hash
                 FROM memory_versions
                 WHERE memory_id = ?
                 ORDER BY version ASC
-            """, (memory_id,)).fetchall()
+            """,
+                (memory_id,),
+            ).fetchall()
 
         return [
             MemoryVersion(
@@ -472,7 +522,7 @@ class ZettelkastenEvolution:
                 content=v["content"],
                 created_at=datetime.fromtimestamp(v["created_at"]),
                 updated_at=datetime.fromtimestamp(v["updated_at"]),
-                hash=v["content_hash"]
+                hash=v["content_hash"],
             )
             for v in versions
         ]
@@ -487,22 +537,26 @@ class ZettelkastenEvolution:
             MemoryAttribute or None if not found
         """
         with self.db.get_connection() as conn:
-            attr = conn.execute("""
+            attr = conn.execute(
+                """
                 SELECT importance_score, context_tags, related_count, evolution_stage,
                        last_evolved_at
                 FROM memory_attributes
                 WHERE memory_id = ?
-            """, (memory_id,)).fetchone()
+            """,
+                (memory_id,),
+            ).fetchone()
 
         if not attr:
             return None
 
         import json
+
         return MemoryAttribute(
             memory_id=memory_id,
             importance_score=attr["importance_score"],
             context_tags=json.loads(attr["context_tags"]),
             related_count=attr["related_count"],
             evolution_stage=attr["evolution_stage"],
-            last_evolved_at=datetime.fromtimestamp(attr["last_evolved_at"])
+            last_evolved_at=datetime.fromtimestamp(attr["last_evolved_at"]),
         )

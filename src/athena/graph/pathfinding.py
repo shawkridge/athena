@@ -5,7 +5,6 @@ import time
 from typing import Optional, Tuple, List, Set
 
 from ..core.database import Database
-from .models import Entity, Relation
 from .store import GraphStore
 
 
@@ -29,7 +28,9 @@ class PathFinder:
         self._relation_cache = {}
         self._entity_cache = {}
 
-    def _get_neighbors(self, entity_id: int, direction: str = "from") -> List[Tuple[int, float, float]]:
+    def _get_neighbors(
+        self, entity_id: int, direction: str = "from"
+    ) -> List[Tuple[int, float, float]]:
         """Get neighbors and edge weights for an entity.
 
         Args:
@@ -138,9 +139,7 @@ class PathFinder:
         # No path found
         return None, -1
 
-    def all_paths(
-        self, from_id: int, to_id: int, max_depth: int = 10
-    ) -> List[List[int]]:
+    def all_paths(self, from_id: int, to_id: int, max_depth: int = 10) -> List[List[int]]:
         """Find all simple paths using DFS with cycle detection.
 
         Returns all paths without cycles between two entities.
@@ -303,9 +302,7 @@ class PathFinder:
         self._relation_cache.clear()
         self._entity_cache.clear()
 
-    def benchmark_paths(
-        self, from_id: int, to_id: int, max_depth: int = 10
-    ) -> dict:
+    def benchmark_paths(self, from_id: int, to_id: int, max_depth: int = 10) -> dict:
         """Benchmark all three algorithms.
 
         Args:

@@ -2,7 +2,7 @@
 
 import json
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 from ..core.database import Database
@@ -35,12 +35,14 @@ class LearningIntegrationStore:
             db: Database instance
         """
         self.db = db
+
     def _ensure_schema(self) -> None:
         """Create tables if they don't exist."""
         cursor = self.db.get_cursor()
 
         # Lessons to procedures table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS lessons_to_procedures (
                 id SERIAL PRIMARY KEY,
                 lesson_id INTEGER NOT NULL,
@@ -53,10 +55,12 @@ class LearningIntegrationStore:
                 procedure_steps_json TEXT,
                 created_at INTEGER NOT NULL
             )
-        """)
+        """
+        )
 
         # Procedure candidates table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS procedure_candidates (
                 id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -71,10 +75,12 @@ class LearningIntegrationStore:
                 created_procedure_id INTEGER,
                 created_at INTEGER NOT NULL
             )
-        """)
+        """
+        )
 
         # Feedback updates table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS feedback_updates (
                 id SERIAL PRIMARY KEY,
                 update_type TEXT NOT NULL,
@@ -88,10 +94,12 @@ class LearningIntegrationStore:
                 applied_at INTEGER,
                 created_at INTEGER NOT NULL
             )
-        """)
+        """
+        )
 
         # Learning cycles table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS learning_cycles (
                 id SERIAL PRIMARY KEY,
                 action_cycle_id INTEGER NOT NULL,
@@ -108,28 +116,37 @@ class LearningIntegrationStore:
                 learning_cycle_success_rate REAL DEFAULT 0.0,
                 created_at INTEGER NOT NULL
             )
-        """)
+        """
+        )
 
         # Indexes
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_lessons_confidence
             ON lessons_to_procedures(confidence)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_candidates_ready
             ON procedure_candidates(ready_for_creation)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_feedback_applied
             ON feedback_updates(applied)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_learning_cycles_session
             ON learning_cycles(session_id)
-        """)
+        """
+        )
 
         # commit handled by cursor context
 
@@ -305,9 +322,7 @@ class LearningIntegrationStore:
             created_at=datetime.fromtimestamp(now_timestamp),
         )
 
-    def mark_procedure_created(
-        self, candidate_id: int, procedure_id: int
-    ) -> bool:
+    def mark_procedure_created(self, candidate_id: int, procedure_id: int) -> bool:
         """Mark a candidate as having created a procedure.
 
         Args:
@@ -447,9 +462,7 @@ class LearningIntegrationStore:
         # commit handled by cursor context
         return cursor.rowcount > 0
 
-    def get_lessons_by_confidence(
-        self, min_confidence: float = 0.5
-    ) -> list[LessonToProcedure]:
+    def get_lessons_by_confidence(self, min_confidence: float = 0.5) -> list[LessonToProcedure]:
         """Get lessons above confidence threshold.
 
         Args:

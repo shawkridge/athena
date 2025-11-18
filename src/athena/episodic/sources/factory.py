@@ -62,11 +62,7 @@ class EventSourceFactory:
     # Global source registry (class-level)
     _source_registry: Dict[str, Type[BaseEventSource]] = {}
 
-    def __init__(
-        self,
-        logger: Optional[logging.Logger] = None,
-        cursor_store: Optional[Any] = None
-    ):
+    def __init__(self, logger: Optional[logging.Logger] = None, cursor_store: Optional[Any] = None):
         """Initialize factory with optional dependencies.
 
         Args:
@@ -84,11 +80,7 @@ class EventSourceFactory:
     # ========================================================================
 
     async def create_source(
-        self,
-        source_type: str,
-        source_id: str,
-        credentials: Dict[str, Any],
-        config: Dict[str, Any]
+        self, source_type: str, source_id: str, credentials: Dict[str, Any], config: Dict[str, Any]
     ) -> BaseEventSource:
         """Create an event source instance.
 
@@ -139,10 +131,9 @@ class EventSourceFactory:
         """
         # Validate source type
         if not self.is_source_available(source_type):
-            available = ', '.join(self.get_registered_sources())
+            available = ", ".join(self.get_registered_sources())
             raise ValueError(
-                f"Unknown source type: '{source_type}'. "
-                f"Available types: {available}"
+                f"Unknown source type: '{source_type}'. " f"Available types: {available}"
             )
 
         # Get source class
@@ -153,27 +144,19 @@ class EventSourceFactory:
             # Load saved cursor
             saved_cursor = self._load_cursor(source_id)
             if saved_cursor:
-                config['cursor'] = saved_cursor
-                self._logger.info(
-                    f"Loaded cursor for '{source_id}': {saved_cursor}"
-                )
+                config["cursor"] = saved_cursor
+                self._logger.info(f"Loaded cursor for '{source_id}': {saved_cursor}")
 
         # Create source instance (calls source's create() classmethod)
         try:
-            self._logger.info(
-                f"Creating source: type='{source_type}', id='{source_id}'"
-            )
+            self._logger.info(f"Creating source: type='{source_type}', id='{source_id}'")
 
-            source = await source_class.create(
-                credentials=credentials,
-                config=config
-            )
+            source = await source_class.create(credentials=credentials, config=config)
 
             # Validate source health
             if not await source.validate():
                 raise ConnectionError(
-                    f"Source validation failed for '{source_id}' "
-                    f"(type: {source_type})"
+                    f"Source validation failed for '{source_id}' " f"(type: {source_type})"
                 )
 
             # Track active source
@@ -188,8 +171,7 @@ class EventSourceFactory:
 
         except Exception as e:
             self._logger.error(
-                f"Failed to create source '{source_id}' "
-                f"(type: {source_type}): {e}"
+                f"Failed to create source '{source_id}' " f"(type: {source_type}): {e}"
             )
             raise
 
@@ -198,11 +180,7 @@ class EventSourceFactory:
     # ========================================================================
 
     @classmethod
-    def register_source(
-        cls,
-        source_type: str,
-        source_class: Type[BaseEventSource]
-    ) -> None:
+    def register_source(cls, source_type: str, source_class: Type[BaseEventSource]) -> None:
         """Register a new event source type.
 
         This is typically called at module import time to register
@@ -229,8 +207,7 @@ class EventSourceFactory:
         # Validate source_class
         if not issubclass(source_class, BaseEventSource):
             raise TypeError(
-                f"Source class must inherit from BaseEventSource, "
-                f"got: {source_class.__name__}"
+                f"Source class must inherit from BaseEventSource, " f"got: {source_class.__name__}"
             )
 
         # Check for duplicates
@@ -243,10 +220,7 @@ class EventSourceFactory:
 
         # Register
         cls._source_registry[source_type] = source_class
-        logging.debug(
-            f"Registered source type '{source_type}': "
-            f"{source_class.__name__}"
-        )
+        logging.debug(f"Registered source type '{source_type}': " f"{source_class.__name__}")
 
     @classmethod
     def unregister_source(cls, source_type: str) -> bool:
@@ -353,9 +327,7 @@ class EventSourceFactory:
 
         # Check if source supports incremental sync
         if not await source.supports_incremental():
-            self._logger.debug(
-                f"Source '{source_id}' doesn't support incremental sync"
-            )
+            self._logger.debug(f"Source '{source_id}' doesn't support incremental sync")
             return False
 
         # Get current cursor
@@ -453,16 +425,16 @@ class EventSourceFactory:
         for source_id, source in self._active_sources.items():
             stats = source.get_stats()
             sources_info[source_id] = {
-                'type': stats['source_type'],
-                'events_generated': stats['events_generated'],
-                'events_failed': stats['events_failed'],
-                'last_event_time': stats['last_event_time']
+                "type": stats["source_type"],
+                "events_generated": stats["events_generated"],
+                "events_failed": stats["events_failed"],
+                "last_event_time": stats["last_event_time"],
             }
 
         return {
-            'registered_types': self.get_registered_sources(),
-            'active_sources': len(self._active_sources),
-            'sources': sources_info
+            "registered_types": self.get_registered_sources(),
+            "active_sources": len(self._active_sources),
+            "sources": sources_info,
         }
 
     def __repr__(self) -> str:
@@ -477,6 +449,7 @@ class EventSourceFactory:
 # ========================================================================
 # Pre-Register Common Source Types (Placeholders)
 # ========================================================================
+
 
 def _register_builtin_sources():
     """Register built-in source types.

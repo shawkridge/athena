@@ -57,9 +57,9 @@ class PIISanitizer:
         self.policy = FieldPolicy()
         self.audit_callback = audit_callback
         self._stats = {
-            'total_events': 0,
-            'events_with_pii': 0,
-            'pii_detections': 0,
+            "total_events": 0,
+            "events_with_pii": 0,
+            "pii_detections": 0,
         }
 
     def sanitize_batch(
@@ -78,7 +78,7 @@ class PIISanitizer:
         """
         if not self.config.enabled:
             logger.debug("PII sanitization disabled, returning events as-is")
-            return events, {'total_events': len(events), 'events_with_pii': 0, 'pii_detections': 0}
+            return events, {"total_events": len(events), "events_with_pii": 0, "pii_detections": 0}
 
         sanitized_events = []
 
@@ -86,9 +86,9 @@ class PIISanitizer:
             sanitized, had_pii = self._sanitize_event(event)
             sanitized_events.append(sanitized)
 
-            self._stats['total_events'] += 1
+            self._stats["total_events"] += 1
             if had_pii:
-                self._stats['events_with_pii'] += 1
+                self._stats["events_with_pii"] += 1
 
         return sanitized_events, dict(self._stats)
 
@@ -112,16 +112,16 @@ class PIISanitizer:
             return event, False
 
         # Log detection
-        self._audit('pii_detected', {
-            'event_id': event.id if hasattr(event, 'id') else 'unknown',
-            'detections': {
-                field: [{
-                    'type': d.type,
-                    'confidence': d.confidence
-                } for d in dets]
-                for field, dets in detections.items()
-            }
-        })
+        self._audit(
+            "pii_detected",
+            {
+                "event_id": event.id if hasattr(event, "id") else "unknown",
+                "detections": {
+                    field: [{"type": d.type, "confidence": d.confidence} for d in dets]
+                    for field, dets in detections.items()
+                },
+            },
+        )
 
         # Tokenize PII
         sanitized = deepcopy(event)
@@ -131,13 +131,16 @@ class PIISanitizer:
         sanitized = self.policy.apply(sanitized, tokenizer=self.tokenizer)
 
         # Log sanitization
-        self._audit('pii_sanitized', {
-            'event_id': event.id if hasattr(event, 'id') else 'unknown',
-            'fields_affected': list(detections.keys()),
-            'strategy': self.config.tokenization_strategy,
-        })
+        self._audit(
+            "pii_sanitized",
+            {
+                "event_id": event.id if hasattr(event, "id") else "unknown",
+                "fields_affected": list(detections.keys()),
+                "strategy": self.config.tokenization_strategy,
+            },
+        )
 
-        self._stats['pii_detections'] += sum(len(d) for d in detections.values())
+        self._stats["pii_detections"] += sum(len(d) for d in detections.values())
 
         return sanitized, True
 
@@ -168,9 +171,9 @@ class PIISanitizer:
     def reset_stats(self) -> None:
         """Reset statistics counters."""
         self._stats = {
-            'total_events': 0,
-            'events_with_pii': 0,
-            'pii_detections': 0,
+            "total_events": 0,
+            "events_with_pii": 0,
+            "pii_detections": 0,
         }
 
 
@@ -182,7 +185,7 @@ class PipelineIntegration:
 
     def __init__(
         self,
-        original_pipeline: 'EventProcessingPipeline',
+        original_pipeline: "EventProcessingPipeline",
         sanitizer: Optional[PIISanitizer] = None,
     ):
         """Initialize integration wrapper.
@@ -220,15 +223,15 @@ class PipelineIntegration:
 
         if not events:
             return {
-                'total': 0,
-                'inserted': 0,
-                'skipped_duplicate': 0,
-                'skipped_existing': 0,
-                'processing_time_ms': 0.0,
-                'pii_stats': {
-                    'total_events': 0,
-                    'events_with_pii': 0,
-                    'pii_detections': 0,
+                "total": 0,
+                "inserted": 0,
+                "skipped_duplicate": 0,
+                "skipped_existing": 0,
+                "processing_time_ms": 0.0,
+                "pii_stats": {
+                    "total_events": 0,
+                    "events_with_pii": 0,
+                    "pii_detections": 0,
                 },
             }
 
@@ -238,15 +241,15 @@ class PipelineIntegration:
 
         if not unique_events:
             return {
-                'total': len(events),
-                'inserted': 0,
-                'skipped_duplicate': skipped_duplicate,
-                'skipped_existing': 0,
-                'processing_time_ms': (time.time() - start_time) * 1000,
-                'pii_stats': {
-                    'total_events': 0,
-                    'events_with_pii': 0,
-                    'pii_detections': 0,
+                "total": len(events),
+                "inserted": 0,
+                "skipped_duplicate": skipped_duplicate,
+                "skipped_existing": 0,
+                "processing_time_ms": (time.time() - start_time) * 1000,
+                "pii_stats": {
+                    "total_events": 0,
+                    "events_with_pii": 0,
+                    "pii_detections": 0,
                 },
             }
 
@@ -259,6 +262,6 @@ class PipelineIntegration:
         original_stats = await self.pipeline.process_batch(sanitized_events)
 
         # Merge statistics
-        original_stats['pii_stats'] = pii_stats
+        original_stats["pii_stats"] = pii_stats
 
         return original_stats

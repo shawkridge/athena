@@ -1,4 +1,5 @@
 """Query knowledge graph tool."""
+
 import time
 from typing import Any, Dict
 from athena.tools import BaseTool, ToolMetadata
@@ -34,14 +35,14 @@ class QueryGraphTool(BaseTool):
                 "query": {
                     "type": "string",
                     "description": "Query string or entity name",
-                    "required": True
+                    "required": True,
                 },
                 "query_type": {
                     "type": "string",
                     "enum": ["entity_search", "relationship", "community", "path", "similarity"],
                     "description": "Type of graph query",
                     "required": False,
-                    "default": "entity_search"
+                    "default": "entity_search",
                 },
                 "max_results": {
                     "type": "integer",
@@ -49,14 +50,14 @@ class QueryGraphTool(BaseTool):
                     "required": False,
                     "default": 10,
                     "minimum": 1,
-                    "maximum": 100
+                    "maximum": 100,
                 },
                 "include_metadata": {
                     "type": "boolean",
                     "description": "Include full entity metadata",
                     "required": False,
-                    "default": False
-                }
+                    "default": False,
+                },
             },
             returns={
                 "type": "object",
@@ -65,18 +66,15 @@ class QueryGraphTool(BaseTool):
                     "query_type": {"type": "string"},
                     "entities_found": {
                         "type": "integer",
-                        "description": "Number of entities found"
+                        "description": "Number of entities found",
                     },
-                    "results": {
-                        "type": "array",
-                        "description": "Found entities and relationships"
-                    },
+                    "results": {"type": "array", "description": "Found entities and relationships"},
                     "query_time_ms": {
                         "type": "number",
-                        "description": "Time taken to execute query"
-                    }
-                }
-            }
+                        "description": "Time taken to execute query",
+                    },
+                },
+            },
         )
 
     def validate_input(self, **kwargs) -> None:
@@ -115,6 +113,7 @@ class QueryGraphTool(BaseTool):
 
             try:
                 from athena.core.database import get_database
+
                 db = get_database()
 
                 try:
@@ -125,7 +124,7 @@ class QueryGraphTool(BaseTool):
                         # Search for entities by name/label
                         cursor.execute(
                             "SELECT id, name, entity_type, weight FROM entities WHERE name LIKE ? LIMIT ?",
-                            (f"%{query}%", max_results)
+                            (f"%{query}%", max_results),
                         )
                     elif query_type == "relationship":
                         # Find relationships involving entity
@@ -136,13 +135,13 @@ class QueryGraphTool(BaseTool):
                                JOIN entities e2 ON r.target_id = e2.id
                                WHERE e1.name LIKE ? OR e2.name LIKE ?
                                LIMIT ?""",
-                            (f"%{query}%", f"%{query}%", max_results)
+                            (f"%{query}%", f"%{query}%", max_results),
                         )
                     else:
                         # Default: entity search
                         cursor.execute(
                             "SELECT id, name, entity_type, weight FROM entities WHERE name LIKE ? LIMIT ?",
-                            (f"%{query}%", max_results)
+                            (f"%{query}%", max_results),
                         )
 
                     rows = cursor.fetchall()
@@ -152,7 +151,7 @@ class QueryGraphTool(BaseTool):
                         result_item = {
                             "id": row[0],
                             "name": row[1] if len(row) > 1 else "",
-                            "type": row[2] if len(row) > 2 else "unknown"
+                            "type": row[2] if len(row) > 2 else "unknown",
                         }
                         if include_metadata and len(row) > 3:
                             result_item["weight"] = row[3]
@@ -160,10 +159,12 @@ class QueryGraphTool(BaseTool):
 
                 except Exception as db_err:
                     import logging
+
                     logging.warning(f"Graph query failed: {db_err}")
 
             except Exception as e:
                 import logging
+
                 logging.debug(f"Graph query unavailable: {e}")
 
             elapsed = (time.time() - start_time) * 1000
@@ -174,18 +175,18 @@ class QueryGraphTool(BaseTool):
                 "entities_found": entities_found,
                 "results": results,
                 "query_time_ms": elapsed,
-                "status": "success"
+                "status": "success",
             }
 
         except ValueError as e:
             return {
                 "error": str(e),
                 "status": "error",
-                "query_time_ms": (time.time() - start_time) * 1000
+                "query_time_ms": (time.time() - start_time) * 1000,
             }
         except Exception as e:
             return {
                 "error": f"Unexpected error: {str(e)}",
                 "status": "error",
-                "query_time_ms": (time.time() - start_time) * 1000
+                "query_time_ms": (time.time() - start_time) * 1000,
             }

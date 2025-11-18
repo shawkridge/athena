@@ -38,10 +38,7 @@ class ProjectAnalyzerSkill:
         self.last_analyzed_project: Optional[str] = None
 
     async def analyze_project(
-        self,
-        project_path: str,
-        store_in_memory: bool = True,
-        output_format: str = "summary"
+        self, project_path: str, store_in_memory: bool = True, output_format: str = "summary"
     ) -> Dict[str, Any]:
         """Analyze a project and optionally store findings.
 
@@ -60,18 +57,14 @@ class ProjectAnalyzerSkill:
             project_path_obj = Path(project_path).resolve()
 
             if not project_path_obj.exists():
-                return {
-                    "status": "error",
-                    "error": f"Project path not found: {project_path}"
-                }
+                return {"status": "error", "error": f"Project path not found: {project_path}"}
 
             # Perform analysis
             analyzer = ProjectAnalyzer(str(project_path_obj))
             analysis = analyzer.analyze()
 
             logger.info(
-                f"Analysis complete: {analysis.total_files} files, "
-                f"{analysis.total_lines} lines"
+                f"Analysis complete: {analysis.total_files} files, " f"{analysis.total_lines} lines"
             )
 
             # Store in memory if requested
@@ -79,9 +72,7 @@ class ProjectAnalyzerSkill:
             if store_in_memory:
                 storage = ProjectAnalysisMemoryStorage(self.db)
                 storage_result = storage.store_analysis(analysis)
-                logger.info(
-                    f"Stored {storage_result['stored_items']} items in memory"
-                )
+                logger.info(f"Stored {storage_result['stored_items']} items in memory")
 
             # Track analyzed project
             self.last_analyzed_project = analysis.project_name
@@ -94,16 +85,9 @@ class ProjectAnalyzerSkill:
 
         except Exception as e:
             logger.error(f"Analysis failed: {e}")
-            return {
-                "status": "error",
-                "error": str(e)
-            }
+            return {"status": "error", "error": str(e)}
 
-    def _format_summary(
-        self,
-        analysis,
-        storage_result: Optional[Dict]
-    ) -> Dict[str, Any]:
+    def _format_summary(self, analysis, storage_result: Optional[Dict]) -> Dict[str, Any]:
         """Format analysis as summary."""
         return {
             "status": "success",
@@ -124,14 +108,10 @@ class ProjectAnalyzerSkill:
             "memory_storage": {
                 "status": storage_result.get("status") if storage_result else "skipped",
                 "items": storage_result.get("stored_items") if storage_result else 0,
-            }
+            },
         }
 
-    def _format_detailed(
-        self,
-        analysis,
-        storage_result: Optional[Dict]
-    ) -> Dict[str, Any]:
+    def _format_detailed(self, analysis, storage_result: Optional[Dict]) -> Dict[str, Any]:
         """Format analysis with full details."""
         return {
             "status": "success",
@@ -176,11 +156,7 @@ class ProjectAnalyzerSkill:
             "memory_storage": storage_result if storage_result else None,
         }
 
-    async def should_analyze_project(
-        self,
-        project_path: str,
-        force: bool = False
-    ) -> bool:
+    async def should_analyze_project(self, project_path: str, force: bool = False) -> bool:
         """Determine if project should be analyzed.
 
         Args:
@@ -214,7 +190,7 @@ class ProjectAnalyzerSkill:
         cwd_path = Path(cwd)
 
         # Look for project root markers
-        markers = ['pyproject.toml', 'package.json', 'pom.xml', 'Gemfile', 'go.mod']
+        markers = ["pyproject.toml", "package.json", "pom.xml", "Gemfile", "go.mod"]
         project_root = None
 
         for marker in markers:
@@ -257,8 +233,16 @@ class ProjectAnalyzerSkill:
                 "Memory storage integration",
             ],
             "supported_languages": [
-                "Python", "JavaScript", "TypeScript",
-                "Java", "C++", "Rust", "Go", "Ruby", "PHP", "C#"
+                "Python",
+                "JavaScript",
+                "TypeScript",
+                "Java",
+                "C++",
+                "Rust",
+                "Go",
+                "Ruby",
+                "PHP",
+                "C#",
             ],
             "memory_storage": {
                 "semantic_memory": "Project overview and insights",

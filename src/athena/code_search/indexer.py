@@ -350,9 +350,7 @@ class IndexStatistics:
             "errors": self.errors,
             "indexing_time": round(self.indexing_time, 2),
             "units_per_file": (
-                round(self.total_units / self.indexed_files, 1)
-                if self.indexed_files > 0
-                else 0
+                round(self.total_units / self.indexed_files, 1) if self.indexed_files > 0 else 0
             ),
         }
 

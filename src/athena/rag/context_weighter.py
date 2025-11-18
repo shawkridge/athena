@@ -12,8 +12,8 @@ This module provides sophisticated context importance weighting using multiple f
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Any
-from datetime import datetime, timedelta
+from typing import Dict, List, Optional
+from datetime import datetime
 import math
 
 logger = logging.getLogger(__name__)
@@ -22,24 +22,24 @@ logger = logging.getLogger(__name__)
 class ContextType(Enum):
     """Types of context items."""
 
-    DOCUMENT = "document"           # Text document
-    CODE = "code"                  # Code snippet
-    EXAMPLE = "example"            # Usage example
-    DEFINITION = "definition"      # Term definition
+    DOCUMENT = "document"  # Text document
+    CODE = "code"  # Code snippet
+    EXAMPLE = "example"  # Usage example
+    DEFINITION = "definition"  # Term definition
     RELATIONSHIP = "relationship"  # Graph relationship
-    PROCEDURE = "procedure"        # Step-by-step procedure
-    METADATA = "metadata"          # Metadata/annotation
+    PROCEDURE = "procedure"  # Step-by-step procedure
+    METADATA = "metadata"  # Metadata/annotation
 
 
 @dataclass
 class WeightingFactors:
     """Factors for context weighting."""
 
-    semantic_weight: float = 0.35   # Relevance to query
-    temporal_weight: float = 0.15   # Freshness/recency
-    credibility_weight: float = 0.15 # Source credibility
-    connectivity_weight: float = 0.15 # Graph connectivity
-    applicability_weight: float = 0.10 # Procedural fit
+    semantic_weight: float = 0.35  # Relevance to query
+    temporal_weight: float = 0.15  # Freshness/recency
+    credibility_weight: float = 0.15  # Source credibility
+    connectivity_weight: float = 0.15  # Graph connectivity
+    applicability_weight: float = 0.10  # Procedural fit
     interaction_weight: float = 0.10  # User signals
 
     def validate(self) -> bool:
@@ -81,13 +81,13 @@ class ContextItem:
     id: str
     content: str
     context_type: ContextType
-    semantic_score: float           # 0-1, relevance to query
+    semantic_score: float  # 0-1, relevance to query
     created_at: datetime
     updated_at: datetime
-    source: str                     # Where this came from
-    credibility: float = 0.5        # 0-1, source credibility
-    connection_count: int = 0       # Num of connections in graph
-    view_count: int = 0             # User interactions
+    source: str  # Where this came from
+    credibility: float = 0.5  # 0-1, source credibility
+    connection_count: int = 0  # Num of connections in graph
+    view_count: int = 0  # User interactions
     metadata: Dict = field(default_factory=dict)
 
 
@@ -96,9 +96,9 @@ class WeightedContext:
     """Context item with calculated weight."""
 
     item: ContextItem
-    overall_weight: float           # Combined weight (0-1)
-    factor_scores: Dict[str, float] # Individual factor scores
-    ranking_position: int = 0       # Position in ranking
+    overall_weight: float  # Combined weight (0-1)
+    factor_scores: Dict[str, float]  # Individual factor scores
+    ranking_position: int = 0  # Position in ranking
 
 
 class TemporalWeighter:
@@ -236,7 +236,7 @@ class ApplicabilityWeighter:
         """
         # Base score by type
         type_applicability = {
-            ContextType.PROCEDURE: 0.9,      # Highly applicable
+            ContextType.PROCEDURE: 0.9,  # Highly applicable
             ContextType.EXAMPLE: 0.8,
             ContextType.CODE: 0.7,
             ContextType.DOCUMENT: 0.6,
@@ -252,7 +252,7 @@ class ApplicabilityWeighter:
             if item.context_type == context_type_query:
                 base_score = 0.95  # Perfect match
             elif item.context_type == ContextType.METADATA:
-                base_score = 0.2   # Metadata is less useful
+                base_score = 0.2  # Metadata is less useful
 
         return base_score
 

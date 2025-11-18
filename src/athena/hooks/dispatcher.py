@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from ..conversation.auto_recovery import AutoContextRecovery
 from ..conversation.context_recovery import ContextSnapshot
-from ..conversation.models import Conversation, ConversationTurn, Message, MessageRole
+from ..conversation.models import Conversation, Message, MessageRole
 from ..conversation.store import ConversationStore
 from ..core.database import Database
 from ..episodic.models import EpisodicEvent, EventContext, EventOutcome, EventType
@@ -118,9 +118,7 @@ class HookDispatcher:
         # 2. Check rate limit (fail if exceeded)
         if not self.rate_limiter.allow_execution(hook_id):
             wait_time = self.rate_limiter.get_estimated_wait_time(hook_id)
-            raise RuntimeError(
-                f"Hook {hook_id} rate limited. Wait {wait_time:.2f}s before retry."
-            )
+            raise RuntimeError(f"Hook {hook_id} rate limited. Wait {wait_time:.2f}s before retry.")
 
         # 3. Check for cascade (cycles, depth, breadth)
         try:
@@ -179,7 +177,9 @@ class HookDispatcher:
                 except Exception as e:
                     # Gracefully degrade if session_manager fails
                     # Don't let session manager errors break the hook
-                    self._hook_registry["session_start"]["last_error"] = f"session_manager: {str(e)}"
+                    self._hook_registry["session_start"][
+                        "last_error"
+                    ] = f"session_manager: {str(e)}"
 
             # Record episodic event
             context_obj = EventContext()
@@ -333,7 +333,9 @@ class HookDispatcher:
                     )
                 except Exception as e:
                     # Gracefully degrade if session_manager fails
-                    self._hook_registry["conversation_turn"]["last_error"] = f"session_manager: {str(e)}"
+                    self._hook_registry["conversation_turn"][
+                        "last_error"
+                    ] = f"session_manager: {str(e)}"
 
             # Record episodic event (conversation exchange)
             context_obj = EventContext(task=task, phase=phase)
@@ -548,7 +550,9 @@ class HookDispatcher:
             event = EpisodicEvent(
                 project_id=self.project_id,
                 session_id=self._active_session_id,
-                event_type=EventType.SUCCESS if outcome == EventOutcome.SUCCESS else EventType.ERROR,
+                event_type=(
+                    EventType.SUCCESS if outcome == EventOutcome.SUCCESS else EventType.ERROR
+                ),
                 content=content,
                 outcome=outcome,
                 context=EventContext(phase="task_completion"),
@@ -754,7 +758,9 @@ class HookDispatcher:
                     )
                 except Exception as e:
                     # Gracefully degrade if session_manager fails
-                    self._hook_registry["consolidation_complete"]["last_error"] = f"session_manager: {str(e)}"
+                    self._hook_registry["consolidation_complete"][
+                        "last_error"
+                    ] = f"session_manager: {str(e)}"
 
             event = EpisodicEvent(
                 project_id=self.project_id,
@@ -779,9 +785,7 @@ class HookDispatcher:
 
         return self._execute_with_safety("consolidation_complete", context, _execute)
 
-    def snapshot_conversation_for_recovery(
-        self, session_id: Optional[str] = None
-    ) -> int:
+    def snapshot_conversation_for_recovery(self, session_id: Optional[str] = None) -> int:
         """Snapshot current conversation for recovery after /clear.
 
         Args:
@@ -796,9 +800,7 @@ class HookDispatcher:
 
         # Get current conversation
         if self._active_conversation_id:
-            conv = self.conversation_store.get_conversation(
-                self._active_conversation_id
-            )
+            conv = self.conversation_store.get_conversation(self._active_conversation_id)
             if conv:
                 # Format conversation for display
                 content_lines = []

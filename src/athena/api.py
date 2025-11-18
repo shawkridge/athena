@@ -17,8 +17,6 @@ All operations are direct Python async functions with zero protocol overhead.
 Perfect for AI agents, scripts, and applications that need to remember things.
 """
 
-import asyncio
-from typing import Optional
 
 # Re-export all operations for convenient importing
 from athena.episodic.operations import (
@@ -216,6 +214,17 @@ async def initialize_athena() -> bool:
     global _initialized
 
     if _initialized:
+        # Even if initialized, ensure TodoWritePlanStore is set up
+        from athena.integration.database_sync import get_store, initialize as init_todowrite_store
+        from athena.core.database import Database
+
+        try:
+            get_store()  # Check if store exists
+        except RuntimeError:
+            # Store not initialized, re-initialize it
+            db = Database()
+            await db.initialize()
+            init_todowrite_store(db)
         return True
 
     try:
@@ -245,6 +254,7 @@ async def initialize_athena() -> bool:
 
         # Create stores (no .initialize() call needed - schema created above)
         from athena.planning.store import PlanningStore
+        from athena.integration.database_sync import initialize as init_todowrite_store
 
         episodic_store = EpisodicStore(db)
         memory_store = MemoryStore(db)
@@ -253,6 +263,9 @@ async def initialize_athena() -> bool:
         graph_store = GraphStore(db)
         meta_store = MetaMemoryStore(db)
         planning_store = PlanningStore(db)
+
+        # Initialize TodoWrite integration
+        init_todowrite_store(db)
 
         # Initialize operations modules with their stores
         episodic_ops.initialize(db, episodic_store)
@@ -268,7 +281,7 @@ async def initialize_athena() -> bool:
             memory_store=memory_store,
             episodic_store=episodic_store,
             procedural_store=procedural_store,
-            meta_store=meta_store
+            meta_store=meta_store,
         )
         consolidation_ops.initialize(db, consolidation_system)
         planning_ops.initialize(db, planning_store)
@@ -279,5 +292,6 @@ async def initialize_athena() -> bool:
     except Exception as e:
         print(f"Error initializing Athena: {e}")
         import traceback
+
         traceback.print_exc()
         return False

@@ -24,6 +24,7 @@ class MetaMemoryStore(BaseStore):
             db: Database instance
         """
         super().__init__(db)
+
     def _row_to_model(self, row) -> DomainCoverage:
         """Convert database row to DomainCoverage model.
 
@@ -34,22 +35,26 @@ class MetaMemoryStore(BaseStore):
             DomainCoverage instance
         """
         # Convert Row to dict if needed
-        row_dict = dict(row) if hasattr(row, 'keys') else row
+        row_dict = dict(row) if hasattr(row, "keys") else row
         return self._row_to_domain(row_dict)
 
     def _ensure_schema(self):
         """Ensure meta-memory tables exist."""
 
         # For PostgreSQL async databases, skip sync schema initialization
-        if not hasattr(self.db, 'conn'):
+        if not hasattr(self.db, "conn"):
             import logging
+
             logger = logging.getLogger(__name__)
-            logger.debug(f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema().")
+            logger.debug(
+                f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema()."
+            )
             return
         cursor = self.db.get_cursor()
 
         # Memory quality table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS memory_quality (
                 memory_id INTEGER NOT NULL,
                 memory_layer TEXT NOT NULL,
@@ -67,10 +72,12 @@ class MetaMemoryStore(BaseStore):
 
                 PRIMARY KEY (memory_id, memory_layer)
             )
-        """)
+        """
+        )
 
         # Domain coverage table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS domain_coverage (
                 id SERIAL PRIMARY KEY,
                 domain TEXT UNIQUE NOT NULL,
@@ -91,10 +98,12 @@ class MetaMemoryStore(BaseStore):
                 first_encounter INTEGER,
                 expertise_level TEXT DEFAULT 'beginner'
             )
-        """)
+        """
+        )
 
         # Knowledge transfer table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS knowledge_transfers (
                 id SERIAL PRIMARY KEY,
                 from_project_id INTEGER NOT NULL,
@@ -104,7 +113,8 @@ class MetaMemoryStore(BaseStore):
                 transferred_at INTEGER NOT NULL,
                 applicability_score REAL DEFAULT 0.0
             )
-        """)
+        """
+        )
 
         # Indices
         cursor.execute(
@@ -113,7 +123,9 @@ class MetaMemoryStore(BaseStore):
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_quality_usefulness ON memory_quality(usefulness_score)"
         )
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_domain_category ON domain_coverage(category)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_domain_category ON domain_coverage(category)"
+        )
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_transfer_from ON knowledge_transfers(from_project_id)"
         )
@@ -178,7 +190,7 @@ class MetaMemoryStore(BaseStore):
             WHERE memory_id = %s AND memory_layer = %s
         """,
             (memory_id, memory_layer),
-            fetch_one=True
+            fetch_one=True,
         )
 
         return self._row_to_quality(row) if row else None
@@ -246,8 +258,14 @@ class MetaMemoryStore(BaseStore):
             else domain.expertise_level
         )
 
-        last_updated_ts = int(domain.last_updated.timestamp()) if domain.last_updated else self.now_timestamp()
-        first_encounter_ts = int(domain.first_encounter.timestamp()) if domain.first_encounter else self.now_timestamp()
+        last_updated_ts = (
+            int(domain.last_updated.timestamp()) if domain.last_updated else self.now_timestamp()
+        )
+        first_encounter_ts = (
+            int(domain.first_encounter.timestamp())
+            if domain.first_encounter
+            else self.now_timestamp()
+        )
 
         cursor = self.execute(
             """
@@ -305,9 +323,7 @@ class MetaMemoryStore(BaseStore):
 
         # Get existing ID
         row = self.execute(
-            "SELECT id FROM domain_coverage WHERE domain = %s",
-            (domain.domain,),
-            fetch_one=True
+            "SELECT id FROM domain_coverage WHERE domain = %s", (domain.domain,), fetch_one=True
         )
         return row[0] if row else 0
 
@@ -321,9 +337,7 @@ class MetaMemoryStore(BaseStore):
             DomainCoverage if found, None otherwise
         """
         row = self.execute(
-            "SELECT * FROM domain_coverage WHERE domain = %s",
-            (domain_name,),
-            fetch_one=True
+            "SELECT * FROM domain_coverage WHERE domain = %s", (domain_name,), fetch_one=True
         )
         return self._row_to_domain(row) if row else None
 
@@ -414,9 +428,9 @@ class MetaMemoryStore(BaseStore):
             memory_id=row["memory_id"],
             memory_layer=row["memory_layer"],
             access_count=row["access_count"],
-            last_accessed=datetime.fromtimestamp(row["last_accessed"])
-            if row["last_accessed"]
-            else None,
+            last_accessed=(
+                datetime.fromtimestamp(row["last_accessed"]) if row["last_accessed"] else None
+            ),
             useful_count=row["useful_count"],
             usefulness_score=row["usefulness_score"],
             confidence=row["confidence"],
@@ -437,12 +451,14 @@ class MetaMemoryStore(BaseStore):
             entity_count=row["entity_count"],
             avg_confidence=row["avg_confidence"],
             avg_usefulness=row["avg_usefulness"],
-            last_updated=datetime.fromtimestamp(row["last_updated"]) if row["last_updated"] else None,
+            last_updated=(
+                datetime.fromtimestamp(row["last_updated"]) if row["last_updated"] else None
+            ),
             gaps=json.loads(row["gaps"]) if row["gaps"] else [],
             strength_areas=json.loads(row["strength_areas"]) if row["strength_areas"] else [],
-            first_encounter=datetime.fromtimestamp(row["first_encounter"])
-            if row["first_encounter"]
-            else None,
+            first_encounter=(
+                datetime.fromtimestamp(row["first_encounter"]) if row["first_encounter"] else None
+            ),
             expertise_level=ExpertiseLevel(row["expertise_level"]),
         )
 
@@ -461,9 +477,7 @@ class MetaMemoryStore(BaseStore):
     # ==================== ASYNC WRAPPER API ====================
     # These methods provide async wrappers for operations.py compatibility
 
-    async def rate_memory(
-        self, memory_id: int | str, scores: Dict[str, float]
-    ) -> bool:
+    async def rate_memory(self, memory_id: int | str, scores: Dict[str, float]) -> bool:
         """Rate a memory with multiple quality scores.
 
         Args:
@@ -477,14 +491,14 @@ class MetaMemoryStore(BaseStore):
         # This is a wrapper around update_confidence
         try:
             avg_score = sum(scores.values()) / len(scores) if scores else 0.5
-            self.update_confidence(int(memory_id) if isinstance(memory_id, str) else memory_id, "general", avg_score)
+            self.update_confidence(
+                int(memory_id) if isinstance(memory_id, str) else memory_id, "general", avg_score
+            )
             return True
         except Exception:
             return False
 
-    async def get_expertise(
-        self, topic: str | None = None, limit: int = 10
-    ) -> Dict[str, Any]:
+    async def get_expertise(self, topic: str | None = None, limit: int = 10) -> Dict[str, Any]:
         """Get expertise in a topic or domains.
 
         Args:
@@ -561,7 +575,9 @@ class MetaMemoryStore(BaseStore):
             "episodic_load": episodic_count,
             "semantic_load": semantic_count,
             "total_memories": episodic_count + semantic_count,
-            "load_percentage": (episodic_count + semantic_count) / 1000.0 * 100,  # Assume 1000 capacity
+            "load_percentage": (episodic_count + semantic_count)
+            / 1000.0
+            * 100,  # Assume 1000 capacity
         }
 
     async def update_cognitive_load(
@@ -606,7 +622,7 @@ class MetaMemoryStore(BaseStore):
             "domains_covered": len(domains),
             "avg_quality": float(avg_quality) if avg_quality else 0.5,
             "memory_layers": ["episodic", "semantic", "procedural", "prospective", "graph", "meta"],
-            "expertise_domains": len([d for d in domains if d.expertise_level.value != "novice"])
-            if domains
-            else 0,
+            "expertise_domains": (
+                len([d for d in domains if d.expertise_level.value != "novice"]) if domains else 0
+            ),
         }

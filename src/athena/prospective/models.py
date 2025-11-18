@@ -20,13 +20,13 @@ class TaskStatus(str, Enum):
 class TaskPhase(str, Enum):
     """Task execution phases (agentic workflow)."""
 
-    PLANNING = "planning"           # Initial planning phase
-    PLAN_READY = "plan_ready"       # Plan created and validated
-    EXECUTING = "executing"         # Currently executing plan
-    VERIFYING = "verifying"         # Verification phase
-    COMPLETED = "completed"         # Task completed
-    FAILED = "failed"               # Task failed
-    ABANDONED = "abandoned"         # Task abandoned
+    PLANNING = "planning"  # Initial planning phase
+    PLAN_READY = "plan_ready"  # Plan created and validated
+    EXECUTING = "executing"  # Currently executing plan
+    VERIFYING = "verifying"  # Verification phase
+    COMPLETED = "completed"  # Task completed
+    FAILED = "failed"  # Task failed
+    ABANDONED = "abandoned"  # Task abandoned
 
 
 class TaskPriority(str, Enum):
@@ -43,11 +43,11 @@ class Plan(BaseModel):
 
     id: Optional[int] = None
     task_id: Optional[int] = None
-    steps: list[str] = []                       # Ordered list of execution steps
-    estimated_duration_minutes: int = 30        # Total estimated time
+    steps: list[str] = []  # Ordered list of execution steps
+    estimated_duration_minutes: int = 30  # Total estimated time
     created_at: datetime = Field(default_factory=datetime.now)
-    validated: bool = False                     # Plan has been validated
-    validation_notes: Optional[str] = None      # Feedback from validation
+    validated: bool = False  # Plan has been validated
+    validation_notes: Optional[str] = None  # Feedback from validation
 
     model_config = ConfigDict(use_enum_values=True)
 
@@ -91,12 +91,12 @@ class ProspectiveTask(BaseModel):
     priority: TaskPriority = TaskPriority.MEDIUM
 
     # Phase (agentic workflow) - NEW FIELDS
-    phase: TaskPhase = TaskPhase.PLANNING              # Current execution phase
-    plan: Optional[Plan] = None                         # Execution plan
-    plan_created_at: Optional[datetime] = None         # When plan was created
-    phase_started_at: Optional[datetime] = None        # When current phase started
-    phase_metrics: list[PhaseMetrics] = []            # History of phase transitions
-    actual_duration_minutes: Optional[float] = None   # Actual execution time
+    phase: TaskPhase = TaskPhase.PLANNING  # Current execution phase
+    plan: Optional[Plan] = None  # Execution plan
+    plan_created_at: Optional[datetime] = None  # When plan was created
+    phase_started_at: Optional[datetime] = None  # When current phase started
+    phase_metrics: list[PhaseMetrics] = []  # History of phase transitions
+    actual_duration_minutes: Optional[float] = None  # Actual execution time
 
     # Assignment
     assignee: str = "user"  # user|claude|sub-agent:name
@@ -104,16 +104,18 @@ class ProspectiveTask(BaseModel):
     # Metadata
     notes: Optional[str] = None
     blocked_reason: Optional[str] = None
-    failure_reason: Optional[str] = None              # Why task failed (if failed)
-    lessons_learned: Optional[str] = None             # What we learned from this task
+    failure_reason: Optional[str] = None  # Why task failed (if failed)
+    lessons_learned: Optional[str] = None  # What we learned from this task
 
     # Learning Integration (FK to extracted_patterns)
-    learned_pattern_id: Optional[int] = None          # Pattern that informed this task
+    learned_pattern_id: Optional[int] = None  # Pattern that informed this task
 
     # Effort Prediction (Phase 1) - NEW FIELDS
-    effort_prediction: Optional[Dict[str, Any]] = None    # {effort, confidence, range, bias_factor, explanation}
-    effort_base_estimate: Optional[int] = None           # User's initial estimate in minutes
-    effort_task_type: Optional[str] = None               # Task type for prediction (feature, bugfix, etc)
+    effort_prediction: Optional[Dict[str, Any]] = (
+        None  # {effort, confidence, range, bias_factor, explanation}
+    )
+    effort_base_estimate: Optional[int] = None  # User's initial estimate in minutes
+    effort_task_type: Optional[str] = None  # Task type for prediction (feature, bugfix, etc)
 
     model_config = ConfigDict(use_enum_values=True)
 

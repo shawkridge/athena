@@ -1,11 +1,11 @@
 """System health check tool - monitor memory system status."""
+
 import time
 import logging
 from typing import Any, Dict
 from athena.tools import BaseTool, ToolMetadata
 from athena.core.exceptions import (
     DatabaseError,
-    handle_database_error,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,20 +38,20 @@ class HealthCheckTool(BaseTool):
                     "type": "boolean",
                     "description": "Include detailed per-layer statistics",
                     "required": False,
-                    "default": False
+                    "default": False,
                 },
                 "include_quality_metrics": {
                     "type": "boolean",
                     "description": "Include memory quality metrics",
                     "required": False,
-                    "default": False
+                    "default": False,
                 },
                 "check_database": {
                     "type": "boolean",
                     "description": "Run database integrity check",
                     "required": False,
-                    "default": False
-                }
+                    "default": False,
+                },
             },
             returns={
                 "type": "object",
@@ -59,23 +59,20 @@ class HealthCheckTool(BaseTool):
                     "status": {
                         "type": "string",
                         "enum": ["healthy", "degraded", "critical"],
-                        "description": "Overall system health status"
+                        "description": "Overall system health status",
                     },
                     "timestamp": {
                         "type": "string",
-                        "description": "When health check was performed"
+                        "description": "When health check was performed",
                     },
-                    "uptime_seconds": {
-                        "type": "number",
-                        "description": "System uptime in seconds"
-                    },
+                    "uptime_seconds": {"type": "number", "description": "System uptime in seconds"},
                     "database": {
                         "type": "object",
                         "properties": {
                             "size_mb": {"type": "number"},
                             "tables": {"type": "integer"},
-                            "integrity": {"type": "string"}
-                        }
+                            "integrity": {"type": "string"},
+                        },
                     },
                     "memory_layers": {
                         "type": "object",
@@ -84,54 +81,54 @@ class HealthCheckTool(BaseTool):
                                 "type": "object",
                                 "properties": {
                                     "count": {"type": "integer"},
-                                    "size_mb": {"type": "number"}
-                                }
+                                    "size_mb": {"type": "number"},
+                                },
                             },
                             "semantic": {
                                 "type": "object",
                                 "properties": {
                                     "count": {"type": "integer"},
-                                    "size_mb": {"type": "number"}
-                                }
+                                    "size_mb": {"type": "number"},
+                                },
                             },
                             "procedural": {
                                 "type": "object",
                                 "properties": {
                                     "count": {"type": "integer"},
-                                    "size_mb": {"type": "number"}
-                                }
+                                    "size_mb": {"type": "number"},
+                                },
                             },
                             "prospective": {
                                 "type": "object",
                                 "properties": {
                                     "count": {"type": "integer"},
-                                    "size_mb": {"type": "number"}
-                                }
+                                    "size_mb": {"type": "number"},
+                                },
                             },
                             "graph": {
                                 "type": "object",
                                 "properties": {
                                     "entities": {"type": "integer"},
-                                    "relations": {"type": "integer"}
-                                }
-                            }
-                        }
+                                    "relations": {"type": "integer"},
+                                },
+                            },
+                        },
                     },
                     "quality_metrics": {
                         "type": "object",
                         "properties": {
                             "average_relevance": {"type": "number"},
                             "recall_accuracy": {"type": "number"},
-                            "consolidation_health": {"type": "number"}
+                            "consolidation_health": {"type": "number"},
                         },
-                        "description": "Available if include_quality_metrics=true"
+                        "description": "Available if include_quality_metrics=true",
                     },
                     "check_time_ms": {
                         "type": "number",
-                        "description": "Time taken to perform health check"
-                    }
-                }
-            }
+                        "description": "Time taken to perform health check",
+                    },
+                },
+            },
         )
 
     def validate_input(self, **kwargs) -> None:
@@ -180,22 +177,23 @@ class HealthCheckTool(BaseTool):
                 "semantic": {"count": 0, "size_mb": 0.0},
                 "procedural": {"count": 0, "size_mb": 0.0},
                 "prospective": {"count": 0, "size_mb": 0.0},
-                "graph": {"entities": 0, "relations": 0}
+                "graph": {"entities": 0, "relations": 0},
             }
             quality_metrics = {
                 "average_relevance": 0.0,
                 "recall_accuracy": 0.0,
-                "consolidation_health": 0.0
+                "consolidation_health": 0.0,
             }
 
             try:
                 # Get database statistics
                 from athena.core.database import get_database
+
                 db = get_database()
 
                 try:
                     # Get database file size
-                    if hasattr(db, 'db_path'):
+                    if hasattr(db, "db_path"):
                         db_path = db.db_path
                         if os.path.exists(db_path):
                             db_size_mb = os.path.getsize(db_path) / (1024 * 1024)
@@ -204,7 +202,9 @@ class HealthCheckTool(BaseTool):
                     cursor = db.conn.cursor()
 
                     # Count tables
-                    cursor.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'")
+                    cursor.execute(
+                        "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public'"
+                    )
                     table_count = cursor.fetchone()[0]
 
                     # Get episodic events count
@@ -266,7 +266,11 @@ class HealthCheckTool(BaseTool):
 
             # Determine overall status
             total_items = sum(v.get("count", v.get("entities", 0)) for v in memory_stats.values())
-            status = "healthy" if total_items > 0 and db_integrity == "ok" else ("degraded" if total_items > 0 else "critical")
+            status = (
+                "healthy"
+                if total_items > 0 and db_integrity == "ok"
+                else ("degraded" if total_items > 0 else "critical")
+            )
 
             result = {
                 "status": status,
@@ -275,11 +279,11 @@ class HealthCheckTool(BaseTool):
                 "database": {
                     "size_mb": db_size_mb,
                     "tables": table_count,
-                    "integrity": db_integrity
+                    "integrity": db_integrity,
                 },
                 "memory_layers": memory_stats,
                 "total_memories": total_items,
-                "check_time_ms": elapsed
+                "check_time_ms": elapsed,
             }
 
             if include_quality:
@@ -298,11 +302,11 @@ class HealthCheckTool(BaseTool):
             return {
                 "error": str(e),
                 "status": "error",
-                "check_time_ms": (time.time() - start_time) * 1000
+                "check_time_ms": (time.time() - start_time) * 1000,
             }
         except Exception as e:
             return {
                 "error": f"Unexpected error: {str(e)}",
                 "status": "error",
-                "check_time_ms": (time.time() - start_time) * 1000
+                "check_time_ms": (time.time() - start_time) * 1000,
             }

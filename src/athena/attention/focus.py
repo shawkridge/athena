@@ -39,7 +39,7 @@ class AttentionFocus:
         memory_layer: str,
         weight: float = 1.0,
         focus_type: AttentionType = AttentionType.PRIMARY,
-        transition_type: TransitionType = TransitionType.VOLUNTARY
+        transition_type: TransitionType = TransitionType.VOLUNTARY,
     ) -> int:
         """Set attention focus on a specific memory.
 
@@ -69,21 +69,30 @@ class AttentionFocus:
         # Create new focus state
         started_at = datetime.now()
         with self.db.get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 INSERT INTO attention_state
                 (project_id, focus_memory_id, focus_layer, attention_weight,
                  focus_type, started_at, updated_at, transition_type, previous_focus_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (project_id, memory_id, memory_layer, weight,
-                  focus_type.value, started_at, started_at, transition_type.value,
-                  previous_focus_id))
+            """,
+                (
+                    project_id,
+                    memory_id,
+                    memory_layer,
+                    weight,
+                    focus_type.value,
+                    started_at,
+                    started_at,
+                    transition_type.value,
+                    previous_focus_id,
+                ),
+            )
             conn.commit()
             return cursor.lastrowid
 
     def get_focus(
-        self,
-        project_id: int,
-        focus_type: Optional[AttentionType] = None
+        self, project_id: int, focus_type: Optional[AttentionType] = None
     ) -> Optional[FocusState]:
         """Get current attention focus.
 
@@ -125,11 +134,14 @@ class AttentionFocus:
             List of FocusState objects sorted by weight (descending)
         """
         with self.db.get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT * FROM attention_state
                 WHERE project_id = ? AND ended_at IS NULL
                 ORDER BY attention_weight DESC
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
             rows = cursor.fetchall()
 
         return [self._row_to_focus_state(row) for row in rows]
@@ -139,7 +151,7 @@ class AttentionFocus:
         project_id: int,
         new_memory_id: int,
         new_layer: str,
-        transition_type: TransitionType = TransitionType.VOLUNTARY
+        transition_type: TransitionType = TransitionType.VOLUNTARY,
     ) -> int:
         """Shift primary focus to a new memory.
 
@@ -158,7 +170,7 @@ class AttentionFocus:
             memory_layer=new_layer,
             weight=1.0,
             focus_type=AttentionType.PRIMARY,
-            transition_type=transition_type
+            transition_type=transition_type,
         )
 
     def return_to_previous(self, project_id: int) -> Optional[int]:
@@ -177,10 +189,13 @@ class AttentionFocus:
 
         # Get previous focus details
         with self.db.get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT focus_memory_id, focus_layer FROM attention_state
                 WHERE id = ?
-            """, (current.previous_focus_id,))
+            """,
+                (current.previous_focus_id,),
+            )
             row = cursor.fetchone()
 
         if not row:
@@ -189,9 +204,9 @@ class AttentionFocus:
         # Restore previous focus
         return self.shift_focus(
             project_id=project_id,
-            new_memory_id=row['focus_memory_id'],
-            new_layer=row['focus_layer'],
-            transition_type=TransitionType.RETURN
+            new_memory_id=row["focus_memory_id"],
+            new_layer=row["focus_layer"],
+            transition_type=TransitionType.RETURN,
         )
 
     def decay_focus(self, project_id: int, decay_rate: float = 0.1):
@@ -205,27 +220,29 @@ class AttentionFocus:
 
         with self.db.get_connection() as conn:
             # Decay all active focuses
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE attention_state
                 SET attention_weight = attention_weight * (1.0 - ?),
                     updated_at = CURRENT_TIMESTAMP
                 WHERE project_id = ? AND ended_at IS NULL
-            """, (decay_rate, project_id))
+            """,
+                (decay_rate, project_id),
+            )
 
             # End focuses that have decayed below threshold
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE attention_state
                 SET ended_at = CURRENT_TIMESTAMP
                 WHERE project_id = ? AND ended_at IS NULL AND attention_weight < 0.1
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
 
             conn.commit()
 
-    def get_focus_history(
-        self,
-        project_id: int,
-        limit: int = 10
-    ) -> List[FocusState]:
+    def get_focus_history(self, project_id: int, limit: int = 10) -> List[FocusState]:
         """Get recent focus history.
 
         Args:
@@ -236,12 +253,15 @@ class AttentionFocus:
             List of FocusState objects (most recent first)
         """
         with self.db.get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT * FROM attention_state
                 WHERE project_id = ?
                 ORDER BY started_at DESC
                 LIMIT ?
-            """, (project_id, limit))
+            """,
+                (project_id, limit),
+            )
             rows = cursor.fetchall()
 
         return [self._row_to_focus_state(row) for row in rows]
@@ -256,17 +276,20 @@ class AttentionFocus:
             timedelta of focus duration, None if not found
         """
         with self.db.get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT started_at, ended_at FROM attention_state
                 WHERE id = ?
-            """, (focus_id,))
+            """,
+                (focus_id,),
+            )
             row = cursor.fetchone()
 
         if not row:
             return None
 
-        started = datetime.fromisoformat(row['started_at'])
-        ended = datetime.fromisoformat(row['ended_at']) if row['ended_at'] else datetime.now()
+        started = datetime.fromisoformat(row["started_at"])
+        ended = datetime.fromisoformat(row["ended_at"]) if row["ended_at"] else datetime.now()
 
         return ended - started
 
@@ -277,11 +300,14 @@ class AttentionFocus:
             focus_id: Focus state ID to end
         """
         with self.db.get_connection() as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE attention_state
                 SET ended_at = CURRENT_TIMESTAMP
                 WHERE id = ? AND ended_at IS NULL
-            """, (focus_id,))
+            """,
+                (focus_id,),
+            )
             conn.commit()
 
     def _row_to_focus_state(self, row) -> FocusState:
@@ -294,15 +320,17 @@ class AttentionFocus:
             FocusState object
         """
         return FocusState(
-            id=row['id'],
-            project_id=row['project_id'],
-            focus_memory_id=row['focus_memory_id'],
-            focus_layer=row['focus_layer'],
-            attention_weight=row['attention_weight'],
-            focus_type=AttentionType(row['focus_type']),
-            started_at=datetime.fromisoformat(row['started_at']),
-            updated_at=datetime.fromisoformat(row['updated_at']),
-            ended_at=datetime.fromisoformat(row['ended_at']) if row['ended_at'] else None,
-            transition_type=TransitionType(row['transition_type']) if row['transition_type'] else None,
-            previous_focus_id=row['previous_focus_id']
+            id=row["id"],
+            project_id=row["project_id"],
+            focus_memory_id=row["focus_memory_id"],
+            focus_layer=row["focus_layer"],
+            attention_weight=row["attention_weight"],
+            focus_type=AttentionType(row["focus_type"]),
+            started_at=datetime.fromisoformat(row["started_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+            ended_at=datetime.fromisoformat(row["ended_at"]) if row["ended_at"] else None,
+            transition_type=(
+                TransitionType(row["transition_type"]) if row["transition_type"] else None
+            ),
+            previous_focus_id=row["previous_focus_id"],
         )

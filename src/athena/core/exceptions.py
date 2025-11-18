@@ -48,6 +48,7 @@ logger = logging.getLogger(__name__)
 # BASE EXCEPTION
 # ============================================================================
 
+
 class AthenaError(Exception):
     """Base exception for all Athena errors."""
 
@@ -80,23 +81,28 @@ class AthenaError(Exception):
 # STORAGE ERRORS
 # ============================================================================
 
+
 class StorageError(AthenaError):
     """Base exception for storage-related errors."""
+
     pass
 
 
 class DatabaseError(StorageError):
     """Database operation failed (query, transaction, etc.)."""
+
     pass
 
 
 class ConnectionError(StorageError):
     """Failed to connect to database or storage backend."""
+
     pass
 
 
 class SchemaError(StorageError):
     """Database schema is invalid or missing required tables."""
+
     pass
 
 
@@ -104,23 +110,28 @@ class SchemaError(StorageError):
 # DATA ERRORS
 # ============================================================================
 
+
 class DataError(AthenaError):
     """Base exception for data-related errors."""
+
     pass
 
 
 class ParseError(DataError):
     """Failed to parse data (JSON, CSV, AST, etc.)."""
+
     pass
 
 
 class ValidationError(DataError):
     """Data validation failed."""
+
     pass
 
 
 class EncodingError(DataError):
     """Text encoding/decoding failed."""
+
     pass
 
 
@@ -128,23 +139,28 @@ class EncodingError(DataError):
 # OPERATION ERRORS
 # ============================================================================
 
+
 class OperationError(AthenaError):
     """Base exception for operation-related errors."""
+
     pass
 
 
 class QueryError(OperationError):
     """Query execution or result processing failed."""
+
     pass
 
 
 class TransactionError(OperationError):
     """Transaction commit/rollback failed."""
+
     pass
 
 
 class TimeoutError(OperationError):
     """Operation exceeded timeout limit."""
+
     pass
 
 
@@ -152,43 +168,52 @@ class TimeoutError(OperationError):
 # LAYER-SPECIFIC ERRORS
 # ============================================================================
 
+
 class LayerError(AthenaError):
     """Base exception for layer-specific errors."""
+
     pass
 
 
 class EpisodicError(LayerError):
     """Error in episodic memory (Layer 1)."""
+
     pass
 
 
 class SemanticError(LayerError):
     """Error in semantic memory (Layer 2)."""
+
     pass
 
 
 class ProceduralError(LayerError):
     """Error in procedural memory (Layer 3)."""
+
     pass
 
 
 class ProspectiveError(LayerError):
     """Error in prospective memory (Layer 4)."""
+
     pass
 
 
 class GraphError(LayerError):
     """Error in knowledge graph (Layer 5)."""
+
     pass
 
 
 class MetaError(LayerError):
     """Error in meta-memory (Layer 6)."""
+
     pass
 
 
 class ConsolidationError(LayerError):
     """Error in consolidation (Layer 7)."""
+
     pass
 
 
@@ -196,18 +221,22 @@ class ConsolidationError(LayerError):
 # INTEGRATION ERRORS
 # ============================================================================
 
+
 class IntegrationError(AthenaError):
     """Base exception for cross-layer integration errors."""
+
     pass
 
 
 class BridgeError(IntegrationError):
     """Error in bridge/adapter between layers."""
+
     pass
 
 
 class LayerCommunicationError(IntegrationError):
     """Failed to communicate between layers."""
+
     pass
 
 
@@ -215,29 +244,35 @@ class LayerCommunicationError(IntegrationError):
 # SYSTEM ERRORS
 # ============================================================================
 
+
 class SystemError(AthenaError):
     """Base exception for system-level errors."""
+
     pass
 
 
 class ConfigurationError(SystemError):
     """Configuration is invalid or missing required settings."""
+
     pass
 
 
 class ResourceError(SystemError):
     """Required resource is unavailable (memory, file, etc.)."""
+
     pass
 
 
 class StateError(SystemError):
     """System is in an invalid state for the requested operation."""
+
     pass
 
 
 # ============================================================================
 # ERROR CONTEXT BUILDER
 # ============================================================================
+
 
 @dataclass
 class ErrorContext:
@@ -263,6 +298,7 @@ class ErrorContext:
 # ============================================================================
 # ERROR HANDLER UTILITIES
 # ============================================================================
+
 
 def handle_database_error(
     error: Exception,
@@ -341,6 +377,7 @@ def handle_parse_error(
         )
 
     import json
+
     if isinstance(error, json.JSONDecodeError):
         return ParseError(
             message=f"Invalid JSON: {str(error)} at line {error.lineno}",
@@ -413,16 +450,13 @@ def handle_io_error(
 # GRACEFUL DEGRADATION UTILITIES
 # ============================================================================
 
+
 def ignore_error(error: Exception, logger_obj=None, operation: str = "operation") -> None:
     """Log error at debug level for graceful degradation."""
     if logger_obj:
-        logger_obj.debug(
-            f"Gracefully ignoring {operation}: {type(error).__name__}: {error}"
-        )
+        logger_obj.debug(f"Gracefully ignoring {operation}: {type(error).__name__}: {error}")
     else:
-        logger.debug(
-            f"Gracefully ignoring {operation}: {type(error).__name__}: {error}"
-        )
+        logger.debug(f"Gracefully ignoring {operation}: {type(error).__name__}: {error}")
 
 
 def log_and_continue(
@@ -437,7 +471,5 @@ def log_and_continue(
             f"Error in {operation}, returning default: {type(error).__name__}: {error}"
         )
     else:
-        logger.warning(
-            f"Error in {operation}, returning default: {type(error).__name__}: {error}"
-        )
+        logger.warning(f"Error in {operation}, returning default: {type(error).__name__}: {error}")
     return default_value

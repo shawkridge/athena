@@ -8,8 +8,6 @@ from ..core.base_store import BaseStore
 
 from .models import (
     CursorPosition,
-    FileOpenMode,
-    GitChangeType,
     GitDiff,
     GitStatus,
     IDEActivity,
@@ -27,6 +25,7 @@ class IDEContextStore(BaseStore):
     def __init__(self, db: Database):
         """Initialize store with database connection."""
         super().__init__(db)
+
     def _row_to_model(self, row) -> IDEFile:
         """Convert database row to IDEFile model.
 
@@ -37,7 +36,7 @@ class IDEContextStore(BaseStore):
             IDEFile instance
         """
         # Convert Row to dict if needed
-        row_dict = dict(row) if hasattr(row, 'keys') else row
+        row_dict = dict(row) if hasattr(row, "keys") else row
         return self._row_to_ide_file(row_dict)
 
     def _ensure_schema(self):
@@ -189,12 +188,16 @@ class IDEContextStore(BaseStore):
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_cursor_positions_file ON cursor_positions(file_id)"
         )
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_git_status_project ON git_status(project_id)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_git_status_project ON git_status(project_id)"
+        )
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_git_diffs_project ON git_diffs(project_id)")
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_snapshots_session ON ide_context_snapshots(session_id)"
         )
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_activity_project ON ide_activity(project_id)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_activity_project ON ide_activity(project_id)"
+        )
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON ide_activity(timestamp)"
         )
@@ -208,7 +211,7 @@ class IDEContextStore(BaseStore):
         existing = self.execute(
             "SELECT id FROM ide_files WHERE project_id = ? AND file_path = ?",
             (file.project_id, file.file_path),
-            fetch_one=True
+            fetch_one=True,
         )
 
         if existing:
@@ -282,7 +285,7 @@ class IDEContextStore(BaseStore):
         rows = self.execute(
             "SELECT * FROM ide_files WHERE project_id = ? AND is_open = 1 ORDER BY opened_at DESC",
             (project_id,),
-            fetch_all=True
+            fetch_all=True,
         )
         return [self._row_to_ide_file(row) for row in rows]
 
@@ -322,7 +325,7 @@ class IDEContextStore(BaseStore):
         row = self.execute(
             "SELECT * FROM cursor_positions WHERE file_id = ? ORDER BY timestamp DESC, id DESC LIMIT 1",
             (file_id,),
-            fetch_one=True
+            fetch_one=True,
         )
         return self._row_to_cursor_position(row) if row else None
 
@@ -333,7 +336,7 @@ class IDEContextStore(BaseStore):
         existing = self.execute(
             "SELECT id FROM git_status WHERE project_id = ? AND file_path = ?",
             (status.project_id, status.file_path),
-            fetch_one=True
+            fetch_one=True,
         )
 
         if existing:
@@ -404,7 +407,7 @@ class IDEContextStore(BaseStore):
         row = self.execute(
             "SELECT * FROM git_status WHERE project_id = ? AND file_path = ?",
             (project_id, file_path),
-            fetch_one=True
+            fetch_one=True,
         )
         return self._row_to_git_status(row) if row else None
 
@@ -413,7 +416,7 @@ class IDEContextStore(BaseStore):
         rows = self.execute(
             "SELECT * FROM git_status WHERE project_id = ? AND (is_staged = 1 OR change_type != 'unmodified') ORDER BY file_path",
             (project_id,),
-            fetch_all=True
+            fetch_all=True,
         )
         return [self._row_to_git_status(row) for row in rows]
 
@@ -450,7 +453,7 @@ class IDEContextStore(BaseStore):
         rows = self.execute(
             "SELECT * FROM git_diffs WHERE project_id = ? AND file_path = ? ORDER BY captured_at DESC LIMIT ?",
             (project_id, file_path, limit),
-            fetch_all=True
+            fetch_all=True,
         )
         return [self._row_to_git_diff(row) for row in rows]
 
@@ -499,7 +502,7 @@ class IDEContextStore(BaseStore):
         row = self.execute(
             "SELECT * FROM ide_context_snapshots WHERE project_id = ? ORDER BY captured_at DESC LIMIT 1",
             (project_id,),
-            fetch_one=True
+            fetch_one=True,
         )
         return self._row_to_context_snapshot(row) if row else None
 
@@ -537,7 +540,7 @@ class IDEContextStore(BaseStore):
         rows = self.execute(
             "SELECT * FROM ide_activity WHERE project_id = ? ORDER BY timestamp DESC LIMIT ?",
             (project_id, limit),
-            fetch_all=True
+            fetch_all=True,
         )
         return [self._row_to_activity(row) for row in rows]
 

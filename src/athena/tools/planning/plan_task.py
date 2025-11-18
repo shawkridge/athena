@@ -50,4 +50,3 @@ def plan_task(description: str, depth: int = 3, include_risks: bool = True):
         return plan
     except Exception as e:
         raise RuntimeError(f"Task planning failed: {str(e)}") from e
-

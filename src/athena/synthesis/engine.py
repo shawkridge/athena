@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 class SolutionDimension(Enum):
     """Key dimensions for comparing solutions."""
+
     COMPLEXITY = "complexity"  # Low to high
     PERFORMANCE = "performance"  # Speed/efficiency
     MAINTAINABILITY = "maintainability"  # Easy to understand/modify
@@ -29,6 +30,7 @@ class SolutionDimension(Enum):
 @dataclass
 class TradeOff:
     """A trade-off between two dimensions."""
+
     gains: SolutionDimension  # What improves
     loses: SolutionDimension  # What worsens
     magnitude: float  # How much (0.0-1.0)
@@ -39,6 +41,7 @@ class TradeOff:
 @dataclass
 class SolutionMetrics:
     """Metrics for a solution approach."""
+
     dimension: SolutionDimension
     score: float  # 0.0 (worst) to 1.0 (best)
     evidence: str  # Why this score
@@ -48,6 +51,7 @@ class SolutionMetrics:
 @dataclass
 class SolutionApproach:
     """A complete solution approach with rationale and trade-offs."""
+
     approach_id: str
     name: str
     description: str
@@ -90,6 +94,7 @@ class SolutionApproach:
 @dataclass
 class Synthesis:
     """Complete synthesis of multiple solution approaches."""
+
     synthesis_id: str
     problem_statement: str
     context: Dict[str, Any]
@@ -688,17 +693,13 @@ class SynthesisEngine:
 
             # Find dimensions where this approach differs significantly
             for dimension in SolutionDimension:
-                ref_score = ref_approach.metrics.get(dimension, SolutionMetrics(
-                    dimension=dimension,
-                    score=0.5,
-                    evidence=""
-                )).score
+                ref_score = ref_approach.metrics.get(
+                    dimension, SolutionMetrics(dimension=dimension, score=0.5, evidence="")
+                ).score
 
-                curr_score = approach.metrics.get(dimension, SolutionMetrics(
-                    dimension=dimension,
-                    score=0.5,
-                    evidence=""
-                )).score
+                curr_score = approach.metrics.get(
+                    dimension, SolutionMetrics(dimension=dimension, score=0.5, evidence="")
+                ).score
 
                 diff = abs(ref_score - curr_score)
                 if diff > 0.3:  # Significant difference
@@ -727,7 +728,9 @@ class SynthesisEngine:
                 best_score = avg_score
                 best_approach = approach
 
-        synthesis.summary = f"Generated {num_approaches} distinct approaches to '{synthesis.problem_statement}'"
+        synthesis.summary = (
+            f"Generated {num_approaches} distinct approaches to '{synthesis.problem_statement}'"
+        )
         synthesis.key_insight = f"Each approach makes different trade-offs. {best_approach.name if best_approach else ''} offers the best overall balance."
         synthesis.recommendation = best_approach.name if best_approach else None
 

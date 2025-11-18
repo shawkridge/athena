@@ -7,7 +7,7 @@ Provides:
 - Dead code metrics and statistics
 """
 
-from typing import Optional, Dict, List, Set, Tuple
+from typing import Dict, List, Set
 from dataclasses import dataclass
 
 from .symbol_models import Symbol, SymbolType
@@ -17,6 +17,7 @@ from .dependency_resolver import DependencyResolver, SymbolReference
 @dataclass
 class DeadCodeIssue:
     """A detected dead code issue."""
+
     symbol: Symbol
     issue_type: str  # unused_symbol, unused_import, etc.
     references_count: int
@@ -210,9 +211,18 @@ class DeadCodeAnalyzer:
         """Determine severity level of unused symbol."""
         if symbol.symbol_type in [SymbolType.CONSTANT, SymbolType.ENUM]:
             return "info"
-        elif symbol.symbol_type in [SymbolType.FUNCTION, SymbolType.METHOD, SymbolType.ASYNC_FUNCTION]:
+        elif symbol.symbol_type in [
+            SymbolType.FUNCTION,
+            SymbolType.METHOD,
+            SymbolType.ASYNC_FUNCTION,
+        ]:
             return "warning"
-        elif symbol.symbol_type in [SymbolType.CLASS, SymbolType.INTERFACE, SymbolType.DATACLASS, SymbolType.PROTOCOL]:
+        elif symbol.symbol_type in [
+            SymbolType.CLASS,
+            SymbolType.INTERFACE,
+            SymbolType.DATACLASS,
+            SymbolType.PROTOCOL,
+        ]:
             return "error"
         return "warning"
 

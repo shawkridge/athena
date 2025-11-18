@@ -9,7 +9,6 @@ import logging
 import os
 from dataclasses import dataclass, field, asdict
 from enum import Enum
-from pathlib import Path
 from typing import Dict, List, Optional, Set, Any
 
 logger = logging.getLogger(__name__)
@@ -369,9 +368,7 @@ class SRTPolicy:
                 "mode": self.network_mode.value,
                 "rules": [rule.to_dict() for rule in self.network_rules],
             },
-            "environment": {
-                name: var.to_dict() for name, var in self.environment_vars.items()
-            },
+            "environment": {name: var.to_dict() for name, var in self.environment_vars.items()},
         }
 
     def save(self, filepath: str) -> None:
@@ -405,13 +402,10 @@ class SRTPolicy:
             FilesystemRule(**rule) for rule in data.get("filesystem", {}).get("rules", [])
         ]
 
-        network_rules = [
-            NetworkRule(**rule) for rule in data.get("network", {}).get("rules", [])
-        ]
+        network_rules = [NetworkRule(**rule) for rule in data.get("network", {}).get("rules", [])]
 
         environment_vars = {
-            name: EnvironmentVariable(**var)
-            for name, var in data.get("environment", {}).items()
+            name: EnvironmentVariable(**var) for name, var in data.get("environment", {}).items()
         }
 
         network_mode = NetworkAccessMode(data.get("network", {}).get("mode", "none"))
@@ -471,9 +465,10 @@ DEVELOPMENT_POLICY = (
 # SandboxConfig and SandboxMode for test compatibility
 # ============================================================================
 
+
 class SandboxMode(str, Enum):
     """Sandbox execution modes."""
-    
+
     MOCK = "mock"  # Mock execution (no actual sandboxing)
     RESTRICTED_PYTHON = "restricted_python"  # RestrictedPython sandbox
     SRT = "srt"  # Full SRT sandbox
@@ -482,7 +477,7 @@ class SandboxMode(str, Enum):
 @dataclass
 class SandboxConfig:
     """Configuration for sandbox execution."""
-    
+
     mode: SandboxMode = SandboxMode.MOCK
     timeout: int = 30
     max_memory: int = 512  # MB
@@ -490,17 +485,17 @@ class SandboxConfig:
     allow_network: bool = False
     allowed_paths: List[str] = field(default_factory=list)
     blocked_paths: List[str] = field(default_factory=list)
-    
+
     @classmethod
     def default(cls) -> "SandboxConfig":
         """Create default sandbox configuration."""
         return cls(mode=SandboxMode.MOCK)
-    
+
     @classmethod
     def restricted(cls) -> "SandboxConfig":
         """Create restricted sandbox configuration."""
         return cls(mode=SandboxMode.RESTRICTED_PYTHON)
-    
+
     @classmethod
     def full(cls) -> "SandboxConfig":
         """Create full SRT sandbox configuration."""

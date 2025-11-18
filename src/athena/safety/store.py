@@ -1,6 +1,5 @@
 """Safety policy and audit trail storage operations."""
 
-import json
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 
@@ -11,8 +10,6 @@ from .models import (
     ApprovalStatus,
     AuditEntry,
     ChangeRecommendation,
-    ChangeRiskLevel,
-    ChangeType,
     CodeSnapshot,
     SafetyPolicy,
 )
@@ -31,6 +28,7 @@ class SafetyStore(BaseStore):
             db: Database instance
         """
         super().__init__(db)
+
     def _row_to_model(self, row: Dict[str, Any]) -> Optional[SafetyPolicy]:
         """Convert database row to SafetyPolicy model.
 
@@ -271,10 +269,30 @@ class SafetyStore(BaseStore):
 
     def get_policy(self, policy_id: int) -> Optional[SafetyPolicy]:
         """Get a safety policy by ID."""
-        row = self.execute("SELECT * FROM safety_policies WHERE id = ?", (policy_id,), fetch_one=True)
+        row = self.execute(
+            "SELECT * FROM safety_policies WHERE id = ?", (policy_id,), fetch_one=True
+        )
         if not row:
             return None
-        col_names = ["id", "project_id", "name", "description", "approval_required_for", "auto_approve_threshold", "auto_reject_threshold", "require_tests_for", "min_test_coverage", "audit_enabled", "keep_pre_modification_snapshot", "require_human_approval", "max_approval_time_hours", "enable_rollback", "keep_rollback_snapshots", "created_at", "updated_at"]
+        col_names = [
+            "id",
+            "project_id",
+            "name",
+            "description",
+            "approval_required_for",
+            "auto_approve_threshold",
+            "auto_reject_threshold",
+            "require_tests_for",
+            "min_test_coverage",
+            "audit_enabled",
+            "keep_pre_modification_snapshot",
+            "require_human_approval",
+            "max_approval_time_hours",
+            "enable_rollback",
+            "keep_rollback_snapshots",
+            "created_at",
+            "updated_at",
+        ]
         return self._row_to_policy(dict(zip(col_names, row)))
 
     def get_policy_by_project(self, project_id: int) -> Optional[SafetyPolicy]:
@@ -286,7 +304,25 @@ class SafetyStore(BaseStore):
         )
         if not row:
             return None
-        col_names = ["id", "project_id", "name", "description", "approval_required_for", "auto_approve_threshold", "auto_reject_threshold", "require_tests_for", "min_test_coverage", "audit_enabled", "keep_pre_modification_snapshot", "require_human_approval", "max_approval_time_hours", "enable_rollback", "keep_rollback_snapshots", "created_at", "updated_at"]
+        col_names = [
+            "id",
+            "project_id",
+            "name",
+            "description",
+            "approval_required_for",
+            "auto_approve_threshold",
+            "auto_reject_threshold",
+            "require_tests_for",
+            "min_test_coverage",
+            "audit_enabled",
+            "keep_pre_modification_snapshot",
+            "require_human_approval",
+            "max_approval_time_hours",
+            "enable_rollback",
+            "keep_rollback_snapshots",
+            "created_at",
+            "updated_at",
+        ]
         return self._row_to_policy(dict(zip(col_names, row)))
 
     def _row_to_policy(self, row: Dict[str, Any]) -> SafetyPolicy:
@@ -363,10 +399,31 @@ class SafetyStore(BaseStore):
 
     def get_approval_request(self, request_id: int) -> Optional[ApprovalRequest]:
         """Get an approval request by ID."""
-        row = self.execute("SELECT * FROM approval_requests WHERE id = ?", (request_id,), fetch_one=True)
+        row = self.execute(
+            "SELECT * FROM approval_requests WHERE id = ?", (request_id,), fetch_one=True
+        )
         if not row:
             return None
-        col_names = ["id", "project_id", "agent_id", "change_type", "change_description", "confidence_score", "risk_level", "affected_files", "affected_lines", "pre_snapshot_id", "status", "requested_at", "approved_by", "approved_at", "rejection_reason", "auto_approved", "auto_approved_reason", "policy_id"]
+        col_names = [
+            "id",
+            "project_id",
+            "agent_id",
+            "change_type",
+            "change_description",
+            "confidence_score",
+            "risk_level",
+            "affected_files",
+            "affected_lines",
+            "pre_snapshot_id",
+            "status",
+            "requested_at",
+            "approved_by",
+            "approved_at",
+            "rejection_reason",
+            "auto_approved",
+            "auto_approved_reason",
+            "policy_id",
+        ]
         return self._row_to_approval_request(dict(zip(col_names, row)))
 
     def get_pending_requests(self, project_id: int) -> List[ApprovalRequest]:
@@ -380,7 +437,26 @@ class SafetyStore(BaseStore):
             (project_id,),
             fetch_all=True,
         )
-        col_names = ["id", "project_id", "agent_id", "change_type", "change_description", "confidence_score", "risk_level", "affected_files", "affected_lines", "pre_snapshot_id", "status", "requested_at", "approved_by", "approved_at", "rejection_reason", "auto_approved", "auto_approved_reason", "policy_id"]
+        col_names = [
+            "id",
+            "project_id",
+            "agent_id",
+            "change_type",
+            "change_description",
+            "confidence_score",
+            "risk_level",
+            "affected_files",
+            "affected_lines",
+            "pre_snapshot_id",
+            "status",
+            "requested_at",
+            "approved_by",
+            "approved_at",
+            "rejection_reason",
+            "auto_approved",
+            "auto_approved_reason",
+            "policy_id",
+        ]
         return [self._row_to_approval_request(dict(zip(col_names, row))) for row in (rows or [])]
 
     def approve_request(
@@ -442,7 +518,9 @@ class SafetyStore(BaseStore):
             status=row.get("status"),
             requested_at=self.from_timestamp(row.get("requested_at")),
             approved_by=row.get("approved_by"),
-            approved_at=self.from_timestamp(row.get("approved_at")) if row.get("approved_at") else None,
+            approved_at=(
+                self.from_timestamp(row.get("approved_at")) if row.get("approved_at") else None
+            ),
             rejection_reason=row.get("rejection_reason"),
             auto_approved=bool(row.get("auto_approved")),
             auto_approved_reason=row.get("auto_approved_reason"),
@@ -502,7 +580,26 @@ class SafetyStore(BaseStore):
             (project_id, limit, offset),
             fetch_all=True,
         )
-        col_names = ["id", "project_id", "timestamp", "agent_id", "user_id", "change_type", "affected_files", "description", "approval_request_id", "pre_snapshot_id", "post_snapshot_id", "success", "error_message", "risk_level", "confidence_score", "reverted", "reverted_at", "revert_reason"]
+        col_names = [
+            "id",
+            "project_id",
+            "timestamp",
+            "agent_id",
+            "user_id",
+            "change_type",
+            "affected_files",
+            "description",
+            "approval_request_id",
+            "pre_snapshot_id",
+            "post_snapshot_id",
+            "success",
+            "error_message",
+            "risk_level",
+            "confidence_score",
+            "reverted",
+            "reverted_at",
+            "revert_reason",
+        ]
         return [self._row_to_audit_entry(dict(zip(col_names, row))) for row in (rows or [])]
 
     def _row_to_audit_entry(self, row: Dict[str, Any]) -> AuditEntry:
@@ -530,7 +627,9 @@ class SafetyStore(BaseStore):
             risk_level=row.get("risk_level"),
             confidence_score=row.get("confidence_score"),
             reverted=bool(row.get("reverted")),
-            reverted_at=self.from_timestamp(row.get("reverted_at")) if row.get("reverted_at") else None,
+            reverted_at=(
+                self.from_timestamp(row.get("reverted_at")) if row.get("reverted_at") else None
+            ),
             revert_reason=row.get("revert_reason"),
         )
 
@@ -571,10 +670,25 @@ class SafetyStore(BaseStore):
 
     def get_snapshot(self, snapshot_id: int) -> Optional[CodeSnapshot]:
         """Get a code snapshot."""
-        row = self.execute("SELECT * FROM code_snapshots WHERE id = ?", (snapshot_id,), fetch_one=True)
+        row = self.execute(
+            "SELECT * FROM code_snapshots WHERE id = ?", (snapshot_id,), fetch_one=True
+        )
         if not row:
             return None
-        col_names = ["id", "project_id", "created_at", "file_path", "file_hash", "content_preview", "full_content", "change_type", "change_id", "agent_id", "expires_at", "keep_indefinitely"]
+        col_names = [
+            "id",
+            "project_id",
+            "created_at",
+            "file_path",
+            "file_hash",
+            "content_preview",
+            "full_content",
+            "change_type",
+            "change_id",
+            "agent_id",
+            "expires_at",
+            "keep_indefinitely",
+        ]
         return self._row_to_snapshot(dict(zip(col_names, row)))
 
     def _row_to_snapshot(self, row: Dict[str, Any]) -> CodeSnapshot:
@@ -590,15 +704,15 @@ class SafetyStore(BaseStore):
             change_type=row.get("change_type"),
             change_id=row.get("change_id"),
             agent_id=row.get("agent_id"),
-            expires_at=self.from_timestamp(row.get("expires_at")) if row.get("expires_at") else None,
+            expires_at=(
+                self.from_timestamp(row.get("expires_at")) if row.get("expires_at") else None
+            ),
             keep_indefinitely=bool(row.get("keep_indefinitely")),
         )
 
     # ChangeRecommendation operations
 
-    def create_recommendation(
-        self, recommendation: ChangeRecommendation
-    ) -> ChangeRecommendation:
+    def create_recommendation(self, recommendation: ChangeRecommendation) -> ChangeRecommendation:
         """Create a change recommendation."""
         now = self.now_timestamp()
 
@@ -637,7 +751,17 @@ class SafetyStore(BaseStore):
         )
         if not row:
             return None
-        col_names = ["id", "approval_request_id", "recommendation", "reasoning", "confidence", "suggested_tests", "suggested_reviewers", "risk_mitigation_steps", "created_at"]
+        col_names = [
+            "id",
+            "approval_request_id",
+            "recommendation",
+            "reasoning",
+            "confidence",
+            "suggested_tests",
+            "suggested_reviewers",
+            "risk_mitigation_steps",
+            "created_at",
+        ]
         return self._row_to_recommendation(dict(zip(col_names, row)))
 
     def _row_to_recommendation(self, row: Dict[str, Any]) -> ChangeRecommendation:

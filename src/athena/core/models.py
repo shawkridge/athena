@@ -20,11 +20,11 @@ class ConsolidationState(str, Enum):
     """Memory consolidation state (based on neuroscience research)."""
 
     UNCONSOLIDATED = "unconsolidated"  # New memory, not yet stable
-    CONSOLIDATING = "consolidating"    # Being processed for long-term storage
-    CONSOLIDATED = "consolidated"      # Stable long-term memory
-    LABILE = "labile"                 # Retrieved, temporarily open for modification
+    CONSOLIDATING = "consolidating"  # Being processed for long-term storage
+    CONSOLIDATED = "consolidated"  # Stable long-term memory
+    LABILE = "labile"  # Retrieved, temporarily open for modification
     RECONSOLIDATING = "reconsolidating"  # Being updated/strengthened
-    SUPERSEDED = "superseded"          # Replaced by newer version
+    SUPERSEDED = "superseded"  # Replaced by newer version
 
 
 class Memory(BaseModel):

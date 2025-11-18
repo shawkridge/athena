@@ -8,7 +8,7 @@ Coordinates parallel dream generation using multiple specialized models:
 """
 
 import asyncio
-from typing import List, Dict, Optional, Tuple
+from typing import List, Optional, Tuple
 from dataclasses import dataclass
 import logging
 
@@ -16,7 +16,6 @@ from .openrouter_client import OpenRouterClient
 from .constraint_relaxer import ConstraintRelaxer, DreamProcedure
 from .cross_project_synthesizer import CrossProjectSynthesizer, ProcedureReference
 from .parameter_explorer import ParameterExplorer, ConditionalVariantGenerator
-from .dependency_analyzer import ProcedureDependencyAnalyzer
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +89,7 @@ class DreamGenerator:
         procedure_name: str,
         procedure_code: str,
         related_procedures: Optional[List[ProcedureReference]] = None,
-        config: Optional[DreamGenerationConfig] = None
+        config: Optional[DreamGenerationConfig] = None,
     ) -> List[DreamProcedure]:
         """
         Generate dream variants for a procedure.
@@ -109,8 +108,7 @@ class DreamGenerator:
             config = DreamGenerationConfig.from_strategy("balanced")
 
         logger.info(
-            f"Starting dream generation for {procedure_name} "
-            f"(strategy={config.strategy})"
+            f"Starting dream generation for {procedure_name} " f"(strategy={config.strategy})"
         )
 
         all_dreams = []
@@ -118,7 +116,7 @@ class DreamGenerator:
             "constraint_relaxation": [],
             "cross_project_synthesis": [],
             "parameter_exploration": [],
-            "conditional_variants": []
+            "conditional_variants": [],
         }
 
         if config.parallel_generation:
@@ -128,41 +126,28 @@ class DreamGenerator:
             if config.constraint_relaxation_enabled:
                 tasks.append(
                     self._generate_constraint_relaxation(
-                        procedure_id,
-                        procedure_name,
-                        procedure_code,
-                        config
+                        procedure_id, procedure_name, procedure_code, config
                     )
                 )
 
             if config.cross_project_synthesis_enabled and related_procedures:
                 tasks.append(
                     self._generate_cross_project(
-                        procedure_id,
-                        procedure_name,
-                        procedure_code,
-                        related_procedures,
-                        config
+                        procedure_id, procedure_name, procedure_code, related_procedures, config
                     )
                 )
 
             if config.parameter_exploration_enabled:
                 tasks.append(
                     self._generate_parameter_variants(
-                        procedure_id,
-                        procedure_name,
-                        procedure_code,
-                        config
+                        procedure_id, procedure_name, procedure_code, config
                     )
                 )
 
             if config.conditional_variants_enabled:
                 tasks.append(
                     self._generate_conditional_variants(
-                        procedure_id,
-                        procedure_name,
-                        procedure_code,
-                        config
+                        procedure_id, procedure_name, procedure_code, config
                     )
                 )
 
@@ -188,8 +173,7 @@ class DreamGenerator:
 
             if config.cross_project_synthesis_enabled and related_procedures:
                 dream_type, dreams = await self._generate_cross_project(
-                    procedure_id, procedure_name, procedure_code,
-                    related_procedures, config
+                    procedure_id, procedure_name, procedure_code, related_procedures, config
                 )
                 dreams_by_type[dream_type] = dreams
                 all_dreams.extend(dreams)
@@ -209,9 +193,7 @@ class DreamGenerator:
                 all_dreams.extend(dreams)
 
         # Log summary
-        logger.info(
-            f"Generated {len(all_dreams)} total dreams for {procedure_name}:"
-        )
+        logger.info(f"Generated {len(all_dreams)} total dreams for {procedure_name}:")
         for dream_type, dreams in dreams_by_type.items():
             if dreams:
                 logger.info(f"  - {len(dreams)} {dream_type} variants")
@@ -223,7 +205,7 @@ class DreamGenerator:
         procedure_id: int,
         procedure_name: str,
         procedure_code: str,
-        config: DreamGenerationConfig
+        config: DreamGenerationConfig,
     ) -> Tuple[str, List[DreamProcedure]]:
         """Generate constraint relaxation variants."""
         try:
@@ -231,10 +213,7 @@ class DreamGenerator:
             depth = depth_map.get(config.strategy, "moderate")
 
             variants = await self.constraint_relaxer.generate_variants(
-                procedure_id,
-                procedure_name,
-                procedure_code,
-                depth=depth
+                procedure_id, procedure_name, procedure_code, depth=depth
             )
 
             return "constraint_relaxation", variants
@@ -249,7 +228,7 @@ class DreamGenerator:
         procedure_name: str,
         procedure_code: str,
         related_procedures: List[ProcedureReference],
-        config: DreamGenerationConfig
+        config: DreamGenerationConfig,
     ) -> Tuple[str, List[DreamProcedure]]:
         """Generate cross-project synthesis variants."""
         try:
@@ -258,7 +237,7 @@ class DreamGenerator:
                 procedure_name,
                 procedure_code,
                 related_procedures,
-                max_variants=config.max_variants_per_category
+                max_variants=config.max_variants_per_category,
             )
 
             return "cross_project_synthesis", variants
@@ -272,7 +251,7 @@ class DreamGenerator:
         procedure_id: int,
         procedure_name: str,
         procedure_code: str,
-        config: DreamGenerationConfig
+        config: DreamGenerationConfig,
     ) -> Tuple[str, List[DreamProcedure]]:
         """Generate parameter exploration variants."""
         try:
@@ -280,7 +259,7 @@ class DreamGenerator:
                 procedure_id,
                 procedure_name,
                 procedure_code,
-                max_variants=config.max_variants_per_category
+                max_variants=config.max_variants_per_category,
             )
 
             return "parameter_exploration", variants
@@ -294,15 +273,12 @@ class DreamGenerator:
         procedure_id: int,
         procedure_name: str,
         procedure_code: str,
-        config: DreamGenerationConfig
+        config: DreamGenerationConfig,
     ) -> Tuple[str, List[DreamProcedure]]:
         """Generate conditional execution variants."""
         try:
             variants = self.conditional_generator.generate_conditional_variants(
-                procedure_id,
-                procedure_name,
-                procedure_code,
-                max_variants=5
+                procedure_id, procedure_name, procedure_code, max_variants=5
             )
 
             return "conditional_variants", variants
@@ -330,7 +306,7 @@ async def generate_dreams(
     procedure_name: str,
     procedure_code: str,
     strategy: str = "balanced",
-    related_procedures: Optional[List[ProcedureReference]] = None
+    related_procedures: Optional[List[ProcedureReference]] = None,
 ) -> List[DreamProcedure]:
     """
     Generate dreams for a procedure.
@@ -351,5 +327,5 @@ async def generate_dreams(
             procedure_name=procedure_name,
             procedure_code=procedure_code,
             related_procedures=related_procedures,
-            config=config
+            config=config,
         )

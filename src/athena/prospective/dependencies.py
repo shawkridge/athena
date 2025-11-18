@@ -6,7 +6,6 @@ Part of Phase 3a: Task Dependencies + Metadata integration.
 
 import logging
 from typing import Optional, Dict, Any, List, Tuple
-from datetime import datetime
 
 from ..core.database import Database
 from ..core.base_store import BaseStore
@@ -30,13 +29,14 @@ class DependencyStore(BaseStore):
 
     def _ensure_schema(self):
         """Ensure task_dependencies table exists."""
-        if not hasattr(self.db, 'get_cursor'):
+        if not hasattr(self.db, "get_cursor"):
             # Async database, schema handled elsewhere
             logger.debug("Async database detected, skipping sync schema")
             return
 
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS task_dependencies (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -49,11 +49,11 @@ class DependencyStore(BaseStore):
                 FOREIGN KEY (to_task_id) REFERENCES prospective_tasks(id) ON DELETE CASCADE,
                 UNIQUE(from_task_id, to_task_id)
             )
-        """)
+        """
+        )
 
     def create_dependency(
-        self, project_id: int, from_task_id: int, to_task_id: int,
-        dependency_type: str = "blocks"
+        self, project_id: int, from_task_id: int, to_task_id: int, dependency_type: str = "blocks"
     ) -> Optional[int]:
         """Create a dependency: from_task blocks to_task.
 
@@ -121,9 +121,7 @@ class DependencyStore(BaseStore):
             logger.error(f"Failed to check if task blocked: {e}")
             return False, []
 
-    def get_blocking_tasks(
-        self, project_id: int, task_id: int
-    ) -> Optional[List[Dict[str, Any]]]:
+    def get_blocking_tasks(self, project_id: int, task_id: int) -> Optional[List[Dict[str, Any]]]:
         """Get detailed info about tasks blocking this task.
 
         Args:
@@ -152,23 +150,23 @@ class DependencyStore(BaseStore):
             tasks = []
 
             for row in rows:
-                tasks.append({
-                    "id": row[0],
-                    "content": row[1],
-                    "status": row[2],
-                    "priority": row[3],
-                    "dependency_type": row[4],
-                    "created_at": row[5],
-                })
+                tasks.append(
+                    {
+                        "id": row[0],
+                        "content": row[1],
+                        "status": row[2],
+                        "priority": row[3],
+                        "dependency_type": row[4],
+                        "created_at": row[5],
+                    }
+                )
 
             return tasks if tasks else None
         except Exception as e:
             logger.error(f"Failed to get blocking tasks: {e}")
             return None
 
-    def get_blocked_tasks(
-        self, project_id: int, task_id: int
-    ) -> Optional[List[int]]:
+    def get_blocked_tasks(self, project_id: int, task_id: int) -> Optional[List[int]]:
         """Get tasks blocked by this task.
 
         Args:
@@ -234,22 +232,22 @@ class DependencyStore(BaseStore):
                 is_blocked, _ = self.is_task_blocked(project_id, task_id)
 
                 if not is_blocked:
-                    unblocked_tasks.append({
-                        "id": task_id,
-                        "content": row[1],
-                        "status": row[2],
-                        "priority": row[3],
-                        "is_blocked": False,
-                    })
+                    unblocked_tasks.append(
+                        {
+                            "id": task_id,
+                            "content": row[1],
+                            "status": row[2],
+                            "priority": row[3],
+                            "is_blocked": False,
+                        }
+                    )
 
             return unblocked_tasks
         except Exception as e:
             logger.error(f"Failed to get unblocked tasks: {e}")
             return None
 
-    def remove_dependency(
-        self, project_id: int, from_task_id: int, to_task_id: int
-    ) -> bool:
+    def remove_dependency(self, project_id: int, from_task_id: int, to_task_id: int) -> bool:
         """Remove a dependency.
 
         Args:

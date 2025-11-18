@@ -7,6 +7,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { LoadingSpinner } from './components/common/LoadingSpinner'
 
 // Lazy load all pages for code splitting
+const ModernOverviewPage = lazy(() => import('./pages/ModernOverviewPage'))
 const OverviewPage = lazy(() => import('./pages/OverviewPage'))
 const TaskManagementPage = lazy(() => import('./pages/TaskManagementPage'))
 const EpisodicMemoryPage = lazy(() => import('./pages/EpisodicMemoryPage'))
@@ -77,8 +78,9 @@ function App() {
             <Suspense fallback={<LoadingSpinner message="Loading dashboard..." />}>
               <Routes>
               <Route element={<MainLayout />}>
-                <Route path="/" element={<OverviewPage />} />
-                <Route path="/overview" element={<OverviewPage />} />
+                <Route path="/" element={<ModernOverviewPage />} />
+                <Route path="/overview" element={<ModernOverviewPage />} />
+                <Route path="/overview-old" element={<OverviewPage />} />
                 <Route path="/tasks" element={<TaskManagementPage />} />
                 <Route path="/episodic" element={<EpisodicMemoryPage />} />
                 <Route path="/semantic" element={<SemanticMemoryPage />} />

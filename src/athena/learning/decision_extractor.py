@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Decision:
     """A single decision with context and outcomes."""
+
     title: str
     context: str  # Why this decision was needed
     chosen_option: str  # What was chosen
@@ -43,7 +44,10 @@ class DecisionExtractor:
             title = lines[0]
 
             # Look for decision indicators
-            if not any(word in title.lower() for word in ["refactor", "migrate", "add", "implement", "change"]):
+            if not any(
+                word in title.lower()
+                for word in ["refactor", "migrate", "add", "implement", "change"]
+            ):
                 return None
 
             # Extract context and rationale
@@ -90,8 +94,16 @@ class DecisionExtractor:
                 "context": "How to structure application",
                 "options": ["Monolith", "Microservices", "Modular Monolith"],
                 "pros": {
-                    "Monolith": ["Simple to deploy", "Easy debugging", "Better performance initially"],
-                    "Microservices": ["Independent scaling", "Team autonomy", "Technology diversity"],
+                    "Monolith": [
+                        "Simple to deploy",
+                        "Easy debugging",
+                        "Better performance initially",
+                    ],
+                    "Microservices": [
+                        "Independent scaling",
+                        "Team autonomy",
+                        "Technology diversity",
+                    ],
                 },
                 "cons": {
                     "Monolith": ["Scaling limits", "Deployment coupling"],

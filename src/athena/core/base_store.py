@@ -17,9 +17,9 @@ import json
 from datetime import datetime
 
 from .database import Database, get_database
-from .error_handling import safe_dict_get, safe_json_loads
+from .error_handling import safe_json_loads
 
-T = TypeVar('T')  # Model type
+T = TypeVar("T")  # Model type
 
 
 class BaseStore(ABC, Generic[T]):
@@ -81,7 +81,7 @@ class BaseStore(ABC, Generic[T]):
         query: str,
         params: Optional[tuple] = None,
         fetch_one: bool = False,
-        fetch_all: bool = False
+        fetch_all: bool = False,
     ) -> Any:
         """Execute SQL query with consistent error handling.
 
@@ -110,7 +110,7 @@ class BaseStore(ABC, Generic[T]):
             else:
                 return cursor
 
-        except Exception as e:
+        except Exception:
             # rollback handled by cursor context
             raise
 
@@ -119,10 +119,7 @@ class BaseStore(ABC, Generic[T]):
         # commit handled by cursor context
 
     def create(
-        self,
-        table_name: Optional[str] = None,
-        columns: List[str] = None,
-        values: tuple = None
+        self, table_name: Optional[str] = None, columns: List[str] = None, values: tuple = None
     ) -> int:
         """Generic insert with lastrowid return.
 
@@ -139,7 +136,7 @@ class BaseStore(ABC, Generic[T]):
         if not columns or not values:
             raise ValueError("columns and values required")
 
-        placeholders = ', '.join('?' * len(columns))
+        placeholders = ", ".join("?" * len(columns))
         query = f"""
             INSERT INTO {table_name} ({', '.join(columns)})
             VALUES ({placeholders})
@@ -149,11 +146,7 @@ class BaseStore(ABC, Generic[T]):
         self.commit()
         return cursor.lastrowid
 
-    def get(
-        self,
-        id: int,
-        table_name: Optional[str] = None
-    ) -> Optional[T]:
+    def get(self, id: int, table_name: Optional[str] = None) -> Optional[T]:
         """Generic get by ID.
 
         Args:
@@ -166,11 +159,7 @@ class BaseStore(ABC, Generic[T]):
         if not table_name:
             table_name = self.table_name
 
-        row = self.execute(
-            f"SELECT * FROM {table_name} WHERE id = ?",
-            (id,),
-            fetch_one=True
-        )
+        row = self.execute(f"SELECT * FROM {table_name} WHERE id = ?", (id,), fetch_one=True)
 
         return self._row_to_model(row) if row else None
 
@@ -179,7 +168,7 @@ class BaseStore(ABC, Generic[T]):
         table_name: Optional[str] = None,
         limit: int = 100,
         offset: int = 0,
-        order_by: Optional[str] = None
+        order_by: Optional[str] = None,
     ) -> List[T]:
         """Generic list all with pagination.
 
@@ -198,17 +187,12 @@ class BaseStore(ABC, Generic[T]):
         query = f"SELECT * FROM {table_name}"
         if order_by:
             query += f" ORDER BY {order_by}"
-        query += f" LIMIT ? OFFSET ?"
+        query += " LIMIT ? OFFSET ?"
 
         rows = self.execute(query, (limit, offset), fetch_all=True)
         return [self._row_to_model(row) for row in rows] if rows else []
 
-    def update(
-        self,
-        id: int,
-        updates: Dict[str, Any],
-        table_name: Optional[str] = None
-    ) -> bool:
+    def update(self, id: int, updates: Dict[str, Any], table_name: Optional[str] = None) -> bool:
         """Generic update by ID.
 
         Args:
@@ -224,7 +208,7 @@ class BaseStore(ABC, Generic[T]):
         if not updates:
             return False
 
-        set_clause = ', '.join([f"{k} = ?" for k in updates.keys()])
+        set_clause = ", ".join([f"{k} = ?" for k in updates.keys()])
         values = tuple(updates.values()) + (id,)
 
         query = f"UPDATE {table_name} SET {set_clause} WHERE id = ?"
@@ -233,11 +217,7 @@ class BaseStore(ABC, Generic[T]):
         self.commit()
         return cursor.rowcount > 0
 
-    def delete(
-        self,
-        id: int,
-        table_name: Optional[str] = None
-    ) -> bool:
+    def delete(self, id: int, table_name: Optional[str] = None) -> bool:
         """Generic delete by ID.
 
         Args:
@@ -250,18 +230,11 @@ class BaseStore(ABC, Generic[T]):
         if not table_name:
             table_name = self.table_name
 
-        cursor = self.execute(
-            f"DELETE FROM {table_name} WHERE id = ?",
-            (id,)
-        )
+        cursor = self.execute(f"DELETE FROM {table_name} WHERE id = ?", (id,))
         self.commit()
         return cursor.rowcount > 0
 
-    def exists(
-        self,
-        id: int,
-        table_name: Optional[str] = None
-    ) -> bool:
+    def exists(self, id: int, table_name: Optional[str] = None) -> bool:
         """Check if row exists by ID.
 
         Args:
@@ -275,9 +248,7 @@ class BaseStore(ABC, Generic[T]):
             table_name = self.table_name
 
         row = self.execute(
-            f"SELECT 1 FROM {table_name} WHERE id = ? LIMIT 1",
-            (id,),
-            fetch_one=True
+            f"SELECT 1 FROM {table_name} WHERE id = ? LIMIT 1", (id,), fetch_one=True
         )
         return row is not None
 
@@ -285,7 +256,7 @@ class BaseStore(ABC, Generic[T]):
         self,
         table_name: Optional[str] = None,
         where: Optional[str] = None,
-        params: Optional[tuple] = None
+        params: Optional[tuple] = None,
     ) -> int:
         """Count rows in table.
 
@@ -321,7 +292,7 @@ class BaseStore(ABC, Generic[T]):
         Returns:
             JSON string
         """
-        return json.dumps(obj) if obj else '{}'
+        return json.dumps(obj) if obj else "{}"
 
     @staticmethod
     def deserialize_json(data: str, default: Optional[dict] = None) -> dict:
@@ -363,7 +334,7 @@ class BaseStore(ABC, Generic[T]):
             return None
         # Handle string timestamps from database
         if isinstance(ts, str):
-            if not ts or ts == '{}':
+            if not ts or ts == "{}":
                 return None
             try:
                 ts = float(ts)
@@ -379,10 +350,7 @@ class BaseStore(ABC, Generic[T]):
     # ========================================================================
 
     def find_by_column(
-        self,
-        column: str,
-        value: Any,
-        table_name: Optional[str] = None
+        self, column: str, value: Any, table_name: Optional[str] = None
     ) -> Optional[T]:
         """Find single row by column value.
 
@@ -398,9 +366,7 @@ class BaseStore(ABC, Generic[T]):
             table_name = self.table_name
 
         row = self.execute(
-            f"SELECT * FROM {table_name} WHERE {column} = ? LIMIT 1",
-            (value,),
-            fetch_one=True
+            f"SELECT * FROM {table_name} WHERE {column} = ? LIMIT 1", (value,), fetch_one=True
         )
 
         return self._row_to_model(row) if row else None
@@ -411,7 +377,7 @@ class BaseStore(ABC, Generic[T]):
         value: Any,
         table_name: Optional[str] = None,
         order_by: Optional[str] = None,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[T]:
         """Find all rows by column value.
 
@@ -431,17 +397,12 @@ class BaseStore(ABC, Generic[T]):
         query = f"SELECT * FROM {table_name} WHERE {column} = ?"
         if order_by:
             query += f" ORDER BY {order_by}"
-        query += f" LIMIT ?"
+        query += " LIMIT ?"
 
         rows = self.execute(query, (value, limit), fetch_all=True)
         return [self._row_to_model(row) for row in rows] if rows else []
 
-    def delete_by_column(
-        self,
-        column: str,
-        value: Any,
-        table_name: Optional[str] = None
-    ) -> int:
+    def delete_by_column(self, column: str, value: Any, table_name: Optional[str] = None) -> int:
         """Delete all rows matching column value.
 
         Args:
@@ -455,9 +416,6 @@ class BaseStore(ABC, Generic[T]):
         if not table_name:
             table_name = self.table_name
 
-        cursor = self.execute(
-            f"DELETE FROM {table_name} WHERE {column} = ?",
-            (value,)
-        )
+        cursor = self.execute(f"DELETE FROM {table_name} WHERE {column} = ?", (value,))
         self.commit()
         return cursor.rowcount

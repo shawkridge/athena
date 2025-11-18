@@ -10,7 +10,6 @@ Enhances the core Planner Agent with goal-aware decomposition by:
 This wrapper maintains backward compatibility with existing Planner Agent.
 """
 
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 from enum import Enum
 
@@ -98,10 +97,10 @@ class StrategyAwarePlanner:
                         {"description": "Plan approach", "estimated_duration_ms": 1800000},
                         {"description": "Implement solution", "estimated_duration_ms": 3600000},
                         {"description": "Verify and test", "estimated_duration_ms": 1800000},
-                        {"description": "Document results", "estimated_duration_ms": 900000}
+                        {"description": "Document results", "estimated_duration_ms": 900000},
                     ],
-                    "estimated_duration": 120
-                }
+                    "estimated_duration": 120,
+                },
             }
 
         if plan_result.get("status") != "success":
@@ -189,14 +188,23 @@ class StrategyAwarePlanner:
         step_id = 1
 
         # Expand Plan phase (detailed architecture)
-        enhanced.append(self._create_step(
-            step_id, "Architecture & Design", 3600000, ["architecture_review"], "low", step_id - 1
-        ))
+        enhanced.append(
+            self._create_step(
+                step_id,
+                "Architecture & Design",
+                3600000,
+                ["architecture_review"],
+                "low",
+                step_id - 1,
+            )
+        )
         step_id += 1
 
-        enhanced.append(self._create_step(
-            step_id, "Design Review", 1800000, ["design_approved"], "low", step_id - 1
-        ))
+        enhanced.append(
+            self._create_step(
+                step_id, "Design Review", 1800000, ["design_approved"], "low", step_id - 1
+            )
+        )
         step_id += 1
 
         # Original implementation
@@ -207,9 +215,16 @@ class StrategyAwarePlanner:
             step_id += 1
 
         # Add validation
-        enhanced.append(self._create_step(
-            step_id, "Validation & Verification", 2400000, ["all_criteria_met"], "medium", step_id - 1
-        ))
+        enhanced.append(
+            self._create_step(
+                step_id,
+                "Validation & Verification",
+                2400000,
+                ["all_criteria_met"],
+                "medium",
+                step_id - 1,
+            )
+        )
         step_id += 1
 
         # Deploy
@@ -240,43 +255,49 @@ class StrategyAwarePlanner:
                 duration_factor = 0.4
 
             # Implement MVP
-            enhanced.append(self._create_step(
-                step_id,
-                f"Implement {desc_suffix}",
-                int(3600000 * duration_factor),
-                [f"mvp_{round_num}_complete"],
-                "medium",
-                step_id - 1 if step_id > 1 else 0,
-            ))
+            enhanced.append(
+                self._create_step(
+                    step_id,
+                    f"Implement {desc_suffix}",
+                    int(3600000 * duration_factor),
+                    [f"mvp_{round_num}_complete"],
+                    "medium",
+                    step_id - 1 if step_id > 1 else 0,
+                )
+            )
             step_id += 1
 
             # Quick test
-            enhanced.append(self._create_step(
-                step_id,
-                f"Test {desc_suffix}",
-                int(1200000 * duration_factor),
-                [f"mvp_{round_num}_validated"],
-                "low",
-                step_id - 1,
-            ))
+            enhanced.append(
+                self._create_step(
+                    step_id,
+                    f"Test {desc_suffix}",
+                    int(1200000 * duration_factor),
+                    [f"mvp_{round_num}_validated"],
+                    "low",
+                    step_id - 1,
+                )
+            )
             step_id += 1
 
             # Get feedback
             if round_num == 1:
-                enhanced.append(self._create_step(
-                    step_id,
-                    "Gather Feedback",
-                    900000,
-                    ["feedback_collected"],
-                    "low",
-                    step_id - 1,
-                ))
+                enhanced.append(
+                    self._create_step(
+                        step_id,
+                        "Gather Feedback",
+                        900000,
+                        ["feedback_collected"],
+                        "low",
+                        step_id - 1,
+                    )
+                )
                 step_id += 1
 
         # Deploy final
-        enhanced.append(self._create_step(
-            step_id, "Deploy", 600000, ["production_live"], "high", step_id - 1
-        ))
+        enhanced.append(
+            self._create_step(step_id, "Deploy", 600000, ["production_live"], "high", step_id - 1)
+        )
 
         return enhanced
 
@@ -333,7 +354,9 @@ class StrategyAwarePlanner:
             self._create_step(1, "Plan & Risk Assessment", 1800000, ["risks_identified"], "low", 0),
             self._create_step(2, "Implement Core (High Risk)", 4200000, ["core_done"], "high", 1),
             self._create_step(3, "Test Core", 2400000, ["core_tested"], "low", 2),
-            self._create_step(4, "Implement Optional Features", 2400000, ["features_done"], "low", 1),
+            self._create_step(
+                4, "Implement Optional Features", 2400000, ["features_done"], "low", 1
+            ),
             self._create_step(5, "Final Testing & Hardening", 1800000, ["ready"], "medium", [3, 4]),
             self._create_step(6, "Deploy", 300000, ["live"], "high", 5),
         ]

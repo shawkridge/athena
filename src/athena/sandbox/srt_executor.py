@@ -16,8 +16,7 @@ import tempfile
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List
 
 from .config import SandboxConfig, SandboxMode, ExecutionLanguage
 
@@ -40,6 +39,7 @@ class ExecutionResult:
         timestamp: When execution occurred
         error: Exception message if execution failed
     """
+
     success: bool
     stdout: str = ""
     stderr: str = ""
@@ -141,6 +141,7 @@ class SRTExecutor:
             ExecutionResult with output and metadata
         """
         import time
+
         start_time = time.time()
 
         language = language or self.config.language
@@ -421,7 +422,9 @@ class SRTExecutor:
             violations.append("Potential subprocess escape attempt")
 
         # Check for eval/exec usage
-        if any(msg in result.stderr for msg in ["NameError: name 'eval'", "NameError: name 'exec'"]):
+        if any(
+            msg in result.stderr for msg in ["NameError: name 'eval'", "NameError: name 'exec'"]
+        ):
             violations.append("Attempted use of eval/exec (blocked)")
 
         return violations

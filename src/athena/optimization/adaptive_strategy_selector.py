@@ -18,7 +18,7 @@ import logging
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 from .dependency_graph import DependencyGraph
 from .cross_layer_cache import CrossLayerCache
@@ -156,9 +156,7 @@ class AdaptiveStrategySelector:
             estimated_cost_ms=estimated_cost,
             cache_hit_probability=cache_availability,
             parallelization_benefit=parallelization_benefit,
-            complexity_score=self._compute_complexity_score(
-                num_layers, estimated_cost
-            ),
+            complexity_score=self._compute_complexity_score(num_layers, estimated_cost),
         )
 
         # Get suggested layers from dependency graph
@@ -219,8 +217,7 @@ class AdaptiveStrategySelector:
                 confidence=min(analysis.parallelization_benefit / 5.0, 1.0),
                 reasoning=f"Good parallelization benefit ({analysis.parallelization_benefit:.1f}x), "
                 f"low complexity ({analysis.complexity_score:.1f})",
-                estimated_latency_ms=analysis.estimated_cost_ms
-                / analysis.parallelization_benefit,
+                estimated_latency_ms=analysis.estimated_cost_ms / analysis.parallelization_benefit,
                 estimated_speedup=analysis.parallelization_benefit,
                 fallback_strategy=ExecutionStrategy.SEQUENTIAL,
             )
@@ -296,9 +293,7 @@ class AdaptiveStrategySelector:
 
             # Update running average
             old_accuracy = self.decision_accuracy[decision.strategy]
-            self.decision_accuracy[decision.strategy] = (
-                (old_accuracy * 0.9) + (accuracy * 0.1)
-            )
+            self.decision_accuracy[decision.strategy] = (old_accuracy * 0.9) + (accuracy * 0.1)
 
     def get_strategy_statistics(self) -> Dict[str, Any]:
         """Get statistics about strategy selection accuracy.

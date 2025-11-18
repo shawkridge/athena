@@ -61,8 +61,7 @@ def set_task_metadata(
         db = Database()
         store = MetadataStore(db)
         success = store.set_metadata(
-            project_id, task_id, effort_estimate,
-            complexity_score, priority_score, tags
+            project_id, task_id, effort_estimate, complexity_score, priority_score, tags
         )
         return success
     except Exception as e:

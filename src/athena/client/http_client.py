@@ -8,8 +8,7 @@ import asyncio
 import json
 import logging
 import time
-from typing import Any, Dict, Optional, Union
-from urllib.parse import urljoin
+from typing import Any, Dict, Optional
 
 import httpx
 
@@ -125,9 +124,9 @@ class AthenaHTTPClient:
             Parsed JSON data
         """
         # SSE format: "event: message\ndata: {...}\n\n"
-        lines = text.strip().split('\n')
+        lines = text.strip().split("\n")
         for line in lines:
-            if line.startswith('data: '):
+            if line.startswith("data: "):
                 return json.loads(line[6:])  # Remove "data: " prefix
         return {}
 
@@ -142,18 +141,15 @@ class AthenaHTTPClient:
                 "params": {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {},
-                    "clientInfo": {
-                        "name": "AthenaHTTPClient",
-                        "version": "1.0.0"
-                    }
-                }
+                    "clientInfo": {"name": "AthenaHTTPClient", "version": "1.0.0"},
+                },
             }
 
             response = self._client.post("/", json=init_request)
             response.raise_for_status()
 
             # Extract session ID from headers
-            self._session_id = response.headers.get('mcp-session-id')
+            self._session_id = response.headers.get("mcp-session-id")
 
             # Parse SSE response
             result = self._parse_sse_response(response.text)
@@ -249,13 +245,7 @@ class AthenaHTTPClient:
             "jsonrpc": "2.0",
             "id": self._get_next_id(),
             "method": "tools/call",
-            "params": {
-                "name": tool_name,
-                "arguments": {
-                    "operation": operation,
-                    **params
-                }
-            }
+            "params": {"name": tool_name, "arguments": {"operation": operation, **params}},
         }
 
         last_error = None
@@ -341,7 +331,7 @@ class AthenaHTTPClient:
 
             # Retry with exponential backoff
             if attempt < self.retries - 1:
-                wait_time = self.backoff_factor ** attempt
+                wait_time = self.backoff_factor**attempt
                 logger.debug(f"Retrying in {wait_time:.2f}s...")
                 time.sleep(wait_time)
 
@@ -434,7 +424,9 @@ class AthenaHTTPClient:
 
     def recall_events(self, query: str, days: int = 7, limit: int = 10) -> Any:
         """Recall episodic events."""
-        return self._execute_operation("recall_events", {"query": query, "days": days, "limit": limit})
+        return self._execute_operation(
+            "recall_events", {"query": query, "days": days, "limit": limit}
+        )
 
     def get_timeline(self, days: int = 7, limit: int = 10) -> Any:
         """Get timeline of events."""
@@ -686,7 +678,7 @@ class AthenaHTTPAsyncClient:
                 # Execute request
                 if method == "GET":
                     response = await self._client.get(
-                        f"/api/operation",
+                        "/api/operation",
                         params={"operation": operation, **params},
                     )
                 else:
@@ -729,7 +721,7 @@ class AthenaHTTPAsyncClient:
 
             # Retry with exponential backoff
             if attempt < self.retries - 1:
-                wait_time = self.backoff_factor ** attempt
+                wait_time = self.backoff_factor**attempt
                 logger.debug(f"Retrying in {wait_time:.2f}s...")
                 await asyncio.sleep(wait_time)
 

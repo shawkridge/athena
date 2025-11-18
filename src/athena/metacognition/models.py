@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional, List, Dict
+from typing import Optional, List
 
 
 class GapType(str, Enum):

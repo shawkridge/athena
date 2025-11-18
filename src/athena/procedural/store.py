@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import time
 from datetime import datetime
 from typing import Optional, Dict, Any
@@ -33,6 +32,7 @@ class ProceduralStore(BaseStore[Procedure]):
         super().__init__(db)
         # Schema is initialized centrally in database.py
         #
+
     def _row_to_model(self, row: Dict[str, Any]) -> Procedure:
         """Convert database row to Procedure model.
 
@@ -44,7 +44,7 @@ class ProceduralStore(BaseStore[Procedure]):
         """
         # Ensure row is a dict (psycopg3 Row objects can be converted to dict)
         if not isinstance(row, dict):
-            row = dict(row) if hasattr(row, '__iter__') else row
+            row = dict(row) if hasattr(row, "__iter__") else row
 
         # Parse steps if it's JSON string
         steps = []
@@ -75,14 +75,20 @@ class ProceduralStore(BaseStore[Procedure]):
             category=category,
             description=row.get("description"),
             trigger_pattern=None,  # Not in PostgreSQL schema
-            applicable_contexts=inputs if isinstance(inputs, list) else [],  # Map inputs to applicable_contexts
+            applicable_contexts=(
+                inputs if isinstance(inputs, list) else []
+            ),  # Map inputs to applicable_contexts
             template=template,  # Use description as template
             steps=steps,
             examples=outputs if isinstance(outputs, list) else [],  # Map outputs to examples
             success_rate=row.get("success_rate") or 0.0,
             usage_count=row.get("execution_count") or 0,  # Map execution_count to usage_count
             avg_completion_time_ms=None,  # Not in PostgreSQL schema
-            created_at=row.get("created_at") if isinstance(row.get("created_at"), datetime) else self.from_timestamp(row.get("created_at")),
+            created_at=(
+                row.get("created_at")
+                if isinstance(row.get("created_at"), datetime)
+                else self.from_timestamp(row.get("created_at"))
+            ),
             last_used=row.get("last_executed"),  # Map last_executed to last_used
             created_by=row.get("created_by") or "user",
         )
@@ -91,15 +97,19 @@ class ProceduralStore(BaseStore[Procedure]):
         """Ensure procedural memory tables exist."""
 
         # For PostgreSQL async databases, skip sync schema initialization
-        if not hasattr(self.db, 'conn'):
+        if not hasattr(self.db, "conn"):
             import logging
+
             logger = logging.getLogger(__name__)
-            logger.debug(f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema().")
+            logger.debug(
+                f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema()."
+            )
             return
         cursor = self.db.get_cursor()
 
         # Procedures table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS procedures (
                 id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL UNIQUE,
@@ -121,10 +131,12 @@ class ProceduralStore(BaseStore[Procedure]):
                 last_used INTEGER,
                 created_by TEXT DEFAULT 'user'
             )
-        """)
+        """
+        )
 
         # Procedure parameters
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS procedure_params (
                 id SERIAL PRIMARY KEY,
                 procedure_id INTEGER NOT NULL,
@@ -135,10 +147,12 @@ class ProceduralStore(BaseStore[Procedure]):
                 description TEXT,
                 FOREIGN KEY (procedure_id) REFERENCES procedures(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Execution history
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS procedure_executions (
                 id SERIAL PRIMARY KEY,
                 procedure_id INTEGER NOT NULL,
@@ -151,12 +165,17 @@ class ProceduralStore(BaseStore[Procedure]):
                 FOREIGN KEY (procedure_id) REFERENCES procedures(id) ON DELETE CASCADE,
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Indices
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_procedures_category ON procedures(category)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_procedures_usage ON procedures(usage_count DESC)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_executions_procedure ON procedure_executions(procedure_id)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_procedures_usage ON procedures(usage_count DESC)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_executions_procedure ON procedure_executions(procedure_id)"
+        )
 
         # commit handled by cursor context
 
@@ -201,7 +220,9 @@ class ProceduralStore(BaseStore[Procedure]):
         )
         self.commit()
         # PostgreSQL uses RETURNING clause
-        result = self.execute("SELECT currval(pg_get_serial_sequence('procedures', 'id'))", fetch_one=True)
+        result = self.execute(
+            "SELECT currval(pg_get_serial_sequence('procedures', 'id'))", fetch_one=True
+        )
         return result[0] if result else None
 
     def get_procedure(self, procedure_id: int) -> Optional[Procedure]:
@@ -213,15 +234,29 @@ class ProceduralStore(BaseStore[Procedure]):
         Returns:
             Procedure if found, None otherwise
         """
-        row = self.execute("SELECT * FROM procedures WHERE id = %s", (procedure_id,), fetch_one=True)
+        row = self.execute(
+            "SELECT * FROM procedures WHERE id = %s", (procedure_id,), fetch_one=True
+        )
 
         if not row:
             return None
 
-        col_names = ["id", "project_id", "name", "category", "description",
-                     "steps", "inputs", "outputs",
-                     "success_rate", "execution_count", "last_executed",
-                     "created_by", "created_at", "updated_at"]
+        col_names = [
+            "id",
+            "project_id",
+            "name",
+            "category",
+            "description",
+            "steps",
+            "inputs",
+            "outputs",
+            "success_rate",
+            "execution_count",
+            "last_executed",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
         return self._row_to_model(dict(zip(col_names, row)))
 
     def find_procedure(self, name: str) -> Optional[Procedure]:
@@ -238,10 +273,22 @@ class ProceduralStore(BaseStore[Procedure]):
         if not row:
             return None
 
-        col_names = ["id", "project_id", "name", "category", "description",
-                     "steps", "inputs", "outputs",
-                     "success_rate", "execution_count", "last_executed",
-                     "created_by", "created_at", "updated_at"]
+        col_names = [
+            "id",
+            "project_id",
+            "name",
+            "category",
+            "description",
+            "steps",
+            "inputs",
+            "outputs",
+            "success_rate",
+            "execution_count",
+            "last_executed",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
         return self._row_to_model(dict(zip(col_names, row)))
 
     def list_procedures(
@@ -256,10 +303,22 @@ class ProceduralStore(BaseStore[Procedure]):
         Returns:
             List of procedures
         """
-        col_names = ["id", "project_id", "name", "category", "description",
-                     "steps", "inputs", "outputs",
-                     "success_rate", "execution_count", "last_executed",
-                     "created_by", "created_at", "updated_at"]
+        col_names = [
+            "id",
+            "project_id",
+            "name",
+            "category",
+            "description",
+            "steps",
+            "inputs",
+            "outputs",
+            "success_rate",
+            "execution_count",
+            "last_executed",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
 
         if category:
             category_str = category.value if isinstance(category, ProcedureCategory) else category
@@ -321,10 +380,22 @@ class ProceduralStore(BaseStore[Procedure]):
         sql += " ORDER BY execution_count DESC, success_rate DESC LIMIT 20"
 
         rows = self.execute(sql, params, fetch_all=True)
-        col_names = ["id", "project_id", "name", "category", "description",
-                     "steps", "inputs", "outputs",
-                     "success_rate", "execution_count", "last_executed",
-                     "created_by", "created_at", "updated_at"]
+        col_names = [
+            "id",
+            "project_id",
+            "name",
+            "category",
+            "description",
+            "steps",
+            "inputs",
+            "outputs",
+            "success_rate",
+            "execution_count",
+            "last_executed",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
         return [self._row_to_model(row) for row in (rows or [])]
 
     def update_procedure_stats(
@@ -417,9 +488,7 @@ class ProceduralStore(BaseStore[Procedure]):
 
         return execution_id
 
-    def get_execution_history(
-        self, procedure_id: int, limit: int = 20
-    ) -> list[ProcedureExecution]:
+    def get_execution_history(self, procedure_id: int, limit: int = 20) -> list[ProcedureExecution]:
         """Get execution history for a procedure.
 
         Args:
@@ -441,7 +510,7 @@ class ProceduralStore(BaseStore[Procedure]):
         )
 
         executions = []
-        for row in (rows or []):
+        for row in rows or []:
             executions.append(
                 ProcedureExecution(
                     id=row[0],
@@ -503,12 +572,13 @@ class ProceduralStore(BaseStore[Procedure]):
             List of parameters
         """
         rows = self.execute(
-            "SELECT * FROM procedure_params WHERE procedure_id = %s", (procedure_id,),
+            "SELECT * FROM procedure_params WHERE procedure_id = %s",
+            (procedure_id,),
             fetch_all=True,
         )
 
         parameters = []
-        for row in (rows or []):
+        for row in rows or []:
             parameters.append(
                 ProcedureParameter(
                     id=row[0],
@@ -593,9 +663,8 @@ class ProceduralStore(BaseStore[Procedure]):
             self.update_procedure_stats(
                 procedure_id=procedure.id,
                 execution_count=1,  # Increment
-                success_rate=procedure.success_rate if hasattr(procedure, 'success_rate') else 0.5,
+                success_rate=procedure.success_rate if hasattr(procedure, "success_rate") else 0.5,
             )
             return True
         except Exception:
             return False
-

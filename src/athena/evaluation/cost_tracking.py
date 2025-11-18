@@ -173,9 +173,7 @@ class CostTracker:
         self.entries.append(entry)
         logger.debug(f"Recorded cost: {entry}")
 
-    def get_metrics(
-        self, period_name: str = "all_time"
-    ) -> CostMetrics:
+    def get_metrics(self, period_name: str = "all_time") -> CostMetrics:
         """Get cost metrics.
 
         Args:
@@ -244,9 +242,7 @@ class CostTracker:
                     potential_savings=0.90,
                     difficulty="easy",
                     estimated_implementation_time_minutes=30,
-                    monthly_savings=metrics.cost_by_type.get(
-                        CostType.API_CALL.value, 0
-                    ) * 0.9,
+                    monthly_savings=metrics.cost_by_type.get(CostType.API_CALL.value, 0) * 0.9,
                 )
             )
 
@@ -263,9 +259,7 @@ class CostTracker:
                     potential_savings=1.0,  # 100% of embedding costs
                     difficulty="easy",
                     estimated_implementation_time_minutes=20,
-                    monthly_savings=metrics.cost_by_type.get(
-                        CostType.EMBEDDING.value, 0
-                    ),
+                    monthly_savings=metrics.cost_by_type.get(CostType.EMBEDDING.value, 0),
                 )
             )
 
@@ -284,8 +278,7 @@ class CostTracker:
                     estimated_implementation_time_minutes=15,
                     monthly_savings=(
                         metrics.cost_by_type.get(CostType.STORAGE.value, 0) * 0.75
-                        + metrics.cost_by_type.get(CostType.VECTOR_SEARCH.value, 0)
-                        * 0.5
+                        + metrics.cost_by_type.get(CostType.VECTOR_SEARCH.value, 0) * 0.5
                     ),
                 )
             )
@@ -303,9 +296,8 @@ class CostTracker:
                     potential_savings=0.15,
                     difficulty="easy",
                     estimated_implementation_time_minutes=30,
-                    monthly_savings=metrics.cost_by_type.get(
-                        CostType.VECTOR_SEARCH.value, 0
-                    ) * 0.15,
+                    monthly_savings=metrics.cost_by_type.get(CostType.VECTOR_SEARCH.value, 0)
+                    * 0.15,
                 )
             )
 
@@ -322,9 +314,7 @@ class CostTracker:
                     potential_savings=0.50,
                     difficulty="medium",
                     estimated_implementation_time_minutes=45,
-                    monthly_savings=metrics.cost_by_type.get(
-                        CostType.RERANKING.value, 0
-                    ) * 0.5,
+                    monthly_savings=metrics.cost_by_type.get(CostType.RERANKING.value, 0) * 0.5,
                 )
             )
 
@@ -341,16 +331,12 @@ class CostTracker:
                     potential_savings=0.20,
                     difficulty="easy",
                     estimated_implementation_time_minutes=15,
-                    monthly_savings=metrics.cost_by_type.get(
-                        CostType.STORAGE.value, 0
-                    ) * 0.2,
+                    monthly_savings=metrics.cost_by_type.get(CostType.STORAGE.value, 0) * 0.2,
                 )
             )
 
         # Sort by potential monthly savings
-        recommendations.sort(
-            key=lambda r: r.monthly_savings, reverse=True
-        )
+        recommendations.sort(key=lambda r: r.monthly_savings, reverse=True)
 
         return recommendations
 

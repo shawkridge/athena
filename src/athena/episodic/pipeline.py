@@ -628,7 +628,7 @@ if __name__ == "__main__":
 
     stats = asyncio.run(pipeline.process_batch(events))
 
-    print(f"Results:")
+    print("Results:")
     print(f"  Total events: {stats['total']}")
     print(f"  Inserted: {stats['inserted']}")
     print(f"  Skipped (duplicate): {stats['skipped_duplicate']}")

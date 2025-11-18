@@ -66,28 +66,23 @@ __all__ = [
     "ConsolidationType",
     "PatternType",
     "ConsolidationSystem",
-
     # Phase 1: Consolidation pipeline
     "consolidate_episodic_to_semantic",
     "consolidation_daemon",
     "ConsolidationReport",
-
     # Phase 1: Event clustering
     "cluster_events_by_context",
     "EventCluster",
     "analyze_cluster_quality",
-
     # Phase 1: Pattern extraction
     "extract_patterns",
     "Pattern",
     "extract_common_tags",
-
     # Phase 2: Project learning
     "ProjectLearningEngine",
     "ProjectInsight",
     "ProjectTemplate",
     "ProjectDifficulty",
-
     # Phase 3: Advanced consolidation
     "StrategyLearningEngine",
     "StrategyPerformance",

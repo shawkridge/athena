@@ -5,10 +5,7 @@ Detects systematic biases and calculates adjustment factors.
 """
 
 import logging
-import math
 from typing import Optional, Dict, Any, List
-from datetime import datetime, timedelta
-from statistics import mean, stdev
 
 from ..core.database import Database
 from ..core.base_store import BaseStore
@@ -32,14 +29,15 @@ class EstimateAccuracyStore(BaseStore):
 
     def _ensure_schema(self):
         """Ensure estimate accuracy tables exist."""
-        if not hasattr(self.db, 'get_cursor'):
+        if not hasattr(self.db, "get_cursor"):
             logger.debug("Async database detected, skipping sync schema")
             return
 
         cursor = self.db.get_cursor()
 
         # Main accuracy table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS estimate_accuracy (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -55,10 +53,12 @@ class EstimateAccuracyStore(BaseStore):
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
                 UNIQUE(project_id, task_type)
             )
-        """)
+        """
+        )
 
         # Trends table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS estimation_trends (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -69,7 +69,8 @@ class EstimateAccuracyStore(BaseStore):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         self.db.commit()
 
@@ -115,8 +116,16 @@ class EstimateAccuracyStore(BaseStore):
                     updated_at = CURRENT_TIMESTAMP
                 """,
                 (
-                    project_id, task_type, accuracy, bias, estimate_minutes, actual_minutes,
-                    accuracy, bias, estimate_minutes, actual_minutes
+                    project_id,
+                    task_type,
+                    accuracy,
+                    bias,
+                    estimate_minutes,
+                    actual_minutes,
+                    accuracy,
+                    bias,
+                    estimate_minutes,
+                    actual_minutes,
                 ),
             )
 
@@ -127,9 +136,7 @@ class EstimateAccuracyStore(BaseStore):
             logger.error(f"Failed to record completion: {e}")
             return False
 
-    def get_type_accuracy_stats(
-        self, project_id: int, task_type: str
-    ) -> Optional[Dict[str, Any]]:
+    def get_type_accuracy_stats(self, project_id: int, task_type: str) -> Optional[Dict[str, Any]]:
         """Get accuracy statistics for a task type.
 
         Args:
@@ -206,13 +213,15 @@ class EstimateAccuracyStore(BaseStore):
             for row in rows:
                 task_type, accuracy, bias, variance, sample_count = row
 
-                stats.append({
-                    "task_type": task_type,
-                    "accuracy_percent": round(accuracy, 1) if accuracy else 0.0,
-                    "bias_factor": round(bias, 2) if bias else 1.0,
-                    "sample_count": sample_count,
-                    "confidence": self._calculate_confidence(sample_count, variance or 0.0),
-                })
+                stats.append(
+                    {
+                        "task_type": task_type,
+                        "accuracy_percent": round(accuracy, 1) if accuracy else 0.0,
+                        "bias_factor": round(bias, 2) if bias else 1.0,
+                        "sample_count": sample_count,
+                        "confidence": self._calculate_confidence(sample_count, variance or 0.0),
+                    }
+                )
 
             return stats
 

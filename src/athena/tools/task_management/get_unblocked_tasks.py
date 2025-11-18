@@ -60,7 +60,7 @@ def get_unblocked_tasks(
 
         db = Database()
         store = DependencyStore(db)
-        statuses = statuses or ['pending', 'in_progress']
+        statuses = statuses or ["pending", "in_progress"]
         tasks = store.get_unblocked_tasks(project_id, statuses, limit)
         return tasks
     except Exception as e:

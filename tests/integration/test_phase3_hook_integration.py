@@ -9,20 +9,15 @@ Tests verify that:
 """
 
 import pytest
-import asyncio
 import sys
-import os
-from typing import Dict, Any
-from datetime import datetime, timedelta
 
 # Add src to path
-sys.path.insert(0, '/home/user/.work/athena/src')
+sys.path.insert(0, "/home/user/.work/athena/src")
 
 from athena import initialize_athena
 from athena.agents.memory_coordinator import MemoryCoordinatorAgent
 from athena.agents.pattern_extractor import PatternExtractorAgent
 from athena.episodic.operations import remember
-from athena.memory.operations import store, search
 
 
 class TestPhase3Integration:

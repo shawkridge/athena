@@ -2,8 +2,9 @@
 
 Provides standardized interface for tool implementation and registration.
 """
+
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from pydantic import BaseModel
 
 

@@ -7,7 +7,7 @@ import logging
 import json
 import sys
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Optional
 from pathlib import Path
 
 
@@ -76,9 +76,7 @@ def setup_logging(
     if json_format:
         formatter = JSONFormatter()
     else:
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
@@ -143,11 +141,7 @@ def get_logger(name: str = "athena") -> logging.Logger:
 
 
 def log_operation(
-    logger: logging.Logger,
-    operation: str,
-    duration_ms: float,
-    success: bool,
-    **context
+    logger: logging.Logger, operation: str, duration_ms: float, success: bool, **context
 ):
     """Log an operation with timing and context."""
     level = "INFO" if success else "ERROR"

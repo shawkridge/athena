@@ -8,9 +8,9 @@ scoring and validation.
 import json
 import logging
 import re
-from typing import Optional, Dict, List, Tuple, Any
+from typing import Optional, Dict, Tuple, Any
 
-from .models import Procedure, ExecutableProcedure
+from .models import Procedure
 
 logger = logging.getLogger(__name__)
 

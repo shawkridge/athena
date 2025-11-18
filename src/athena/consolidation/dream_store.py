@@ -1,8 +1,6 @@
 """Dream procedure storage and query operations."""
 
 import json
-import time
-from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 
 from ..core.database import Database
@@ -48,16 +46,18 @@ class DreamStore(BaseStore[DreamProcedure]):
             claude_reasoning=row.get("claude_reasoning"),
             test_outcome=row.get("test_outcome"),
             test_error=row.get("test_error"),
-            test_timestamp=self.from_timestamp(row.get("test_timestamp"))
-            if row.get("test_timestamp")
-            else None,
+            test_timestamp=(
+                self.from_timestamp(row.get("test_timestamp"))
+                if row.get("test_timestamp")
+                else None
+            ),
             novelty_score=row.get("novelty_score"),
             cross_project_matches=row.get("cross_project_matches", 0),
             effectiveness_metric=row.get("effectiveness_metric"),
             generated_at=self.from_timestamp(row.get("generated_at")),
-            evaluated_at=self.from_timestamp(row.get("evaluated_at"))
-            if row.get("evaluated_at")
-            else None,
+            evaluated_at=(
+                self.from_timestamp(row.get("evaluated_at")) if row.get("evaluated_at") else None
+            ),
             created_by=row.get("created_by"),
         )
 
@@ -67,9 +67,7 @@ class DreamStore(BaseStore[DreamProcedure]):
             import logging
 
             logger = logging.getLogger(__name__)
-            logger.debug(
-                f"{self.__class__.__name__}: PostgreSQL async database detected."
-            )
+            logger.debug(f"{self.__class__.__name__}: PostgreSQL async database detected.")
             return
 
         cursor = self.db.get_cursor()
@@ -155,18 +153,12 @@ class DreamStore(BaseStore[DreamProcedure]):
         )
 
         # Create indexes for common queries
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_dream_status ON dream_procedures(status)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_dream_tier ON dream_procedures(tier)"
-        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_dream_status ON dream_procedures(status)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_dream_tier ON dream_procedures(tier)")
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_dream_base_proc ON dream_procedures(base_procedure_id)"
         )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_dream_type ON dream_procedures(dream_type)"
-        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_dream_type ON dream_procedures(dream_type)")
 
         self.db.commit()
 
@@ -344,7 +336,9 @@ class DreamStore(BaseStore[DreamProcedure]):
         rows = cursor.fetchall()
         return [self._row_to_model(dict(row)) for row in rows]
 
-    async def get_high_novelty(self, min_score: float = 0.7, limit: int = 50) -> List[DreamProcedure]:
+    async def get_high_novelty(
+        self, min_score: float = 0.7, limit: int = 50
+    ) -> List[DreamProcedure]:
         """Get dreams with high novelty scores."""
         cursor = self.db.get_cursor()
         cursor.execute(
@@ -360,7 +354,9 @@ class DreamStore(BaseStore[DreamProcedure]):
         rows = cursor.fetchall()
         return [self._row_to_model(dict(row)) for row in rows]
 
-    async def get_cross_project_viable(self, min_matches: int = 2, limit: int = 50) -> List[DreamProcedure]:
+    async def get_cross_project_viable(
+        self, min_matches: int = 2, limit: int = 50
+    ) -> List[DreamProcedure]:
         """Get dreams that could be used across multiple projects."""
         cursor = self.db.get_cursor()
         cursor.execute(
@@ -459,9 +455,7 @@ class DreamStore(BaseStore[DreamProcedure]):
         )
         test_stats = cursor.fetchone()
         tier1_success_rate = (
-            (test_stats["successes"] / test_stats["total"])
-            if test_stats["total"] > 0
-            else 0.0
+            (test_stats["successes"] / test_stats["total"]) if test_stats["total"] > 0 else 0.0
         )
 
         return {

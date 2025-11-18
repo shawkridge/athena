@@ -15,21 +15,23 @@ logger = logging.getLogger(__name__)
 
 class NavigationDirection(Enum):
     """Direction of navigation in code graph."""
-    INCOMING = "incoming"       # Who depends on this
-    OUTGOING = "outgoing"       # What this depends on
-    RELATED = "related"         # Semantically related
-    CONTEXT = "context"         # Surrounding code (same file, class)
+
+    INCOMING = "incoming"  # Who depends on this
+    OUTGOING = "outgoing"  # What this depends on
+    RELATED = "related"  # Semantically related
+    CONTEXT = "context"  # Surrounding code (same file, class)
 
 
 @dataclass
 class NavigationNode:
     """Represents a node in code navigation."""
+
     name: str
     entity_type: str
     file_path: str
     line_number: int
     relevance_score: float = 1.0  # 0-1, relevance to navigation query
-    distance: int = 0            # Steps from starting point
+    distance: int = 0  # Steps from starting point
     path: List[str] = field(default_factory=list)  # Navigation breadcrumb
     context: Dict[str, Any] = field(default_factory=dict)
     is_entry_point: bool = False
@@ -38,6 +40,7 @@ class NavigationNode:
 @dataclass
 class NavigationBreadcrumb:
     """Represents navigation path/breadcrumb."""
+
     start: str
     current: str
     path: List[str]
@@ -97,15 +100,11 @@ class CodeNavigator:
 
     def explore_incoming(self, entity_name: str, max_depth: int = 2) -> List[NavigationNode]:
         """Explore entities that depend on this entity."""
-        return self._explore_direction(
-            entity_name, NavigationDirection.INCOMING, max_depth
-        )
+        return self._explore_direction(entity_name, NavigationDirection.INCOMING, max_depth)
 
     def explore_outgoing(self, entity_name: str, max_depth: int = 2) -> List[NavigationNode]:
         """Explore entities that this depends on."""
-        return self._explore_direction(
-            entity_name, NavigationDirection.OUTGOING, max_depth
-        )
+        return self._explore_direction(entity_name, NavigationDirection.OUTGOING, max_depth)
 
     def explore_related(self, entity_name: str, max_results: int = 10) -> List[NavigationNode]:
         """Find semantically related entities."""
@@ -113,9 +112,7 @@ class CodeNavigator:
 
         if self.rag_retriever:
             # Use RAG to find similar code
-            rag_results = self.rag_retriever.search_related_entities(
-                entity_name, top_k=max_results
-            )
+            rag_results = self.rag_retriever.search_related_entities(entity_name, top_k=max_results)
 
             for i, rag_result in enumerate(rag_results):
                 node = NavigationNode(
@@ -202,7 +199,7 @@ class CodeNavigator:
     def find_path(self, source: str, target: str) -> Optional[List[str]]:
         """Find path between two entities."""
         # Try dependency graph first
-        if hasattr(self.dependency_graph, 'find_import_chain'):
+        if hasattr(self.dependency_graph, "find_import_chain"):
             path = self.dependency_graph.find_import_chain(source, target)
             if path:
                 return path
@@ -381,12 +378,14 @@ class NavigationGuide:
         chain_details = []
         for i, entity in enumerate(path):
             node = self.navigator.navigate_to(entity)
-            chain_details.append({
-                "step": i,
-                "entity": entity,
-                "type": node.entity_type if node else "unknown",
-                "file": node.file_path if node else "",
-            })
+            chain_details.append(
+                {
+                    "step": i,
+                    "entity": entity,
+                    "type": node.entity_type if node else "unknown",
+                    "file": node.file_path if node else "",
+                }
+            )
 
         return {
             "found": True,
@@ -407,12 +406,10 @@ class NavigationGuide:
             "entity": entity_name,
             "suggestions": {
                 "explore_dependents": [
-                    {"name": n.name, "type": n.entity_type}
-                    for n in incoming[:3]
+                    {"name": n.name, "type": n.entity_type} for n in incoming[:3]
                 ],
                 "explore_dependencies": [
-                    {"name": n.name, "type": n.entity_type}
-                    for n in outgoing[:3]
+                    {"name": n.name, "type": n.entity_type} for n in outgoing[:3]
                 ],
                 "explore_related": [
                     {"name": n.name, "type": n.entity_type, "score": n.relevance_score}

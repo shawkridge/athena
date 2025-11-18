@@ -5,7 +5,8 @@ Returns summaries: entity counts, relation counts, community metrics.
 Never returns full entity/relation objects.
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
+
 try:
     import psycopg
     from psycopg import AsyncConnection
@@ -21,7 +22,7 @@ async def search_entities(
     password: str,
     query: str,
     limit: int = 100,
-    max_depth: int = 2
+    max_depth: int = 2,
 ) -> Dict[str, Any]:
     """
     Search entities in knowledge graph with summary results.
@@ -40,7 +41,9 @@ async def search_entities(
         Summary with entity counts, relation counts, connectivity metrics
     """
     try:
-        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
+        conn = await AsyncConnection.connect(
+            host, port=port, dbname=dbname, user=user, password=password
+        )
         cursor = conn.cursor()
 
         # Search entities
@@ -51,17 +54,13 @@ async def search_entities(
             WHERE name ILIKE %s OR description ILIKE %s
             LIMIT %s
             """,
-            (f"%{query}%", f"%{query}%", limit)
+            (f"%{query}%", f"%{query}%", limit),
         )
 
         entities = [dict(row) for row in await cursor.fetchall()]
 
         if not entities:
-            return {
-                "query": query,
-                "total_entities": 0,
-                "empty": True
-            }
+            return {"query": query, "total_entities": 0, "empty": True}
 
         entity_ids = [e["id"] for e in entities]
 
@@ -73,7 +72,7 @@ async def search_entities(
             FROM graph_relations
             WHERE source_id IN ({placeholders}) OR target_id IN ({placeholders})
             """,
-            entity_ids + entity_ids
+            entity_ids + entity_ids,
         )
 
         relation_count = (await cursor.fetchone())[0]
@@ -86,7 +85,7 @@ async def search_entities(
             WHERE source_id IN ({placeholders}) OR target_id IN ({placeholders})
             GROUP BY relation_type
             """,
-            entity_ids + entity_ids
+            entity_ids + entity_ids,
         )
 
         rel_dist = {row[0]: row[1] for row in await cursor.fetchall()}
@@ -106,15 +105,14 @@ async def search_entities(
             "total_relations": relation_count,
             "relation_type_distribution": rel_dist,
             "avg_relations_per_entity": relation_count / len(entities) if entities else 0,
-            "avg_confidence": sum(e.get("confidence", 0) for e in entities) / len(entities) if entities else 0,
-            "top_entity_ids": [e["id"] for e in entities[:5]]
+            "avg_confidence": (
+                sum(e.get("confidence", 0) for e in entities) / len(entities) if entities else 0
+            ),
+            "top_entity_ids": [e["id"] for e in entities[:5]],
         }
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "error_type": type(e).__name__
-        }
+        return {"error": str(e), "error_type": type(e).__name__}
 
 
 async def get_entity_neighbors(
@@ -125,7 +123,7 @@ async def get_entity_neighbors(
     password: str,
     entity_id: str,
     relation_type: Optional[str] = None,
-    depth: int = 1
+    depth: int = 1,
 ) -> Dict[str, Any]:
     """
     Get neighbor entities and relation summary.
@@ -133,7 +131,9 @@ async def get_entity_neighbors(
     Returns counts and types, not full entities.
     """
     try:
-        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
+        conn = await AsyncConnection.connect(
+            host, port=port, dbname=dbname, user=user, password=password
+        )
         cursor = conn.cursor()
 
         where_clause = "(source_id = %s OR target_id = %s)"
@@ -144,8 +144,7 @@ async def get_entity_neighbors(
             params.append(relation_type)
 
         await cursor.execute(
-            f"SELECT COUNT(*) as count FROM graph_relations WHERE {where_clause}",
-            params
+            f"SELECT COUNT(*) as count FROM graph_relations WHERE {where_clause}", params
         )
 
         total_relations = (await cursor.fetchone())[0]
@@ -158,7 +157,7 @@ async def get_entity_neighbors(
             WHERE {where_clause}
             GROUP BY relation_type
             """,
-            params
+            params,
         )
 
         rel_dist = {row[0]: row[1] for row in await cursor.fetchall()}
@@ -172,7 +171,7 @@ async def get_entity_neighbors(
             WHERE {where_clause}
             GROUP BY e.type
             """,
-            params
+            params,
         )
 
         neighbor_types = {row[0]: row[1] for row in await cursor.fetchall()}
@@ -184,14 +183,11 @@ async def get_entity_neighbors(
             "total_neighbors": total_relations,
             "relation_type_distribution": rel_dist,
             "neighbor_type_distribution": neighbor_types,
-            "connectivity_score": min(1.0, total_relations / 10.0)  # 10+ relations = 1.0
+            "connectivity_score": min(1.0, total_relations / 10.0),  # 10+ relations = 1.0
         }
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "error_type": type(e).__name__
-        }
+        return {"error": str(e), "error_type": type(e).__name__}
 
 
 if __name__ == "__main__":

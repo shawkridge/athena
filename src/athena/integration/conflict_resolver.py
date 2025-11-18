@@ -15,7 +15,6 @@ Strategies:
 
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
@@ -24,7 +23,6 @@ from ..core.database import Database
 from .todowrite_sync import (
     detect_sync_conflict,
     resolve_sync_conflict,
-    convert_plan_to_todo,
 )
 from .database_sync import get_store
 
@@ -199,7 +197,7 @@ class AdaptiveConflictResolver:
                     strategy_results.append((preference, confidence))
 
             if not strategy_results:
-                logger.warning(f"No strategy could resolve conflict")
+                logger.warning("No strategy could resolve conflict")
                 return False, None, 0.0
 
             # Weighted voting
@@ -303,7 +301,8 @@ class ConflictResolutionStore:
         """Ensure conflict_resolutions table exists."""
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS conflict_resolutions (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -319,7 +318,8 @@ class ConflictResolutionStore:
                 INDEX idx_plan_id (plan_id),
                 INDEX idx_preference (resolution_preference)
             )
-        """)
+        """
+        )
 
         cursor.close()
 
@@ -339,21 +339,24 @@ class ConflictResolutionStore:
 
             cursor = self.db.get_cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO conflict_resolutions (
                     project_id, todo_id, plan_id, conflict_reason,
                     resolution_preference, confidence, manual, created_at
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                project_id,
-                todo_id,
-                plan_id,
-                conflict_reason,
-                preference,
-                confidence,
-                manual,
-                now,
-            ))
+            """,
+                (
+                    project_id,
+                    todo_id,
+                    plan_id,
+                    conflict_reason,
+                    preference,
+                    confidence,
+                    manual,
+                    now,
+                ),
+            )
 
             cursor.close()
             return True
@@ -373,35 +376,43 @@ class ConflictResolutionStore:
             cursor = self.db.get_cursor()
 
             if todo_id:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT * FROM conflict_resolutions
                     WHERE project_id = %s AND todo_id = %s
                     ORDER BY created_at DESC
                     LIMIT %s
-                """, (project_id, todo_id, limit))
+                """,
+                    (project_id, todo_id, limit),
+                )
             else:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT * FROM conflict_resolutions
                     WHERE project_id = %s
                     ORDER BY created_at DESC
                     LIMIT %s
-                """, (project_id, limit))
+                """,
+                    (project_id, limit),
+                )
 
             rows = cursor.fetchall()
             cursor.close()
 
             results = []
             for row in rows:
-                results.append({
-                    "id": row[0],
-                    "todo_id": row[2],
-                    "plan_id": row[3],
-                    "conflict_reason": row[4],
-                    "resolution_preference": row[5],
-                    "confidence": row[6],
-                    "manual": row[7],
-                    "created_at": row[8],
-                })
+                results.append(
+                    {
+                        "id": row[0],
+                        "todo_id": row[2],
+                        "plan_id": row[3],
+                        "conflict_reason": row[4],
+                        "resolution_preference": row[5],
+                        "confidence": row[6],
+                        "manual": row[7],
+                        "created_at": row[8],
+                    }
+                )
 
             return results
 
@@ -417,13 +428,16 @@ class ConflictResolutionStore:
         try:
             cursor = self.db.get_cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT resolution_preference, COUNT(*), AVG(confidence)
                 FROM conflict_resolutions
                 WHERE project_id = %s
                 GROUP BY resolution_preference
                 ORDER BY COUNT(*) DESC
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
 
             rows = cursor.fetchall()
             cursor.close()

@@ -203,7 +203,7 @@ class ConsolidationTokenMetrics:
     def __str__(self) -> str:
         """Human-readable metrics summary."""
         lines = [
-            f"Consolidation Token Metrics:",
+            "Consolidation Token Metrics:",
             f"  Original tokens: {self.original_tokens:,}",
             f"  Final tokens to Claude: {self.final_tokens_to_claude:,}",
             f"  Compression: {self.compression_percentage:.1f}%",
@@ -211,8 +211,10 @@ class ConsolidationTokenMetrics:
         ]
 
         if self.cache_result:
-            lines.append(f"  Cache: {self.cache_result.cache_hit and 'HIT' or 'MISS'} "
-                        f"({self.cache_result.cache_savings_percentage:.1f}% savings)")
+            lines.append(
+                f"  Cache: {self.cache_result.cache_hit and 'HIT' or 'MISS'} "
+                f"({self.cache_result.cache_savings_percentage:.1f}% savings)"
+            )
 
         lines.append(f"  Cost reduction: {self.cost_reduction_percentage:.1f}%")
         lines.append(f"  Total latency: {self.total_ms:.0f}ms")
@@ -262,9 +264,7 @@ class TokenTracker:
         self.cache_result = result
         self.metadata["cache_lookup_ms"] = latency_ms
 
-    def record_claude_call(
-        self, input_tokens: int, output_tokens: int, latency_ms: float
-    ) -> None:
+    def record_claude_call(self, input_tokens: int, output_tokens: int, latency_ms: float) -> None:
         """Record Claude API call."""
         self.tokens_to_claude = input_tokens
         self.tokens_from_claude = output_tokens
@@ -367,12 +367,18 @@ class TokenMetricsAggregator:
         ]
 
         if self.compression_results:
-            avg_latency = sum(r.latency_ms for r in self.compression_results) / len(self.compression_results)
-            avg_quality = sum(r.quality_preservation for r in self.compression_results) / len(self.compression_results)
-            lines.extend([
-                f"Average compression latency: {avg_latency:.0f}ms",
-                f"Average quality preservation: {avg_quality:.1%}",
-            ])
+            avg_latency = sum(r.latency_ms for r in self.compression_results) / len(
+                self.compression_results
+            )
+            avg_quality = sum(r.quality_preservation for r in self.compression_results) / len(
+                self.compression_results
+            )
+            lines.extend(
+                [
+                    f"Average compression latency: {avg_latency:.0f}ms",
+                    f"Average quality preservation: {avg_quality:.1%}",
+                ]
+            )
 
         return "\n".join(lines)
 

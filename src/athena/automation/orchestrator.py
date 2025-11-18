@@ -10,7 +10,7 @@ Coordinates:
 import asyncio
 import logging
 from typing import Optional, Dict, List, Any
-from datetime import datetime, timedelta
+from datetime import datetime
 from dataclasses import dataclass
 
 from ..core.database import Database
@@ -99,9 +99,7 @@ class AutomationOrchestrator:
         logger.info(f"Starting background monitoring for project {project_id}")
 
         # Start periodic health check task
-        task = asyncio.create_task(
-            self._periodic_health_check(project_id)
-        )
+        task = asyncio.create_task(self._periodic_health_check(project_id))
         self._background_tasks.append(task)
 
     async def stop_background_monitoring(self):
@@ -159,9 +157,7 @@ class AutomationOrchestrator:
             result["error"] = str(e)
             return result
 
-    async def _on_task_created(
-        self, event: AutomationEvent
-    ) -> List[str]:
+    async def _on_task_created(self, event: AutomationEvent) -> List[str]:
         """Handle task creation event.
 
         Actions:
@@ -175,24 +171,15 @@ class AutomationOrchestrator:
         if self.config.enable_auto_optimize_plans:
             try:
                 logger.info(f"Auto-optimizing plan for task {task_id}")
-                optimization = (
-                    await self.planning_optimizer.validate_and_optimize(
-                        task_id
-                    )
-                )
+                optimization = await self.planning_optimizer.validate_and_optimize(task_id)
 
-                if (
-                    optimization.has_parallelization
-                    or optimization.identified_risks
-                ):
+                if optimization.has_parallelization or optimization.identified_risks:
                     actions.append(
                         f"Generated optimization suggestions (parallelization={optimization.has_parallelization}, risks={len(optimization.identified_risks)})"
                     )
 
                 # Alert if execution should be blocked
-                if await self.planning_optimizer.should_block_execution(
-                    task_id
-                ):
+                if await self.planning_optimizer.should_block_execution(task_id):
                     alert = {
                         "task_id": task_id,
                         "severity": "high",
@@ -208,9 +195,7 @@ class AutomationOrchestrator:
 
         return actions
 
-    async def _on_task_completed(
-        self, event: AutomationEvent
-    ) -> List[str]:
+    async def _on_task_completed(self, event: AutomationEvent) -> List[str]:
         """Handle task completion event.
 
         Actions:
@@ -223,16 +208,10 @@ class AutomationOrchestrator:
 
         try:
             # Check if analytics should trigger
-            should_trigger = (
-                await self.analytics_aggregator.should_trigger_review(
-                    project_id
-                )
-            )
+            should_trigger = await self.analytics_aggregator.should_trigger_review(project_id)
 
             if should_trigger:
-                logger.info(
-                    f"Triggering analytics for project {project_id}"
-                )
+                logger.info(f"Triggering analytics for project {project_id}")
                 summary = await self.analytics_aggregator.analyze_project(
                     project_id, period="weekly"
                 )
@@ -258,9 +237,7 @@ class AutomationOrchestrator:
 
         return actions
 
-    async def _on_task_status_changed(
-        self, event: AutomationEvent
-    ) -> List[str]:
+    async def _on_task_status_changed(self, event: AutomationEvent) -> List[str]:
         """Handle task status change event.
 
         Actions:
@@ -274,14 +251,9 @@ class AutomationOrchestrator:
         try:
             if new_status == "executing":
                 # Check health at start of execution
-                health = await self.health_monitor.monitor.get_task_health(
-                    task_id
-                )
+                health = await self.health_monitor.monitor.get_task_health(task_id)
 
-                if (
-                    health.health_score
-                    < self.config.critical_alert_threshold
-                ):
+                if health.health_score < self.config.critical_alert_threshold:
                     alert = {
                         "task_id": task_id,
                         "severity": "critical",
@@ -298,9 +270,7 @@ class AutomationOrchestrator:
                     "task_id": task_id,
                     "severity": "high",
                     "type": "task_blocked",
-                    "message": event.metadata.get(
-                        "reason", "Task blocked"
-                    ),
+                    "message": event.metadata.get("reason", "Task blocked"),
                     "timestamp": datetime.utcnow(),
                 }
                 self._active_alerts[task_id] = alert
@@ -315,9 +285,7 @@ class AutomationOrchestrator:
 
         return actions
 
-    async def _on_resource_conflict(
-        self, event: AutomationEvent
-    ) -> List[str]:
+    async def _on_resource_conflict(self, event: AutomationEvent) -> List[str]:
         """Handle resource conflict detection.
 
         Actions:
@@ -334,7 +302,7 @@ class AutomationOrchestrator:
                 "projects": project_ids,
                 "severity": "high",
                 "type": "resource_conflict",
-                "message": f"Resource conflict detected across projects",
+                "message": "Resource conflict detected across projects",
                 "timestamp": datetime.utcnow(),
             }
             self._active_alerts[tuple(project_ids)] = alert
@@ -345,9 +313,7 @@ class AutomationOrchestrator:
 
         return actions
 
-    async def _on_health_degraded(
-        self, event: AutomationEvent
-    ) -> List[str]:
+    async def _on_health_degraded(self, event: AutomationEvent) -> List[str]:
         """Handle health degradation event.
 
         Actions:
@@ -372,14 +338,8 @@ class AutomationOrchestrator:
                 # Try to optimize
                 if self.config.enable_auto_optimize_plans:
                     try:
-                        optimization = (
-                            await self.planning_optimizer.validate_and_optimize(
-                                task_id
-                            )
-                        )
-                        actions.append(
-                            "Auto-optimized plan due to health degradation"
-                        )
+                        optimization = await self.planning_optimizer.validate_and_optimize(task_id)
+                        actions.append("Auto-optimized plan due to health degradation")
                     except (OSError, ValueError, TypeError, KeyError, AttributeError):
                         pass
 
@@ -402,21 +362,13 @@ class AutomationOrchestrator:
                 last_check = self._last_health_check_time.get(project_id)
                 now = datetime.utcnow()
 
-                if last_check is None or (
-                    now - last_check
-                ).total_seconds() >= (
+                if last_check is None or (now - last_check).total_seconds() >= (
                     self.config.health_check_interval_minutes * 60
                 ):
-                    logger.info(
-                        f"Running periodic health check for project {project_id}"
-                    )
+                    logger.info(f"Running periodic health check for project {project_id}")
 
                     # Check all active tasks
-                    alerts = (
-                        await self.health_monitor.check_active_tasks(
-                            project_id
-                        )
-                    )
+                    alerts = await self.health_monitor.check_active_tasks(project_id)
 
                     # Store alerts
                     for alert in alerts:
@@ -429,9 +381,7 @@ class AutomationOrchestrator:
                         }
 
                     if alerts:
-                        logger.warning(
-                            f"Found {len(alerts)} tasks with health issues"
-                        )
+                        logger.warning(f"Found {len(alerts)} tasks with health issues")
 
                     self._last_health_check_time[project_id] = now
 
@@ -439,9 +389,7 @@ class AutomationOrchestrator:
                 await asyncio.sleep(60)  # Check every minute if due
 
             except asyncio.CancelledError:
-                logger.info(
-                    f"Stopping periodic health check for project {project_id}"
-                )
+                logger.info(f"Stopping periodic health check for project {project_id}")
                 break
             except Exception as e:
                 logger.error(f"Error in periodic health check: {e}")
@@ -481,9 +429,7 @@ class AutomationOrchestrator:
             Status dictionary
         """
         alerts = self.get_active_alerts()
-        critical_alerts = [
-            a for a in alerts if a.get("severity") == "critical"
-        ]
+        critical_alerts = [a for a in alerts if a.get("severity") == "critical"]
 
         return {
             "project_id": project_id,

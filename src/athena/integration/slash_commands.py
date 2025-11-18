@@ -5,7 +5,7 @@ users direct access to Phase 5-6 optimization capabilities.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class ConsolidateAdvancedCommand:
         project_id: int = 1,
         strategy: str = "auto",
         measure_quality: bool = True,
-        verbose: bool = True
+        verbose: bool = True,
     ) -> Dict[str, Any]:
         """Execute advanced consolidation command.
 
@@ -41,12 +41,7 @@ class ConsolidateAdvancedCommand:
         """
         try:
             # Step 1: Select consolidation strategy
-            strategy_map = {
-                "balanced": 0.5,
-                "speed": 0.3,
-                "quality": 0.8,
-                "minimal": 0.2
-            }
+            strategy_map = {"balanced": 0.5, "speed": 0.3, "quality": 0.8, "minimal": 0.2}
             strategy_used = strategy if strategy != "auto" else "balanced"
             quality_threshold = strategy_map.get(strategy_used, 0.5)
 
@@ -82,8 +77,8 @@ class ConsolidateAdvancedCommand:
                 "recommendations": [
                     "Run quality consolidation weekly for best results",
                     "Monitor compression ratio; target >0.75",
-                    f"Current recall: {recall_score:.0%}; target >0.80"
-                ]
+                    f"Current recall: {recall_score:.0%}; target >0.80",
+                ],
             }
         except Exception as e:
             logger.error(f"ConsolidateAdvancedCommand failed: {e}", exc_info=True)
@@ -110,7 +105,7 @@ class PlanValidateAdvancedCommand:
         task_id: Optional[int] = None,
         task_description: Optional[str] = None,
         include_scenarios: bool = True,
-        strict_mode: bool = False
+        strict_mode: bool = False,
     ) -> Dict[str, Any]:
         """Execute plan validation command.
 
@@ -146,10 +141,10 @@ class PlanValidateAdvancedCommand:
 
             # Step 4: Generate recommendations
             ready_for_execution = (
-                structure_valid and
-                feasibility_valid and
-                properties_score >= 0.70 and
-                success_probability >= 0.80
+                structure_valid
+                and feasibility_valid
+                and properties_score >= 0.70
+                and success_probability >= 0.80
             )
 
             return {
@@ -173,8 +168,8 @@ class PlanValidateAdvancedCommand:
                 "recommendations": [
                     "Plan structure validated ✓",
                     "Feasibility check passed ✓",
-                    f"Success probability: {success_probability:.0%}"
-                ]
+                    f"Success probability: {success_probability:.0%}",
+                ],
             }
         except Exception as e:
             logger.error(f"PlanValidateAdvancedCommand failed: {e}", exc_info=True)
@@ -197,10 +192,7 @@ class TaskHealthCommand:
         self.db = db
 
     async def execute(
-        self,
-        task_id: Optional[int] = None,
-        project_id: int = 1,
-        include_trends: bool = True
+        self, task_id: Optional[int] = None, project_id: int = 1, include_trends: bool = True
     ) -> Dict[str, Any]:
         """Execute task health monitoring command.
 
@@ -232,11 +224,7 @@ class TaskHealthCommand:
             # Step 4: Trend analysis
             health_trend = "stable"
             if include_trends:
-                trend_data = {
-                    "1h_ago": 0.75,
-                    "2h_ago": 0.72,
-                    "4h_ago": 0.70
-                }
+                trend_data = {"1h_ago": 0.75, "2h_ago": 0.72, "4h_ago": 0.70}
             else:
                 trend_data = {}
 
@@ -256,8 +244,8 @@ class TaskHealthCommand:
                 "recommendations": [
                     "On track for schedule",
                     "Address 1 warning before next phase",
-                    "Continue current pace"
-                ]
+                    "Continue current pace",
+                ],
             }
         except Exception as e:
             logger.error(f"TaskHealthCommand failed: {e}", exc_info=True)
@@ -284,7 +272,7 @@ class EstimateResourcesCommand:
         task_id: Optional[int] = None,
         task_description: Optional[str] = None,
         project_id: int = 1,
-        include_breakdown: bool = True
+        include_breakdown: bool = True,
     ) -> Dict[str, Any]:
         """Execute resource estimation command.
 
@@ -315,16 +303,11 @@ class EstimateResourcesCommand:
             expertise_required = {
                 "backend-development": "expert",
                 "database-design": "advanced",
-                "testing": "intermediate"
+                "testing": "intermediate",
             }
 
             # Step 5: Tools required
-            tools_required = [
-                "Python",
-                "PostgreSQL",
-                "pytest",
-                "Docker"
-            ]
+            tools_required = ["Python", "PostgreSQL", "pytest", "Docker"]
 
             # Step 6: Risk assessment
             low_risk_percentage = 60
@@ -374,7 +357,7 @@ class StressTestPlanCommand:
         self,
         task_id: Optional[int] = None,
         task_description: Optional[str] = None,
-        confidence_level: float = 0.80
+        confidence_level: float = 0.80,
     ) -> Dict[str, Any]:
         """Execute stress test plan command.
 
@@ -412,16 +395,16 @@ class StressTestPlanCommand:
 
             # Step 5: Expected value
             expected_duration = (
-                best_case_duration * best_case_probability +
-                likely_case_duration * likely_case_probability +
-                worst_case_duration * worst_case_probability
+                best_case_duration * best_case_probability
+                + likely_case_duration * likely_case_probability
+                + worst_case_duration * worst_case_probability
             )
 
             # Step 6: Risk identification
             identified_risks = [
                 "Database schema changes",
                 "API integration delays",
-                "Testing coverage gaps"
+                "Testing coverage gaps",
             ]
 
             # Step 7: Mitigation strategies
@@ -429,7 +412,7 @@ class StressTestPlanCommand:
                 "Start DB schema work early",
                 "Mock external APIs first",
                 "Automated test suite",
-                "Daily integration testing"
+                "Daily integration testing",
             ]
 
             return {
@@ -472,10 +455,7 @@ class LearningEffectivenessCommand:
         self.db = db
 
     async def execute(
-        self,
-        project_id: int = 1,
-        days_back: int = 7,
-        include_recommendations: bool = True
+        self, project_id: int = 1, days_back: int = 7, include_recommendations: bool = True
     ) -> Dict[str, Any]:
         """Execute learning effectiveness command.
 
@@ -525,7 +505,7 @@ class LearningEffectivenessCommand:
                 "Continue using quality strategy for complex tasks",
                 "Run deep consolidation weekly for pattern extraction",
                 "Focus on deployment process - lower confidence (72%)",
-                "Pattern stability good (82%) - knowledge base solid"
+                "Pattern stability good (82%) - knowledge base solid",
             ]
 
             return {

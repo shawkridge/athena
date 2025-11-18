@@ -4,7 +4,6 @@ import logging
 import time
 from typing import Dict, Optional, Any
 from dataclasses import dataclass, field
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -70,9 +69,11 @@ class AgentStreamingStatus:
             "rate": round(self.findings_per_second, 2),
             "avg_latency_ms": round(self.avg_latency_ms, 1),
             "elapsed_sec": round(self.elapsed_seconds, 1),
-            "eta_sec": round(self.estimated_completion_seconds, 1)
-            if self.estimated_completion_seconds
-            else None,
+            "eta_sec": (
+                round(self.estimated_completion_seconds, 1)
+                if self.estimated_completion_seconds
+                else None
+            ),
         }
 
 
@@ -138,9 +139,7 @@ class LiveAgentMonitor:
     async def get_all_agents_status(self) -> Dict[str, Dict[str, Any]]:
         """Get all agents' status in exportable format."""
         async with self._lock:
-            return {
-                name: agent.to_dict() for name, agent in self.agents.items()
-            }
+            return {name: agent.to_dict() for name, agent in self.agents.items()}
 
     async def get_summary(self) -> Dict[str, Any]:
         """Get overall research progress summary."""
@@ -151,7 +150,11 @@ class LiveAgentMonitor:
             running = sum(1 for a in self.agents.values() if a.status == "running")
 
             max_eta = max(
-                (a.estimated_completion_seconds for a in self.agents.values() if a.estimated_completion_seconds),
+                (
+                    a.estimated_completion_seconds
+                    for a in self.agents.values()
+                    if a.estimated_completion_seconds
+                ),
                 default=None,
             )
 
@@ -162,8 +165,5 @@ class LiveAgentMonitor:
                 "agents_failed": failed,
                 "total_agents": len(self.agents),
                 "estimated_completion_sec": round(max_eta, 1) if max_eta else None,
-                "agents": {
-                    name: agent.to_dict()
-                    for name, agent in self.agents.items()
-                },
+                "agents": {name: agent.to_dict() for name, agent in self.agents.items()},
             }

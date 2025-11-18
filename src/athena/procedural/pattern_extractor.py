@@ -50,9 +50,7 @@ class PatternExtractor:
             WHERE committed_timestamp > ?
             ORDER BY committed_timestamp DESC
             """,
-            (
-                int((datetime.now().timestamp() - (lookback_days * 86400))),
-            ),
+            (int((datetime.now().timestamp() - (lookback_days * 86400))),),
         )
 
         commits = cursor.fetchall()
@@ -73,9 +71,7 @@ class PatternExtractor:
 
             if refactoring_type:
                 # Get file changes for this commit
-                file_changes = self.git_store.get_commit_file_changes(
-                    commit_id
-                )
+                file_changes = self.git_store.get_commit_file_changes(commit_id)
 
                 metrics = CodeMetrics(
                     lines_added=insertions,
@@ -115,9 +111,7 @@ class PatternExtractor:
             WHERE fix_commit IS NOT NULL
             AND created_at > ?
             """,
-            (
-                int((datetime.now().timestamp() - (lookback_days * 86400))),
-            ),
+            (int((datetime.now().timestamp() - (lookback_days * 86400))),),
         )
 
         regressions = cursor.fetchall()
@@ -180,17 +174,11 @@ class PatternExtractor:
             return RefactoringType.RENAME
 
         # Inline: deletions > insertions, removes code
-        if "inline" in message_lower or (
-            deletions > insertions and files_changed <= 2
-        ):
+        if "inline" in message_lower or (deletions > insertions and files_changed <= 2):
             return RefactoringType.INLINE
 
         # Remove duplication: similar insertions/deletions, multiple files
-        if (
-            "dedup" in message_lower
-            or "consolidate" in message_lower
-            or "dry" in message_lower
-        ):
+        if "dedup" in message_lower or "consolidate" in message_lower or "dry" in message_lower:
             return RefactoringType.REMOVE_DUPLICATION
 
         # Simplify
@@ -199,9 +187,7 @@ class PatternExtractor:
 
         return None
 
-    def _map_regression_to_bug_type(
-        self, regression_type: str
-    ) -> Optional[BugFixType]:
+    def _map_regression_to_bug_type(self, regression_type: str) -> Optional[BugFixType]:
         """Map regression type to bug fix type."""
         mapping = {
             "test_failure": BugFixType.LOGIC_ERROR,
@@ -297,9 +283,7 @@ class PatternExtractor:
             insertions = commit.get("insertions", 0)
             deletions = commit.get("deletions", 0)
 
-            refactoring_type = self._detect_refactoring_type(
-                message, insertions, deletions, 1
-            )
+            refactoring_type = self._detect_refactoring_type(message, insertions, deletions, 1)
 
             if refactoring_type:
                 pattern = RefactoringPattern(
@@ -315,9 +299,7 @@ class PatternExtractor:
         self, language: str
     ) -> tuple[list[RefactoringPattern], list[BugFixPattern]]:
         """Get patterns specific to a programming language."""
-        patterns = self.pattern_store.get_refactoring_patterns(
-            language=language
-        )
+        patterns = self.pattern_store.get_refactoring_patterns(language=language)
 
         refactoring_patterns = [
             RefactoringPattern(
@@ -328,8 +310,6 @@ class PatternExtractor:
             for p in patterns
         ]
 
-        bug_fix_patterns = self.pattern_store.get_bug_fix_patterns(
-            language=language
-        )
+        bug_fix_patterns = self.pattern_store.get_bug_fix_patterns(language=language)
 
         return refactoring_patterns, bug_fix_patterns

@@ -2,7 +2,6 @@
 
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
-from datetime import datetime
 from collections import defaultdict
 
 
@@ -72,7 +71,9 @@ class StrategyLearningEngine:
         avg_quality = sum(quality_scores) / len(quality_scores) if quality_scores else 0.0
 
         duration_variances = [r.get("duration_variance_pct", 0) for r in execution_records]
-        avg_variance = sum(duration_variances) / len(duration_variances) if duration_variances else 0.0
+        avg_variance = (
+            sum(duration_variances) / len(duration_variances) if duration_variances else 0.0
+        )
 
         # Confidence based on execution count
         confidence = min(0.95, 0.3 + len(execution_records) * 0.1)
@@ -167,7 +168,11 @@ class StrategyLearningEngine:
                 continue
 
             cluster_parts = cluster_key.split("_")
-            task_type, complexity, domain = cluster_parts[0], int(cluster_parts[1]), cluster_parts[2]
+            task_type, complexity, domain = (
+                cluster_parts[0],
+                int(cluster_parts[1]),
+                cluster_parts[2],
+            )
 
             # Insight 1: Recommended strategy
             if strategy.success_rate > 0.85:
@@ -215,7 +220,9 @@ class StrategyLearningEngine:
 
         # Identify patterns
         successful = [p for p in performances if p.success_rate > 0.8]
-        avg_complexity = sum(p.complexity for p in successful) / len(successful) if successful else 5
+        avg_complexity = (
+            sum(p.complexity for p in successful) / len(successful) if successful else 5
+        )
 
         task_types = set(p.task_type for p in successful)
         domains = set(p.domain for p in successful)
@@ -225,10 +232,16 @@ class StrategyLearningEngine:
             "best_for_task_types": list(task_types),
             "best_for_domains": list(domains),
             "optimal_complexity_range": (
-                int(min(p.complexity for p in successful)),
-                int(max(p.complexity for p in successful)),
-            ) if successful else (1, 10),
-            "overall_success_rate": sum(p.success_rate for p in successful) / len(successful) if successful else 0.0,
+                (
+                    int(min(p.complexity for p in successful)),
+                    int(max(p.complexity for p in successful)),
+                )
+                if successful
+                else (1, 10)
+            ),
+            "overall_success_rate": (
+                sum(p.success_rate for p in successful) / len(successful) if successful else 0.0
+            ),
             "execution_count": sum(p.execution_count for p in successful),
         }
 

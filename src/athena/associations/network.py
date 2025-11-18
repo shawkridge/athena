@@ -5,10 +5,10 @@ Links represent semantic, temporal, causal, or similarity relationships.
 """
 
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from ..core.database import Database
-from .models import AssociationLink, LinkType, NetworkNode
+from .models import AssociationLink, LinkType
 
 
 class AssociationNetwork:
@@ -298,9 +298,7 @@ class AssociationNetwork:
             visited.add((current_id, current_layer))
 
             # Get neighbors
-            neighbors = self.get_neighbors(
-                current_id, current_layer, project_id, min_strength
-            )
+            neighbors = self.get_neighbors(current_id, current_layer, project_id, min_strength)
 
             for link in neighbors:
                 # Determine next node (handle bidirectional links)
@@ -343,9 +341,7 @@ class AssociationNetwork:
             ).fetchone()
             return result["count"] if result else 0
 
-    def prune_weak_links(
-        self, project_id: int, strength_threshold: float = 0.1
-    ) -> int:
+    def prune_weak_links(self, project_id: int, strength_threshold: float = 0.1) -> int:
         """Remove links below strength threshold.
 
         Args:

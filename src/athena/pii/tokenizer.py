@@ -21,18 +21,18 @@ class PIITokenizer:
     - 'type': Semantic type tokens (EMAIL_MASKED, PATH_MASKED, ...)
     """
 
-    def __init__(self, strategy: str = 'hash', salt: Optional[str] = None):
+    def __init__(self, strategy: str = "hash", salt: Optional[str] = None):
         """Initialize tokenizer with strategy.
 
         Args:
             strategy: 'hash', 'index', or 'type'
             salt: Optional salt for hash-based strategy (for determinism)
         """
-        if strategy not in ('hash', 'index', 'type'):
+        if strategy not in ("hash", "index", "type"):
             raise ValueError(f"Unknown strategy: {strategy}")
 
         self.strategy = strategy
-        self.salt = salt or 'athena_pii_v1'
+        self.salt = salt or "athena_pii_v1"
         self._index_counter = 0
 
     def tokenize(self, text: str, detections: List[PIIDetection]) -> str:
@@ -55,11 +55,13 @@ class PIITokenizer:
         result = text
         for detection in sorted_detections:
             token = self._get_token(detection)
-            result = result[:detection.start_pos] + token + result[detection.end_pos:]
+            result = result[: detection.start_pos] + token + result[detection.end_pos :]
 
         return result
 
-    def tokenize_event(self, event: 'EpisodicEvent', detections_by_field: Dict[str, List[PIIDetection]]) -> 'EpisodicEvent':
+    def tokenize_event(
+        self, event: "EpisodicEvent", detections_by_field: Dict[str, List[PIIDetection]]
+    ) -> "EpisodicEvent":
         """Apply tokenization to an episodic event.
 
         Args:
@@ -70,7 +72,6 @@ class PIITokenizer:
             New event with PII replaced by tokens
         """
         from copy import deepcopy
-        from athena.episodic.models import EpisodicEvent
 
         sanitized = deepcopy(event)
 
@@ -79,25 +80,25 @@ class PIITokenizer:
             if not detections:
                 continue
 
-            if field_name == 'content':
+            if field_name == "content":
                 sanitized.content = self.tokenize(event.content, detections)
-            elif field_name == 'git_author':
+            elif field_name == "git_author":
                 sanitized.git_author = self.tokenize(event.git_author, detections)
-            elif field_name == 'file_path':
+            elif field_name == "file_path":
                 sanitized.file_path = self.tokenize(event.file_path, detections)
-            elif field_name == 'diff':
+            elif field_name == "diff":
                 sanitized.diff = self.tokenize(event.diff, detections)
-            elif field_name == 'stack_trace':
+            elif field_name == "stack_trace":
                 sanitized.stack_trace = self.tokenize(event.stack_trace, detections)
-            elif field_name == 'context.cwd':
+            elif field_name == "context.cwd":
                 if sanitized.context:
                     sanitized.context.cwd = self.tokenize(event.context.cwd, detections)
-            elif field_name == 'context.task':
+            elif field_name == "context.task":
                 if sanitized.context:
                     sanitized.context.task = self.tokenize(event.context.task, detections)
-            elif field_name == 'context.files':
+            elif field_name == "context.files":
                 if sanitized.context and event.context.files:
-                    files_text = ' '.join(event.context.files)
+                    files_text = " ".join(event.context.files)
                     tokenized = self.tokenize(files_text, detections)
                     sanitized.context.files = tokenized.split()
 
@@ -112,11 +113,11 @@ class PIITokenizer:
         Returns:
             Token string
         """
-        if self.strategy == 'hash':
+        if self.strategy == "hash":
             return self._hash_token(detection)
-        elif self.strategy == 'index':
+        elif self.strategy == "index":
             return self._index_token(detection)
-        elif self.strategy == 'type':
+        elif self.strategy == "type":
             return self._type_token(detection)
         else:
             raise ValueError(f"Unknown strategy: {self.strategy}")
@@ -160,12 +161,12 @@ class PIITokenizer:
         if not isinstance(value, str):
             return False
 
-        if self.strategy == 'hash':
-            return value.startswith('PII_HASH_')
-        elif self.strategy == 'index':
-            return value.startswith('PII_ID_')
-        elif self.strategy == 'type':
-            return '_MASKED' in value
+        if self.strategy == "hash":
+            return value.startswith("PII_HASH_")
+        elif self.strategy == "index":
+            return value.startswith("PII_ID_")
+        elif self.strategy == "type":
+            return "_MASKED" in value
         else:
             return False
 
@@ -178,8 +179,8 @@ class DeterministicTokenizer(PIITokenizer):
     - Consistency across sessions
     """
 
-    def __init__(self, salt: str = 'athena_pii_v1'):
-        super().__init__(strategy='hash', salt=salt)
+    def __init__(self, salt: str = "athena_pii_v1"):
+        super().__init__(strategy="hash", salt=salt)
 
     def tokenize_deterministic(self, text: str, pii_values: List[str]) -> str:
         """Replace exact PII values with deterministic tokens.

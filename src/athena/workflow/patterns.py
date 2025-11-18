@@ -6,7 +6,7 @@ Suggests next tasks based on historical workflows.
 
 import logging
 import json
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 from collections import defaultdict
 
@@ -32,14 +32,15 @@ class WorkflowPatternStore(BaseStore):
 
     def _ensure_schema(self):
         """Ensure workflow pattern tables exist."""
-        if not hasattr(self.db, 'get_cursor'):
+        if not hasattr(self.db, "get_cursor"):
             logger.debug("Async database detected, skipping sync schema")
             return
 
         cursor = self.db.get_cursor()
 
         # Main patterns table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS workflow_patterns (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -55,10 +56,12 @@ class WorkflowPatternStore(BaseStore):
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
                 UNIQUE(project_id, from_task_type, to_task_type)
             )
-        """)
+        """
+        )
 
         # Task type workflows table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS task_type_workflows (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -72,7 +75,8 @@ class WorkflowPatternStore(BaseStore):
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
                 UNIQUE(project_id, task_type)
             )
-        """)
+        """
+        )
 
         self.db.commit()
 
@@ -202,12 +206,14 @@ class WorkflowPatternStore(BaseStore):
 
             patterns = []
             for row in rows:
-                patterns.append({
-                    "task_type": row[0],
-                    "frequency": row[1],
-                    "confidence": round(row[2], 3) if row[2] else 0.0,
-                    "avg_duration_hours": row[3],
-                })
+                patterns.append(
+                    {
+                        "task_type": row[0],
+                        "frequency": row[1],
+                        "confidence": round(row[2], 3) if row[2] else 0.0,
+                        "avg_duration_hours": row[3],
+                    }
+                )
 
             return patterns
         except Exception as e:
@@ -247,12 +253,14 @@ class WorkflowPatternStore(BaseStore):
 
             patterns = []
             for row in rows:
-                patterns.append({
-                    "task_type": row[0],
-                    "frequency": row[1],
-                    "confidence": round(row[2], 3) if row[2] else 0.0,
-                    "avg_duration_hours": row[3],
-                })
+                patterns.append(
+                    {
+                        "task_type": row[0],
+                        "frequency": row[1],
+                        "confidence": round(row[2], 3) if row[2] else 0.0,
+                        "avg_duration_hours": row[3],
+                    }
+                )
 
             return patterns
         except Exception as e:
@@ -300,8 +308,7 @@ class WorkflowPatternStore(BaseStore):
                     task_count = EXCLUDED.task_count,
                     updated_at = CURRENT_TIMESTAMP
                 """,
-                (project_id, task_type, sequence_json, confidence_avg,
-                 avg_duration, task_count),
+                (project_id, task_type, sequence_json, confidence_avg, avg_duration, task_count),
             )
 
             self.db.commit()
@@ -310,9 +317,7 @@ class WorkflowPatternStore(BaseStore):
             logger.error(f"Failed to store workflow sequence: {e}")
             return False
 
-    def get_workflow_sequence(
-        self, project_id: int, task_type: str
-    ) -> Optional[Dict[str, Any]]:
+    def get_workflow_sequence(self, project_id: int, task_type: str) -> Optional[Dict[str, Any]]:
         """Get typical workflow sequence for a task type.
 
         Args:
@@ -382,14 +387,16 @@ class WorkflowPatternStore(BaseStore):
 
             anomalies = []
             for row in rows:
-                anomalies.append({
-                    "from_type": row[0],
-                    "to_type": row[1],
-                    "frequency": row[2],
-                    "confidence": round(row[3], 3),
-                    "message": f"{row[0]} → {row[1]} occurs {row[2]}x "
-                              f"({row[3]:.1%} of {row[0]} tasks)",
-                })
+                anomalies.append(
+                    {
+                        "from_type": row[0],
+                        "to_type": row[1],
+                        "frequency": row[2],
+                        "confidence": round(row[3], 3),
+                        "message": f"{row[0]} → {row[1]} occurs {row[2]}x "
+                        f"({row[3]:.1%} of {row[0]} tasks)",
+                    }
+                )
 
             return anomalies
         except Exception as e:
@@ -425,14 +432,16 @@ class WorkflowPatternStore(BaseStore):
 
             patterns = []
             for row in rows:
-                patterns.append({
-                    "from_type": row[0],
-                    "to_type": row[1],
-                    "frequency": row[2],
-                    "confidence": round(row[3], 3) if row[3] else 0.0,
-                    "avg_duration_hours": row[4],
-                    "last_occurrence": row[5],
-                })
+                patterns.append(
+                    {
+                        "from_type": row[0],
+                        "to_type": row[1],
+                        "frequency": row[2],
+                        "confidence": round(row[3], 3) if row[3] else 0.0,
+                        "avg_duration_hours": row[4],
+                        "last_occurrence": row[5],
+                    }
+                )
 
             return patterns
         except Exception as e:

@@ -7,9 +7,8 @@ Implements:
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set
 from collections import defaultdict, deque
-import math
 
 from .models import Entity, Relation
 
@@ -17,30 +16,33 @@ from .models import Entity, Relation
 @dataclass
 class CentralityScore:
     """Centrality metrics for an entity."""
+
     entity_id: int
     entity_name: str
     betweenness: float  # 0-1 scale, higher = more important
-    closeness: float    # 0-1 scale, avg distance to other nodes
-    degree: int         # Number of connections
-    importance: float   # Combined importance score
+    closeness: float  # 0-1 scale, avg distance to other nodes
+    degree: int  # Number of connections
+    importance: float  # Combined importance score
 
 
 @dataclass
 class Cluster:
     """A cluster of related entities."""
+
     id: int
     entity_ids: List[int]
     entity_names: List[str]
-    density: float      # 0-1 scale, connectivity within cluster
+    density: float  # 0-1 scale, connectivity within cluster
     size: int
     internal_edges: int
     external_edges: int
-    cohesion: float     # Internal vs external connectivity
+    cohesion: float  # Internal vs external connectivity
 
 
 @dataclass
 class GraphAnalytics:
     """Graph analytics for knowledge graph."""
+
     total_entities: int
     total_edges: int
     density: float
@@ -206,7 +208,9 @@ class GraphAnalyzer:
 
                 # Possible edges between k neighbors
                 possible_edges = degree * (degree - 1) / 2
-                clustering[node] = edges_between_neighbors / possible_edges if possible_edges > 0 else 0.0
+                clustering[node] = (
+                    edges_between_neighbors / possible_edges if possible_edges > 0 else 0.0
+                )
 
         return clustering
 
@@ -365,16 +369,18 @@ class GraphAnalyzer:
                     else 0.0
                 )
 
-                clusters.append(Cluster(
-                    id=cluster_id,
-                    entity_ids=list(cluster_members),
-                    entity_names=entity_names,
-                    density=density,
-                    size=len(cluster_members),
-                    internal_edges=internal_edges,
-                    external_edges=external_edges,
-                    cohesion=cohesion,
-                ))
+                clusters.append(
+                    Cluster(
+                        id=cluster_id,
+                        entity_ids=list(cluster_members),
+                        entity_names=entity_names,
+                        density=density,
+                        size=len(cluster_members),
+                        internal_edges=internal_edges,
+                        external_edges=external_edges,
+                        cohesion=cohesion,
+                    )
+                )
 
         return clusters
 
@@ -486,7 +492,7 @@ class GraphAnalyzer:
 
         max_distance = 0
 
-        for start_id in list(self.entities.keys())[:min(10, len(self.entities))]:
+        for start_id in list(self.entities.keys())[: min(10, len(self.entities))]:
             # Sample 10 nodes max to avoid O(n^2) computation
             for end_id in self.entities.keys():
                 path = self.compute_shortest_path(start_id, end_id)
@@ -528,9 +534,7 @@ class GraphAnalyzer:
 
         # Average clustering coefficient
         avg_clustering = (
-            sum(clustering_coeff.values()) / len(clustering_coeff)
-            if clustering_coeff
-            else 0.0
+            sum(clustering_coeff.values()) / len(clustering_coeff) if clustering_coeff else 0.0
         )
 
         # Top centrality scores
@@ -538,19 +542,21 @@ class GraphAnalyzer:
         for entity_id in self.entities.keys():
             # Combine metrics: 50% betweenness, 30% degree, 20% closeness
             importance = (
-                0.5 * betweenness.get(entity_id, 0.0) +
-                0.3 * degree.get(entity_id, 0.0) +
-                0.2 * closeness.get(entity_id, 0.0)
+                0.5 * betweenness.get(entity_id, 0.0)
+                + 0.3 * degree.get(entity_id, 0.0)
+                + 0.2 * closeness.get(entity_id, 0.0)
             )
 
-            combined_scores.append(CentralityScore(
-                entity_id=entity_id,
-                entity_name=self.entities[entity_id].name,
-                betweenness=betweenness.get(entity_id, 0.0),
-                closeness=closeness.get(entity_id, 0.0),
-                degree=len(self.graph[entity_id]),
-                importance=importance,
-            ))
+            combined_scores.append(
+                CentralityScore(
+                    entity_id=entity_id,
+                    entity_name=self.entities[entity_id].name,
+                    betweenness=betweenness.get(entity_id, 0.0),
+                    closeness=closeness.get(entity_id, 0.0),
+                    degree=len(self.graph[entity_id]),
+                    importance=importance,
+                )
+            )
 
         # Sort by importance and get top K
         combined_scores.sort(key=lambda x: x.importance, reverse=True)
@@ -576,4 +582,3 @@ class GraphAnalyzer:
             clusters=clusters,
             isolated_entities=isolated,
         )
-

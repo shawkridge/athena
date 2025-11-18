@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class TemporalRelation(str, Enum):
     """Temporal relationship types."""
+
     IMMEDIATELY_AFTER = "immediately_after"  # <5 min
     SHORTLY_AFTER = "shortly_after"  # 5-60 min
     LATER_AFTER = "later_after"  # 1-24 hours
@@ -28,6 +29,7 @@ class TemporalRelation(str, Enum):
 @dataclass
 class TemporalEvent:
     """Event with temporal information."""
+
     event_id: int
     content: str
     event_type: str
@@ -39,6 +41,7 @@ class TemporalEvent:
 @dataclass
 class EventSequence:
     """Sequence of causally-related events."""
+
     events: List[TemporalEvent]
     causal_strength: float  # 0.0-1.0 confidence of causality
     time_span: timedelta
@@ -306,7 +309,7 @@ class TemporalQueries:
             type_score = 1.0 if curr.event_type == next_ev.event_type else 0.7
 
             # Combined strength
-            strength = (0.4 * time_score + 0.3 * outcome_score + 0.3 * type_score)
+            strength = 0.4 * time_score + 0.3 * outcome_score + 0.3 * type_score
             strengths.append(strength)
 
         # Return average strength
@@ -328,7 +331,9 @@ class TemporalQueries:
 
         for i, event in enumerate(events):
             time_str = event.timestamp.strftime("%H:%M:%S")
-            status = "✓" if event.outcome == "success" else "✗" if event.outcome == "failure" else "○"
+            status = (
+                "✓" if event.outcome == "success" else "✗" if event.outcome == "failure" else "○"
+            )
 
             # Format event
             event_line = f"{time_str} {status} {event.event_type}: {event.content}"

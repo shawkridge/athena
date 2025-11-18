@@ -12,9 +12,8 @@ Provides comprehensive health metrics for all 8 memory layers with:
 
 from enum import Enum
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional, Any
-import json
 import time
 import logging
 from athena.core.database import Database
@@ -25,13 +24,15 @@ logger = logging.getLogger(__name__)
 
 class HealthStatus(str, Enum):
     """Health status indicators."""
-    HEALTHY = "healthy"     # ✓ 80-100%
-    WARNING = "warning"     # ⚠ 50-79%
-    CRITICAL = "critical"   # ✗ <50%
+
+    HEALTHY = "healthy"  # ✓ 80-100%
+    WARNING = "warning"  # ⚠ 50-79%
+    CRITICAL = "critical"  # ✗ <50%
 
 
 class LayerType(str, Enum):
     """Memory layer types."""
+
     EPISODIC = "episodic"
     SEMANTIC = "semantic"
     PROCEDURAL = "procedural"
@@ -45,6 +46,7 @@ class LayerType(str, Enum):
 @dataclass
 class LayerHealth:
     """Health metrics for a single layer."""
+
     layer: LayerType
     status: HealthStatus
     utilization: float  # 0-1 scale
@@ -57,6 +59,7 @@ class LayerHealth:
 @dataclass
 class SystemHealth:
     """Overall system health summary."""
+
     total_status: HealthStatus
     timestamp: datetime
     layer_health: Dict[LayerType, LayerHealth]
@@ -77,7 +80,7 @@ class LayerHealthMonitor:
 
     def _get_cursor(self):
         """Get a cursor for database queries (lazy initialization)."""
-        if not hasattr(self, '_cursor'):
+        if not hasattr(self, "_cursor"):
             self._cursor = self.db.get_cursor()
         return self._cursor
 
@@ -203,10 +206,7 @@ class LayerHealthMonitor:
 
         # Count active tasks
         active_query = query + " AND status = ?"
-        self._get_cursor().execute(
-            active_query,
-            params + ["active"] if params else ["active"]
-        )
+        self._get_cursor().execute(active_query, params + ["active"] if params else ["active"])
         active_count = self._get_cursor().fetchone()[0] if not params else 0
 
         utilization = min(1.0, task_count / 1000)
@@ -243,7 +243,9 @@ class LayerHealthMonitor:
         # Count relations
         relation_query = "SELECT COUNT(*) FROM entity_relations"
         if project_id:
-            relation_query += " WHERE (SELECT project_id FROM entities WHERE id = from_entity_id) = ?"
+            relation_query += (
+                " WHERE (SELECT project_id FROM entities WHERE id = from_entity_id) = ?"
+            )
             self._get_cursor().execute(relation_query, [project_id])
         else:
             self._get_cursor().execute(relation_query)
@@ -332,9 +334,7 @@ class LayerHealthMonitor:
 
             last_run_timestamp = self._get_cursor().fetchone()[0]
             last_run_age = (
-                (time.time() - last_run_timestamp) / 3600
-                if last_run_timestamp
-                else float("inf")
+                (time.time() - last_run_timestamp) / 3600 if last_run_timestamp else float("inf")
             )
         except (DatabaseError, Exception) as e:
             logger.debug(f"Failed to query consolidation runs: {e}")
@@ -432,12 +432,8 @@ class LayerHealthMonitor:
         }
 
         # Calculate overall status
-        critical_count = sum(
-            1 for h in layer_health.values() if h.status == HealthStatus.CRITICAL
-        )
-        warning_count = sum(
-            1 for h in layer_health.values() if h.status == HealthStatus.WARNING
-        )
+        critical_count = sum(1 for h in layer_health.values() if h.status == HealthStatus.CRITICAL)
+        warning_count = sum(1 for h in layer_health.values() if h.status == HealthStatus.WARNING)
 
         if critical_count > 0:
             total_status = HealthStatus.CRITICAL
@@ -452,7 +448,9 @@ class LayerHealthMonitor:
         alerts = []
         for layer, health in layer_health.items():
             if health.status == HealthStatus.CRITICAL:
-                alerts.append(f"⚠ {layer.value}: CRITICAL - {health.recommendations[0] if health.recommendations else 'Check health'}")
+                alerts.append(
+                    f"⚠ {layer.value}: CRITICAL - {health.recommendations[0] if health.recommendations else 'Check health'}"
+                )
             elif health.status == HealthStatus.WARNING:
                 alerts.append(
                     f"⚠ {layer.value}: WARNING - {health.recommendations[0] if health.recommendations else 'Monitor'}"
@@ -463,7 +461,8 @@ class LayerHealthMonitor:
             "healthy_layers": 8 - critical_count - warning_count,
             "warning_layers": warning_count,
             "critical_layers": critical_count,
-            "avg_utilization": sum(h.utilization for h in layer_health.values()) / len(layer_health),
+            "avg_utilization": sum(h.utilization for h in layer_health.values())
+            / len(layer_health),
         }
 
         return SystemHealth(
@@ -488,7 +487,9 @@ class LayerHealthMonitor:
         lines.append("ATHENA MEMORY SYSTEM - LAYER HEALTH DASHBOARD")
         lines.append("=" * 80)
         lines.append(f"Time: {system_health.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
-        lines.append(f"Overall Status: {self._status_symbol(system_health.total_status)} {system_health.total_status.upper()}")
+        lines.append(
+            f"Overall Status: {self._status_symbol(system_health.total_status)} {system_health.total_status.upper()}"
+        )
         lines.append("")
 
         # Layer health grid
@@ -514,7 +515,9 @@ class LayerHealthMonitor:
         lines.append(f"Healthy Layers: {system_health.performance_summary['healthy_layers']}/8")
         lines.append(f"Warning Layers: {system_health.performance_summary['warning_layers']}/8")
         lines.append(f"Critical Layers: {system_health.performance_summary['critical_layers']}/8")
-        lines.append(f"Average Utilization: {int(system_health.performance_summary['avg_utilization'] * 100)}%")
+        lines.append(
+            f"Average Utilization: {int(system_health.performance_summary['avg_utilization'] * 100)}%"
+        )
 
         if system_health.alerts:
             lines.append("")
@@ -549,7 +552,9 @@ class LayerHealthMonitor:
 
     def _get_session_coverage(self, project_id: Optional[int]) -> int:
         """Get count of active sessions."""
-        query = "SELECT COUNT(DISTINCT session_id) FROM episodic_events WHERE session_id IS NOT NULL"
+        query = (
+            "SELECT COUNT(DISTINCT session_id) FROM episodic_events WHERE session_id IS NOT NULL"
+        )
         if project_id:
             query += " AND project_id = ?"
             self._get_cursor().execute(query, [project_id])

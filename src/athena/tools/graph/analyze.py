@@ -1,4 +1,5 @@
 """Analyze knowledge graph tool."""
+
 import time
 from typing import Any, Dict
 from athena.tools import BaseTool, ToolMetadata
@@ -35,12 +36,12 @@ class AnalyzeGraphTool(BaseTool):
                     "enum": ["communities", "bridges", "centrality", "clustering", "statistics"],
                     "description": "Type of analysis to perform",
                     "required": False,
-                    "default": "statistics"
+                    "default": "statistics",
                 },
                 "entity_id": {
                     "type": "string",
                     "description": "Optional entity to analyze in detail",
-                    "required": False
+                    "required": False,
                 },
                 "community_level": {
                     "type": "integer",
@@ -48,8 +49,8 @@ class AnalyzeGraphTool(BaseTool):
                     "required": False,
                     "default": 1,
                     "minimum": 0,
-                    "maximum": 2
-                }
+                    "maximum": 2,
+                },
             },
             returns={
                 "type": "object",
@@ -59,22 +60,19 @@ class AnalyzeGraphTool(BaseTool):
                     "total_relationships": {"type": "integer"},
                     "communities": {
                         "type": "array",
-                        "description": "Detected communities (if requested)"
+                        "description": "Detected communities (if requested)",
                     },
                     "bridges": {
                         "type": "array",
-                        "description": "Bridge entities connecting communities"
+                        "description": "Bridge entities connecting communities",
                     },
-                    "statistics": {
-                        "type": "object",
-                        "description": "Graph statistics"
-                    },
+                    "statistics": {"type": "object", "description": "Graph statistics"},
                     "analysis_time_ms": {
                         "type": "number",
-                        "description": "Time taken for analysis"
-                    }
-                }
-            }
+                        "description": "Time taken for analysis",
+                    },
+                },
+            },
         )
 
     def validate_input(self, **kwargs) -> None:
@@ -109,6 +107,7 @@ class AnalyzeGraphTool(BaseTool):
 
             try:
                 from athena.core.database import get_database
+
                 db = get_database()
 
                 try:
@@ -126,49 +125,56 @@ class AnalyzeGraphTool(BaseTool):
                         cursor.execute("SELECT COUNT(DISTINCT entity_type) FROM entities")
                         entity_types = cursor.fetchone()[0]
                         statistics["entity_types"] = entity_types
-                        statistics["avg_connections"] = total_relationships / total_entities if total_entities > 0 else 0
+                        statistics["avg_connections"] = (
+                            total_relationships / total_entities if total_entities > 0 else 0
+                        )
 
                     if analysis_type == "statistics":
                         statistics["total_entities"] = total_entities
                         statistics["total_relationships"] = total_relationships
-                        statistics["graph_density"] = (2 * total_relationships) / (total_entities * (total_entities - 1)) if total_entities > 1 else 0
+                        statistics["graph_density"] = (
+                            (2 * total_relationships) / (total_entities * (total_entities - 1))
+                            if total_entities > 1
+                            else 0
+                        )
 
                     elif analysis_type == "communities":
                         # Simple community detection: entities with same type
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             SELECT entity_type, COUNT(*) as count
                             FROM entities
                             GROUP BY entity_type
-                        """)
+                        """
+                        )
                         for row in cursor.fetchall():
-                            communities.append({
-                                "community_id": f"type_{row[0]}",
-                                "size": row[1],
-                                "type": row[0]
-                            })
+                            communities.append(
+                                {"community_id": f"type_{row[0]}", "size": row[1], "type": row[0]}
+                            )
 
                     elif analysis_type == "centrality":
                         # Find most connected entities
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             SELECT e.id, e.name, COUNT(r.id) as connections
                             FROM entities e
                             LEFT JOIN relations r ON e.id = r.source_id OR e.id = r.target_id
                             GROUP BY e.id
                             ORDER BY connections DESC
                             LIMIT 5
-                        """)
+                        """
+                        )
                         for row in cursor.fetchall():
-                            statistics[f"entity_{row[0]}"] = {
-                                "name": row[1],
-                                "centrality": row[2]
-                            }
+                            statistics[f"entity_{row[0]}"] = {"name": row[1], "centrality": row[2]}
 
                 except Exception as db_err:
                     import logging
+
                     logging.warning(f"Graph analysis failed: {db_err}")
 
             except Exception as e:
                 import logging
+
                 logging.debug(f"Graph analysis unavailable: {e}")
 
             elapsed = (time.time() - start_time) * 1000
@@ -179,7 +185,7 @@ class AnalyzeGraphTool(BaseTool):
                 "total_relationships": total_relationships,
                 "statistics": statistics,
                 "analysis_time_ms": elapsed,
-                "status": "success"
+                "status": "success",
             }
 
             if analysis_type == "communities":
@@ -193,11 +199,11 @@ class AnalyzeGraphTool(BaseTool):
             return {
                 "error": str(e),
                 "status": "error",
-                "analysis_time_ms": (time.time() - start_time) * 1000
+                "analysis_time_ms": (time.time() - start_time) * 1000,
             }
         except Exception as e:
             return {
                 "error": f"Unexpected error: {str(e)}",
                 "status": "error",
-                "analysis_time_ms": (time.time() - start_time) * 1000
+                "analysis_time_ms": (time.time() - start_time) * 1000,
             }

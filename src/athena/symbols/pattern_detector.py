@@ -8,8 +8,8 @@ Provides:
 - Pattern evolution tracking
 """
 
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, field
+from typing import Dict, List, Tuple
+from dataclasses import dataclass
 from enum import Enum
 
 from .symbol_models import Symbol
@@ -17,6 +17,7 @@ from .symbol_models import Symbol
 
 class PatternType(str, Enum):
     """Types of code patterns."""
+
     SINGLETON = "singleton"
     FACTORY = "factory"
     OBSERVER = "observer"
@@ -29,6 +30,7 @@ class PatternType(str, Enum):
 
 class AntiPatternType(str, Enum):
     """Types of anti-patterns (code smells)."""
+
     GOD_OBJECT = "god_object"
     LONG_METHOD = "long_method"
     DUPLICATE_CODE = "duplicate_code"
@@ -44,6 +46,7 @@ class AntiPatternType(str, Enum):
 @dataclass
 class Pattern:
     """Detected code pattern."""
+
     symbol_name: str
     pattern_type: PatternType
     confidence: float  # 0-1
@@ -54,6 +57,7 @@ class Pattern:
 @dataclass
 class AntiPattern:
     """Detected anti-pattern."""
+
     symbol_name: str
     anti_pattern_type: AntiPatternType
     severity: str  # low, medium, high, critical
@@ -65,6 +69,7 @@ class AntiPattern:
 @dataclass
 class PatternMetrics:
     """Metrics for patterns in a symbol."""
+
     symbol_name: str
     detected_patterns: List[Pattern]
     detected_anti_patterns: List[AntiPattern]
@@ -131,33 +136,39 @@ class PatternDetector:
 
         # Check for Singleton pattern
         if self._looks_like_singleton(symbol, metrics):
-            patterns.append(Pattern(
-                symbol_name=symbol.name,
-                pattern_type=PatternType.SINGLETON,
-                confidence=0.7,
-                indicators=["private constructor", "static instance", "getInstance()"],
-                benefits=["single instance", "global access", "lazy initialization"],
-            ))
+            patterns.append(
+                Pattern(
+                    symbol_name=symbol.name,
+                    pattern_type=PatternType.SINGLETON,
+                    confidence=0.7,
+                    indicators=["private constructor", "static instance", "getInstance()"],
+                    benefits=["single instance", "global access", "lazy initialization"],
+                )
+            )
 
         # Check for Factory pattern
         if self._looks_like_factory(symbol, metrics):
-            patterns.append(Pattern(
-                symbol_name=symbol.name,
-                pattern_type=PatternType.FACTORY,
-                confidence=0.75,
-                indicators=["creation methods", "type parameters", "object instantiation"],
-                benefits=["loose coupling", "object creation abstraction", "flexibility"],
-            ))
+            patterns.append(
+                Pattern(
+                    symbol_name=symbol.name,
+                    pattern_type=PatternType.FACTORY,
+                    confidence=0.75,
+                    indicators=["creation methods", "type parameters", "object instantiation"],
+                    benefits=["loose coupling", "object creation abstraction", "flexibility"],
+                )
+            )
 
         # Check for Builder pattern
         if self._looks_like_builder(symbol, metrics):
-            patterns.append(Pattern(
-                symbol_name=symbol.name,
-                pattern_type=PatternType.BUILDER,
-                confidence=0.8,
-                indicators=["fluent interface", "chained methods", "build()"],
-                benefits=["complex objects", "readable construction", "immutability"],
-            ))
+            patterns.append(
+                Pattern(
+                    symbol_name=symbol.name,
+                    pattern_type=PatternType.BUILDER,
+                    confidence=0.8,
+                    indicators=["fluent interface", "chained methods", "build()"],
+                    benefits=["complex objects", "readable construction", "immutability"],
+                )
+            )
 
         return patterns
 
@@ -175,44 +186,55 @@ class PatternDetector:
 
         # Check for God Object
         if metrics.get("incoming_count", 0) > 20 or metrics.get("methods", 0) > 50:
-            anti_patterns.append(AntiPattern(
-                symbol_name=symbol.name,
-                anti_pattern_type=AntiPatternType.GOD_OBJECT,
-                severity="high",
-                severity_score=0.8,
-                indicators=["too many responsibilities", "high coupling", "many methods"],
-                remediation=["break into smaller classes", "single responsibility", "extract methods"],
-            ))
+            anti_patterns.append(
+                AntiPattern(
+                    symbol_name=symbol.name,
+                    anti_pattern_type=AntiPatternType.GOD_OBJECT,
+                    severity="high",
+                    severity_score=0.8,
+                    indicators=["too many responsibilities", "high coupling", "many methods"],
+                    remediation=[
+                        "break into smaller classes",
+                        "single responsibility",
+                        "extract methods",
+                    ],
+                )
+            )
 
         # Check for Long Method
         if metrics.get("lines", 0) > 50:
-            anti_patterns.append(AntiPattern(
-                symbol_name=symbol.name,
-                anti_pattern_type=AntiPatternType.LONG_METHOD,
-                severity="medium",
-                severity_score=0.6,
-                indicators=["method too long", "low cohesion", "multiple responsibilities"],
-                remediation=["extract methods", "reduce complexity", "improve readability"],
-            ))
+            anti_patterns.append(
+                AntiPattern(
+                    symbol_name=symbol.name,
+                    anti_pattern_type=AntiPatternType.LONG_METHOD,
+                    severity="medium",
+                    severity_score=0.6,
+                    indicators=["method too long", "low cohesion", "multiple responsibilities"],
+                    remediation=["extract methods", "reduce complexity", "improve readability"],
+                )
+            )
 
         # Check for Large Class
         if metrics.get("lines", 0) > 200:
-            anti_patterns.append(AntiPattern(
-                symbol_name=symbol.name,
-                anti_pattern_type=AntiPatternType.LARGE_CLASS,
-                severity="medium",
-                severity_score=0.65,
-                indicators=["class too large", "many attributes", "many methods"],
-                remediation=["split class", "extract responsibilities", "refactor"],
-            ))
+            anti_patterns.append(
+                AntiPattern(
+                    symbol_name=symbol.name,
+                    anti_pattern_type=AntiPatternType.LARGE_CLASS,
+                    severity="medium",
+                    severity_score=0.65,
+                    indicators=["class too large", "many attributes", "many methods"],
+                    remediation=["split class", "extract responsibilities", "refactor"],
+                )
+            )
 
         return anti_patterns
 
     def _looks_like_singleton(self, symbol: Symbol, metrics: Dict) -> bool:
         """Check if symbol looks like Singleton pattern."""
         code = symbol.code.lower() if symbol.code else ""
-        return ("private" in code and "static" in code and "instance" in code) or \
-               ("getinstance" in code or "get_instance" in code)
+        return ("private" in code and "static" in code and "instance" in code) or (
+            "getinstance" in code or "get_instance" in code
+        )
 
     def _looks_like_factory(self, symbol: Symbol, metrics: Dict) -> bool:
         """Check if symbol looks like Factory pattern."""
@@ -225,8 +247,9 @@ class PatternDetector:
         # Handle both list and int types for methods
         method_count = len(methods) if isinstance(methods, list) else methods
         code = symbol.code.lower() if symbol.code else ""
-        return ("build" in code or method_count > 3) and \
-               ("return self" in code or "return this" in code)
+        return ("build" in code or method_count > 3) and (
+            "return self" in code or "return this" in code
+        )
 
     def _calculate_pattern_score(self, patterns: List[Pattern]) -> float:
         """Calculate score based on detected patterns.
@@ -332,11 +355,7 @@ class PatternDetector:
             for anti_pattern in anti_patterns:
                 all_smells.append((symbol_name, anti_pattern))
 
-        return sorted(
-            all_smells,
-            key=lambda x: x[1].severity_score,
-            reverse=True
-        )[:limit]
+        return sorted(all_smells, key=lambda x: x[1].severity_score, reverse=True)[:limit]
 
     def get_best_patterns(self, limit: int = 10) -> List[Tuple[str, Pattern]]:
         """Get symbols with best design patterns.
@@ -353,11 +372,7 @@ class PatternDetector:
             for pattern in patterns:
                 all_patterns.append((symbol_name, pattern))
 
-        return sorted(
-            all_patterns,
-            key=lambda x: x[1].confidence,
-            reverse=True
-        )[:limit]
+        return sorted(all_patterns, key=lambda x: x[1].confidence, reverse=True)[:limit]
 
     def get_refactoring_recommendations(self) -> List[Dict]:
         """Get refactoring recommendations based on smells.
@@ -369,12 +384,14 @@ class PatternDetector:
         worst_smells = self.get_worst_smells(5)
 
         for symbol_name, smell in worst_smells:
-            recommendations.append({
-                "symbol": symbol_name,
-                "issue": smell.anti_pattern_type.value,
-                "severity": smell.severity,
-                "remediation": smell.remediation,
-                "priority": "high" if smell.severity == "critical" else "medium",
-            })
+            recommendations.append(
+                {
+                    "symbol": symbol_name,
+                    "issue": smell.anti_pattern_type.value,
+                    "severity": smell.severity,
+                    "remediation": smell.remediation,
+                    "priority": "high" if smell.severity == "critical" else "medium",
+                }
+            )
 
         return recommendations

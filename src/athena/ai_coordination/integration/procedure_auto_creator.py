@@ -6,7 +6,6 @@ creating new procedural templates that can be reused in future planning.
 This completes the learning loop: ExecutionTrace → Pattern → Procedure → Reuse
 """
 
-import json
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
@@ -25,7 +24,7 @@ class ProcedureCandidate:
         trigger_pattern: str,
         template: str,
         confidence: float = 0.5,
-        success_rate: float = 0.0
+        success_rate: float = 0.0,
     ):
         """Initialize procedure candidate.
 
@@ -76,12 +75,14 @@ class ProcedureAutoCreator:
             db: Database connection
         """
         self.db = db
+
     def _ensure_schema(self):
         """Create procedure creation tracking tables."""
         cursor = self.db.get_cursor()
 
         # Table: Procedure creation log
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS procedure_creations (
                 id INTEGER PRIMARY KEY,
                 procedure_name TEXT NOT NULL,
@@ -95,10 +96,12 @@ class ProcedureAutoCreator:
                 successful_uses INTEGER DEFAULT 0,
                 success_rate REAL DEFAULT 0.0
             )
-        """)
+        """
+        )
 
         # Table: Procedure usage tracking
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS procedure_usage (
                 id INTEGER PRIMARY KEY,
                 procedure_id INTEGER NOT NULL,
@@ -109,23 +112,30 @@ class ProcedureAutoCreator:
                 recorded_at INTEGER NOT NULL,
                 FOREIGN KEY (procedure_id) REFERENCES procedure_creations(id)
             )
-        """)
+        """
+        )
 
         # Indexes
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_procedure_creations_name
             ON procedure_creations(procedure_name)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_procedure_creations_category
             ON procedure_creations(category)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_procedure_usage_procedure
             ON procedure_usage(procedure_id)
-        """)
+        """
+        )
 
         # commit handled by cursor context
 
@@ -135,7 +145,7 @@ class ProcedureAutoCreator:
         pattern_name: str,
         pattern_description: str,
         success_rate: float,
-        lessons: list[str]
+        lessons: list[str],
     ) -> Optional[int]:
         """Create procedure from consolidated pattern.
 
@@ -162,29 +172,22 @@ class ProcedureAutoCreator:
         # Build template from lessons
         template = "\n".join([f"- {lesson}" for lesson in lessons])
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO procedure_creations
             (procedure_name, category, source_pattern_id, confidence,
              created_at, success_rate)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            pattern_name,
-            category,
-            pattern_id,
-            success_rate,
-            now,
-            success_rate
-        ))
+        """,
+            (pattern_name, category, pattern_id, success_rate, now, success_rate),
+        )
 
         procedure_id = cursor.lastrowid
         # commit handled by cursor context
         return procedure_id
 
     def create_procedure_from_lesson(
-        self,
-        lesson_id: int,
-        lesson_text: str,
-        context: Optional[str] = None
+        self, lesson_id: int, lesson_text: str, context: Optional[str] = None
     ) -> Optional[int]:
         """Create procedure directly from a lesson learned.
 
@@ -206,19 +209,22 @@ class ProcedureAutoCreator:
 
         category = self._infer_category(procedure_name)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO procedure_creations
             (procedure_name, category, source_lesson_id, confidence,
              created_at, success_rate)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            procedure_name,
-            category,
-            lesson_id,
-            0.7,  # Default confidence for lesson-derived procedures
-            now,
-            0.5   # Start with neutral success rate
-        ))
+        """,
+            (
+                procedure_name,
+                category,
+                lesson_id,
+                0.7,  # Default confidence for lesson-derived procedures
+                now,
+                0.5,  # Start with neutral success rate
+            ),
+        )
 
         procedure_id = cursor.lastrowid
         # commit handled by cursor context
@@ -230,7 +236,7 @@ class ProcedureAutoCreator:
         session_id: str,
         goal_id: Optional[str],
         outcome: str,  # success, failure, partial
-        effectiveness: Optional[float] = None
+        effectiveness: Optional[float] = None,
     ) -> int:
         """Record usage of a procedure.
 
@@ -247,19 +253,15 @@ class ProcedureAutoCreator:
         cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO procedure_usage
             (procedure_id, used_in_session, used_for_goal, outcome,
              effectiveness, recorded_at)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            procedure_id,
-            session_id,
-            goal_id,
-            outcome,
-            effectiveness,
-            now
-        ))
+        """,
+            (procedure_id, session_id, goal_id, outcome, effectiveness, now),
+        )
 
         usage_id = cursor.lastrowid
 
@@ -279,11 +281,14 @@ class ProcedureAutoCreator:
         now = int(datetime.now().timestamp() * 1000)
 
         # Count uses
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT COUNT(*), SUM(CASE WHEN outcome = 'success' THEN 1 ELSE 0 END)
             FROM procedure_usage
             WHERE procedure_id = ?
-        """, (procedure_id,))
+        """,
+            (procedure_id,),
+        )
 
         row = cursor.fetchone()
         total_uses = row[0] or 0
@@ -292,12 +297,15 @@ class ProcedureAutoCreator:
         success_rate = (successful_uses / total_uses) if total_uses > 0 else 0.5
 
         # Update procedure
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE procedure_creations
             SET total_uses = ?, successful_uses = ?, success_rate = ?,
                 first_use_at = COALESCE(first_use_at, ?)
             WHERE id = ?
-        """, (total_uses, successful_uses, success_rate, now, procedure_id))
+        """,
+            (total_uses, successful_uses, success_rate, now, procedure_id),
+        )
 
     def get_procedure(self, procedure_id: int) -> Optional[dict]:
         """Get procedure details.
@@ -310,12 +318,15 @@ class ProcedureAutoCreator:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT id, procedure_name, category, confidence,
                    created_at, total_uses, successful_uses, success_rate
             FROM procedure_creations
             WHERE id = ?
-        """, (procedure_id,))
+        """,
+            (procedure_id,),
+        )
 
         row = cursor.fetchone()
         if not row:
@@ -343,22 +354,27 @@ class ProcedureAutoCreator:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT id, procedure_name, confidence, success_rate, total_uses
             FROM procedure_creations
             WHERE category = ?
             ORDER BY success_rate DESC
-        """, (category,))
+        """,
+            (category,),
+        )
 
         procedures = []
         for row in cursor.fetchall():
-            procedures.append({
-                "id": row[0],
-                "name": row[1],
-                "confidence": row[2],
-                "success_rate": row[3],
-                "total_uses": row[4],
-            })
+            procedures.append(
+                {
+                    "id": row[0],
+                    "name": row[1],
+                    "confidence": row[2],
+                    "success_rate": row[3],
+                    "total_uses": row[4],
+                }
+            )
 
         return procedures
 
@@ -375,11 +391,13 @@ class ProcedureAutoCreator:
         total_created = cursor.fetchone()[0]
 
         # By category
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT category, COUNT(*), AVG(success_rate)
             FROM procedure_creations
             GROUP BY category
-        """)
+        """
+        )
 
         by_category = {}
         for row in cursor.fetchall():
@@ -389,10 +407,12 @@ class ProcedureAutoCreator:
             }
 
         # Usage metrics
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT COUNT(*), SUM(CASE WHEN outcome = 'success' THEN 1 ELSE 0 END)
             FROM procedure_usage
-        """)
+        """
+        )
 
         row = cursor.fetchone()
         total_uses = row[0] or 0

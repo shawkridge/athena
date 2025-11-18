@@ -14,10 +14,7 @@ from .store import SpatialStore
 
 
 def query_episodic_spatial(
-    query: SpatialQuery,
-    episodic_store: EpisodicStore,
-    spatial_store: SpatialStore,
-    project_id: int
+    query: SpatialQuery, episodic_store: EpisodicStore, spatial_store: SpatialStore, project_id: int
 ) -> List[SpatialQueryResult]:
     """
     Two-stage spatial-semantic retrieval.
@@ -40,7 +37,7 @@ def query_episodic_spatial(
         neighbor_paths = spatial_store.get_neighbors(
             project_id=project_id,
             center_path=query.spatial_context,
-            max_depth=query.max_spatial_depth
+            max_depth=query.max_spatial_depth,
         )
 
         # Include the center path itself
@@ -48,19 +45,18 @@ def query_episodic_spatial(
 
         # Get all events from these spatial locations
         candidate_events = _get_events_by_paths(
-            episodic_store=episodic_store,
-            project_id=project_id,
-            paths=relevant_paths
+            episodic_store=episodic_store, project_id=project_id, paths=relevant_paths
         )
 
     else:
         # No spatial context - search all events
         # (Fall back to pure semantic search)
         from datetime import timedelta
+
         candidate_events = episodic_store.get_events_by_date(
             project_id=project_id,
             start_date=datetime.now() - timedelta(days=365),
-            end_date=datetime.now()
+            end_date=datetime.now(),
         )
 
     if not candidate_events:
@@ -72,16 +68,14 @@ def query_episodic_spatial(
         events=candidate_events,
         spatial_context=query.spatial_context,
         k=query.semantic_k,
-        episodic_store=episodic_store
+        episodic_store=episodic_store,
     )
 
     return results
 
 
 def _get_events_by_paths(
-    episodic_store: EpisodicStore,
-    project_id: int,
-    paths: List[str]
+    episodic_store: EpisodicStore, project_id: int, paths: List[str]
 ) -> List[EpisodicEvent]:
     """
     Get all events that occurred in the given spatial paths.
@@ -101,13 +95,16 @@ def _get_events_by_paths(
     cursor = episodic_store.db.conn.cursor()
 
     # Build query with path list
-    placeholders = ','.join('?' * len(paths))
-    cursor.execute(f"""
+    placeholders = ",".join("?" * len(paths))
+    cursor.execute(
+        f"""
         SELECT * FROM episodic_events
         WHERE project_id = ? AND context_cwd IN ({placeholders})
         ORDER BY timestamp DESC
         LIMIT 1000
-    """, [project_id] + paths)
+    """,
+        [project_id] + paths,
+    )
 
     for row in cursor.fetchall():
         event = episodic_store._row_to_event(row)
@@ -121,7 +118,7 @@ def _semantic_search_events(
     events: List[EpisodicEvent],
     spatial_context: str,
     k: int,
-    episodic_store: EpisodicStore = None
+    episodic_store: EpisodicStore = None,
 ) -> List[SpatialQueryResult]:
     """
     Perform semantic search within event candidates using embeddings.
@@ -147,7 +144,10 @@ def _semantic_search_events(
         use_embeddings = True
     except Exception as e:
         import logging
-        logging.warning(f"Failed to generate query embedding, falling back to keyword matching: {e}")
+
+        logging.warning(
+            f"Failed to generate query embedding, falling back to keyword matching: {e}"
+        )
         use_embeddings = False
         query_lower = query_text.lower()
 
@@ -166,7 +166,9 @@ def _semantic_search_events(
                 semantic_score = _calculate_keyword_similarity(query_lower, event.content.lower())
         else:
             # Keyword matching fallback
-            semantic_score = _calculate_keyword_similarity(query_text.lower(), event.content.lower())
+            semantic_score = _calculate_keyword_similarity(
+                query_text.lower(), event.content.lower()
+            )
 
         # Calculate spatial distance
         event_path = event.context.cwd if event.context and event.context.cwd else ""
@@ -186,7 +188,7 @@ def _semantic_search_events(
             spatial_distance=spatial_distance,
             semantic_score=semantic_score,
             timestamp=event.timestamp,
-            combined_score=combined_score
+            combined_score=combined_score,
         )
 
         results.append(result)
@@ -225,10 +227,9 @@ def _calculate_keyword_similarity(query: str, text: str) -> float:
 # Symbol-Aware Retrieval
 # ========================================================================
 
+
 def query_symbols_by_file(
-    spatial_store: SpatialStore,
-    project_id: int,
-    file_path: str
+    spatial_store: SpatialStore, project_id: int, file_path: str
 ) -> List[dict]:
     """Query all symbols defined in a specific file.
 
@@ -244,9 +245,7 @@ def query_symbols_by_file(
 
 
 def query_symbols_by_kind(
-    spatial_store: SpatialStore,
-    project_id: int,
-    symbol_kind: str
+    spatial_store: SpatialStore, project_id: int, symbol_kind: str
 ) -> List[dict]:
     """Query all symbols of a specific kind (function, class, method).
 
@@ -262,9 +261,7 @@ def query_symbols_by_kind(
 
 
 def query_symbols_by_language(
-    spatial_store: SpatialStore,
-    project_id: int,
-    language: str
+    spatial_store: SpatialStore, project_id: int, language: str
 ) -> List[dict]:
     """Query all symbols in a specific programming language.
 
@@ -280,10 +277,7 @@ def query_symbols_by_language(
 
 
 def find_symbol_definition(
-    spatial_store: SpatialStore,
-    project_id: int,
-    symbol_name: str,
-    file_path: str = None
+    spatial_store: SpatialStore, project_id: int, symbol_name: str, file_path: str = None
 ) -> dict:
     """Find the definition of a symbol by name.
 
@@ -299,11 +293,7 @@ def find_symbol_definition(
     return spatial_store.get_symbol_by_name(project_id, symbol_name, file_path)
 
 
-def find_symbol_usage(
-    spatial_store: SpatialStore,
-    project_id: int,
-    symbol_id: int
-) -> dict:
+def find_symbol_usage(spatial_store: SpatialStore, project_id: int, symbol_id: int) -> dict:
     """Find usage information for a symbol (what calls it, what it calls).
 
     Args:
@@ -325,10 +315,7 @@ def find_symbol_usage(
 
 
 def find_complexity_hotspots(
-    spatial_store: SpatialStore,
-    project_id: int,
-    threshold: float = 10.0,
-    limit: int = 20
+    spatial_store: SpatialStore, project_id: int, threshold: float = 10.0, limit: int = 20
 ) -> List[dict]:
     """Find symbols with high cyclomatic complexity (potential refactoring targets).
 
@@ -349,7 +336,7 @@ def query_symbols_contextual(
     spatial_store: SpatialStore,
     project_id: int,
     symbol_kind_filter: str = None,
-    language_filter: str = None
+    language_filter: str = None,
 ) -> List[dict]:
     """Context-aware symbol search with optional filters.
 
@@ -376,7 +363,7 @@ def query_symbols_contextual(
         cursor = spatial_store.execute(
             "SELECT * FROM symbol_nodes WHERE project_id = ? ORDER BY file_path, line_number",
             (project_id,),
-            fetch_all=True
+            fetch_all=True,
         )
         all_symbols = [dict(row) for row in (cursor or [])]
 
@@ -385,9 +372,9 @@ def query_symbols_contextual(
     results = []
 
     for symbol in all_symbols:
-        name_match = query_lower in symbol['name'].lower()
-        signature_match = symbol.get('signature') and query_lower in symbol['signature'].lower()
-        docstring_match = symbol.get('docstring') and query_lower in symbol['docstring'].lower()
+        name_match = query_lower in symbol["name"].lower()
+        signature_match = symbol.get("signature") and query_lower in symbol["signature"].lower()
+        docstring_match = symbol.get("docstring") and query_lower in symbol["docstring"].lower()
 
         if name_match or signature_match or docstring_match:
             results.append(symbol)

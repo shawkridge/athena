@@ -5,7 +5,7 @@ coordinating calls to Phase 5-6 operations for enhanced planning and goal manage
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class PlanningOrchestratorOptimizer:
         task_description: Optional[str] = None,
         task_id: Optional[int] = None,
         include_scenarios: bool = True,
-        strict_mode: bool = False
+        strict_mode: bool = False,
     ) -> Dict[str, Any]:
         """Execute optimized planning orchestrator.
 
@@ -70,10 +70,10 @@ class PlanningOrchestratorOptimizer:
 
             # Step 5: Build confidence report
             ready_for_execution = (
-                structure_valid and
-                feasibility_valid and
-                properties_score >= 0.70 and
-                success_probability >= 0.80
+                structure_valid
+                and feasibility_valid
+                and properties_score >= 0.70
+                and success_probability >= 0.80
             )
 
             return {
@@ -123,7 +123,7 @@ class GoalOrchestratorOptimizer:
         goal_id: int,
         activate: bool = True,
         monitor_health: bool = True,
-        extract_patterns: bool = True
+        extract_patterns: bool = True,
     ) -> Dict[str, Any]:
         """Execute optimized goal orchestrator.
 
@@ -215,7 +215,7 @@ class ConsolidationTriggerOptimizer:
         trigger_reason: str = "manual",
         strategy: str = "auto",
         measure_quality: bool = True,
-        analyze_strategies: bool = False
+        analyze_strategies: bool = False,
     ) -> Dict[str, Any]:
         """Execute optimized consolidation trigger.
 
@@ -312,7 +312,7 @@ class StrategyOrchestratorOptimizer:
         self,
         task_context: Dict[str, Any],
         analyze_effectiveness: bool = True,
-        apply_refinements: bool = True
+        apply_refinements: bool = True,
     ) -> Dict[str, Any]:
         """Execute optimized strategy orchestrator.
 
@@ -331,7 +331,7 @@ class StrategyOrchestratorOptimizer:
                 "balanced": 0.85,
                 "speed": 0.72,
                 "quality": 0.88,
-                "minimal": 0.65
+                "minimal": 0.65,
             }
 
             # Step 2: Score strategies based on history and context
@@ -394,7 +394,7 @@ class AttentionOptimizerOptimizer:
         self,
         project_id: Optional[int] = None,
         weight_by_expertise: bool = True,
-        analyze_patterns: bool = True
+        analyze_patterns: bool = True,
     ) -> Dict[str, Any]:
         """Execute optimized attention optimizer.
 

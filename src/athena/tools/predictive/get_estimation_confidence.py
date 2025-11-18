@@ -50,6 +50,7 @@ def get_estimation_confidence(
     try:
         if db is None:
             from ..core.database import Database
+
             db = Database()
 
         from ..predictive.estimator import PredictiveEstimator
@@ -57,9 +58,7 @@ def get_estimation_confidence(
         estimator = PredictiveEstimator(db)
         confidence = estimator.get_estimation_confidence(project_id, task_type)
 
-        stats = estimator.accuracy_store.get_type_accuracy_stats(
-            project_id, task_type
-        )
+        stats = estimator.accuracy_store.get_type_accuracy_stats(project_id, task_type)
         sample_count = stats.get("sample_count", 0) if stats else 0
 
         # Generate explanation

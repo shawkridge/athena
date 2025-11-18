@@ -12,7 +12,7 @@ This ensures plans are executable and safe before running them.
 """
 
 import logging
-from typing import Dict, List, Set, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 from datetime import datetime
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 class ConstraintType(Enum):
     """Types of constraints that can be validated."""
+
     RESOURCE = "resource"  # time, tokens, memory
     DEPENDENCY = "dependency"  # task ordering
     SAFETY = "safety"  # no destructive operations
@@ -31,6 +32,7 @@ class ConstraintType(Enum):
 
 class VerificationResult(Enum):
     """Verification outcome."""
+
     VALID = "valid"
     INVALID = "invalid"
     WARNING = "warning"
@@ -40,6 +42,7 @@ class VerificationResult(Enum):
 @dataclass
 class Constraint:
     """A constraint to be validated."""
+
     name: str
     constraint_type: ConstraintType
     description: str
@@ -50,6 +53,7 @@ class Constraint:
 @dataclass
 class VerificationReport:
     """Report from formal verification."""
+
     plan_id: str
     timestamp: datetime = field(default_factory=datetime.utcnow)
     result: VerificationResult = VerificationResult.INCONCLUSIVE
@@ -98,6 +102,7 @@ class VerificationReport:
 @dataclass
 class Task:
     """A task in a plan."""
+
     task_id: str
     name: str
     description: str
@@ -112,6 +117,7 @@ class Task:
 @dataclass
 class Plan:
     """A plan to be verified."""
+
     plan_id: str
     name: str
     description: str
@@ -342,8 +348,7 @@ class FormalVerifier:
         # Token optimization
         if report.estimated_tokens > config.get("max_tokens", 100000):
             recommendations.append(
-                f"Reduce LLM calls or prompts. "
-                f"Estimated tokens: {report.estimated_tokens}"
+                f"Reduce LLM calls or prompts. " f"Estimated tokens: {report.estimated_tokens}"
             )
 
         # Memory warning
@@ -385,9 +390,8 @@ class PlanValidator:
 
         report = await self.verifier.verify(plan, config)
 
-        is_valid = (
-            report.result == VerificationResult.VALID
-            or (report.result == VerificationResult.WARNING and not strict)
+        is_valid = report.result == VerificationResult.VALID or (
+            report.result == VerificationResult.WARNING and not strict
         )
 
         return is_valid, report

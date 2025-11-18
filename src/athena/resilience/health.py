@@ -7,7 +7,7 @@ and comprehensive health reporting for operational visibility.
 import logging
 import time
 import shutil
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum

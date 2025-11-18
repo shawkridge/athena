@@ -1,7 +1,6 @@
 """Centralized configuration for Athena Memory System."""
 
 import os
-from pathlib import Path
 
 # ============================================================================
 # Database Configuration
@@ -26,22 +25,18 @@ OLLAMA_EMBEDDING_MODEL = os.environ.get("OLLAMA_EMBEDDING_MODEL", "nomic-embed-t
 
 # llama.cpp Configuration (HTTP Server)
 # Embedding server: nomic-embed-text-v1.5 (768D embeddings)
-LLAMACPP_EMBEDDINGS_URL = os.environ.get(
-    "LLAMACPP_EMBEDDINGS_URL", "http://localhost:8001"
-)
+LLAMACPP_EMBEDDINGS_URL = os.environ.get("LLAMACPP_EMBEDDINGS_URL", "http://localhost:8001")
 # Reasoning server: Qwen2.5-7B-Instruct (pattern extraction, consolidation)
-LLAMACPP_REASONING_URL = os.environ.get(
-    "LLAMACPP_REASONING_URL", "http://localhost:8002"
-)
+LLAMACPP_REASONING_URL = os.environ.get("LLAMACPP_REASONING_URL", "http://localhost:8002")
 LLAMACPP_EMBEDDING_DIM = int(os.environ.get("LLAMACPP_EMBEDDING_DIM", "768"))
-LLAMACPP_N_THREADS = int(
-    os.environ.get("LLAMACPP_N_THREADS", "8")
-)  # Optimal: (CPU cores × 1.5)
+LLAMACPP_N_THREADS = int(os.environ.get("LLAMACPP_N_THREADS", "8"))  # Optimal: (CPU cores × 1.5)
 
 # Claude API Configuration
 CLAUDE_API_KEY = os.environ.get("ANTHROPIC_API_KEY", None)
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4")
-CLAUDE_EMBEDDING_DIM = int(os.environ.get("CLAUDE_EMBEDDING_DIM", "768"))  # Standard embedding dimension
+CLAUDE_EMBEDDING_DIM = int(
+    os.environ.get("CLAUDE_EMBEDDING_DIM", "768")
+)  # Standard embedding dimension
 
 
 # ============================================================================
@@ -68,7 +63,9 @@ RAG_ENABLE_HYDE = os.environ.get("RAG_ENABLE_HYDE", "true").lower() == "true"
 RAG_ENABLE_RERANKING = os.environ.get("RAG_ENABLE_RERANKING", "true").lower() == "true"
 
 # Query expansion parameters
-RAG_QUERY_EXPANSION_ENABLED = os.environ.get("RAG_QUERY_EXPANSION_ENABLED", "true").lower() == "true"
+RAG_QUERY_EXPANSION_ENABLED = (
+    os.environ.get("RAG_QUERY_EXPANSION_ENABLED", "true").lower() == "true"
+)
 RAG_QUERY_EXPANSION_VARIANTS = int(os.environ.get("RAG_QUERY_EXPANSION_VARIANTS", "4"))
 RAG_QUERY_EXPANSION_CACHE = os.environ.get("RAG_QUERY_EXPANSION_CACHE", "true").lower() == "true"
 RAG_QUERY_EXPANSION_CACHE_SIZE = int(os.environ.get("RAG_QUERY_EXPANSION_CACHE_SIZE", "1000"))
@@ -201,8 +198,7 @@ PROMPT_CACHE_MAX_SIZE = int(os.environ.get("PROMPT_CACHE_MAX_SIZE", "100"))
 
 # Cache block types to enable
 PROMPT_CACHE_BLOCK_TYPES = os.environ.get(
-    "PROMPT_CACHE_BLOCK_TYPES",
-    "system_instructions,context_block,retrieved_memories"
+    "PROMPT_CACHE_BLOCK_TYPES", "system_instructions,context_block,retrieved_memories"
 ).split(",")
 
 # Cost per 1K input tokens (USD) for Claude

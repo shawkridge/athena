@@ -23,7 +23,6 @@ from datetime import datetime
 import yaml
 from enum import Enum
 
-from athena.symbols.symbol_analyzer import SymbolAnalyzer
 from athena.symbols.symbol_parser import SymbolParser
 from athena.symbols.analysis_integrator import AnalysisIntegrator
 from athena.symbols.report_generator import ReportGenerator
@@ -35,11 +34,11 @@ from athena.symbols.code_smell_detector import CodeSmellDetector
 from athena.symbols.technical_debt_analyzer import TechnicalDebtAnalyzer
 from athena.symbols.refactoring_suggester import RefactoringSuggester
 from athena.symbols.complexity_analyzer import ComplexityAnalyzer
-from athena.symbols.dead_code_analyzer import DeadCodeAnalyzer
 
 
 class OutputFormat(str, Enum):
     """Supported output formats."""
+
     JSON = "json"
     HTML = "html"
     TEXT = "text"
@@ -48,6 +47,7 @@ class OutputFormat(str, Enum):
 
 class AnalysisProfile(str, Enum):
     """Predefined analysis profiles."""
+
     QUICK = "quick"  # Fast, basic analysis
     STANDARD = "standard"  # Balanced analysis
     COMPREHENSIVE = "comprehensive"  # All analyzers
@@ -59,6 +59,7 @@ class AnalysisProfile(str, Enum):
 @dataclass
 class AnalysisConfig:
     """Configuration for analysis execution."""
+
     source_dir: Path
     output_dir: Optional[Path] = None
     profile: AnalysisProfile = AnalysisProfile.STANDARD
@@ -82,6 +83,7 @@ class AnalysisConfig:
 @dataclass
 class AnalysisSummary:
     """Summary statistics for analysis."""
+
     timestamp: str
     source_dir: str
     profile: str
@@ -234,7 +236,7 @@ class ATHENAAnalyzer:
                 "source_dir": str(self.config.source_dir),
                 "include_patterns": self.config.include_patterns,
                 "exclude_patterns": self.config.exclude_patterns,
-            }
+            },
         }
 
     def _parse_source(self) -> Dict[str, Any]:
@@ -441,7 +443,9 @@ def load_config(config_file: Optional[str]) -> AnalysisConfig:
         source_dir = Path(config_dict.get("source_dir", "."))
         return AnalysisConfig(
             source_dir=source_dir,
-            output_dir=Path(config_dict.get("output_dir", ".")) if config_dict.get("output_dir") else None,
+            output_dir=(
+                Path(config_dict.get("output_dir", ".")) if config_dict.get("output_dir") else None
+            ),
             profile=AnalysisProfile(config_dict.get("profile", "standard")),
             output_format=OutputFormat(config_dict.get("output_format", "json")),
             include_patterns=config_dict.get("include_patterns"),
@@ -475,56 +479,43 @@ Examples:
 
   # Performance-focused analysis with verbose output
   athena analyze --profile performance --verbose src/
-        """
+        """,
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
     # Analyze command
     analyze_parser = subparsers.add_parser("analyze", help="Run comprehensive code analysis")
-    analyze_parser.add_argument("source_dir", nargs="?", default=".", help="Source directory to analyze")
     analyze_parser.add_argument(
-        "--config", "-c",
-        help="Configuration file (.athena.yml)"
+        "source_dir", nargs="?", default=".", help="Source directory to analyze"
     )
+    analyze_parser.add_argument("--config", "-c", help="Configuration file (.athena.yml)")
     analyze_parser.add_argument(
-        "--profile", "-p",
+        "--profile",
+        "-p",
         choices=[p.value for p in AnalysisProfile],
         default="standard",
-        help="Analysis profile (default: standard)"
+        help="Analysis profile (default: standard)",
     )
+    analyze_parser.add_argument("--output", "-o", help="Output directory for reports")
     analyze_parser.add_argument(
-        "--output", "-o",
-        help="Output directory for reports"
-    )
-    analyze_parser.add_argument(
-        "--output-format", "-f",
+        "--output-format",
+        "-f",
         choices=[fmt.value for fmt in OutputFormat],
         default="json",
-        help="Output format (default: json)"
+        help="Output format (default: json)",
     )
     analyze_parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose output"
+        "--verbose", "-v", action="store_true", help="Enable verbose output"
     )
     analyze_parser.add_argument(
-        "--json-report",
-        action="store_true",
-        default=True,
-        help="Generate JSON report"
+        "--json-report", action="store_true", default=True, help="Generate JSON report"
     )
     analyze_parser.add_argument(
-        "--html-report",
-        action="store_true",
-        default=True,
-        help="Generate HTML report"
+        "--html-report", action="store_true", default=True, help="Generate HTML report"
     )
     analyze_parser.add_argument(
-        "--text-summary",
-        action="store_true",
-        default=True,
-        help="Generate text summary"
+        "--text-summary", action="store_true", default=True, help="Generate text summary"
     )
 
     # Version command

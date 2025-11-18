@@ -14,7 +14,7 @@ Key features:
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 from enum import Enum
 
 from .performance_profiler import PerformanceProfiler, QueryTypeMetrics
@@ -139,9 +139,7 @@ class AutoTuner:
         self.current_config.strategy = strategy
         logger.info(f"Updated tuning strategy to {strategy.value}")
 
-    def get_optimized_config(
-        self, query_type: Optional[str] = None
-    ) -> TuningConfig:
+    def get_optimized_config(self, query_type: Optional[str] = None) -> TuningConfig:
         """Get optimized configuration for current workload.
 
         Args:
@@ -164,7 +162,9 @@ class AutoTuner:
             metrics = self._get_aggregate_metrics()
 
         if not metrics or metrics.total_queries < self.min_samples:
-            logger.debug(f"Insufficient samples for tuning (have {metrics.total_queries if metrics else 0})")
+            logger.debug(
+                f"Insufficient samples for tuning (have {metrics.total_queries if metrics else 0})"
+            )
             return self.current_config
 
         # Calculate optimal config
@@ -323,18 +323,14 @@ class AutoTuner:
         if total_queries == 0:
             return None
 
-        weighted_latency = sum(
-            m.avg_latency_ms * m.total_queries for m in all_types
-        ) / total_queries
-        weighted_p99 = sum(
-            m.p99_latency_ms * m.total_queries for m in all_types
-        ) / total_queries
-        weighted_speedup = sum(
-            m.parallel_speedup * m.total_queries for m in all_types
-        ) / total_queries
-        weighted_success = sum(
-            m.success_rate * m.total_queries for m in all_types
-        ) / total_queries
+        weighted_latency = (
+            sum(m.avg_latency_ms * m.total_queries for m in all_types) / total_queries
+        )
+        weighted_p99 = sum(m.p99_latency_ms * m.total_queries for m in all_types) / total_queries
+        weighted_speedup = (
+            sum(m.parallel_speedup * m.total_queries for m in all_types) / total_queries
+        )
+        weighted_success = sum(m.success_rate * m.total_queries for m in all_types) / total_queries
 
         return QueryTypeMetrics(
             query_type="__aggregate__",

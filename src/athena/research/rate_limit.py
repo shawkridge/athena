@@ -3,7 +3,6 @@
 import logging
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +95,9 @@ class RateLimiter:
         "arXiv": RateLimitConfig("arXiv", requests_per_minute=30, burst_size=5),
         "GitHub": RateLimitConfig("GitHub", requests_per_minute=60, burst_size=10),
         "Anthropic Docs": RateLimitConfig("Anthropic Docs", requests_per_minute=60, burst_size=10),
-        "Papers with Code": RateLimitConfig("Papers with Code", requests_per_minute=30, burst_size=5),
+        "Papers with Code": RateLimitConfig(
+            "Papers with Code", requests_per_minute=30, burst_size=5
+        ),
         "HackerNews": RateLimitConfig("HackerNews", requests_per_minute=30, burst_size=5),
         "Medium": RateLimitConfig("Medium", requests_per_minute=20, burst_size=3),
         "Tech Blogs": RateLimitConfig("Tech Blogs", requests_per_minute=30, burst_size=5),
@@ -193,9 +194,7 @@ class RateLimiter:
             Statistics dict
         """
         total = self.metrics["total_requests"]
-        rate_limited_pct = (
-            (self.metrics["rate_limited"] / total * 100) if total > 0 else 0
-        )
+        rate_limited_pct = (self.metrics["rate_limited"] / total * 100) if total > 0 else 0
 
         return {
             "total_requests": total,

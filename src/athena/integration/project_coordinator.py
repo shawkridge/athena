@@ -9,11 +9,11 @@ Provides:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 from ..core.database import Database
-from ..prospective.models import ProspectiveTask, TaskPhase, TaskStatus
+from ..prospective.models import TaskPhase, TaskStatus
 from ..prospective.store import ProspectiveStore
 
 logger = logging.getLogger(__name__)
@@ -170,11 +170,7 @@ class ProjectCoordinator:
         result = self.dependencies
 
         if task_id:
-            result = [
-                d
-                for d in result
-                if d.from_task_id == task_id or d.to_task_id == task_id
-            ]
+            result = [d for d in result if d.from_task_id == task_id or d.to_task_id == task_id]
 
         if project_id:
             result = [
@@ -231,9 +227,7 @@ class ProjectCoordinator:
             slack_time_minutes=total_slack,
         )
 
-    async def detect_resource_conflicts(
-        self, project_ids: list[int]
-    ) -> list[ResourceConflict]:
+    async def detect_resource_conflicts(self, project_ids: list[int]) -> list[ResourceConflict]:
         """Detect resource conflicts across projects.
 
         Args:
@@ -357,7 +351,9 @@ class ProjectCoordinator:
                 person_allocation[assignee]["active_tasks"] += 1
 
             if task.plan:
-                person_allocation[assignee]["estimated_hours"] += task.plan.estimated_duration_minutes / 60
+                person_allocation[assignee]["estimated_hours"] += (
+                    task.plan.estimated_duration_minutes / 60
+                )
 
         # Allocate by priority
         priority_allocation = {}
@@ -373,9 +369,7 @@ class ProjectCoordinator:
             "by_person": person_allocation,
             "by_priority": priority_allocation,
             "total_tasks": len(all_tasks),
-            "total_resources_hours": sum(
-                p["estimated_hours"] for p in person_allocation.values()
-            ),
+            "total_resources_hours": sum(p["estimated_hours"] for p in person_allocation.values()),
         }
 
     async def suggest_task_sequencing(self, project_id: int) -> list[dict]:
@@ -394,33 +388,37 @@ class ProjectCoordinator:
 
         # First: high priority planning tasks
         planning = [
-            t
-            for t in tasks
-            if t.phase == TaskPhase.PLANNING and str(t.priority).lower() == "high"
+            t for t in tasks if t.phase == TaskPhase.PLANNING and str(t.priority).lower() == "high"
         ]
         if planning:
-            suggested_sequence.append({
-                "group": "High Priority Planning",
-                "task_ids": [t.id for t in planning],
-                "rationale": "High priority tasks should be planned first",
-            })
+            suggested_sequence.append(
+                {
+                    "group": "High Priority Planning",
+                    "task_ids": [t.id for t in planning],
+                    "rationale": "High priority tasks should be planned first",
+                }
+            )
 
         # Second: medium/low priority planning
         other_planning = [t for t in tasks if t.phase == TaskPhase.PLANNING and t not in planning]
         if other_planning:
-            suggested_sequence.append({
-                "group": "Other Planning Tasks",
-                "task_ids": [t.id for t in other_planning],
-                "rationale": "Complete planning before execution",
-            })
+            suggested_sequence.append(
+                {
+                    "group": "Other Planning Tasks",
+                    "task_ids": [t.id for t in other_planning],
+                    "rationale": "Complete planning before execution",
+                }
+            )
 
         # Third: ready-to-execute tasks
         ready = [t for t in tasks if t.phase == TaskPhase.PLAN_READY]
         if ready:
-            suggested_sequence.append({
-                "group": "Ready for Execution",
-                "task_ids": [t.id for t in ready],
-                "rationale": "Execute tasks once planning is complete",
-            })
+            suggested_sequence.append(
+                {
+                    "group": "Ready for Execution",
+                    "task_ids": [t.id for t in ready],
+                    "rationale": "Execute tasks once planning is complete",
+                }
+            )
 
         return suggested_sequence

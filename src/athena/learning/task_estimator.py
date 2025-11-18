@@ -9,8 +9,8 @@ Uses learning outcomes (estimated vs actual execution time) to:
 Implements adaptive task execution timing based on learning system.
 """
 
-from typing import Optional, Dict, Any, List, Tuple
-from datetime import datetime, timedelta
+from typing import Optional, Dict, Any, List
+from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ class AdaptiveTaskEstimator:
         task_name: str,
         task_type: Optional[str] = None,
         complexity: Optional[float] = None,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Estimate how long a task will take.
 
@@ -68,7 +68,7 @@ class AdaptiveTaskEstimator:
                     "estimated_minutes": default_estimate,
                     "confidence": 0.3,  # Low confidence with no history
                     "reasoning": "No historical data - using default estimate",
-                    "historical_base": []
+                    "historical_base": [],
                 }
 
             # Analyze patterns
@@ -93,7 +93,7 @@ class AdaptiveTaskEstimator:
                 "confidence": patterns.get("confidence", 0.6),
                 "reasoning": patterns.get("reasoning", "Based on historical averages"),
                 "historical_base": patterns.get("summary", []),
-                "adjustments_applied": patterns.get("adjustments", [])
+                "adjustments_applied": patterns.get("adjustments", []),
             }
 
         except Exception as e:
@@ -102,14 +102,11 @@ class AdaptiveTaskEstimator:
                 "status": "error",
                 "error": str(e),
                 "estimated_minutes": default_estimate,
-                "confidence": 0.0
+                "confidence": 0.0,
             }
 
     async def evaluate_estimation_quality(
-        self,
-        task_name: str,
-        estimated_minutes: float,
-        actual_minutes: float
+        self, task_name: str, estimated_minutes: float, actual_minutes: float
     ) -> Dict[str, Any]:
         """Evaluate how accurate an estimate was.
 
@@ -154,7 +151,7 @@ class AdaptiveTaskEstimator:
             "quality_score": quality_score,
             "estimation_ratio": ratio,
             "error_percent": error_percent,
-            "feedback": feedback
+            "feedback": feedback,
         }
 
     async def learn_from_execution(
@@ -163,7 +160,7 @@ class AdaptiveTaskEstimator:
         estimated_minutes: float,
         actual_minutes: float,
         complexity: Optional[float] = None,
-        success: bool = True
+        success: bool = True,
     ) -> Dict[str, Any]:
         """Learn from a completed task execution.
 
@@ -182,9 +179,7 @@ class AdaptiveTaskEstimator:
         try:
             # Evaluate the estimation
             evaluation = await self.evaluate_estimation_quality(
-                task_type,
-                estimated_minutes,
-                actual_minutes
+                task_type, estimated_minutes, actual_minutes
             )
 
             # Update cache with new data point
@@ -192,17 +187,19 @@ class AdaptiveTaskEstimator:
                 self._estimation_cache[task_type] = {
                     "samples": [],
                     "avg_estimate": 0.0,
-                    "avg_actual": 0.0
+                    "avg_actual": 0.0,
                 }
 
             cache_entry = self._estimation_cache[task_type]
-            cache_entry["samples"].append({
-                "estimated": estimated_minutes,
-                "actual": actual_minutes,
-                "complexity": complexity,
-                "success": success,
-                "timestamp": datetime.now().isoformat()
-            })
+            cache_entry["samples"].append(
+                {
+                    "estimated": estimated_minutes,
+                    "actual": actual_minutes,
+                    "complexity": complexity,
+                    "success": success,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
 
             # Limit cache size (keep last 100 samples)
             if len(cache_entry["samples"]) > 100:
@@ -211,8 +208,12 @@ class AdaptiveTaskEstimator:
             # Recalculate averages
             successful_samples = [s for s in cache_entry["samples"] if s["success"]]
             if successful_samples:
-                cache_entry["avg_estimate"] = sum(s["estimated"] for s in successful_samples) / len(successful_samples)
-                cache_entry["avg_actual"] = sum(s["actual"] for s in successful_samples) / len(successful_samples)
+                cache_entry["avg_estimate"] = sum(s["estimated"] for s in successful_samples) / len(
+                    successful_samples
+                )
+                cache_entry["avg_actual"] = sum(s["actual"] for s in successful_samples) / len(
+                    successful_samples
+                )
 
             return {
                 "status": "success",
@@ -220,15 +221,12 @@ class AdaptiveTaskEstimator:
                 "quality": evaluation.get("quality", "unknown"),
                 "quality_score": evaluation.get("quality_score", 0.0),
                 "samples_collected": len(cache_entry["samples"]),
-                "new_baseline": cache_entry["avg_actual"]
+                "new_baseline": cache_entry["avg_actual"],
             }
 
         except Exception as e:
             logger.error(f"Failed to learn from execution: {e}")
-            return {
-                "status": "error",
-                "error": str(e)
-            }
+            return {"status": "error", "error": str(e)}
 
     def get_estimation_statistics(self, task_type: str) -> Dict[str, Any]:
         """Get statistics for a task type's estimation accuracy.
@@ -240,21 +238,13 @@ class AdaptiveTaskEstimator:
             Statistics about estimation accuracy
         """
         if task_type not in self._estimation_cache:
-            return {
-                "task_type": task_type,
-                "samples": 0,
-                "status": "no_data"
-            }
+            return {"task_type": task_type, "samples": 0, "status": "no_data"}
 
         cache_entry = self._estimation_cache[task_type]
         samples = cache_entry["samples"]
 
         if not samples:
-            return {
-                "task_type": task_type,
-                "samples": 0,
-                "status": "no_data"
-            }
+            return {"task_type": task_type, "samples": 0, "status": "no_data"}
 
         # Calculate statistics
         ratios = [s["actual"] / s["estimated"] for s in samples if s["estimated"] > 0]
@@ -266,9 +256,13 @@ class AdaptiveTaskEstimator:
             "avg_estimate": cache_entry["avg_estimate"],
             "avg_actual": cache_entry["avg_actual"],
             "avg_error_percent": sum(errors) / len(errors) if errors else 0,
-            "estimation_ratio": cache_entry["avg_actual"] / cache_entry["avg_estimate"] if cache_entry["avg_estimate"] > 0 else 1.0,
+            "estimation_ratio": (
+                cache_entry["avg_actual"] / cache_entry["avg_estimate"]
+                if cache_entry["avg_estimate"] > 0
+                else 1.0
+            ),
             "success_rate": sum(1 for s in samples if s["success"]) / len(samples),
-            "status": "accurate" if sum(errors) / len(errors) < 20 else "needs_improvement"
+            "status": "accurate" if sum(errors) / len(errors) < 20 else "needs_improvement",
         }
 
     # Private methods
@@ -290,7 +284,7 @@ class AdaptiveTaskEstimator:
             "bugfix": 20,
             "documentation": 25,
             "design": 45,
-            "general": 30
+            "general": 30,
         }
 
         base = base_estimates.get(task_type or "general", 30)
@@ -326,10 +320,7 @@ class AdaptiveTaskEstimator:
             Pattern analysis with recommendations
         """
         if not historical_data:
-            return {
-                "confidence": 0.0,
-                "reasoning": "Insufficient data"
-            }
+            return {"confidence": 0.0, "reasoning": "Insufficient data"}
 
         successful = [d for d in historical_data if d.get("success", True)]
         if not successful:
@@ -345,7 +336,11 @@ class AdaptiveTaskEstimator:
         # Analyze trend
         if len(successful) >= 3:
             recent_actual = sum(actual_times[-3:]) / 3
-            older_actual = sum(actual_times[:-3]) / len(actual_times[:-3]) if len(actual_times) > 3 else actual_times[0]
+            older_actual = (
+                sum(actual_times[:-3]) / len(actual_times[:-3])
+                if len(actual_times) > 3
+                else actual_times[0]
+            )
             if recent_actual < older_actual * 0.95:
                 trend = "improving"
             elif recent_actual > older_actual * 1.05:
@@ -366,7 +361,11 @@ class AdaptiveTaskEstimator:
             confidence = 0.30
 
         # Estimate range
-        estimate_errors = [abs(s["actual"] - s["estimated"]) / s["estimated"] for s in successful if s["estimated"] > 0]
+        estimate_errors = [
+            abs(s["actual"] - s["estimated"]) / s["estimated"]
+            for s in successful
+            if s["estimated"] > 0
+        ]
         avg_error = sum(estimate_errors) / len(estimate_errors) if estimate_errors else 0.2
         low_estimate = avg_actual * (1 - avg_error)
         high_estimate = avg_actual * (1 + avg_error)
@@ -378,7 +377,7 @@ class AdaptiveTaskEstimator:
             "summary": [
                 f"Average actual: {avg_actual:.0f} minutes",
                 f"Range: {low_estimate:.0f} - {high_estimate:.0f} minutes",
-                f"Trend: {trend}"
+                f"Trend: {trend}",
             ],
-            "adjustments": []
+            "adjustments": [],
         }

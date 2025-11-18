@@ -3,9 +3,8 @@
 import json
 import logging
 from collections import defaultdict
-from datetime import datetime
-from statistics import mean, stdev
-from typing import List, Dict, Any, Tuple
+from statistics import mean
+from typing import List
 
 from .task_patterns import (
     TaskPattern,
@@ -37,9 +36,7 @@ class PatternExtractor:
         self.store = store
         self.project_id = project_id
 
-    def extract_all_patterns(
-        self, metrics_list: List[TaskExecutionMetrics]
-    ) -> List[TaskPattern]:
+    def extract_all_patterns(self, metrics_list: List[TaskExecutionMetrics]) -> List[TaskPattern]:
         """Extract all patterns from a list of execution metrics.
 
         This is System 1: Fast, statistical extraction without LLM.
@@ -134,7 +131,11 @@ class PatternExtractor:
         medium_tasks = [m for m in metrics_list if 60 < m.estimated_total_minutes <= 240]
         long_tasks = [m for m in metrics_list if m.estimated_total_minutes > 240]
 
-        for label, tasks in [("short", short_tasks), ("medium", medium_tasks), ("long", long_tasks)]:
+        for label, tasks in [
+            ("short", short_tasks),
+            ("medium", medium_tasks),
+            ("long", long_tasks),
+        ]:
             if len(tasks) < self.MIN_SAMPLE_SIZE:
                 continue
 
@@ -190,14 +191,21 @@ class PatternExtractor:
         with_long_planning = [m for m in metrics_list if m.planning_phase_minutes >= 120]
         with_short_planning = [m for m in metrics_list if m.planning_phase_minutes < 120]
 
-        for label, tasks in [("long_planning", with_long_planning), ("short_planning", with_short_planning)]:
+        for label, tasks in [
+            ("long_planning", with_long_planning),
+            ("short_planning", with_short_planning),
+        ]:
             if len(tasks) < self.MIN_SAMPLE_SIZE:
                 continue
 
             successful = sum(1 for t in tasks if t.success)
             success_rate = successful / len(tasks)
 
-            condition = {"planning_phase_minutes_min": 120} if label == "long_planning" else {"planning_phase_minutes_max": 120}
+            condition = (
+                {"planning_phase_minutes_min": 120}
+                if label == "long_planning"
+                else {"planning_phase_minutes_max": 120}
+            )
             confidence = self._calculate_confidence(len(tasks), success_rate)
 
             pattern = TaskPattern(
@@ -287,8 +295,9 @@ class PatternExtractor:
             success_rate = successful / len(tasks)
 
             condition = (
-                {"dependencies_count": 0} if label == "no_dependencies" else
-                {"dependencies_count_min": 1}
+                {"dependencies_count": 0}
+                if label == "no_dependencies"
+                else {"dependencies_count_min": 1}
             )
             confidence = self._calculate_confidence(len(tasks), success_rate)
 
@@ -362,9 +371,11 @@ class PatternExtractor:
 
             avg_estimated = mean([t.estimated_total_minutes for t in tasks])
             avg_actual = mean([t.actual_total_minutes for t in tasks])
-            estimation_accuracy = 100 - (
-                abs(avg_actual - avg_estimated) / avg_estimated * 100
-            ) if avg_estimated > 0 else 0
+            estimation_accuracy = (
+                100 - (abs(avg_actual - avg_estimated) / avg_estimated * 100)
+                if avg_estimated > 0
+                else 0
+            )
 
             correlation = TaskPropertyCorrelation(
                 project_id=self.project_id,

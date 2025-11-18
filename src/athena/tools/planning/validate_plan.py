@@ -51,4 +51,3 @@ def validate_plan(plan, scenarios: int = 5):
         return result
     except Exception as e:
         raise RuntimeError(f"Plan validation failed: {str(e)}") from e
-

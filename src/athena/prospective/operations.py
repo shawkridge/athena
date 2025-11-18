@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 
 from ..core.database import Database
 from .store import ProspectiveStore
-from .models import ProspectiveTask, TaskStatus, TaskPriority
+from .models import ProspectiveTask, TaskStatus
 
 logger = logging.getLogger(__name__)
 
@@ -189,9 +189,11 @@ class ProspectiveOperations:
             "total_in_progress": len(in_progress),
             "total_completed": len(completed),
             "total_tasks": len(pending) + len(in_progress) + len(completed),
-            "completion_rate": len(completed) / (len(pending) + len(in_progress) + len(completed))
-            if (len(pending) + len(in_progress) + len(completed)) > 0
-            else 0.0,
+            "completion_rate": (
+                len(completed) / (len(pending) + len(in_progress) + len(completed))
+                if (len(pending) + len(in_progress) + len(completed)) > 0
+                else 0.0
+            ),
         }
 
 
@@ -223,8 +225,7 @@ def get_operations() -> ProspectiveOperations:
     """
     if _operations is None:
         raise RuntimeError(
-            "Prospective operations not initialized. "
-            "Call initialize(db, store) first."
+            "Prospective operations not initialized. " "Call initialize(db, store) first."
         )
     return _operations
 

@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Set
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from .models import ResearchFinding, ResearchFeedback, FeedbackType
+from .models import ResearchFinding, ResearchFeedback
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AggregatedResult:
     """Aggregated research findings with metadata."""
+
     task_id: int
     query: str
     findings: List[ResearchFinding] = field(default_factory=list)
@@ -55,9 +56,7 @@ class AggregatedResult:
     def top_findings(self, limit: int = 10) -> List[ResearchFinding]:
         """Get top findings sorted by credibility."""
         sorted_findings = sorted(
-            self.findings,
-            key=lambda f: (f.credibility_score, f.created_at),
-            reverse=True
+            self.findings, key=lambda f: (f.credibility_score, f.created_at), reverse=True
         )
         return sorted_findings[:limit]
 
@@ -156,9 +155,7 @@ class ResultAggregator:
 
         # Sort by quality
         findings = sorted(
-            findings,
-            key=lambda f: (f.credibility_score, f.created_at),
-            reverse=True
+            findings, key=lambda f: (f.credibility_score, f.created_at), reverse=True
         )[:limit]
 
         # Format findings
@@ -195,11 +192,7 @@ class ResultAggregator:
         Returns:
             Dictionary with latest findings for incremental updates
         """
-        recent = sorted(
-            self.result.findings,
-            key=lambda f: f.created_at,
-            reverse=True
-        )[:max_recent]
+        recent = sorted(self.result.findings, key=lambda f: f.created_at, reverse=True)[:max_recent]
 
         return {
             "task_id": self.task_id,
@@ -237,7 +230,7 @@ class ResultAggregator:
             lines.append(f"\n**{source}** ({len(source_findings)} results)")
             for i, finding in enumerate(source_findings[:3], 1):  # Max 3 per source
                 lines.append(f"{i}. {finding['title']}")
-                if finding.get('url'):
+                if finding.get("url"):
                     lines.append(f"   {finding['url']}")
 
         if sum(len(v) for v in by_source.values()) > sum(len(v[:3]) for v in by_source.values()):
@@ -267,14 +260,18 @@ class ResultAggregator:
 
         for finding in results["findings"][:10]:
             lines.append(f"### {finding['title']}")
-            lines.append(f"*Source:* {finding['source']} (credibility: {finding['credibility']:.1%})")
+            lines.append(
+                f"*Source:* {finding['source']} (credibility: {finding['credibility']:.1%})"
+            )
             lines.append(f"\n{finding['summary']}")
             if finding["url"]:
                 lines.append(f"\n[Read more]({finding['url']})")
             lines.append("")
 
         if results["feedback_applied"] > 0:
-            lines.append(f"*Note: {results['feedback_applied']} feedback refinements applied to this research*")
+            lines.append(
+                f"*Note: {results['feedback_applied']} feedback refinements applied to this research*"
+            )
 
         return "\n".join(lines)
 
@@ -303,11 +300,13 @@ class StreamingResultCollector:
             if self.aggregator.add_finding(finding, agent_name):
                 added_count += 1
 
-        self.updates.append({
-            "agent": agent_name,
-            "added": added_count,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
+        self.updates.append(
+            {
+                "agent": agent_name,
+                "added": added_count,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+        )
 
         logger.info(f"Agent {agent_name} added {added_count} findings")
 

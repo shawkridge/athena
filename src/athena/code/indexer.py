@@ -6,10 +6,9 @@ for efficient hybrid search across large codebases.
 
 import logging
 from datetime import datetime
-from pathlib import Path
 from typing import List, Optional
 
-from .models import CodeElement, CodeIndex, CodeLanguage
+from .models import CodeElement
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +36,8 @@ class CodeIndexer:
             return
 
         try:
-            self.db.execute("""
+            self.db.execute(
+                """
                 CREATE TABLE IF NOT EXISTS code_index (
                     id TEXT PRIMARY KEY,
                     file_path TEXT NOT NULL,
@@ -53,23 +53,30 @@ class CodeIndexer:
                     created_at TIMESTAMP,
                     updated_at TIMESTAMP
                 )
-            """)
+            """
+            )
 
             # Create indices for fast lookup
-            self.db.execute("""
+            self.db.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_code_element_type
                 ON code_index(element_type)
-            """)
+            """
+            )
 
-            self.db.execute("""
+            self.db.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_code_language
                 ON code_index(language)
-            """)
+            """
+            )
 
-            self.db.execute("""
+            self.db.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_code_file_path
                 ON code_index(file_path)
-            """)
+            """
+            )
 
             self.index_table_created = True
             logger.info("Code index schema initialized")
@@ -104,27 +111,30 @@ class CodeIndexer:
 
                 # Store in database
                 if self.db:
-                    self.db.execute("""
+                    self.db.execute(
+                        """
                         INSERT OR REPLACE INTO code_index
                         (id, file_path, element_type, name, language, source_code,
                          docstring, start_line, end_line, embedding, embedding_model,
                          created_at, updated_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        element.element_id,
-                        element.file_path,
-                        element.element_type.value,
-                        element.name,
-                        element.language.value,
-                        element.source_code,
-                        element.docstring,
-                        element.start_line,
-                        element.end_line,
-                        embedding,
-                        "anthropic" if embedding else None,
-                        datetime.now(),
-                        datetime.now(),
-                    ))
+                    """,
+                        (
+                            element.element_id,
+                            element.file_path,
+                            element.element_type.value,
+                            element.name,
+                            element.language.value,
+                            element.source_code,
+                            element.docstring,
+                            element.start_line,
+                            element.end_line,
+                            embedding,
+                            "anthropic" if embedding else None,
+                            datetime.now(),
+                            datetime.now(),
+                        ),
+                    )
 
                 logger.debug(f"Indexed element: {element.element_id}")
 
@@ -142,9 +152,12 @@ class CodeIndexer:
 
         try:
             if path_pattern:
-                self.db.execute("""
+                self.db.execute(
+                    """
                     DELETE FROM code_index WHERE file_path LIKE ?
-                """, (path_pattern,))
+                """,
+                    (path_pattern,),
+                )
             else:
                 self.db.execute("DELETE FROM code_index")
 
@@ -169,21 +182,23 @@ class CodeIndexer:
 
         try:
             # Count elements
-            total = self.db.execute_one(
-                "SELECT COUNT(*) as count FROM code_index"
-            )
+            total = self.db.execute_one("SELECT COUNT(*) as count FROM code_index")
             total_elements = total[0] if total else 0
 
             # Count files
-            files = self.db.execute_one("""
+            files = self.db.execute_one(
+                """
                 SELECT COUNT(DISTINCT file_path) as count FROM code_index
-            """)
+            """
+            )
             total_files = files[0] if files else 0
 
             # List languages
-            languages = self.db.execute("""
+            languages = self.db.execute(
+                """
                 SELECT DISTINCT language FROM code_index ORDER BY language
-            """)
+            """
+            )
             indexed_languages = [row[0] for row in languages] if languages else []
 
             return {
@@ -219,7 +234,8 @@ class SpatialIndexer:
             return
 
         try:
-            self.db.execute("""
+            self.db.execute(
+                """
                 CREATE TABLE IF NOT EXISTS code_relationships (
                     id TEXT PRIMARY KEY,
                     source_element TEXT NOT NULL,
@@ -228,12 +244,15 @@ class SpatialIndexer:
                     weight REAL,
                     created_at TIMESTAMP
                 )
-            """)
+            """
+            )
 
-            self.db.execute("""
+            self.db.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_relationships_source
                 ON code_relationships(source_element)
-            """)
+            """
+            )
 
             self.relationships_table_created = True
             logger.info("Spatial index schema initialized")
@@ -263,18 +282,21 @@ class SpatialIndexer:
 
         try:
             rel_id = f"{source_id}→{target_id}:{rel_type}"
-            self.db.execute("""
+            self.db.execute(
+                """
                 INSERT OR REPLACE INTO code_relationships
                 (id, source_element, target_element, relationship_type, weight, created_at)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                rel_id,
-                source_id,
-                target_id,
-                rel_type,
-                weight,
-                datetime.now(),
-            ))
+            """,
+                (
+                    rel_id,
+                    source_id,
+                    target_id,
+                    rel_type,
+                    weight,
+                    datetime.now(),
+                ),
+            )
         except Exception as e:
             logger.error(f"Error adding relationship: {e}")
 
@@ -291,12 +313,15 @@ class SpatialIndexer:
             return []
 
         try:
-            results = self.db.execute("""
+            results = self.db.execute(
+                """
                 SELECT target_element, relationship_type, weight
                 FROM code_relationships
                 WHERE source_element = ?
                 ORDER BY weight DESC
-            """, (element_id,))
+            """,
+                (element_id,),
+            )
 
             return results if results else []
 

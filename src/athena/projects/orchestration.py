@@ -150,13 +150,13 @@ class OrchestrationTracking:
         """
         # Get all delegations for this pattern
         pattern_delegations = [
-            d for d in self._delegations.values()
-            if hasattr(d, 'orchestration_pattern_id')
+            d for d in self._delegations.values() if hasattr(d, "orchestration_pattern_id")
         ]
 
         # For now, calculate from agent teams
         matching_teams = [
-            t for t in self._agent_teams.values()
+            t
+            for t in self._agent_teams.values()
             if t["orchestration_pattern_id"] == orchestration_pattern_id
         ]
 
@@ -318,9 +318,8 @@ class OrchestrationTracking:
             if delegation.success:
                 stats["successful"] += 1
             stats["avg_quality"] = (
-                (stats["avg_quality"] * (stats["total"] - 1) + delegation.quality_score) /
-                stats["total"]
-            )
+                stats["avg_quality"] * (stats["total"] - 1) + delegation.quality_score
+            ) / stats["total"]
 
         # Filter and rank by success rate
         successful_pairs = [

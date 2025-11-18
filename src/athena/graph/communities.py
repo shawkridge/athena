@@ -15,10 +15,9 @@ Expected Impact: +40-60% graph reasoning quality
 """
 
 import logging
-from typing import List, Dict, Set, Tuple, Optional
+from typing import List, Dict, Set, Tuple
 from dataclasses import dataclass
 from collections import defaultdict
-import json
 
 from ..core.database import Database
 from .models import Entity, Relation
@@ -29,6 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Community:
     """A community in the knowledge graph."""
+
     id: int
     project_id: int
     entity_ids: List[int]
@@ -44,6 +44,7 @@ class Community:
 @dataclass
 class CommunityHierarchy:
     """Hierarchical organization of communities."""
+
     root_communities: List[int]  # Level 0 communities
     level_1_communities: List[int]  # Level 1 (parent) communities
     level_2_communities: List[int]  # Level 2 (global) communities
@@ -88,6 +89,7 @@ class LeidenClustering:
             Dictionary mapping node_id to community_id
         """
         import random
+
         self._rand = random.Random(self.seed)
 
         # Initialize: each node is own community
@@ -150,7 +152,9 @@ class LeidenClustering:
             best_delta = 0
 
             for community_id, edge_count in neighbor_communities.items():
-                delta = self._modularity_delta(node, current_community, community_id, partition, edge_count)
+                delta = self._modularity_delta(
+                    node, current_community, community_id, partition, edge_count
+                )
                 if delta > best_delta:
                     best_delta = delta
                     best_community = community_id
@@ -200,11 +204,7 @@ class LeidenClustering:
 
         return refined
 
-    def _merge_small_communities(
-        self,
-        partition: Dict[int, int],
-        min_size: int
-    ) -> Dict[int, int]:
+    def _merge_small_communities(self, partition: Dict[int, int], min_size: int) -> Dict[int, int]:
         """Merge communities smaller than min_size with largest neighbor.
 
         Args:
@@ -278,7 +278,7 @@ class LeidenClustering:
         for community_id in set(partition.values()):
             edges_in = community_edges[community_id] / 2  # Each edge counted twice
             degree_in = community_degrees[community_id]
-            expected_edges = (degree_in ** 2) / (2 * total_edges)
+            expected_edges = (degree_in**2) / (2 * total_edges)
             modularity += (edges_in - expected_edges) / total_edges
 
         return modularity
@@ -356,7 +356,10 @@ class CommunityAnalyzer:
         # Create Community objects
         result = {}
         for community_id, entity_ids in communities.items():
-            entity_names = [entity_map.get(eid, type('', (), {'name': f'Entity_{eid}'})()).name for eid in entity_ids]
+            entity_names = [
+                entity_map.get(eid, type("", (), {"name": f"Entity_{eid}"})()).name
+                for eid in entity_ids
+            ]
 
             # Calculate density
             internal_edges = 0
@@ -376,7 +379,9 @@ class CommunityAnalyzer:
                 project_id=project_id,
                 entity_ids=entity_ids,
                 entity_names=entity_names,
-                summary=self._generate_community_summary(entity_names, internal_edges, len(entity_ids)),
+                summary=self._generate_community_summary(
+                    entity_names, internal_edges, len(entity_ids)
+                ),
                 level=0,  # Granular level
                 density=density,
                 size=len(entity_ids),
@@ -429,7 +434,7 @@ class CommunityAnalyzer:
             root_communities=list(communities.keys()),
             level_1_communities=[],  # To be implemented
             level_2_communities=[],  # To be implemented
-            parent_map={}
+            parent_map={},
         )
 
     def multi_level_query(

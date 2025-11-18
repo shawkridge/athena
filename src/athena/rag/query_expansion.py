@@ -8,7 +8,6 @@ Based on Airweave's query expansion pattern with Athena-specific adaptations.
 """
 
 import logging
-from functools import lru_cache
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -22,9 +21,7 @@ class QueryExpansions(BaseModel):
     """Container for expanded query alternatives."""
 
     original: str = Field(..., description="Original query")
-    alternatives: list[str] = Field(
-        default_factory=list, description="Alternative query phrasings"
-    )
+    alternatives: list[str] = Field(default_factory=list, description="Alternative query phrasings")
     total_variants: int = Field(0, description="Total number of variants (including original)")
 
     def all_queries(self) -> list[str]:
@@ -111,9 +108,7 @@ class QueryExpander:
             f"cache={self.config.enable_cache})"
         )
 
-    def expand(
-        self, query: str, include_original: bool = True
-    ) -> QueryExpansions:
+    def expand(self, query: str, include_original: bool = True) -> QueryExpansions:
         """Expand query into alternative phrasings.
 
         Args:
@@ -130,11 +125,7 @@ class QueryExpander:
         """
         if not self.config.enabled:
             # Expansion disabled, return original only
-            return QueryExpansions(
-                original=query,
-                alternatives=[],
-                total_variants=1
-            )
+            return QueryExpansions(original=query, alternatives=[], total_variants=1)
 
         try:
             # Generate alternatives (with caching if enabled)
@@ -149,15 +140,10 @@ class QueryExpander:
             total = len(validated) + (1 if include_original else 0)
 
             logger.info(
-                f"Expanded query into {len(validated)} alternatives "
-                f"(total variants: {total})"
+                f"Expanded query into {len(validated)} alternatives " f"(total variants: {total})"
             )
 
-            return QueryExpansions(
-                original=query,
-                alternatives=validated,
-                total_variants=total
-            )
+            return QueryExpansions(original=query, alternatives=validated, total_variants=total)
 
         except Exception as e:
             logger.error(f"Query expansion failed: {e}")
@@ -165,11 +151,7 @@ class QueryExpander:
             if self.config.fallback_on_error:
                 # Graceful degradation: return original query
                 logger.info("Falling back to original query")
-                return QueryExpansions(
-                    original=query,
-                    alternatives=[],
-                    total_variants=1
-                )
+                return QueryExpansions(original=query, alternatives=[], total_variants=1)
             else:
                 raise
 
@@ -194,9 +176,7 @@ class QueryExpander:
             # Parse response into alternatives
             alternatives = self._parse_alternatives(response)
 
-            logger.debug(
-                f"Generated {len(alternatives)} raw alternatives for: '{query}'"
-            )
+            logger.debug(f"Generated {len(alternatives)} raw alternatives for: '{query}'")
 
             return alternatives
 
@@ -303,7 +283,7 @@ List them as numbered items (1., 2., etc.):"""
 
             # Remove numbering (1., 2), etc.) and quotes
             line = line.lstrip("0123456789.-) \t")
-            line = line.strip('"\'')
+            line = line.strip("\"'")
 
             # Skip if still empty or too short
             if len(line) < 3:
@@ -313,9 +293,7 @@ List them as numbered items (1., 2., etc.):"""
 
         return alternatives
 
-    def _validate_alternatives(
-        self, original: str, alternatives: list[str]
-    ) -> list[str]:
+    def _validate_alternatives(self, original: str, alternatives: list[str]) -> list[str]:
         """Validate and deduplicate alternative queries.
 
         Removes:

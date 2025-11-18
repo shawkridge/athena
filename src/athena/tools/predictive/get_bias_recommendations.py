@@ -62,6 +62,7 @@ def get_bias_recommendations(
     try:
         if db is None:
             from ..core.database import Database
+
             db = Database()
 
         from ..predictive.accuracy import EstimateAccuracyStore

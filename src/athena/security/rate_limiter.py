@@ -10,7 +10,7 @@ Per-operation rate limiting to prevent abuse:
 import time
 import logging
 from typing import Dict, Optional, Tuple
-from collections import defaultdict, deque
+from collections import defaultdict
 from threading import Lock
 
 logger = logging.getLogger(__name__)
@@ -43,10 +43,7 @@ class RateLimiter:
             elapsed = now - self.last_update
 
             # Add tokens based on elapsed time
-            self.tokens = min(
-                self.rate,
-                self.tokens + (elapsed * self.rate / self.period)
-            )
+            self.tokens = min(self.rate, self.tokens + (elapsed * self.rate / self.period))
             self.last_update = now
 
             if self.tokens >= 1:
@@ -74,16 +71,16 @@ class OperationRateLimiter:
 
     # Default rate limits (requests per minute)
     DEFAULT_LIMITS = {
-        'recall': 100,
-        'remember': 50,
-        'forget': 30,
-        'consolidate': 10,
-        'create_task': 50,
-        'create_entity': 100,
-        'search_graph': 200,
-        'smart_retrieve': 100,
-        'record_event': 100,
-        'list_tasks': 200,
+        "recall": 100,
+        "remember": 50,
+        "forget": 30,
+        "consolidate": 10,
+        "create_task": 50,
+        "create_entity": 100,
+        "search_graph": 200,
+        "smart_retrieve": 100,
+        "record_event": 100,
+        "list_tasks": 200,
     }
 
     def __init__(self, limits: Optional[Dict[str, int]] = None):

@@ -10,7 +10,7 @@ consolidation using:
 import logging
 import math
 from typing import Dict, List, Tuple, Any
-from datetime import datetime, timedelta
+from datetime import datetime
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -28,9 +28,9 @@ class EventPrioritizer:
     def __init__(self):
         """Initialize prioritizer with weighting scheme."""
         # Weights for multi-dimensional scoring
-        self.surprise_weight = 0.35    # How unexpected is the event?
-        self.utility_weight = 0.35     # How actionable/important?
-        self.relevance_weight = 0.30   # How recently/frequently used?
+        self.surprise_weight = 0.35  # How unexpected is the event?
+        self.utility_weight = 0.35  # How actionable/important?
+        self.relevance_weight = 0.30  # How recently/frequently used?
 
     def score_events(
         self,
@@ -54,9 +54,7 @@ class EventPrioritizer:
         for event in events:
             try:
                 # Calculate individual dimensions
-                surprise_score = self._calculate_surprise(
-                    event, recent_pattern_events or events
-                )
+                surprise_score = self._calculate_surprise(event, recent_pattern_events or events)
                 utility_score = self._calculate_utility(event)
                 relevance_score = self._calculate_relevance(event)
 
@@ -122,9 +120,7 @@ class EventPrioritizer:
         total_events = len(baseline_events)
 
         # Calculate entropy of expected outcomes
-        outcome_probs = [
-            count / total_events for count in baseline_outcomes.values()
-        ]
+        outcome_probs = [count / total_events for count in baseline_outcomes.values()]
         expected_entropy = -sum(p * math.log(p) for p in outcome_probs if p > 0)
 
         # Inverse outcome frequency (rare outcomes = surprising)
@@ -136,7 +132,7 @@ class EventPrioritizer:
         type_surprise = 1.0 - min(type_freq, 1.0)
 
         # Combine: 50% outcome surprise, 50% type surprise
-        combined_surprise = (outcome_surprise * 0.5 + type_surprise * 0.5)
+        combined_surprise = outcome_surprise * 0.5 + type_surprise * 0.5
 
         return min(combined_surprise, 1.0)
 
@@ -164,7 +160,7 @@ class EventPrioritizer:
         has_blocker = bool(event.get("has_blocker", False))
 
         # Core utility from importance + actionability
-        core_utility = (importance * 0.5 + actionability * 0.5)
+        core_utility = importance * 0.5 + actionability * 0.5
 
         # Boost for clear next steps
         if has_next_step:
@@ -244,7 +240,8 @@ class EventPrioritizer:
 
         # Filter by minimum score
         filtered = [
-            event for event in events
+            event
+            for event in events
             if next((score for eid, score in scored if str(event.get("id")) == eid), 0) >= min_score
         ]
 
@@ -286,15 +283,17 @@ class EventPrioritizer:
         for i, (event_id, score) in enumerate(scored[:top_n]):
             event = next((e for e in events if str(e.get("id")) == event_id), None)
             if event:
-                top_events.append({
-                    "rank": i + 1,
-                    "event_id": event_id,
-                    "priority_score": round(score, 3),
-                    "event_type": event.get("event_type"),
-                    "outcome": event.get("outcome"),
-                    "importance": event.get("importance_score"),
-                    "actionability": event.get("actionability_score"),
-                })
+                top_events.append(
+                    {
+                        "rank": i + 1,
+                        "event_id": event_id,
+                        "priority_score": round(score, 3),
+                        "event_type": event.get("event_type"),
+                        "outcome": event.get("outcome"),
+                        "importance": event.get("importance_score"),
+                        "actionability": event.get("actionability_score"),
+                    }
+                )
 
         return {
             "total_events": len(events),

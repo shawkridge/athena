@@ -29,9 +29,7 @@ class GoParser:
         """
         self.language = language
 
-    def extract_functions(
-        self, code: str, file_path: str
-    ) -> List[CodeUnit]:
+    def extract_functions(self, code: str, file_path: str) -> List[CodeUnit]:
         """Extract functions from Go code.
 
         Handles:
@@ -353,16 +351,43 @@ class GoParser:
 
         # Filter out keywords and the function itself
         keywords = {
-            "if", "for", "switch", "case", "select", "go", "defer", "panic",
-            "make", "len", "cap", "append", "copy", "delete", "close",
-            "complex", "real", "imag", "new", "print", "println", "error",
-            "type", "func", "interface", "struct", "range", "return",
-            "package", "import", "const", "var", "chan",
+            "if",
+            "for",
+            "switch",
+            "case",
+            "select",
+            "go",
+            "defer",
+            "panic",
+            "make",
+            "len",
+            "cap",
+            "append",
+            "copy",
+            "delete",
+            "close",
+            "complex",
+            "real",
+            "imag",
+            "new",
+            "print",
+            "println",
+            "error",
+            "type",
+            "func",
+            "interface",
+            "struct",
+            "range",
+            "return",
+            "package",
+            "import",
+            "const",
+            "var",
+            "chan",
         }
 
         dependencies = {
-            m for m in matches
-            if m not in keywords and m != func_name and not m[0].isupper()
+            m for m in matches if m not in keywords and m != func_name and not m[0].isupper()
         }
 
         return dependencies

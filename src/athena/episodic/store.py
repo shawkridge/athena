@@ -1,14 +1,13 @@
 """Episodic memory storage and query operations."""
 
 import json
-import time
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 
 from ..core.database import Database
 from ..core.base_store import BaseStore
 from .models import EpisodicEvent, EventContext, EventMetric, EventOutcome, EventType
-from .surprise import BayesianSurprise, SurpriseEvent
+from .surprise import BayesianSurprise
 
 
 class EpisodicStore(BaseStore):
@@ -27,6 +26,7 @@ class EpisodicStore(BaseStore):
         self._embedding_model = None  # Lazy-load and cache embedding model
         # Schema is initialized centrally in database.py
         #
+
     def _row_to_model(self, row: Dict[str, Any]) -> EpisodicEvent:
         """Convert database row to EpisodicEvent model.
 
@@ -40,7 +40,11 @@ class EpisodicStore(BaseStore):
         row_dict = row if isinstance(row, dict) else dict(row)
 
         # Deserialize context files as list
-        context_files = self._safe_json_loads(row_dict.get("context_files"), []) if row_dict.get("context_files") else []
+        context_files = (
+            self._safe_json_loads(row_dict.get("context_files"), [])
+            if row_dict.get("context_files")
+            else []
+        )
         if not isinstance(context_files, list):
             context_files = []
 
@@ -53,6 +57,7 @@ class EpisodicStore(BaseStore):
 
         # Parse code-aware fields
         from .models import CodeEventType
+
         code_event_type = None
         if row_dict.get("code_event_type"):
             try:
@@ -74,8 +79,14 @@ class EpisodicStore(BaseStore):
             id=row_dict.get("id"),
             project_id=row_dict.get("project_id"),
             session_id=row_dict.get("session_id"),
-            timestamp=datetime.fromtimestamp(row_dict.get("timestamp")) if row_dict.get("timestamp") else None,
-            event_type=EventType(row_dict.get("event_type")) if row_dict.get("event_type") else None,
+            timestamp=(
+                datetime.fromtimestamp(row_dict.get("timestamp"))
+                if row_dict.get("timestamp")
+                else None
+            ),
+            event_type=(
+                EventType(row_dict.get("event_type")) if row_dict.get("event_type") else None
+            ),
             content=row_dict.get("content"),
             outcome=EventOutcome(row_dict.get("outcome")) if row_dict.get("outcome") else None,
             context=context,
@@ -86,7 +97,11 @@ class EpisodicStore(BaseStore):
             learned=row_dict.get("learned"),
             confidence=row_dict.get("confidence", 1.0),
             consolidation_status=row_dict.get("consolidation_status", "unconsolidated"),
-            consolidated_at=datetime.fromtimestamp(row_dict.get("consolidated_at")) if row_dict.get("consolidated_at") else None,
+            consolidated_at=(
+                datetime.fromtimestamp(row_dict.get("consolidated_at"))
+                if row_dict.get("consolidated_at")
+                else None
+            ),
             # Code-aware fields
             code_event_type=code_event_type,
             file_path=row_dict.get("file_path"),
@@ -128,6 +143,7 @@ class EpisodicStore(BaseStore):
             return default
         try:
             from ..core.error_handling import safe_json_loads
+
             return safe_json_loads(data, default)
         except (json.JSONDecodeError, ValueError, TypeError):
             return default
@@ -136,6 +152,7 @@ class EpisodicStore(BaseStore):
         """Get or create cached embedding model (lazy-loaded)."""
         if self._embedding_model is None:
             from ..core.embeddings import EmbeddingModel
+
             self._embedding_model = EmbeddingModel()
         return self._embedding_model
 
@@ -143,15 +160,19 @@ class EpisodicStore(BaseStore):
         """Ensure episodic memory tables exist."""
 
         # For PostgreSQL async databases, skip sync schema initialization
-        if not hasattr(self.db, 'conn'):
+        if not hasattr(self.db, "conn"):
             import logging
+
             logger = logging.getLogger(__name__)
-            logger.debug(f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema().")
+            logger.debug(
+                f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema()."
+            )
             return
         cursor = self.db.get_cursor()
 
         # Events table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS episodic_events (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -179,10 +200,12 @@ class EpisodicStore(BaseStore):
 
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Event outcomes/metrics
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS event_outcomes (
                 id SERIAL PRIMARY KEY,
                 event_id INTEGER NOT NULL,
@@ -190,10 +213,12 @@ class EpisodicStore(BaseStore):
                 metric_value TEXT NOT NULL,
                 FOREIGN KEY (event_id) REFERENCES episodic_events(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Event relations (cause → effect)
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS event_relations (
                 from_event_id INTEGER NOT NULL,
                 to_event_id INTEGER NOT NULL,
@@ -203,26 +228,43 @@ class EpisodicStore(BaseStore):
                 FOREIGN KEY (from_event_id) REFERENCES episodic_events(id) ON DELETE CASCADE,
                 FOREIGN KEY (to_event_id) REFERENCES episodic_events(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Vector embeddings for semantic search
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE VIRTUAL TABLE IF NOT EXISTS event_vectors USING vec0(
                 embedding FLOAT[768]
             )
-        """)
+        """
+        )
 
         # Indices
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_timestamp ON episodic_events(timestamp DESC)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_project ON episodic_events(project_id, timestamp DESC)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_consolidation ON episodic_events(project_id, consolidation_status)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_session ON episodic_events(session_id)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_timestamp ON episodic_events(timestamp DESC)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_project ON episodic_events(project_id, timestamp DESC)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_consolidation ON episodic_events(project_id, consolidation_status)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_session ON episodic_events(session_id)"
+        )
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_type ON episodic_events(event_type)")
 
         # Event relation indices (temporal chains)
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_relations_from ON event_relations(from_event_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_relations_to ON event_relations(to_event_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_relations_type ON event_relations(relation_type)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_relations_from ON event_relations(from_event_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_relations_to ON event_relations(to_event_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_relations_type ON event_relations(relation_type)"
+        )
 
         # Event outcomes index
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_outcomes_event ON event_outcomes(event_id)")
@@ -251,8 +293,10 @@ class EpisodicStore(BaseStore):
             event.event_type.value if isinstance(event.event_type, EventType) else event.event_type
         )
         outcome_str = (
-            event.outcome.value if isinstance(event.outcome, EventOutcome) else event.outcome
-        ) if event.outcome else None
+            (event.outcome.value if isinstance(event.outcome, EventOutcome) else event.outcome)
+            if event.outcome
+            else None
+        )
 
         # Generate embedding before insert (for pgvector)
         embedding = None
@@ -260,6 +304,7 @@ class EpisodicStore(BaseStore):
             embedding = self._generate_embedding(event.content)
         except Exception as e:
             import logging
+
             logging.debug(f"Failed to generate embedding: {e}")
 
         cursor = self.execute(
@@ -313,12 +358,12 @@ class EpisodicStore(BaseStore):
         event_id = None
         try:
             # Try to fetch the result from cursor if it has fetchone
-            if hasattr(cursor, 'fetchone'):
+            if hasattr(cursor, "fetchone"):
                 row = cursor.fetchone()
                 if row:
                     # Handle both dict-like Row objects and tuples
-                    if hasattr(row, 'get'):
-                        event_id = row.get('id')
+                    if hasattr(row, "get"):
+                        event_id = row.get("id")
                     else:
                         # Try tuple access
                         try:
@@ -336,6 +381,7 @@ class EpisodicStore(BaseStore):
         if event_id:
             try:
                 from ..integration.episodic_graph_bridge import EpisodicGraphBridge
+
                 bridge = EpisodicGraphBridge(self.db)
                 bridge.integrate_events_to_graph(event_ids=[event_id])
             except ImportError:
@@ -344,6 +390,7 @@ class EpisodicStore(BaseStore):
             except Exception as e:
                 # Log but don't fail on graph integration errors
                 import logging
+
                 logging.warning(f"Failed to integrate event {event_id} to graph: {e}")
 
         return event_id
@@ -368,42 +415,53 @@ class EpisodicStore(BaseStore):
             data = []
             for event in events:
                 event_type_str = (
-                    event.event_type.value if isinstance(event.event_type, EventType) else event.event_type
+                    event.event_type.value
+                    if isinstance(event.event_type, EventType)
+                    else event.event_type
                 )
                 outcome_str = (
-                    event.outcome.value if isinstance(event.outcome, EventOutcome) else event.outcome
-                ) if event.outcome else None
+                    (
+                        event.outcome.value
+                        if isinstance(event.outcome, EventOutcome)
+                        else event.outcome
+                    )
+                    if event.outcome
+                    else None
+                )
 
-                data.append((
-                    event.project_id,
-                    event.session_id,
-                    int(event.timestamp.timestamp()),
-                    event_type_str,
-                    event.content,
-                    outcome_str,
-                    event.context.cwd,
-                    self.serialize_json(event.context.files) if event.context.files else None,
-                    event.context.task,
-                    event.context.phase,
-                    event.duration_ms,
-                    event.files_changed,
-                    event.lines_added,
-                    event.lines_deleted,
-                    event.learned,
-                    event.confidence,
-                    event.project_name,
-                    event.project_goal,
-                    event.project_phase_status,
-                    event.importance_score,
-                    event.actionability_score,
-                    event.context_completeness_score,
-                    int(event.has_next_step),
-                    int(event.has_blocker),
-                    event.required_decisions,
-                ))
+                data.append(
+                    (
+                        event.project_id,
+                        event.session_id,
+                        int(event.timestamp.timestamp()),
+                        event_type_str,
+                        event.content,
+                        outcome_str,
+                        event.context.cwd,
+                        self.serialize_json(event.context.files) if event.context.files else None,
+                        event.context.task,
+                        event.context.phase,
+                        event.duration_ms,
+                        event.files_changed,
+                        event.lines_added,
+                        event.lines_deleted,
+                        event.learned,
+                        event.confidence,
+                        event.project_name,
+                        event.project_goal,
+                        event.project_phase_status,
+                        event.importance_score,
+                        event.actionability_score,
+                        event.context_completeness_score,
+                        int(event.has_next_step),
+                        int(event.has_blocker),
+                        event.required_decisions,
+                    )
+                )
 
             # Batch insert all events
-            cursor.executemany("""
+            cursor.executemany(
+                """
                 INSERT INTO episodic_events (
                     project_id, session_id, timestamp, event_type, content, outcome,
                     context_cwd, context_files, context_task, context_phase,
@@ -413,7 +471,9 @@ class EpisodicStore(BaseStore):
                     has_next_step, has_blocker, required_decisions
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, data)
+            """,
+                data,
+            )
 
             # Get the last inserted ID and work backward
             # Note: cursor.lastrowid may be None after executemany, so we query instead
@@ -435,17 +495,24 @@ class EpisodicStore(BaseStore):
                         embedding_data.append((event_id, self.serialize_json(embedding)))
                     except Exception as e:
                         import logging
-                        logging.warning(f"Failed to generate embedding for event {event_ids[i]}: {e}")
+
+                        logging.warning(
+                            f"Failed to generate embedding for event {event_ids[i]}: {e}"
+                        )
 
                 # Batch insert embeddings
                 if embedding_data:
-                    cursor.executemany("""
+                    cursor.executemany(
+                        """
                         INSERT INTO event_vectors (rowid, embedding)
                         VALUES (%s, %s)
-                    """, embedding_data)
+                    """,
+                        embedding_data,
+                    )
 
             except Exception as e:
                 import logging
+
                 logging.warning(f"Failed to batch generate embeddings: {e}")
 
             self.commit()
@@ -464,7 +531,9 @@ class EpisodicStore(BaseStore):
         Returns:
             Event if found, None otherwise
         """
-        row = self.execute("SELECT * FROM episodic_events WHERE id = %s", (event_id,), fetch_one=True)
+        row = self.execute(
+            "SELECT * FROM episodic_events WHERE id = %s", (event_id,), fetch_one=True
+        )
 
         if not row:
             return None
@@ -495,7 +564,7 @@ class EpisodicStore(BaseStore):
             ORDER BY timestamp DESC
         """,
             (project_id, start_ts, end_ts),
-            fetch_all=True
+            fetch_all=True,
         )
 
         return [self._row_to_model(row) for row in rows]
@@ -516,7 +585,7 @@ class EpisodicStore(BaseStore):
             ORDER BY timestamp ASC
         """,
             (session_id,),
-            fetch_all=True
+            fetch_all=True,
         )
 
         return [self._row_to_model(row) for row in rows]
@@ -544,12 +613,14 @@ class EpisodicStore(BaseStore):
             LIMIT ?
         """,
             (project_id, event_type_str, limit),
-            fetch_all=True
+            fetch_all=True,
         )
 
         return [self._row_to_model(row) for row in rows]
 
-    def get_recent_events(self, project_id: int, hours: int = 24, limit: int = 50) -> list[EpisodicEvent]:
+    def get_recent_events(
+        self, project_id: int, hours: int = 24, limit: int = 50
+    ) -> list[EpisodicEvent]:
         """Get recent events.
 
         Args:
@@ -570,14 +641,12 @@ class EpisodicStore(BaseStore):
             LIMIT %s
         """,
             (project_id, cutoff, limit),
-            fetch_all=True
+            fetch_all=True,
         )
 
         return [self._row_to_model(row) for row in rows]
 
-    def search_events(
-        self, project_id: int, query: str, limit: int = 20
-    ) -> list[EpisodicEvent]:
+    def search_events(self, project_id: int, query: str, limit: int = 20) -> list[EpisodicEvent]:
         """Search events by content using keyword matching.
 
         Args:
@@ -599,7 +668,22 @@ class EpisodicStore(BaseStore):
 
         for keyword in keywords:
             # Skip very short words and common stop words
-            if len(keyword) < 3 or keyword in ['the', 'and', 'or', 'but', 'for', 'are', 'was', 'were', 'what', 'when', 'where', 'how', 'why', 'who']:
+            if len(keyword) < 3 or keyword in [
+                "the",
+                "and",
+                "or",
+                "but",
+                "for",
+                "are",
+                "was",
+                "were",
+                "what",
+                "when",
+                "where",
+                "how",
+                "why",
+                "who",
+            ]:
                 continue
             where_conditions.append("LOWER(content) LIKE %s")
             params.append(f"%{keyword}%")
@@ -622,9 +706,7 @@ class EpisodicStore(BaseStore):
 
         return [self._row_to_model(row) for row in rows]
 
-    def get_event_timeline(
-        self, project_id: int, start_date: datetime, end_date: datetime
-    ) -> dict:
+    def get_event_timeline(self, project_id: int, start_date: datetime, end_date: datetime) -> dict:
         """Get event timeline with aggregations.
 
         Args:
@@ -651,12 +733,24 @@ class EpisodicStore(BaseStore):
             timeline[date_key]["events"].append(event)
             timeline[date_key]["count"] += 1
 
-            event_type = event.event_type.value if isinstance(event.event_type, EventType) else event.event_type
-            timeline[date_key]["types"][event_type] = timeline[date_key]["types"].get(event_type, 0) + 1
+            event_type = (
+                event.event_type.value
+                if isinstance(event.event_type, EventType)
+                else event.event_type
+            )
+            timeline[date_key]["types"][event_type] = (
+                timeline[date_key]["types"].get(event_type, 0) + 1
+            )
 
             if event.outcome:
-                outcome = event.outcome.value if isinstance(event.outcome, EventOutcome) else event.outcome
-                timeline[date_key]["outcomes"][outcome] = timeline[date_key]["outcomes"].get(outcome, 0) + 1
+                outcome = (
+                    event.outcome.value
+                    if isinstance(event.outcome, EventOutcome)
+                    else event.outcome
+                )
+                timeline[date_key]["outcomes"][outcome] = (
+                    timeline[date_key]["outcomes"].get(outcome, 0) + 1
+                )
 
         return timeline
 
@@ -783,10 +877,7 @@ class EpisodicStore(BaseStore):
             return [sorted_events]
 
         # Step 4: Extract boundary indices (where new clusters should start)
-        boundary_indices = sorted(
-            [se.index for se in surprise_events],
-            reverse=False
-        )
+        boundary_indices = sorted([se.index for se in surprise_events], reverse=False)
 
         # Step 5: Group events into clusters based on boundaries
         clusters = []
@@ -813,7 +904,7 @@ class EpisodicStore(BaseStore):
         start: datetime,
         end: datetime,
         consolidation_status: Optional[str] = None,
-        limit: Optional[int] = None
+        limit: Optional[int] = None,
     ) -> list[EpisodicEvent]:
         """Get events within a time range.
 
@@ -836,8 +927,10 @@ class EpisodicStore(BaseStore):
         params = [project_id, int(start.timestamp()), int(end.timestamp())]
 
         if consolidation_status:
-            if consolidation_status == 'unconsolidated':
-                query += " AND (consolidation_status IS NULL OR consolidation_status = 'unconsolidated')"
+            if consolidation_status == "unconsolidated":
+                query += (
+                    " AND (consolidation_status IS NULL OR consolidation_status = 'unconsolidated')"
+                )
             else:
                 query += " AND consolidation_status = ?"
                 params.append(consolidation_status)
@@ -853,9 +946,7 @@ class EpisodicStore(BaseStore):
         return [self._row_to_model(row) for row in rows]
 
     def mark_event_consolidated(
-        self,
-        event_id: int,
-        consolidated_at: Optional[datetime] = None
+        self, event_id: int, consolidated_at: Optional[datetime] = None
     ) -> None:
         """Mark an event as consolidated.
 
@@ -873,16 +964,12 @@ class EpisodicStore(BaseStore):
                 consolidated_at = ?
             WHERE id = %s
         """,
-            (int(consolidated_at.timestamp()), event_id)
+            (int(consolidated_at.timestamp()), event_id),
         )
 
         self.commit()
 
-    def get_event_relations(
-        self,
-        event_id: int,
-        relation_types: Optional[list] = None
-    ) -> list:
+    def get_event_relations(self, event_id: int, relation_types: Optional[list] = None) -> list:
         """
         Get relations for an event.
 
@@ -894,7 +981,7 @@ class EpisodicStore(BaseStore):
             List of relations (from_event_id, to_event_id, relation_type, strength)
         """
         if relation_types:
-            placeholders = ','.join('?' * len(relation_types))
+            placeholders = ",".join("?" * len(relation_types))
             query = f"""
                 SELECT from_event_id, to_event_id, relation_type, strength
                 FROM event_relations
@@ -914,12 +1001,14 @@ class EpisodicStore(BaseStore):
 
         relations = []
         for row in rows:
-            relations.append({
-                'from_event_id': row['from_event_id'],
-                'to_event_id': row['to_event_id'],
-                'relation_type': row['relation_type'],
-                'strength': row['strength']
-            })
+            relations.append(
+                {
+                    "from_event_id": row["from_event_id"],
+                    "to_event_id": row["to_event_id"],
+                    "relation_type": row["relation_type"],
+                    "strength": row["strength"],
+                }
+            )
 
         return relations
 
@@ -927,7 +1016,7 @@ class EpisodicStore(BaseStore):
         self,
         event_id: int,
         relation_type: Optional[str] = None,
-        direction: str = 'both'  # 'forward', 'backward', 'both'
+        direction: str = "both",  # 'forward', 'backward', 'both'
     ) -> List[EpisodicEvent]:
         """
         Get events related to a given event.
@@ -941,10 +1030,10 @@ class EpisodicStore(BaseStore):
             List of related events
         """
         # Build query based on direction
-        if direction == 'forward':
+        if direction == "forward":
             where_clause = "from_event_id = ?"
             event_field = "to_event_id"
-        elif direction == 'backward':
+        elif direction == "backward":
             where_clause = "to_event_id = ?"
             event_field = "from_event_id"
         else:  # 'both'
@@ -961,7 +1050,7 @@ class EpisodicStore(BaseStore):
         """
 
         # Build params
-        if direction == 'both':
+        if direction == "both":
             params = [event_id, event_id, event_id]
         else:
             params = [event_id]
@@ -972,7 +1061,7 @@ class EpisodicStore(BaseStore):
         rows = self.execute(query, params, fetch_all=True)
 
         # Fetch related events
-        related_ids = [row['related_id'] for row in rows]
+        related_ids = [row["related_id"] for row in rows]
         related_events = []
 
         for related_id in related_ids:
@@ -992,15 +1081,20 @@ class EpisodicStore(BaseStore):
             768-dimensional embedding vector, or None if not found
         """
         try:
-            row = self.execute("""
+            row = self.execute(
+                """
                 SELECT embedding FROM event_vectors WHERE rowid = %s
-            """, (event_id,), fetch_one=True)
+            """,
+                (event_id,),
+                fetch_one=True,
+            )
 
-            if row and row['embedding']:
-                return json.loads(row['embedding'])
+            if row and row["embedding"]:
+                return json.loads(row["embedding"])
 
         except Exception as e:
             import logging
+
             logging.debug(f"No embedding found for event {event_id}: {e}")
 
         return None
@@ -1028,7 +1122,7 @@ class EpisodicStore(BaseStore):
             LIMIT ?
         """,
             (project_id, threshold, limit),
-            fetch_all=True
+            fetch_all=True,
         )
 
         events = []
@@ -1038,6 +1132,7 @@ class EpisodicStore(BaseStore):
                 events.append(event)
             except Exception as e:
                 import logging
+
                 logging.warning(f"Error loading high-surprise event {row['id']}: {e}")
 
         return events
@@ -1061,7 +1156,7 @@ class EpisodicStore(BaseStore):
         git_author: Optional[str] = None,
         outcome: Optional[str] = None,
         code_quality_score: Optional[float] = None,
-        **kwargs
+        **kwargs,
     ) -> EpisodicEvent:
         """Create a code-aware episodic event.
 
@@ -1101,14 +1196,17 @@ class EpisodicStore(BaseStore):
             git_author=git_author,
             outcome=EventOutcome(outcome) if outcome else None,
             code_quality_score=code_quality_score,
-            **kwargs
+            **kwargs,
         )
 
         # Insert into database
         cursor = self.db.get_cursor()
-        perf_metrics_json = json.dumps(event.performance_metrics) if event.performance_metrics else None
+        perf_metrics_json = (
+            json.dumps(event.performance_metrics) if event.performance_metrics else None
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO episodic_events (
                 project_id, session_id, timestamp, event_type, content, outcome,
                 context_cwd, context_files, context_task, context_phase, context_branch,
@@ -1117,50 +1215,49 @@ class EpisodicStore(BaseStore):
                 language, diff, git_commit, git_author, test_name, test_passed,
                 error_type, stack_trace, performance_metrics, code_quality_score
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (
-            event.project_id,
-            event.session_id,
-            int(event.timestamp.timestamp()),
-            event.event_type,
-            event.content,
-            event.outcome,
-            event.context.cwd,
-            json.dumps(event.context.files),
-            event.context.task,
-            event.context.phase,
-            event.context.branch,
-            event.duration_ms,
-            event.files_changed,
-            event.lines_added,
-            event.lines_deleted,
-            event.learned,
-            event.confidence,
-            event.consolidation_status,
-            event.code_event_type,
-            event.file_path,
-            event.symbol_name,
-            event.symbol_type,
-            event.language,
-            event.diff,
-            event.git_commit,
-            event.git_author,
-            event.test_name,
-            1 if event.test_passed else (0 if event.test_passed is False else None),
-            event.error_type,
-            event.stack_trace,
-            perf_metrics_json,
-            event.code_quality_score,
-        ))
+        """,
+            (
+                event.project_id,
+                event.session_id,
+                int(event.timestamp.timestamp()),
+                event.event_type,
+                event.content,
+                event.outcome,
+                event.context.cwd,
+                json.dumps(event.context.files),
+                event.context.task,
+                event.context.phase,
+                event.context.branch,
+                event.duration_ms,
+                event.files_changed,
+                event.lines_added,
+                event.lines_deleted,
+                event.learned,
+                event.confidence,
+                event.consolidation_status,
+                event.code_event_type,
+                event.file_path,
+                event.symbol_name,
+                event.symbol_type,
+                event.language,
+                event.diff,
+                event.git_commit,
+                event.git_author,
+                event.test_name,
+                1 if event.test_passed else (0 if event.test_passed is False else None),
+                event.error_type,
+                event.stack_trace,
+                perf_metrics_json,
+                event.code_quality_score,
+            ),
+        )
         # commit handled by cursor context
 
         event.id = cursor.lastrowid
         return event
 
     def list_code_events_by_file(
-        self,
-        project_id: int,
-        file_path: str,
-        limit: int = 50
+        self, project_id: int, file_path: str, limit: int = 50
     ) -> list[EpisodicEvent]:
         """List code events for a specific file.
 
@@ -1180,17 +1277,13 @@ class EpisodicStore(BaseStore):
             LIMIT ?
             """,
             (project_id, file_path, limit),
-            fetch_all=True
+            fetch_all=True,
         )
 
         return [self._row_to_model(row) for row in rows]
 
     def list_code_events_by_symbol(
-        self,
-        project_id: int,
-        symbol_name: str,
-        file_path: Optional[str] = None,
-        limit: int = 50
+        self, project_id: int, symbol_name: str, file_path: Optional[str] = None, limit: int = 50
     ) -> list[EpisodicEvent]:
         """List code events for a specific symbol (function/class).
 
@@ -1213,7 +1306,7 @@ class EpisodicStore(BaseStore):
                 LIMIT ?
                 """,
                 (project_id, symbol_name, file_path, limit),
-                fetch_all=True
+                fetch_all=True,
             )
         else:
             rows = self.execute(
@@ -1224,16 +1317,13 @@ class EpisodicStore(BaseStore):
                 LIMIT ?
                 """,
                 (project_id, symbol_name, limit),
-                fetch_all=True
+                fetch_all=True,
             )
 
         return [self._row_to_model(row) for row in rows]
 
     def list_code_events_by_type(
-        self,
-        project_id: int,
-        code_event_type: str,
-        limit: int = 50
+        self, project_id: int, code_event_type: str, limit: int = 50
     ) -> list[EpisodicEvent]:
         """List code events by type (CODE_EDIT, BUG_DISCOVERY, etc).
 
@@ -1253,16 +1343,13 @@ class EpisodicStore(BaseStore):
             LIMIT ?
             """,
             (project_id, code_event_type, limit),
-            fetch_all=True
+            fetch_all=True,
         )
 
         return [self._row_to_model(row) for row in rows]
 
     def list_code_events_by_language(
-        self,
-        project_id: int,
-        language: str,
-        limit: int = 50
+        self, project_id: int, language: str, limit: int = 50
     ) -> list[EpisodicEvent]:
         """List code events by programming language.
 
@@ -1282,16 +1369,13 @@ class EpisodicStore(BaseStore):
             LIMIT ?
             """,
             (project_id, language, limit),
-            fetch_all=True
+            fetch_all=True,
         )
 
         return [self._row_to_model(row) for row in rows]
 
     def list_test_events(
-        self,
-        project_id: int,
-        failed_only: bool = False,
-        limit: int = 50
+        self, project_id: int, failed_only: bool = False, limit: int = 50
     ) -> list[EpisodicEvent]:
         """List test run events.
 
@@ -1312,7 +1396,7 @@ class EpisodicStore(BaseStore):
                 LIMIT ?
                 """,
                 (project_id, limit),
-                fetch_all=True
+                fetch_all=True,
             )
         else:
             rows = self.execute(
@@ -1323,16 +1407,13 @@ class EpisodicStore(BaseStore):
                 LIMIT ?
                 """,
                 (project_id, limit),
-                fetch_all=True
+                fetch_all=True,
             )
 
         return [self._row_to_model(row) for row in rows]
 
     def list_bug_events(
-        self,
-        project_id: int,
-        language: Optional[str] = None,
-        limit: int = 50
+        self, project_id: int, language: Optional[str] = None, limit: int = 50
     ) -> list[EpisodicEvent]:
         """List bug discovery events (exceptions, errors).
 
@@ -1353,7 +1434,7 @@ class EpisodicStore(BaseStore):
                 LIMIT ?
                 """,
                 (project_id, language, limit),
-                fetch_all=True
+                fetch_all=True,
             )
         else:
             rows = self.execute(
@@ -1364,7 +1445,7 @@ class EpisodicStore(BaseStore):
                 LIMIT ?
                 """,
                 (project_id, limit),
-                fetch_all=True
+                fetch_all=True,
             )
 
         return [self._row_to_model(row) for row in rows]
@@ -1374,7 +1455,7 @@ class EpisodicStore(BaseStore):
         project_id: int,
         similarity_threshold: float = 0.85,
         time_window_minutes: int = 60,
-        limit: int = 100
+        limit: int = 100,
     ) -> Dict[str, Any]:
         """Find near-duplicate events that can be merged.
 
@@ -1402,7 +1483,7 @@ class EpisodicStore(BaseStore):
             project_id,
             start_time=datetime.now() - timedelta(days=1),
             end_time=datetime.now(),
-            limit=limit
+            limit=limit,
         )
 
         if len(events) < 2:
@@ -1423,7 +1504,7 @@ class EpisodicStore(BaseStore):
 
             group = [event1]
 
-            for j, event2 in enumerate(events[i+1:], i+1):
+            for j, event2 in enumerate(events[i + 1 :], i + 1):
                 if event2.id in processed:
                     continue
 
@@ -1453,8 +1534,12 @@ class EpisodicStore(BaseStore):
                 {
                     "ids": [e.id for e in group],
                     "count": len(group),
-                    "first_timestamp": min((e.timestamp for e in group if e.timestamp), default=None),
-                    "last_timestamp": max((e.timestamp for e in group if e.timestamp), default=None),
+                    "first_timestamp": min(
+                        (e.timestamp for e in group if e.timestamp), default=None
+                    ),
+                    "last_timestamp": max(
+                        (e.timestamp for e in group if e.timestamp), default=None
+                    ),
                 }
                 for group in duplicate_groups
             ],
@@ -1495,7 +1580,9 @@ class EpisodicStore(BaseStore):
         if event1.context.files and event2.context.files:
             common_files = set(event1.context.files) & set(event2.context.files)
             if common_files:
-                file_bonus = 0.1 * (len(common_files) / max(len(event1.context.files), len(event2.context.files)))
+                file_bonus = 0.1 * (
+                    len(common_files) / max(len(event1.context.files), len(event2.context.files))
+                )
 
         # Outcome matching bonus
         outcome_bonus = 0.1 if event1.outcome == event2.outcome else 0.0
@@ -1509,7 +1596,7 @@ class EpisodicStore(BaseStore):
         project_id: int,
         primary_event_id: int,
         duplicate_event_ids: list[int],
-        keep_duplicate_ids: bool = False
+        keep_duplicate_ids: bool = False,
     ) -> Dict[str, Any]:
         """Merge duplicate events into a single event.
 
@@ -1618,6 +1705,7 @@ class EpisodicStore(BaseStore):
                     deleted_count += 1
                 except Exception as e:
                     import logging
+
                     logger = logging.getLogger(__name__)
                     logger.warning(f"Could not delete event {dup_id}: {e}")
 
@@ -1650,10 +1738,9 @@ class EpisodicStore(BaseStore):
 
         try:
             import requests
+
             response = requests.post(
-                "http://localhost:8001/embeddings",
-                json={"input": text},
-                timeout=10
+                "http://localhost:8001/embeddings", json={"input": text}, timeout=10
             )
             if response.status_code == 200:
                 data = response.json()
@@ -1662,13 +1749,20 @@ class EpisodicStore(BaseStore):
                     return embedding
             else:
                 import logging
-                logging.warning(f"Embedding service returned {response.status_code}: {response.text[:200]}")
+
+                logging.warning(
+                    f"Embedding service returned {response.status_code}: {response.text[:200]}"
+                )
         except requests.exceptions.ConnectionError:
             import logging
-            logging.warning("Embedding service (llamacpp:8001) is not available - semantic search will fall back to keyword matching")
+
+            logging.warning(
+                "Embedding service (llamacpp:8001) is not available - semantic search will fall back to keyword matching"
+            )
         except Exception as e:
             # Log but don't fail - embeddings are optional fallback
             import logging
+
             logging.debug(f"Embedding generation failed: {e}")
 
         return None
@@ -1731,11 +1825,7 @@ class EpisodicStore(BaseStore):
         return self.record_event(event)
 
     def list_events(
-        self,
-        project_id: int,
-        limit: int = 100,
-        offset: int = 0,
-        order_by: str = "timestamp DESC"
+        self, project_id: int, limit: int = 100, offset: int = 0, order_by: str = "timestamp DESC"
     ) -> List[EpisodicEvent]:
         """List events for a project with pagination.
 
@@ -1755,11 +1845,7 @@ class EpisodicStore(BaseStore):
             LIMIT %s OFFSET %s
         """
 
-        rows = self.execute(
-            query,
-            (project_id, limit, offset),
-            fetch_all=True
-        )
+        rows = self.execute(query, (project_id, limit, offset), fetch_all=True)
 
         if not rows:
             return []
@@ -1776,17 +1862,17 @@ class EpisodicStore(BaseStore):
             True if deleted, False if not found
         """
         cursor = self.execute(
-            "DELETE FROM episodic_events WHERE id = %s",
-            (event_id,),
-            fetch_one=False
+            "DELETE FROM episodic_events WHERE id = %s", (event_id,), fetch_one=False
         )
-        return cursor and cursor.rowcount > 0 if hasattr(cursor, 'rowcount') else False
+        return cursor and cursor.rowcount > 0 if hasattr(cursor, "rowcount") else False
 
     # ==================== ASYNC WRAPPER API ====================
     # These methods provide async wrappers for operations.py compatibility
     # Map generic naming to domain-specific store methods
 
-    async def list(self, filters: Dict[str, Any] | None = None, limit: int = 100, **kwargs) -> list[EpisodicEvent]:
+    async def list(
+        self, filters: Dict[str, Any] | None = None, limit: int = 100, **kwargs
+    ) -> list[EpisodicEvent]:
         """List episodic events (async wrapper for list_events).
 
         Args:

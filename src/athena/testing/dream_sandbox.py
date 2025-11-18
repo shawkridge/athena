@@ -2,12 +2,10 @@
 
 import asyncio
 import logging
-import tempfile
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
 from ..sandbox.srt_executor import SRTExecutor, ExecutionResult
@@ -226,7 +224,7 @@ class DreamSandbox:
         """
         params_str = repr(input_params)
 
-        wrapper = f'''
+        wrapper = f"""
 import sys
 import json
 import traceback
@@ -260,7 +258,7 @@ result_output = {{
     'params_used': _dream_params
 }}
 print(json.dumps(result_output))
-'''
+"""
         return wrapper.strip()
 
     @staticmethod
@@ -317,9 +315,7 @@ print(json.dumps(result_output))
 
         # Check for execution success
         if not execution_result.success:
-            outcome, category = self._categorize_error(
-                execution_result.stderr
-            )
+            outcome, category = self._categorize_error(execution_result.stderr)
             return DreamTestResult(
                 dream_id=dream_id,
                 test_outcome=outcome,
@@ -347,7 +343,9 @@ print(json.dumps(result_output))
 
         return DreamTestResult(
             dream_id=dream_id,
-            test_outcome=TestOutcome.SUCCESS if validation_passed else TestOutcome.OUTPUT_VALIDATION_FAILED,
+            test_outcome=(
+                TestOutcome.SUCCESS if validation_passed else TestOutcome.OUTPUT_VALIDATION_FAILED
+            ),
             success=validation_passed,
             execution_time_ms=execution_result.execution_time_ms,
             stdout=execution_result.stdout,
@@ -419,23 +417,24 @@ print(json.dumps(result_output))
         """
         try:
             import json
+
             result = json.loads(output)
 
             # Check if 'output' field exists and matches type
-            if 'output' not in result:
+            if "output" not in result:
                 return False, "Result missing 'output' field"
 
-            value = result['output']
+            value = result["output"]
 
             # Type validation
             type_map = {
-                'dict': dict,
-                'list': list,
-                'str': str,
-                'int': int,
-                'float': float,
-                'bool': bool,
-                'tuple': tuple,
+                "dict": dict,
+                "list": list,
+                "str": str,
+                "int": int,
+                "float": float,
+                "bool": bool,
+                "tuple": tuple,
             }
 
             expected_python_type = type_map.get(expected_type.lower())

@@ -19,7 +19,6 @@ from .models import (
     ConsolidationRun,
     ConsolidationType,
     ExtractedPattern,
-    MemoryConflict,
     PatternType,
 )
 
@@ -34,7 +33,7 @@ class ConsolidationSystem:
         episodic_store: EpisodicStore,
         procedural_store: ProceduralStore,
         meta_store: MetaMemoryStore,
-        graph_store = None,  # Optional GraphStore for temporal KG synthesis
+        graph_store=None,  # Optional GraphStore for temporal KG synthesis
     ):
         """Initialize consolidation system.
 
@@ -54,12 +53,14 @@ class ConsolidationSystem:
         self.graph_store = graph_store
         # Ensure consolidation schema is created
         self._ensure_schema()
+
     def _ensure_schema(self):
         """Ensure consolidation tables exist."""
         cursor = self.db.get_cursor()
 
         # Consolidation runs
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS consolidation_runs (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER,
@@ -86,10 +87,12 @@ class ConsolidationSystem:
 
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Extracted patterns
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS extracted_patterns (
                 id SERIAL PRIMARY KEY,
                 consolidation_run_id INTEGER NOT NULL,
@@ -106,10 +109,12 @@ class ConsolidationSystem:
 
                 FOREIGN KEY (consolidation_run_id) REFERENCES consolidation_runs(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Memory conflicts
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS memory_conflicts (
                 id SERIAL PRIMARY KEY,
                 discovered_at INTEGER NOT NULL,
@@ -129,7 +134,8 @@ class ConsolidationSystem:
 
                 severity TEXT DEFAULT 'medium'
             )
-        """)
+        """
+        )
 
         # Indices
         cursor.execute(
@@ -203,6 +209,7 @@ class ConsolidationSystem:
                 except Exception as e:
                     # Log but don't fail consolidation if graph synthesis fails
                     import logging
+
                     logging.warning(f"Temporal KG synthesis failed: {e}")
 
             # 8. Create semantic memories from graph insights (feedback loop)
@@ -212,6 +219,7 @@ class ConsolidationSystem:
                 except Exception as e:
                     # Log but don't fail consolidation if graph extraction fails
                     import logging
+
                     logging.warning(f"Graph-to-semantic extraction failed: {e}")
 
             # Calculate final average quality
@@ -249,6 +257,7 @@ class ConsolidationSystem:
                     self.db.conn.rollback()
                 except Exception as rollback_error:
                     import logging
+
                     logging.error(f"Error rolling back consolidation transaction: {rollback_error}")
 
             self._complete_run(run_id, status="failed", notes=f"Rolled back: {str(e)}")
@@ -262,7 +271,10 @@ class ConsolidationSystem:
 
         # Get all memories
         if project_id:
-            cursor.execute("SELECT id, access_count, usefulness_score FROM memory_vectors WHERE project_id = %s", (project_id,))
+            cursor.execute(
+                "SELECT id, access_count, usefulness_score FROM memory_vectors WHERE project_id = %s",
+                (project_id,),
+            )
         else:
             cursor.execute("SELECT id, access_count, usefulness_score FROM memory_vectors")
 
@@ -280,7 +292,7 @@ class ConsolidationSystem:
 
             cursor.execute(
                 "UPDATE memory_vectors SET usefulness_score = %s WHERE id = %s",
-                (new_score, memory_id)
+                (new_score, memory_id),
             )
 
             total_score += new_score
@@ -298,12 +310,12 @@ class ConsolidationSystem:
         if project_id:
             cursor.execute(
                 "SELECT id FROM memory_vectors WHERE project_id = %s AND usefulness_score < %s AND access_count < 2",
-                (project_id, threshold)
+                (project_id, threshold),
             )
         else:
             cursor.execute(
                 "SELECT id FROM memory_vectors WHERE usefulness_score < %s AND access_count < 2",
-                (threshold,)
+                (threshold,),
             )
 
         memory_ids = [row["id"] for row in cursor.fetchall()]
@@ -334,6 +346,7 @@ class ConsolidationSystem:
 
             # PRIORITIZATION: Score and filter high-value events for consolidation
             from .event_prioritization import EventPrioritizer
+
             prioritizer = EventPrioritizer()
 
             # Filter to high-priority events (top 70% by priority score)
@@ -341,7 +354,7 @@ class ConsolidationSystem:
             if recent_events:
                 prioritized_events = prioritizer.filter_by_priority(
                     recent_events,
-                    min_score=0.3,           # Keep events with priority >= 0.3
+                    min_score=0.3,  # Keep events with priority >= 0.3
                     max_events=len(recent_events),  # Use all, but in priority order
                 )
                 recent_events = prioritized_events
@@ -437,7 +450,7 @@ class ConsolidationSystem:
             # Get all patterns from this consolidation run
             cursor.execute(
                 "SELECT id, pattern_type, pattern_content, confidence FROM extracted_patterns WHERE consolidation_run_id = %s",
-                (run_id,)
+                (run_id,),
             )
 
             patterns = cursor.fetchall()
@@ -460,7 +473,7 @@ class ConsolidationSystem:
                         content=pattern_content,
                         memory_type=MemoryType.PATTERN,
                         project_id=project_id,
-                        tags=tags
+                        tags=tags,
                     )
 
                     if memory_id:
@@ -469,7 +482,7 @@ class ConsolidationSystem:
                         # Mark pattern as having created memory
                         cursor.execute(
                             "UPDATE extracted_patterns SET created_semantic_memory = TRUE WHERE id = %s",
-                            (pattern_id,)
+                            (pattern_id,),
                         )
 
                 except Exception as e:
@@ -490,7 +503,9 @@ class ConsolidationSystem:
         # Return the shortest common content as template
         return min(contents, key=len)
 
-    def _extract_pattern_from_cluster(self, cluster: list, run_id: int) -> Optional[ExtractedPattern]:
+    def _extract_pattern_from_cluster(
+        self, cluster: list, run_id: int
+    ) -> Optional[ExtractedPattern]:
         """Extract pattern from a surprise-based event cluster.
 
         Uses cluster context to extract more meaningful patterns than
@@ -565,7 +580,7 @@ class ConsolidationSystem:
             )
             try:
                 self.procedural_store.create_procedure(procedure)
-            except Exception as e:
+            except Exception:
                 # If procedure creation fails (e.g., UNIQUE constraint), skip silently
                 # This can happen if procedure already exists with same name
                 pass
@@ -576,26 +591,31 @@ class ConsolidationSystem:
         cursor = self.db.get_cursor()
 
         if project_id:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT m1.id as id1, m2.id as id2, m1.content as content1, m2.content as content2
                 FROM memory_vectors m1
                 JOIN memory_vectors m2 ON m1.project_id = m2.project_id AND m1.id < m2.id
                 WHERE m1.project_id = %s AND m1.content = m2.content
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
         else:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT m1.id as id1, m2.id as id2, m1.content as content1, m2.content as content2
                 FROM memory_vectors m1
                 JOIN memory_vectors m2 ON m1.project_id = m2.project_id AND m1.id < m2.id
                 WHERE m1.content = m2.content
-            """)
+            """
+            )
 
         conflicts_resolved = 0
         for row in cursor.fetchall():
             # Duplicate found - keep the one with higher usefulness
             cursor.execute(
                 "SELECT usefulness_score FROM memory_vectors WHERE id IN (%s, %s)",
-                (row["id1"], row["id2"])
+                (row["id1"], row["id2"]),
             )
             scores = cursor.fetchall()
 
@@ -614,17 +634,22 @@ class ConsolidationSystem:
         cursor = self.db.get_cursor()
 
         if project_id:
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE memory_vectors
                 SET usefulness_score = LEAST(1.0, usefulness_score + 0.1)
                 WHERE project_id = %s AND access_count > 5
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
         else:
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE memory_vectors
                 SET usefulness_score = LEAST(1.0, usefulness_score + 0.1)
                 WHERE access_count > 5
-            """)
+            """
+            )
 
         # commit handled by cursor context
 
@@ -635,8 +660,7 @@ class ConsolidationSystem:
 
         if project_id:
             cursor.execute(
-                "SELECT DISTINCT tags FROM memory_vectors WHERE project_id = %s",
-                (project_id,)
+                "SELECT DISTINCT tags FROM memory_vectors WHERE project_id = %s", (project_id,)
             )
         else:
             cursor.execute("SELECT DISTINCT tags FROM memory_vectors")
@@ -651,7 +675,7 @@ class ConsolidationSystem:
         if project_id:
             cursor.execute(
                 "SELECT AVG(usefulness_score) as avg FROM memory_vectors WHERE project_id = %s",
-                (project_id,)
+                (project_id,),
             )
         else:
             cursor.execute("SELECT AVG(usefulness_score) as avg FROM memory_vectors")
@@ -664,7 +688,9 @@ class ConsolidationSystem:
         cursor = self.db.get_cursor()
 
         if project_id:
-            cursor.execute("SELECT COUNT(*) as count FROM memory_vectors WHERE project_id = %s", (project_id,))
+            cursor.execute(
+                "SELECT COUNT(*) as count FROM memory_vectors WHERE project_id = %s", (project_id,)
+            )
         else:
             cursor.execute("SELECT COUNT(*) as count FROM memory_vectors")
 
@@ -680,17 +706,20 @@ class ConsolidationSystem:
             else run.consolidation_type
         )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO consolidation_runs (
                 project_id, started_at, status, consolidation_type
             ) VALUES (%s, %s, %s, %s)
             RETURNING id
-        """, (
-            run.project_id,
-            int(run.started_at.timestamp()),
-            run.status,
-            consolidation_type_str,
-        ))
+        """,
+            (
+                run.project_id,
+                int(run.started_at.timestamp()),
+                run.status,
+                consolidation_type_str,
+            ),
+        )
 
         # commit handled by cursor context
         result = cursor.fetchone()
@@ -729,7 +758,15 @@ class ConsolidationSystem:
 
         # Calculate overall quality score if metrics available
         overall_score = None
-        if all(v is not None for v in [compression_ratio, retrieval_recall, pattern_consistency, avg_information_density]):
+        if all(
+            v is not None
+            for v in [
+                compression_ratio,
+                retrieval_recall,
+                pattern_consistency,
+                avg_information_density,
+            ]
+        ):
             overall_score = (
                 compression_ratio * 0.25
                 + retrieval_recall * 0.25
@@ -737,7 +774,8 @@ class ConsolidationSystem:
                 + avg_information_density * 0.25
             )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE consolidation_runs
             SET completed_at = %s, status = %s,
                 memories_scored = %s, memories_pruned = %s,
@@ -748,31 +786,29 @@ class ConsolidationSystem:
                 overall_quality_score = %s,
                 notes = %s
             WHERE id = %s
-        """, (
-            int(time.time()),
-            status,
-            memories_scored,
-            memories_pruned,
-            patterns_extracted,
-            conflicts_resolved,
-            avg_quality_before,
-            avg_quality_after,
-            compression_ratio,
-            retrieval_recall,
-            pattern_consistency,
-            avg_information_density,
-            overall_score,
-            notes,
-            run_id,
-        ))
+        """,
+            (
+                int(time.time()),
+                status,
+                memories_scored,
+                memories_pruned,
+                patterns_extracted,
+                conflicts_resolved,
+                avg_quality_before,
+                avg_quality_after,
+                compression_ratio,
+                retrieval_recall,
+                pattern_consistency,
+                avg_information_density,
+                overall_score,
+                notes,
+                run_id,
+            ),
+        )
 
         # commit handled by cursor context
 
-    def _measure_consolidation_metrics(
-        self,
-        project_id: Optional[int],
-        run_id: int
-    ) -> dict:
+    def _measure_consolidation_metrics(self, project_id: Optional[int], run_id: int) -> dict:
         """Measure consolidation quality metrics (research targets).
 
         Measures:
@@ -789,17 +825,14 @@ class ConsolidationSystem:
             Dict with quality metrics
         """
         try:
-            quality_metrics = ConsolidationQualityMetrics(
-                self.episodic_store,
-                self.memory_store
-            )
+            quality_metrics = ConsolidationQualityMetrics(self.episodic_store, self.memory_store)
 
             # Get session ID for this project's consolidation
             cursor = self.db.get_cursor()
             if project_id:
                 cursor.execute(
                     "SELECT session_id FROM episodic_events WHERE project_id = %s ORDER BY timestamp DESC LIMIT 1",
-                    (project_id,)
+                    (project_id,),
                 )
             else:
                 cursor.execute(
@@ -860,6 +893,7 @@ class ConsolidationSystem:
 
         except Exception as e:
             import traceback
+
             print(f"Error measuring consolidation metrics: {e}")
             traceback.print_exc()
             return {
@@ -879,19 +913,22 @@ class ConsolidationSystem:
             else pattern.pattern_type
         )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO extracted_patterns (
                 consolidation_run_id, pattern_type, pattern_content,
                 confidence, occurrences, source_events
             ) VALUES (%s, %s, %s, %s, %s, %s)
-        """, (
-            pattern.consolidation_run_id,
-            pattern_type_str,
-            pattern.pattern_content,
-            pattern.confidence,
-            pattern.occurrences,
-            json.dumps(pattern.source_events),
-        ))
+        """,
+            (
+                pattern.consolidation_run_id,
+                pattern_type_str,
+                pattern.pattern_content,
+                pattern.confidence,
+                pattern.occurrences,
+                json.dumps(pattern.source_events),
+            ),
+        )
 
         # commit handled by cursor context
 
@@ -919,15 +956,17 @@ class ConsolidationSystem:
             )
 
             # Get session ID for synthesis (use project-level consolidation)
-            session_id = f"consolidation:project:{project_id}" if project_id else "consolidation:global"
+            session_id = (
+                f"consolidation:project:{project_id}" if project_id else "consolidation:global"
+            )
 
             # Synthesize temporal KG from recent episodic events
             result = kg_synthesis.synthesize(
-                session_id=session_id,
-                since_timestamp=None  # Use all recent events
+                session_id=session_id, since_timestamp=None  # Use all recent events
             )
 
             import logging
+
             logger = logging.getLogger(__name__)
             logger.info(
                 f"Temporal KG synthesis complete: "
@@ -937,6 +976,7 @@ class ConsolidationSystem:
             )
         except Exception as e:
             import logging
+
             logging.warning(f"Failed to synthesize temporal KG: {e}")
 
     def _extract_semantic_from_graph(self, project_id: Optional[int]) -> None:
@@ -954,6 +994,7 @@ class ConsolidationSystem:
 
         try:
             import logging
+
             logger = logging.getLogger(__name__)
 
             # Get recently created entities (last 24 hours)
@@ -961,28 +1002,35 @@ class ConsolidationSystem:
             cursor = self.db.get_cursor()
 
             if project_id:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT id, name, entity_type, metadata
                     FROM knowledge_graph_entities
                     WHERE project_id = %s AND created_at > %s
                     ORDER BY created_at DESC
                     LIMIT 50
-                """, (project_id, cutoff_timestamp))
+                """,
+                    (project_id, cutoff_timestamp),
+                )
             else:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT id, name, entity_type, metadata
                     FROM knowledge_graph_entities
                     WHERE created_at > %s
                     ORDER BY created_at DESC
                     LIMIT 50
-                """, (cutoff_timestamp,))
+                """,
+                    (cutoff_timestamp,),
+                )
 
             entities = cursor.fetchall()
             if not entities:
                 return
 
             # Get relations for these entities to understand patterns
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT from_entity_id, to_entity_id, relation_type, strength, confidence
                 FROM knowledge_graph_relations
                 WHERE (from_entity_id IN (
@@ -994,7 +1042,9 @@ class ConsolidationSystem:
                 ))
                 ORDER BY confidence DESC
                 LIMIT 100
-            """, (cutoff_timestamp, cutoff_timestamp))
+            """,
+                (cutoff_timestamp, cutoff_timestamp),
+            )
 
             relations = cursor.fetchall()
 
@@ -1010,16 +1060,20 @@ class ConsolidationSystem:
                         "relation_type": relation["relation_type"],
                         "confidence": relation["confidence"],
                         "strength": relation["strength"],
-                        "source": "knowledge_graph_consolidation"
+                        "source": "knowledge_graph_consolidation",
                     }
 
                     try:
                         memory_id = self.memory_store.remember(
                             content=json.dumps(memory_content),
                             memory_type=MemoryType.PATTERN,
-                            tags=["graph_derived", f"relation:{relation['relation_type']}", "consolidated"],
+                            tags=[
+                                "graph_derived",
+                                f"relation:{relation['relation_type']}",
+                                "consolidated",
+                            ],
                             project_id=project_id,
-                            usefulness_score=relation["confidence"]
+                            usefulness_score=relation["confidence"],
                         )
                         memories_created += 1
                     except Exception as e:
@@ -1030,6 +1084,7 @@ class ConsolidationSystem:
 
         except Exception as e:
             import logging
+
             logging.warning(f"Failed to extract semantic memories from graph: {e}")
 
     def get_latest_run(self, project_id: Optional[int] = None) -> Optional[ConsolidationRun]:
@@ -1039,7 +1094,7 @@ class ConsolidationSystem:
         if project_id:
             cursor.execute(
                 "SELECT * FROM consolidation_runs WHERE project_id = %s ORDER BY started_at DESC LIMIT 1",
-                (project_id,)
+                (project_id,),
             )
         else:
             cursor.execute("SELECT * FROM consolidation_runs ORDER BY started_at DESC LIMIT 1")
@@ -1052,7 +1107,9 @@ class ConsolidationSystem:
             id=row["id"],
             project_id=row["project_id"],
             started_at=datetime.fromtimestamp(row["started_at"]),
-            completed_at=datetime.fromtimestamp(row["completed_at"]) if row["completed_at"] else None,
+            completed_at=(
+                datetime.fromtimestamp(row["completed_at"]) if row["completed_at"] else None
+            ),
             status=row["status"],
             memories_scored=row["memories_scored"],
             memories_pruned=row["memories_pruned"],

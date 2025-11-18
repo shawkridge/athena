@@ -1,7 +1,7 @@
 """Procedure versioning and rollback system."""
 
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 
@@ -126,9 +126,7 @@ class ProcedureVersionStore:
         self.db.commit()
         return new_version
 
-    def get_version(
-        self, procedure_id: int, version: int
-    ) -> Optional[ProcedureVersion]:
+    def get_version(self, procedure_id: int, version: int) -> Optional[ProcedureVersion]:
         """Get specific procedure version.
 
         Args:
@@ -197,9 +195,7 @@ class ProcedureVersionStore:
             procedure_snapshot=json.loads(row[9]) if row[9] else None,
         )
 
-    def compare_versions(
-        self, procedure_id: int, v1: int, v2: int
-    ) -> Dict[str, Any]:
+    def compare_versions(self, procedure_id: int, v1: int, v2: int) -> Dict[str, Any]:
         """Compare two procedure versions.
 
         Args:
@@ -326,9 +322,7 @@ class ProcedureVersionStore:
         self.db.commit()
         return True
 
-    def delete_old_versions(
-        self, procedure_id: int, keep_count: int = 10
-    ) -> int:
+    def delete_old_versions(self, procedure_id: int, keep_count: int = 10) -> int:
         """Delete old versions, keeping the most recent N.
 
         Args:

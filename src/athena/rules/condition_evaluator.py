@@ -12,10 +12,10 @@ class ConditionEvaluator:
     """Evaluates rule conditions against task/plan context."""
 
     # Pattern for simple comparisons (order matters: >= before >, <= before <)
-    COMPARISON_PATTERN = r'(\w+)\s*(>=|<=|>|<|==|!=)\s*(.+)'
+    COMPARISON_PATTERN = r"(\w+)\s*(>=|<=|>|<|==|!=)\s*(.+)"
 
     # Pattern for boolean operators
-    BOOLEAN_PATTERN = r'\s+(and|or)\s+'
+    BOOLEAN_PATTERN = r"\s+(and|or)\s+"
 
     def __init__(self):
         """Initialize ConditionEvaluator."""
@@ -201,7 +201,7 @@ class ConditionEvaluator:
             compare_value = float(value)
         except ValueError:
             # Keep as string
-            compare_value = value.strip('"\'')
+            compare_value = value.strip("\"'")
 
         try:
             if operator == ">":
@@ -218,9 +218,7 @@ class ConditionEvaluator:
                 return context_value != compare_value
 
         except TypeError as e:
-            logger.warning(
-                f"Type error comparing {context_value} {operator} {compare_value}: {e}"
-            )
+            logger.warning(f"Type error comparing {context_value} {operator} {compare_value}: {e}")
             return False
 
         return False
@@ -316,7 +314,7 @@ class ConditionEvaluator:
                 pass
 
         # Extract from expression using regex
-        matches = re.findall(r'\b(\w+)\s*[><=!]', condition)
+        matches = re.findall(r"\b(\w+)\s*[><=!]", condition)
         keys.update(matches)
 
         # Extract from pattern (simple heuristic)

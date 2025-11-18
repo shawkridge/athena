@@ -72,7 +72,7 @@ class CircuitBreaker:
             result = func(*args, **kwargs)
             self.on_success()
             return result
-        except Exception as e:
+        except Exception:
             self.on_failure()
             raise
 
@@ -100,8 +100,7 @@ class CircuitBreaker:
             self.success_count = 0
         elif self.failure_count >= self.config.failure_threshold:
             logger.warning(
-                f"Circuit breaker {self.config.source}: Opening "
-                f"({self.failure_count} failures)"
+                f"Circuit breaker {self.config.source}: Opening " f"({self.failure_count} failures)"
             )
             self.state = CircuitState.OPEN
             self.opened_at = time.time()
@@ -147,7 +146,9 @@ class CircuitBreakerManager:
         """Initialize circuit breaker manager."""
         self.breakers: dict[str, CircuitBreaker] = {}
 
-    def get_breaker(self, source: str, config: Optional[CircuitBreakerConfig] = None) -> CircuitBreaker:
+    def get_breaker(
+        self, source: str, config: Optional[CircuitBreakerConfig] = None
+    ) -> CircuitBreaker:
         """Get or create circuit breaker for source.
 
         Args:

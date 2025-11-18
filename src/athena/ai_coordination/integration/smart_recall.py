@@ -9,7 +9,6 @@ Queries Memory-MCP to retrieve relevant knowledge for planning:
 This enables reuse: Pattern → Procedure → Better Planning
 """
 
-import json
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
@@ -25,7 +24,7 @@ class RecallContext:
         query: str,
         problem_type: Optional[str] = None,
         search_depth: int = 3,
-        max_results: int = 10
+        max_results: int = 10,
     ):
         """Initialize recall context.
 
@@ -63,12 +62,14 @@ class SmartRecall:
             db: Database connection
         """
         self.db = db
+
     def _ensure_schema(self):
         """Create smart recall tracking tables."""
         cursor = self.db.get_cursor()
 
         # Table: Recall operations log
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS recall_operations (
                 id INTEGER PRIMARY KEY,
                 query_text TEXT NOT NULL,
@@ -83,10 +84,12 @@ class SmartRecall:
                 used_in_planning BOOLEAN DEFAULT 0,
                 planning_success BOOLEAN
             )
-        """)
+        """
+        )
 
         # Table: Reuse effectiveness tracking
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS reuse_effectiveness (
                 id INTEGER PRIMARY KEY,
                 original_problem TEXT,
@@ -99,26 +102,28 @@ class SmartRecall:
                 recorded_at INTEGER NOT NULL,
                 FOREIGN KEY (recall_operation_id) REFERENCES recall_operations(id)
             )
-        """)
+        """
+        )
 
         # Indexes
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_recall_operations_query
             ON recall_operations(problem_type, recall_timestamp)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_reuse_effectiveness_solution
             ON reuse_effectiveness(solution_type, outcome)
-        """)
+        """
+        )
 
         # commit handled by cursor context
 
     def recall_for_problem(
-        self,
-        query: str,
-        problem_type: Optional[str] = None,
-        max_results: int = 10
+        self, query: str, problem_type: Optional[str] = None, max_results: int = 10
     ) -> dict:
         """Recall knowledge for a problem.
 
@@ -143,9 +148,7 @@ class SmartRecall:
 
         # Log the recall operation
         recall_id = self._log_recall_operation(
-            query,
-            problem_type,
-            len(procedures) + len(patterns) + len(code_examples)
+            query, problem_type, len(procedures) + len(patterns) + len(code_examples)
         )
 
         return {
@@ -158,12 +161,7 @@ class SmartRecall:
             "total_results": len(procedures) + len(patterns) + len(code_examples),
         }
 
-    def recall_for_goal(
-        self,
-        goal_description: str,
-        goal_id: str,
-        session_id: str
-    ) -> dict:
+    def recall_for_goal(self, goal_description: str, goal_id: str, session_id: str) -> dict:
         """Recall knowledge for a goal.
 
         Args:
@@ -180,11 +178,7 @@ class SmartRecall:
 
         return result
 
-    def get_procedure_candidates(
-        self,
-        goal_type: str,
-        min_success_rate: float = 0.6
-    ) -> list[dict]:
+    def get_procedure_candidates(self, goal_type: str, min_success_rate: float = 0.6) -> list[dict]:
         """Get procedure candidates for a goal type.
 
         Args:
@@ -197,31 +191,32 @@ class SmartRecall:
         cursor = self.db.get_cursor()
 
         # Query procedure_creations table for relevant procedures
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT id, procedure_name, category, success_rate, total_uses
             FROM procedure_creations
             WHERE success_rate >= ? AND total_uses > 0
             ORDER BY success_rate DESC
             LIMIT 10
-        """, (min_success_rate,))
+        """,
+            (min_success_rate,),
+        )
 
         candidates = []
         for row in cursor.fetchall():
-            candidates.append({
-                "id": row[0],
-                "name": row[1],
-                "category": row[2],
-                "success_rate": row[3],
-                "times_used": row[4],
-            })
+            candidates.append(
+                {
+                    "id": row[0],
+                    "name": row[1],
+                    "category": row[2],
+                    "success_rate": row[3],
+                    "times_used": row[4],
+                }
+            )
 
         return candidates
 
-    def find_similar_problems_solved(
-        self,
-        current_problem: str,
-        limit: int = 5
-    ) -> list[dict]:
+    def find_similar_problems_solved(self, current_problem: str, limit: int = 5) -> list[dict]:
         """Find problems similar to current one that were already solved.
 
         Args:
@@ -234,29 +229,30 @@ class SmartRecall:
         cursor = self.db.get_cursor()
 
         # Query semantic memory or episodic events for similar problems
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT id, content, outcome
             FROM episodic_events
             WHERE event_type = 'action' AND outcome = 'success'
             ORDER BY timestamp DESC
             LIMIT ?
-        """, (limit,))
+        """,
+            (limit,),
+        )
 
         similar = []
         for row in cursor.fetchall():
-            similar.append({
-                "event_id": row[0],
-                "description": row[1],
-                "outcome": row[2],
-            })
+            similar.append(
+                {
+                    "event_id": row[0],
+                    "description": row[1],
+                    "outcome": row[2],
+                }
+            )
 
         return similar
 
-    def rank_by_relevance(
-        self,
-        query: str,
-        candidates: list[dict]
-    ) -> list[dict]:
+    def rank_by_relevance(self, query: str, candidates: list[dict]) -> list[dict]:
         """Rank candidates by relevance to query.
 
         Args:
@@ -298,7 +294,7 @@ class SmartRecall:
         solution_type: str,
         goal_id: str,
         outcome: str,
-        effectiveness: float
+        effectiveness: float,
     ) -> int:
         """Record usage of recalled solution.
 
@@ -316,22 +312,25 @@ class SmartRecall:
         cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO reuse_effectiveness
             (original_problem, retrieved_solution_id, solution_type,
              recall_operation_id, reused_in_goal, outcome,
              effectiveness_score, recorded_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            "",  # Original problem text would come from recall_operations
-            solution_id,
-            solution_type,
-            recall_id,
-            goal_id,
-            outcome,
-            min(effectiveness, 1.0),
-            now
-        ))
+        """,
+            (
+                "",  # Original problem text would come from recall_operations
+                solution_id,
+                solution_type,
+                recall_id,
+                goal_id,
+                outcome,
+                min(effectiveness, 1.0),
+                now,
+            ),
+        )
 
         reuse_id = cursor.lastrowid
         # commit handled by cursor context
@@ -350,21 +349,25 @@ class SmartRecall:
         total_recalls = cursor.fetchone()[0]
 
         # Successful reuses
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT COUNT(*), AVG(effectiveness_score)
             FROM reuse_effectiveness
             WHERE outcome = 'success'
-        """)
+        """
+        )
 
         row = cursor.fetchone()
         successful_reuses = row[0] or 0
         avg_effectiveness = row[1] or 0
 
         # Overall effectiveness
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT AVG(effectiveness_score)
             FROM reuse_effectiveness
-        """)
+        """
+        )
 
         overall_effectiveness = cursor.fetchone()[0] or 0
 
@@ -381,23 +384,28 @@ class SmartRecall:
 
         try:
             # Query procedures - simple keyword matching
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, procedure_name, category, success_rate
                 FROM procedure_creations
                 WHERE success_rate > 0.5
                 ORDER BY success_rate DESC
                 LIMIT ?
-            """, (limit,))
+            """,
+                (limit,),
+            )
 
             procedures = []
             for row in cursor.fetchall():
-                procedures.append({
-                    "id": row[0],
-                    "name": row[1],
-                    "category": row[2],
-                    "success_rate": row[3],
-                    "type": "procedure",
-                })
+                procedures.append(
+                    {
+                        "id": row[0],
+                        "name": row[1],
+                        "category": row[2],
+                        "success_rate": row[3],
+                        "type": "procedure",
+                    }
+                )
 
             return procedures
         except (OSError, ValueError, TypeError):
@@ -415,10 +423,7 @@ class SmartRecall:
         return []  # Placeholder for spatial memory integration
 
     def _log_recall_operation(
-        self,
-        query: str,
-        problem_type: Optional[str],
-        results_count: int
+        self, query: str, problem_type: Optional[str], results_count: int
     ) -> int:
         """Log a recall operation.
 
@@ -433,11 +438,14 @@ class SmartRecall:
         cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO recall_operations
             (query_text, problem_type, recall_timestamp, results_found)
             VALUES (?, ?, ?, ?)
-        """, (query, problem_type, now, results_count))
+        """,
+            (query, problem_type, now, results_count),
+        )
 
         recall_id = cursor.lastrowid
         # commit handled by cursor context

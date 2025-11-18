@@ -88,12 +88,8 @@ class SafetyPolicy(BaseModel):
     )
 
     # Approval workflow
-    require_human_approval: bool = Field(
-        default=False, description="Always require human approval"
-    )
-    max_approval_time_hours: int = Field(
-        default=24, description="Approval request expiration time"
-    )
+    require_human_approval: bool = Field(default=False, description="Always require human approval")
+    max_approval_time_hours: int = Field(default=24, description="Approval request expiration time")
 
     # Rollback
     enable_rollback: bool = Field(default=True, description="Enable rollback capability")

@@ -1,12 +1,9 @@
 """Skill execution with parameter binding and error handling."""
 
-from typing import Any, Dict, Optional, Callable
+from typing import Any, Dict, Optional
 import logging
-import sys
-from io import StringIO
-import re
 
-from .models import Skill, SkillParameter
+from .models import Skill
 
 logger = logging.getLogger(__name__)
 
@@ -20,16 +17,16 @@ class ParameterTypeChecker:
 
     # Mapping of type string names to Python types
     BUILTIN_TYPES = {
-        'str': str,
-        'int': int,
-        'float': float,
-        'bool': bool,
-        'bytes': bytes,
-        'list': list,
-        'dict': dict,
-        'tuple': tuple,
-        'set': set,
-        'frozenset': frozenset,
+        "str": str,
+        "int": int,
+        "float": float,
+        "bool": bool,
+        "bytes": bytes,
+        "list": list,
+        "dict": dict,
+        "tuple": tuple,
+        "set": set,
+        "frozenset": frozenset,
     }
 
     @classmethod
@@ -47,9 +44,9 @@ class ParameterTypeChecker:
         """
         # Handle None for Optional types
         if value is None:
-            if 'Optional' in type_spec or '?' in type_spec:
+            if "Optional" in type_spec or "?" in type_spec:
                 return True, None
-            if type_spec in ('NoneType', 'None'):
+            if type_spec in ("NoneType", "None"):
                 return True, None
             return False, f"None not allowed for type '{type_spec}'"
 
@@ -57,13 +54,13 @@ class ParameterTypeChecker:
         type_spec = type_spec.strip()
 
         # Handle Optional[T] → T or None
-        if type_spec.startswith('Optional[') and type_spec.endswith(']'):
+        if type_spec.startswith("Optional[") and type_spec.endswith("]"):
             inner_type = type_spec[9:-1]  # Extract T from Optional[T]
             is_valid, error = cls.check_type(value, inner_type)
             return is_valid, error
 
         # Handle List[T]
-        if type_spec.startswith('List[') and type_spec.endswith(']'):
+        if type_spec.startswith("List[") and type_spec.endswith("]"):
             if not isinstance(value, list):
                 return False, f"Expected list, got {type(value).__name__}"
             inner_type = type_spec[5:-1]  # Extract T from List[T]
@@ -74,7 +71,7 @@ class ParameterTypeChecker:
             return True, None
 
         # Handle Dict[K,V]
-        if type_spec.startswith('Dict[') and type_spec.endswith(']'):
+        if type_spec.startswith("Dict[") and type_spec.endswith("]"):
             if not isinstance(value, dict):
                 return False, f"Expected dict, got {type(value).__name__}"
             # Parse key and value types (handles nested generics)
@@ -90,12 +87,12 @@ class ParameterTypeChecker:
             return True, None
 
         # Handle Tuple[T1, T2, ...]
-        if type_spec.startswith('Tuple[') and type_spec.endswith(']'):
+        if type_spec.startswith("Tuple[") and type_spec.endswith("]"):
             if not isinstance(value, tuple):
                 return False, f"Expected tuple, got {type(value).__name__}"
             inner = type_spec[6:-1]
             types = cls._split_generic_params(inner, split_all=True)
-            if len(types) == 1 and types[0].endswith('...'):
+            if len(types) == 1 and types[0].endswith("..."):
                 # Tuple[T, ...] means variable-length tuple
                 elem_type = types[0][:-3]
                 for i, item in enumerate(value):
@@ -113,7 +110,7 @@ class ParameterTypeChecker:
             return True, None
 
         # Handle Union[T1, T2, ...]
-        if type_spec.startswith('Union[') and type_spec.endswith(']'):
+        if type_spec.startswith("Union[") and type_spec.endswith("]"):
             inner = type_spec[6:-1]
             types = cls._split_generic_params(inner, split_all=True)
             for t in types:
@@ -130,12 +127,14 @@ class ParameterTypeChecker:
             return False, f"Expected {type_spec}, got {type(value).__name__}"
 
         # Handle Any type
-        if type_spec in ('Any', 'typing.Any', 'object'):
+        if type_spec in ("Any", "typing.Any", "object"):
             return True, None
 
         # If we don't recognize the type, log warning but allow it
         # (may be custom class or forward reference)
-        logger.debug(f"Unknown type spec '{type_spec}', allowing value of type {type(value).__name__}")
+        logger.debug(
+            f"Unknown type spec '{type_spec}', allowing value of type {type(value).__name__}"
+        )
         return True, None
 
     @staticmethod
@@ -151,14 +150,14 @@ class ParameterTypeChecker:
         depth = 0
 
         for char in params_str:
-            if char in '[{(':
+            if char in "[{(":
                 depth += 1
                 current.append(char)
-            elif char in ']})':
+            elif char in "]})":
                 depth -= 1
                 current.append(char)
-            elif char == ',' and depth == 0:
-                param = ''.join(current).strip()
+            elif char == "," and depth == 0:
+                param = "".join(current).strip()
                 if param:
                     params.append(param)
                 current = []
@@ -166,7 +165,7 @@ class ParameterTypeChecker:
                 current.append(char)
 
         if current:
-            param = ''.join(current).strip()
+            param = "".join(current).strip()
             if param:
                 params.append(param)
 
@@ -183,7 +182,7 @@ class SkillExecutor:
     - Execution tracking
     """
 
-    def __init__(self, library: 'SkillLibrary', sandbox: bool = True):
+    def __init__(self, library: "SkillLibrary", sandbox: bool = True):
         """Initialize executor.
 
         Args:
@@ -194,10 +193,7 @@ class SkillExecutor:
         self.sandbox = sandbox
 
     async def execute(
-        self,
-        skill: Skill,
-        parameters: Optional[Dict[str, Any]] = None,
-        timeout: int = 30
+        self, skill: Skill, parameters: Optional[Dict[str, Any]] = None, timeout: int = 30
     ) -> Dict[str, Any]:
         """Execute a skill with given parameters.
 
@@ -223,8 +219,8 @@ class SkillExecutor:
             # Get entry point function
             if skill.entry_point not in namespace:
                 return {
-                    'success': False,
-                    'error': f"Entry point '{skill.entry_point}' not found in skill code",
+                    "success": False,
+                    "error": f"Entry point '{skill.entry_point}' not found in skill code",
                 }
 
             entry_func = namespace[skill.entry_point]
@@ -236,9 +232,9 @@ class SkillExecutor:
             await self.library.update_usage(skill.id, success=True)
 
             return {
-                'success': True,
-                'result': result,
-                'skill_id': skill.id,
+                "success": True,
+                "result": result,
+                "skill_id": skill.id,
             }
 
         except Exception as e:
@@ -247,16 +243,12 @@ class SkillExecutor:
 
             logger.error(f"Skill execution failed: {skill.id}: {e}")
             return {
-                'success': False,
-                'error': str(e),
-                'skill_id': skill.id,
+                "success": False,
+                "error": str(e),
+                "skill_id": skill.id,
             }
 
-    def _bind_parameters(
-        self,
-        skill: Skill,
-        provided: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _bind_parameters(self, skill: Skill, provided: Dict[str, Any]) -> Dict[str, Any]:
         """Bind provided parameters to skill parameter definitions.
 
         Args:
@@ -330,15 +322,13 @@ class SkillExecutor:
         # (Would need inspect module for detailed checking)
 
         return {
-            'valid': len(errors) == 0,
-            'errors': errors,
-            'skill_id': skill.id,
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "skill_id": skill.id,
         }
 
     async def test(
-        self,
-        skill: Skill,
-        test_parameters: Optional[Dict[str, Any]] = None
+        self, skill: Skill, test_parameters: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Test skill execution with sample parameters.
 
@@ -353,7 +343,7 @@ class SkillExecutor:
         params = test_parameters or {}
 
         if not params and skill.metadata.examples:
-            logger.info(f"Using example parameters from skill definition")
+            logger.info("Using example parameters from skill definition")
             # TODO: Extract parameters from examples
 
         return await self.execute(skill, params)
@@ -369,15 +359,15 @@ class SkillExecutor:
         """
         validation = self.validate(skill)
 
-        if not validation['valid']:
+        if not validation["valid"]:
             return {
-                'can_execute': False,
-                'issues': validation['errors'],
-                'skill_id': skill.id,
+                "can_execute": False,
+                "issues": validation["errors"],
+                "skill_id": skill.id,
             }
 
         return {
-            'can_execute': True,
-            'issues': [],
-            'skill_id': skill.id,
+            "can_execute": True,
+            "issues": [],
+            "skill_id": skill.id,
         }

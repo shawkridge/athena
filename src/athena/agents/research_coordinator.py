@@ -13,8 +13,7 @@ The agent integrates with:
 
 import logging
 from typing import Optional, Dict, Any, List
-from datetime import datetime
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 # Import coordinator base class
 from .coordinator import AgentCoordinator
@@ -23,7 +22,6 @@ from ..orchestration.adaptive_agent import AdaptiveAgent
 # Import core memory operations
 from ..episodic.operations import remember as remember_event
 from ..memory.operations import store as store_fact, search as search_facts
-from ..graph.operations import add_entity as add_graph_entity, add_relationship
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +29,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ResearchPlan:
     """Structured research plan."""
+
     query: str
     steps: List[str]
     sources: List[str]
@@ -43,6 +42,7 @@ class ResearchPlan:
 @dataclass
 class Finding:
     """Represents a research finding."""
+
     content: str
     source: str
     reliability: float  # 0.0-1.0
@@ -54,6 +54,7 @@ class Finding:
 @dataclass
 class ResearchSynthesis:
     """Synthesized research results."""
+
     theme: str
     consensus_findings: List[str]
     conflicting_findings: List[str]
@@ -222,9 +223,7 @@ class ResearchCoordinatorAgent(AgentCoordinator, AdaptiveAgent):
 
             # Calculate overall confidence
             avg_reliability = (
-                sum(f.reliability for f in findings) / len(findings)
-                if findings
-                else 0.0
+                sum(f.reliability for f in findings) / len(findings) if findings else 0.0
             )
 
             synthesis = ResearchSynthesis(
@@ -242,7 +241,9 @@ class ResearchCoordinatorAgent(AgentCoordinator, AdaptiveAgent):
                 topics=["research", "synthesis", theme.lower()[:20]],
             )
 
-            logger.info(f"Synthesis complete: {len(consensus)} consensus, {len(conflicts)} conflicts")
+            logger.info(
+                f"Synthesis complete: {len(consensus)} consensus, {len(conflicts)} conflicts"
+            )
 
         except Exception as e:
             logger.error(f"Error synthesizing findings: {e}")
@@ -288,7 +289,11 @@ class ResearchCoordinatorAgent(AgentCoordinator, AdaptiveAgent):
                 confidence = max(0.0, min(1.0, support_score - contradict_score))
 
             # Calculate validity
-            validity = "supported" if confidence > 0.7 else "uncertain" if confidence > 0.3 else "unsupported"
+            validity = (
+                "supported"
+                if confidence > 0.7
+                else "uncertain" if confidence > 0.3 else "unsupported"
+            )
 
             result = {
                 "hypothesis": hypothesis,
@@ -396,17 +401,13 @@ class ResearchCoordinatorAgent(AgentCoordinator, AdaptiveAgent):
         """Identify consensus points across findings."""
         # Simple heuristic: findings with high reliability are consensus
         consensus = [
-            f.content
-            for f in findings
-            if f.reliability > 0.75 and not f.contradicting_evidence
+            f.content for f in findings if f.reliability > 0.75 and not f.contradicting_evidence
         ]
         return consensus[:5]
 
     def _identify_conflicts(self, findings: List[Finding]) -> List[str]:
         """Identify conflicting findings."""
-        conflicts = [
-            f.content for f in findings if f.contradicting_evidence
-        ]
+        conflicts = [f.content for f in findings if f.contradicting_evidence]
         return conflicts[:3]
 
     def _identify_gaps(self, findings: List[Finding], theme: str) -> List[str]:
@@ -475,14 +476,11 @@ class ResearchCoordinatorAgent(AgentCoordinator, AdaptiveAgent):
         try:
             if decision == "plan":
                 return await self.plan_research(
-                    query=context.get("query", ""),
-                    depth=context.get("depth", 3),
-                    context=context
+                    query=context.get("query", ""), depth=context.get("depth", 3), context=context
                 )
             elif decision == "aggregate":
                 return await self.aggregate_findings(
-                    topic=context.get("topic", ""),
-                    sources=context.get("sources")
+                    topic=context.get("topic", ""), sources=context.get("sources")
                 )
             elif decision == "synthesize":
                 findings = context.get("findings", [])

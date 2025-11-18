@@ -1,7 +1,5 @@
 """CLI commands for safety policy and audit management."""
 
-import json
-from datetime import datetime
 from typing import Optional
 
 from ..core.database import Database
@@ -74,7 +72,9 @@ class SafetyCLI:
             if not policy:
                 return f"No policy found for project {project_id}"
 
-            approval_types = ", ".join(policy.approval_required_for) if policy.approval_required_for else "none"
+            approval_types = (
+                ", ".join(policy.approval_required_for) if policy.approval_required_for else "none"
+            )
 
             return f"""
 ╔══════════════════════════════════════════════════════════════╗
@@ -254,9 +254,7 @@ RECOMMENDATION
 
     # Audit History Commands
 
-    def audit_history(
-        self, project_id: int, limit: int = 20, offset: int = 0
-    ) -> str:
+    def audit_history(self, project_id: int, limit: int = 20, offset: int = 0) -> str:
         """Show audit history for a project.
 
         Args:
@@ -330,9 +328,9 @@ PENDING APPROVALS
   Count:                   {summary['pending_approvals']}
 """
 
-            if summary['pending_approvals'] > 0:
+            if summary["pending_approvals"] > 0:
                 output += "\n  Recent requests:\n"
-                for req in summary['approval_requests'][:5]:
+                for req in summary["approval_requests"][:5]:
                     output += f"    • {req['change_type']}: {req['risk_level'].upper()} risk, "
                     output += f"{req['confidence_score'] * 100:.0f}% confidence\n"
 
@@ -435,9 +433,7 @@ RECOMMENDATION
         except Exception as e:
             return f"✗ Error cleaning up snapshots: {str(e)}"
 
-    def cleanup_approvals(
-        self, project_id: int, days: int = 30
-    ) -> str:
+    def cleanup_approvals(self, project_id: int, days: int = 30) -> str:
         """Clean up old approval requests.
 
         Args:

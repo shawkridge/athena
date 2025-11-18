@@ -45,4 +45,3 @@ def forget(memory_id: int) -> bool:
         return success
     except Exception as e:
         raise RuntimeError(f"Memory deletion failed: {str(e)}") from e
-

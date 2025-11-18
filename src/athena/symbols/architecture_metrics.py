@@ -13,11 +13,12 @@ from dataclasses import dataclass
 from enum import Enum
 
 from .symbol_models import Symbol, SymbolType
-from .dependency_resolver import DependencyResolver, DependencyEdge
+from .dependency_resolver import DependencyResolver
 
 
 class CouplingType(str, Enum):
     """Types of coupling between modules."""
+
     AFFERENT = "afferent"  # Incoming dependencies (fan-in)
     EFFERENT = "efferent"  # Outgoing dependencies (fan-out)
     STRUCTURAL = "structural"  # Structural coupling (shared symbols)
@@ -26,6 +27,7 @@ class CouplingType(str, Enum):
 @dataclass
 class ArchitectureMetrics:
     """Architecture metrics for a module/file."""
+
     file_path: str
     afferent_coupling: int = 0  # How many modules depend on this
     efferent_coupling: int = 0  # How many modules this depends on
@@ -42,6 +44,7 @@ class ArchitectureMetrics:
 @dataclass
 class CouplingViolation:
     """A detected coupling issue."""
+
     from_file: str
     to_file: str
     coupling_type: CouplingType
@@ -72,7 +75,9 @@ class ArchitectureAnalyzer:
             metrics.symbol_count = len(symbols)
             metrics.public_symbol_count = len([s for s in symbols if s.visibility == "public"])
             metrics.private_symbol_count = len([s for s in symbols if s.visibility == "private"])
-            metrics.interface_count = len([s for s in symbols if s.symbol_type == SymbolType.INTERFACE])
+            metrics.interface_count = len(
+                [s for s in symbols if s.symbol_type == SymbolType.INTERFACE]
+            )
             metrics.concrete_count = len([s for s in symbols if s.symbol_type == SymbolType.CLASS])
 
             # Compute coupling
@@ -133,7 +138,7 @@ class ArchitectureAnalyzer:
 
     def _compute_normalized_distance(self, metrics: ArchitectureMetrics) -> float:
         """Compute normalized distance from main sequence.
-        
+
         Formula: |A + I - 1| where A = abstractness, I = instability
         Lower is better (0 is on main sequence)
         """

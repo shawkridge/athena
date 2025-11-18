@@ -38,7 +38,9 @@ class Milestone(BaseModel):
     )
     estimated_minutes: int = Field(30, description="Estimated duration")
     checkpoint_type: CheckpointType = CheckpointType.FEATURE_COMPLETE
-    checkpoint_criteria: dict = Field(default_factory=dict, description="Completion criteria as JSON")
+    checkpoint_criteria: dict = Field(
+        default_factory=dict, description="Completion criteria as JSON"
+    )
 
     # Progress tracking
     started_at: Optional[datetime] = None

@@ -1,13 +1,10 @@
 """Procedure extraction from temporal patterns."""
 
-import json
 from collections import defaultdict
-from datetime import datetime
 from typing import Optional
 
 from ..episodic.models import EpisodicEvent
 from ..episodic.store import EpisodicStore
-from ..temporal.models import CausalPattern
 from .models import Procedure, ProcedureCategory
 from .store import ProceduralStore
 
@@ -91,8 +88,6 @@ def _group_chains_by_signature(chains) -> dict[str, list]:
     return pattern_groups
 
 
-
-
 def _create_pattern_signature(events: list[EpisodicEvent]) -> str:
     """Create a signature string for a pattern.
 
@@ -106,7 +101,9 @@ def _create_pattern_signature(events: list[EpisodicEvent]) -> str:
     signature_parts = []
 
     for event in events:
-        event_type = event.event_type.value if hasattr(event.event_type, "value") else str(event.event_type)
+        event_type = (
+            event.event_type.value if hasattr(event.event_type, "value") else str(event.event_type)
+        )
         outcome = event.outcome or "unknown"
         signature_parts.append(f"{event_type}:{outcome}")
 
@@ -139,9 +136,11 @@ def _create_procedure_from_pattern(
         step = {
             "order": i + 1,
             "action": event.content,
-            "event_type": event.event_type.value
-            if hasattr(event.event_type, "value")
-            else str(event.event_type),
+            "event_type": (
+                event.event_type.value
+                if hasattr(event.event_type, "value")
+                else str(event.event_type)
+            ),
             "expected_outcome": event.outcome,
         }
         steps.append(step)

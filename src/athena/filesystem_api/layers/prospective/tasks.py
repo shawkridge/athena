@@ -5,7 +5,8 @@ Returns task summaries, counts, and metrics.
 Never returns full task data.
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
+
 try:
     import psycopg
     from psycopg import AsyncConnection
@@ -21,7 +22,7 @@ async def list_tasks(
     password: str,
     status_filter: Optional[str] = None,
     priority_filter: Optional[str] = None,
-    limit: int = 100
+    limit: int = 100,
 ) -> Dict[str, Any]:
     """
     List tasks with filtering and summaries.
@@ -32,7 +33,9 @@ async def list_tasks(
     Token cost: ~200 tokens vs 12,000 for full tasks.
     """
     try:
-        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
+        conn = await AsyncConnection.connect(
+            host, port=port, dbname=dbname, user=user, password=password
+        )
         cursor = conn.cursor()
 
         where_clauses = []
@@ -55,17 +58,14 @@ async def list_tasks(
             WHERE {where_clause}
             LIMIT %s
             """,
-            params + [limit]
+            params + [limit],
         )
 
         tasks = [dict(row) for row in await cursor.fetchall()]
         await conn.close()
 
         if not tasks:
-            return {
-                "found_count": 0,
-                "empty": True
-            }
+            return {"found_count": 0, "empty": True}
 
         # Calculate summaries
         status_dist = {}
@@ -87,7 +87,7 @@ async def list_tasks(
             "status_distribution": status_dist,
             "priority_distribution": priority_dist,
             "total_estimated_effort": sum(efforts) if efforts else 0,
-            "top_task_ids": [t.get("id") for t in tasks[:5]]
+            "top_task_ids": [t.get("id") for t in tasks[:5]],
         }
 
     except Exception as e:
@@ -95,16 +95,13 @@ async def list_tasks(
 
 
 async def get_task_summary(
-    host: str,
-    port: int,
-    dbname: str,
-    user: str,
-    password: str,
-    task_id: str
+    host: str, port: int, dbname: str, user: str, password: str, task_id: str
 ) -> Dict[str, Any]:
     """Get task summary (not full data)."""
     try:
-        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
+        conn = await AsyncConnection.connect(
+            host, port=port, dbname=dbname, user=user, password=password
+        )
         cursor = conn.cursor()
 
         await cursor.execute(
@@ -113,7 +110,7 @@ async def get_task_summary(
             FROM tasks
             WHERE id = %s
             """,
-            (task_id,)
+            (task_id,),
         )
 
         result = dict(await cursor.fetchone() or {})

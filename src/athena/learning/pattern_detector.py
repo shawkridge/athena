@@ -2,8 +2,7 @@
 
 import logging
 import re
-import ast
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -12,6 +11,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CodePattern:
     """A pattern found in code."""
+
     pattern_id: str
     name: str
     description: str
@@ -24,6 +24,7 @@ class CodePattern:
 @dataclass
 class DuplicateGroup:
     """A group of duplicate or near-duplicate code."""
+
     group_id: str
     description: str
     duplicates: List[Dict[str, Any]]
@@ -105,11 +106,13 @@ class PatternDetector:
 
                 for func_name in functions:
                     if self._signatures_similar(sig, func_name):
-                        similar.append({
-                            "file": filepath,
-                            "function": func_name,
-                            "similarity": 0.75,
-                        })
+                        similar.append(
+                            {
+                                "file": filepath,
+                                "function": func_name,
+                                "similarity": 0.75,
+                            }
+                        )
 
             except Exception as e:
                 logger.debug(f"Error analyzing {filepath}: {e}")
@@ -143,11 +146,13 @@ class PatternDetector:
 
                 # Find similar patterns
                 if self._patterns_match(normalized, content):
-                    duplicates.append({
-                        "file": filepath,
-                        "similarity": 0.82,
-                        "suggestion": "Consider extracting to shared utility",
-                    })
+                    duplicates.append(
+                        {
+                            "file": filepath,
+                            "similarity": 0.82,
+                            "suggestion": "Consider extracting to shared utility",
+                        }
+                    )
 
             except Exception as e:
                 logger.debug(f"Error analyzing {filepath}: {e}")
@@ -198,14 +203,16 @@ class PatternDetector:
             pt = pattern.pattern_type
             pattern_types[pt] = pattern_types.get(pt, 0) + 1
 
-        most_common = max(
-            pattern_types.items(),
-            key=lambda x: x[1],
-        )[0] if pattern_types else None
-
-        total_duplicates = sum(
-            len(d.duplicates) for d in self.duplicates
+        most_common = (
+            max(
+                pattern_types.items(),
+                key=lambda x: x[1],
+            )[0]
+            if pattern_types
+            else None
         )
+
+        total_duplicates = sum(len(d.duplicates) for d in self.duplicates)
 
         return {
             "total_patterns": len(self.patterns),

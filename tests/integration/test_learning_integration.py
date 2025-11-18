@@ -6,9 +6,6 @@ Tests:
 """
 
 import pytest
-import asyncio
-from datetime import datetime
-from unittest.mock import Mock, AsyncMock, patch
 
 # Option A: LearningTracker Integration Tests
 
@@ -54,10 +51,7 @@ async def test_llm_outcome_analyzer_heuristic():
     analyzer = LLMOutcomeAnalyzer(llm_client=None)  # No LLM, use heuristic
 
     analysis = await analyzer.analyze_consolidation_outcome(
-        success_rate=0.85,
-        events_processed=100,
-        patterns_extracted=15,
-        execution_time_ms=2500.0
+        success_rate=0.85, events_processed=100, patterns_extracted=15, execution_time_ms=2500.0
     )
 
     assert analysis["status"] == "success"
@@ -79,7 +73,7 @@ async def test_decision_quality_evaluator():
         agent_name="memory-coordinator",
         decision_made="should_remember",
         outcome="success",
-        success_rate=0.95
+        success_rate=0.95,
     )
 
     assert 0.0 <= quality <= 1.0
@@ -90,7 +84,7 @@ async def test_decision_quality_evaluator():
         agent_name="memory-coordinator",
         decision_made="should_remember",
         outcome="failure",
-        success_rate=0.2
+        success_rate=0.2,
     )
 
     assert quality_poor < quality, "Poor decision should score lower"
@@ -106,10 +100,12 @@ def test_learning_bridge_import():
     # This would be run from a hook
     # We can at least verify the module exists and compiles
     import sys
+
     sys.path.insert(0, sys_path)
 
     try:
         from learning_bridge import track_decision, record_perf
+
         assert track_decision is not None
         assert record_perf is not None
     finally:
@@ -121,10 +117,12 @@ def test_llm_learning_bridge_import():
     sys_path = "/home/user/.claude/hooks/lib"
 
     import sys
+
     sys.path.insert(0, sys_path)
 
     try:
         from llm_learning_bridge import analyze_consolidation_llm, evaluate_decision_llm
+
         assert analyze_consolidation_llm is not None
         assert evaluate_decision_llm is not None
     finally:
@@ -152,7 +150,7 @@ async def test_hook_learning_flow():
         agent_name="memory-coordinator",
         decision="should_remember",
         outcome="success",
-        success_rate=0.95
+        success_rate=0.95,
     )
     assert analysis["status"] == "success"
     assert analysis["quality_score"] > 0.8
@@ -176,10 +174,7 @@ async def test_learning_tracking_performance():
 
     start = time.time()
     analysis = await analyzer.analyze_agent_decision(
-        agent_name="perf-test",
-        decision="perf_test",
-        outcome="success",
-        success_rate=0.95
+        agent_name="perf-test", decision="perf_test", outcome="success", success_rate=0.95
     )
     elapsed_ms = (time.time() - start) * 1000
 
@@ -198,10 +193,7 @@ async def test_llm_analysis_performance():
 
     start = time.time()
     analysis = await analyzer.analyze_consolidation_outcome(
-        success_rate=0.85,
-        events_processed=100,
-        patterns_extracted=15,
-        execution_time_ms=2500.0
+        success_rate=0.85, events_processed=100, patterns_extracted=15, execution_time_ms=2500.0
     )
     elapsed_ms = (time.time() - start) * 1000
 

@@ -118,9 +118,7 @@ class GitStatus(BaseModel):
     last_commit_date: Optional[datetime] = None
 
     # Blame info
-    blame_lines: list[str] = Field(
-        default_factory=list, description="Blame info per line"
-    )
+    blame_lines: list[str] = Field(default_factory=list, description="Blame info per line")
 
     checked_at: datetime = Field(default_factory=datetime.now)
 
@@ -148,8 +146,7 @@ class GitDiff(BaseModel):
 
     # Hunk info
     hunks: list[dict] = Field(
-        default_factory=list,
-        description="List of diff hunks with line ranges"
+        default_factory=list, description="List of diff hunks with line ranges"
     )
 
     # Change type
@@ -171,9 +168,7 @@ class IDEContextSnapshot(BaseModel):
     session_id: str = Field(..., description="Unique session identifier")
 
     # Open files
-    open_files: list[str] = Field(
-        default_factory=list, description="Paths to open files"
-    )
+    open_files: list[str] = Field(default_factory=list, description="Paths to open files")
     open_file_count: int = Field(default=0, description="Number of open files")
 
     # Active file
@@ -214,9 +209,7 @@ class IDEActivity(BaseModel):
 
     # File activity
     file_path: str
-    activity_type: str = Field(
-        description="save, open, close, edit, refactor, test, debug"
-    )
+    activity_type: str = Field(description="save, open, close, edit, refactor, test, debug")
 
     # Context
     cursor_position: Optional[str] = Field(None, description="Line:column format")

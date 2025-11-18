@@ -161,9 +161,7 @@ class ContextSnapshot:
 
         return results
 
-    def search_conversation_history(
-        self, query: str, limit: int = 10
-    ) -> list[dict]:
+    def search_conversation_history(self, query: str, limit: int = 10) -> list[dict]:
         """Search conversation history across all sessions.
 
         Args:
@@ -205,9 +203,7 @@ class ContextSnapshot:
 
         results = []
         for row in cursor.fetchall():
-            event_id, session_id, timestamp, content, task, phase, learned, confidence = (
-                row
-            )
+            event_id, session_id, timestamp, content, task, phase, learned, confidence = row
             results.append(
                 {
                     "event_id": event_id,
@@ -262,12 +258,8 @@ class ContextSnapshot:
         return {
             "total_events": total_events or 0,
             "days_active": days_active or 0,
-            "first_event": datetime.fromtimestamp(first_event).isoformat()
-            if first_event
-            else None,
-            "last_event": datetime.fromtimestamp(last_event).isoformat()
-            if last_event
-            else None,
+            "first_event": datetime.fromtimestamp(first_event).isoformat() if first_event else None,
+            "last_event": datetime.fromtimestamp(last_event).isoformat() if last_event else None,
             "total_content_size": total_size or 0,
         }
 

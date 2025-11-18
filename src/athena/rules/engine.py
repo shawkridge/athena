@@ -4,7 +4,7 @@ import logging
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime, timedelta
 from athena.core.database import Database
-from .models import Rule, RuleValidationResult, RuleOverride
+from .models import Rule, RuleValidationResult
 from .store import RulesStore
 from .condition_evaluator import ConditionEvaluator
 
@@ -30,7 +30,9 @@ class RulesEngine:
         self.evaluator = ConditionEvaluator()
         logger.debug("RulesEngine initialized")
 
-    def validate_task(self, task_id: int, project_id: int, context: Dict[str, Any] = None) -> RuleValidationResult:
+    def validate_task(
+        self, task_id: int, project_id: int, context: Dict[str, Any] = None
+    ) -> RuleValidationResult:
         """Validate task against all project rules.
 
         Checks each rule's condition, handles exceptions, applies overrides,
@@ -138,7 +140,9 @@ class RulesEngine:
 
         return result
 
-    def can_execute(self, task_id: int, project_id: int, context: Dict[str, Any] = None) -> Tuple[bool, str]:
+    def can_execute(
+        self, task_id: int, project_id: int, context: Dict[str, Any] = None
+    ) -> Tuple[bool, str]:
         """Quick check: can task execute?
 
         Returns True if task is compliant (no blocking violations).
@@ -173,7 +177,9 @@ class RulesEngine:
         # Should not reach here, but handle it
         return True, f"{validation.warning_count} warnings, 0 blocks"
 
-    def get_violations(self, task_id: int, project_id: int, context: Dict[str, Any] = None) -> List[Dict]:
+    def get_violations(
+        self, task_id: int, project_id: int, context: Dict[str, Any] = None
+    ) -> List[Dict]:
         """List all violations for a task.
 
         Args:
@@ -187,7 +193,9 @@ class RulesEngine:
         validation = self.validate_task(task_id, project_id, context)
         return validation.violations
 
-    def get_blocking_violations(self, task_id: int, project_id: int, context: Dict[str, Any] = None) -> List[Dict]:
+    def get_blocking_violations(
+        self, task_id: int, project_id: int, context: Dict[str, Any] = None
+    ) -> List[Dict]:
         """Get violations that block execution.
 
         Args:
@@ -230,11 +238,7 @@ class RulesEngine:
             step_context.update(step)
 
             # Validate this step
-            validation = self.validate_task(
-                step.get("task_id", -1),
-                project_id,
-                step_context
-            )
+            validation = self.validate_task(step.get("task_id", -1), project_id, step_context)
 
             all_violations.extend(validation.violations)
             blocking_violations.update(validation.blocking_violations)
@@ -283,7 +287,9 @@ class RulesEngine:
         """
         return self.store.list_rules_by_category(project_id, category)
 
-    def check_override_eligibility(self, rule_id: int, project_id: int, task_id: int = None) -> Tuple[bool, str]:
+    def check_override_eligibility(
+        self, rule_id: int, project_id: int, task_id: int = None
+    ) -> Tuple[bool, str]:
         """Check if a rule can be overridden.
 
         Args:
@@ -309,7 +315,9 @@ class RulesEngine:
 
         return True, f"Rule '{rule.name}' can be overridden"
 
-    def record_violation_history(self, task_id: int, project_id: int, validation: RuleValidationResult) -> None:
+    def record_violation_history(
+        self, task_id: int, project_id: int, validation: RuleValidationResult
+    ) -> None:
         """Record validation results in rule violation history.
 
         Args:

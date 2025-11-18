@@ -1,7 +1,6 @@
 """Manager for code artifact analysis and coordination."""
 
 import difflib
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -13,9 +12,7 @@ from .models import (
     CodeDiff,
     CodeEntity,
     CodeQualityIssue,
-    ComplexityLevel,
     ComplexityMetrics,
-    Dependency,
     EntityType,
     TestCoverage,
     TypeSignature,
@@ -120,10 +117,7 @@ class CodeArtifactManager:
             # Find the function node
             for node in ast.walk(tree):
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    if (
-                        node.lineno == entity.start_line
-                        and node.name == entity.name
-                    ):
+                    if node.lineno == entity.start_line and node.name == entity.name:
                         sig = self.analyzer.extract_type_signature(node)
                         sig.entity_id = entity_id  # Set before creating
                         stored_sig = self.store.create_type_signature(sig)
@@ -157,15 +151,12 @@ class CodeArtifactManager:
             # Find the entity node
             for node in ast.walk(tree):
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                    if (
-                        node.lineno == entity.start_line
-                        and node.name == entity.name
-                    ):
+                    if node.lineno == entity.start_line and node.name == entity.name:
                         # Calculate all metrics
                         cyclomatic = self.analyzer._calculate_cyclomatic_complexity(node)
                         cognitive = self.analyzer._calculate_cognitive_complexity(node)
-                        dist_op, dist_opd, tot_op, tot_opd = self.analyzer.calculate_halstead_metrics(
-                            node
+                        dist_op, dist_opd, tot_op, tot_opd = (
+                            self.analyzer.calculate_halstead_metrics(node)
                         )
 
                         source = self._get_entity_source(entity)
@@ -200,8 +191,8 @@ class CodeArtifactManager:
                         )
 
                         # Calculate maintainability index
-                        metrics.maintainability_index = self.analyzer.calculate_maintainability_index(
-                            metrics
+                        metrics.maintainability_index = (
+                            self.analyzer.calculate_maintainability_index(metrics)
                         )
 
                         # Store and return
@@ -237,9 +228,7 @@ class CodeArtifactManager:
             "loc": metrics.lines_of_code,
             "logical_lines": metrics.logical_lines,
             "comment_ratio": (
-                metrics.comment_lines / metrics.lines_of_code
-                if metrics.lines_of_code > 0
-                else 0
+                metrics.comment_lines / metrics.lines_of_code if metrics.lines_of_code > 0 else 0
             ),
             "maintainability_index": metrics.maintainability_index,
             "nesting_depth": metrics.max_nesting_depth,
@@ -279,7 +268,9 @@ class CodeArtifactManager:
         diff = list(difflib.unified_diff(old_lines, new_lines, lineterm=""))
 
         lines_added = sum(1 for line in diff if line.startswith("+") and not line.startswith("+++"))
-        lines_deleted = sum(1 for line in diff if line.startswith("-") and not line.startswith("---"))
+        lines_deleted = sum(
+            1 for line in diff if line.startswith("-") and not line.startswith("---")
+        )
         lines_modified = min(lines_added, lines_deleted)
 
         code_diff = CodeDiff(
@@ -312,6 +303,7 @@ class CodeArtifactManager:
 
         # Check for signature changes
         import logging
+
         logger = logging.getLogger(__name__)
         try:
             old_tree = ast.parse(old_content) if old_content else None
@@ -500,6 +492,7 @@ class CodeArtifactManager:
     def _get_entity_source(self, entity: CodeEntity) -> Optional[str]:
         """Get source code for entity."""
         import logging
+
         logger = logging.getLogger(__name__)
         try:
             with open(entity.file_path, "r", encoding="utf-8") as f:

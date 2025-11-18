@@ -13,7 +13,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, Any
-import statistics
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +98,9 @@ class SimulationResult:
     success: bool
     tasks_executed: int = 0
     tasks_failed: int = 0
-    failures: List[Tuple[str, str, str]] = field(default_factory=list)  # (task, error_type, message)
+    failures: List[Tuple[str, str, str]] = field(
+        default_factory=list
+    )  # (task, error_type, message)
     resources_used: Dict[str, float] = field(default_factory=dict)
     timing_violations: List[str] = field(default_factory=list)
     execution_time_ms: float = 0.0
@@ -390,7 +391,9 @@ class PropertyChecker:
 
         return result
 
-    def check_correctness(self, plan: Dict[str, Any], expected_outcome: Any = None) -> PropertyCheckResult:
+    def check_correctness(
+        self, plan: Dict[str, Any], expected_outcome: Any = None
+    ) -> PropertyCheckResult:
         """Check correctness property: plan execution would achieve expected outcome.
 
         Checks:
@@ -664,7 +667,9 @@ class PlanRefiner:
         """Initialize plan refiner."""
         pass
 
-    def identify_root_causes(self, violations: List[PropertyViolation]) -> Dict[str, List[PropertyViolation]]:
+    def identify_root_causes(
+        self, violations: List[PropertyViolation]
+    ) -> Dict[str, List[PropertyViolation]]:
         """Categorize violations by root cause."""
         root_causes = {
             "insufficient_time": [],
@@ -680,7 +685,10 @@ class PlanRefiner:
                 root_causes["insufficient_time"].append(violation)
             elif "resource" in violation.violation_type.lower():
                 root_causes["insufficient_resources"].append(violation)
-            elif "dependency" in violation.violation_type.lower() or "cycle" in violation.violation_type.lower():
+            elif (
+                "dependency" in violation.violation_type.lower()
+                or "cycle" in violation.violation_type.lower()
+            ):
                 root_causes["broken_dependencies"].append(violation)
             elif "missing" in violation.violation_type.lower():
                 root_causes["missing_steps"].append(violation)
@@ -832,9 +840,7 @@ class FormalVerificationEngine:
         self.simulator = PlanSimulator()
         self.refiner = PlanRefiner()
 
-    def verify_plan(
-        self, plan: Dict[str, Any], method: str = "hybrid"
-    ) -> FormalVerificationResult:
+    def verify_plan(self, plan: Dict[str, Any], method: str = "hybrid") -> FormalVerificationResult:
         """Verify plan using hybrid symbolic + simulation approach.
 
         Args:
@@ -922,10 +928,15 @@ class FormalVerificationEngine:
             # Step 3: Identify root causes
             violations = verification.counterexamples
             if not violations:
-                violations = [v for vlist in verification.property_results.values() for v in vlist.violations]
+                violations = [
+                    v for vlist in verification.property_results.values() for v in vlist.violations
+                ]
 
             root_causes = self.refiner.identify_root_causes(violations)
-            logger.info(f"Iteration {iteration}: Found {len(violations)} violations, " f"{len(root_causes)} root causes")
+            logger.info(
+                f"Iteration {iteration}: Found {len(violations)} violations, "
+                f"{len(root_causes)} root causes"
+            )
 
             # Step 4: Generate refinement strategies
             strategies = {}
@@ -938,7 +949,9 @@ class FormalVerificationEngine:
 
             # Step 6: Record refinement
             refinement = RefinementResult(
-                original_plan_id=original_plan_id if iteration == 0 else all_refinements[-1]["new_plan_id"],
+                original_plan_id=(
+                    original_plan_id if iteration == 0 else all_refinements[-1]["new_plan_id"]
+                ),
                 refined_plan_id=refined_plan["id"],
                 iteration=iteration,
                 issues_addressed=violations,

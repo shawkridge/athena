@@ -7,7 +7,6 @@ from .evaluator import SafetyEvaluator
 from .models import (
     ApprovalRequest,
     AuditEntry,
-    ChangeRecommendation,
     ChangeType,
     CodeSnapshot,
     SafetyPolicy,

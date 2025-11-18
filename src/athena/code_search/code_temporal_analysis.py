@@ -15,27 +15,30 @@ logger = logging.getLogger(__name__)
 
 class ChangeType(Enum):
     """Types of code changes."""
-    CREATION = "creation"       # New function/class
+
+    CREATION = "creation"  # New function/class
     MODIFICATION = "modification"  # Code changed
-    DELETION = "deletion"        # Code removed
+    DELETION = "deletion"  # Code removed
     REFACTORING = "refactoring"  # Code structure changed
     OPTIMIZATION = "optimization"  # Performance improvement
-    BUGFIX = "bugfix"           # Bug fix
+    BUGFIX = "bugfix"  # Bug fix
     DOCUMENTATION = "documentation"  # Doc/comment change
-    UNKNOWN = "unknown"         # Unknown change
+    UNKNOWN = "unknown"  # Unknown change
 
 
 class TemporalTrend(Enum):
     """Types of temporal trends."""
-    INCREASING = "increasing"   # Metric going up
-    DECREASING = "decreasing"   # Metric going down
-    STABLE = "stable"          # Metric stable
-    VOLATILE = "volatile"      # Metric fluctuating
+
+    INCREASING = "increasing"  # Metric going up
+    DECREASING = "decreasing"  # Metric going down
+    STABLE = "stable"  # Metric stable
+    VOLATILE = "volatile"  # Metric fluctuating
 
 
 @dataclass
 class CodeChange:
     """Represents a code change event."""
+
     entity_name: str
     entity_type: str
     change_type: ChangeType
@@ -70,6 +73,7 @@ class CodeChange:
 @dataclass
 class TemporalMetrics:
     """Metrics tracked over time for an entity."""
+
     entity_name: str
     metric_name: str
     values: List[Tuple[datetime, float]] = field(default_factory=list)
@@ -106,7 +110,7 @@ class TemporalMetrics:
         variance = sum((v - avg) ** 2 for v in values) / len(values)
 
         # Normalize to 0-1
-        std_dev = variance ** 0.5
+        std_dev = variance**0.5
         return min(std_dev / (avg + 1), 1.0)
 
     def get_change_rate(self) -> float:
@@ -158,18 +162,14 @@ class CodeChangeTracker:
         """Get changes by type."""
         return [c for c in self.changes if c.change_type == change_type]
 
-    def get_changes_in_timeframe(
-        self, start: datetime, end: datetime
-    ) -> List[CodeChange]:
+    def get_changes_in_timeframe(self, start: datetime, end: datetime) -> List[CodeChange]:
         """Get changes within timeframe."""
         return [c for c in self.changes if start <= c.timestamp <= end]
 
     def get_entity_metrics(self, entity_name: str) -> Dict[str, TemporalMetrics]:
         """Get all metrics for an entity."""
         prefix = f"{entity_name}:"
-        return {
-            k: v for k, v in self.metrics.items() if k.startswith(prefix)
-        }
+        return {k: v for k, v in self.metrics.items() if k.startswith(prefix)}
 
     def calculate_change_frequency(self, entity_name: str) -> float:
         """Calculate how frequently an entity changes (changes per day)."""
@@ -254,9 +254,7 @@ class TemporalAnalyzer:
         """Initialize analyzer."""
         self.tracker = tracker
 
-    def detect_metric_trends(
-        self, entity_name: str
-    ) -> Dict[str, TemporalTrend]:
+    def detect_metric_trends(self, entity_name: str) -> Dict[str, TemporalTrend]:
         """Detect trends for all metrics of an entity."""
         metrics = self.tracker.get_entity_metrics(entity_name)
         trends = {}
@@ -307,14 +305,10 @@ class TemporalAnalyzer:
             return {}
 
         total_changes = sum(file_changes.values())
-        percentages = {
-            f: (count / total_changes) * 100 for f, count in file_changes.items()
-        }
+        percentages = {f: (count / total_changes) * 100 for f, count in file_changes.items()}
 
         # Find files with >20% of changes
-        concentrated_files = {
-            f: pct for f, pct in percentages.items() if pct > 20
-        }
+        concentrated_files = {f: pct for f, pct in percentages.items() if pct > 20}
 
         return {
             "file_distribution": file_changes,
@@ -378,7 +372,7 @@ class TemporalAnalyzer:
         # Refactoring needs
         refactoring = self.estimate_refactoring_need()
         if refactoring:
-            report += f"\nRefactoring Candidates:\n"
+            report += "\nRefactoring Candidates:\n"
             for entity, score in refactoring[:5]:
                 report += f"  {entity} (score: {score:.2f})\n"
 

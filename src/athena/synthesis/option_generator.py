@@ -1,7 +1,7 @@
 """Option generator for creating detailed solution options with sophisticated analysis."""
 
 import logging
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class OptionScore:
     """Scoring for an option."""
+
     simplicity: float  # 0.0-1.0
     performance: float  # 0.0-1.0
     scalability: float  # 0.0-1.0
@@ -80,7 +81,9 @@ class OptionGenerator:
         problem_lower = problem.lower()
 
         # Caching/performance optimization
-        if any(word in problem_lower for word in ["slow", "fast", "performance", "cache", "latency"]):
+        if any(
+            word in problem_lower for word in ["slow", "fast", "performance", "cache", "latency"]
+        ):
             return [
                 self._template_simple_optimization(),
                 self._template_distributed_optimization(),

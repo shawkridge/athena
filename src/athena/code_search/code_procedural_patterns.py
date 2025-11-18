@@ -5,15 +5,13 @@ storing them in procedural memory for future pattern matching and suggestions.
 """
 
 import logging
-import hashlib
-from typing import List, Dict, Optional, Set, Any
+from typing import List, Dict, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
 
-from src.athena.code_search.symbol_extractor import Symbol, SymbolType, SymbolIndex
+from src.athena.code_search.symbol_extractor import Symbol, SymbolType
 from src.athena.code_search.code_graph_integration import (
     CodeGraphBuilder,
-    CodeEntity,
     CodeRelationType,
 )
 
@@ -22,37 +20,40 @@ logger = logging.getLogger(__name__)
 
 class PatternType(Enum):
     """Types of code patterns."""
+
     DESIGN_PATTERN = "design_pattern"  # Factory, Observer, etc.
-    ARCHITECTURAL = "architectural"    # MVC, Layered, etc.
-    CODING_IDIOM = "coding_idiom"     # Pythonic idioms, etc.
-    ANTI_PATTERN = "anti_pattern"     # Duplicate code, etc.
-    REFACTORING = "refactoring"       # Common refactorings
-    CONVENTION = "convention"          # Naming, structure conventions
-    OPTIMIZATION = "optimization"      # Performance patterns
+    ARCHITECTURAL = "architectural"  # MVC, Layered, etc.
+    CODING_IDIOM = "coding_idiom"  # Pythonic idioms, etc.
+    ANTI_PATTERN = "anti_pattern"  # Duplicate code, etc.
+    REFACTORING = "refactoring"  # Common refactorings
+    CONVENTION = "convention"  # Naming, structure conventions
+    OPTIMIZATION = "optimization"  # Performance patterns
 
 
 class PatternCategory(Enum):
     """Categories of patterns."""
-    STRUCTURAL = "structural"         # Class hierarchies, compositions
-    BEHAVIORAL = "behavioral"         # Object interactions, responsibilities
-    CREATIONAL = "creational"        # Object creation mechanisms
-    FUNCTIONAL = "functional"        # Functional programming patterns
-    CONCURRENCY = "concurrency"      # Threading, async patterns
-    ERROR_HANDLING = "error_handling" # Exception handling patterns
-    TESTING = "testing"              # Test patterns
+
+    STRUCTURAL = "structural"  # Class hierarchies, compositions
+    BEHAVIORAL = "behavioral"  # Object interactions, responsibilities
+    CREATIONAL = "creational"  # Object creation mechanisms
+    FUNCTIONAL = "functional"  # Functional programming patterns
+    CONCURRENCY = "concurrency"  # Threading, async patterns
+    ERROR_HANDLING = "error_handling"  # Exception handling patterns
+    TESTING = "testing"  # Test patterns
     DOCUMENTATION = "documentation"  # Doc and comment patterns
 
 
 @dataclass
 class CodePattern:
     """Represents a discovered code pattern."""
+
     name: str
     pattern_type: PatternType
     category: PatternCategory
     description: Optional[str] = None
     confidence: float = 1.0  # 0-1, how confident pattern detection is
     indicators: List[str] = field(default_factory=list)  # Indicators of pattern
-    entities: List[str] = field(default_factory=list)    # Entities involved
+    entities: List[str] = field(default_factory=list)  # Entities involved
     relationships: List[str] = field(default_factory=list)  # Rel types involved
     frequency: int = 1  # How often observed
     anti_patterns: List[str] = field(default_factory=list)  # Known issues
@@ -104,12 +105,13 @@ class PatternDetector:
                 # Check for static methods and private init
                 class_methods = [s for s in symbols if s.type == SymbolType.METHOD]
                 has_private_init = any(
-                    s.signature and "__init__" in s.signature and "private" in str(s.signature).lower()
+                    s.signature
+                    and "__init__" in s.signature
+                    and "private" in str(s.signature).lower()
                     for s in class_methods
                 )
                 has_instance_method = any(
-                    "instance" in m.name.lower() and "get" in m.name.lower()
-                    for m in class_methods
+                    "instance" in m.name.lower() and "get" in m.name.lower() for m in class_methods
                 )
 
                 if has_private_init and has_instance_method:
@@ -156,8 +158,12 @@ class PatternDetector:
 
         # Look for notify/subscribe methods
         method_names = [s.name for s in symbols if s.type == SymbolType.METHOD]
-        has_notify = any("notify" in name.lower() or "trigger" in name.lower() for name in method_names)
-        has_subscribe = any("subscribe" in name.lower() or "register" in name.lower() for name in method_names)
+        has_notify = any(
+            "notify" in name.lower() or "trigger" in name.lower() for name in method_names
+        )
+        has_subscribe = any(
+            "subscribe" in name.lower() or "register" in name.lower() for name in method_names
+        )
 
         if has_notify and has_subscribe:
             pattern.confidence = 0.8
@@ -218,9 +224,7 @@ class PatternDetector:
 
         return pattern if pattern.confidence > 0.5 else None
 
-    def detect_high_coupling(
-        self, graph: CodeGraphBuilder
-    ) -> Optional[CodePattern]:
+    def detect_high_coupling(self, graph: CodeGraphBuilder) -> Optional[CodePattern]:
         """Detect high coupling between modules."""
         pattern = CodePattern(
             name="High Coupling",
@@ -240,9 +244,7 @@ class PatternDetector:
 
         return pattern if pattern.confidence > 0.5 else None
 
-    def detect_insufficient_documentation(
-        self, symbols: List[Symbol]
-    ) -> Optional[CodePattern]:
+    def detect_insufficient_documentation(self, symbols: List[Symbol]) -> Optional[CodePattern]:
         """Detect lack of documentation."""
         pattern = CodePattern(
             name="Insufficient Documentation",
@@ -254,7 +256,8 @@ class PatternDetector:
 
         # Look for public items without docstrings
         public_items = [
-            s for s in symbols
+            s
+            for s in symbols
             if s.type in [SymbolType.FUNCTION, SymbolType.CLASS, SymbolType.METHOD]
             and not s.name.startswith("_")
         ]
@@ -330,17 +333,11 @@ class PatternAnalyzer:
 
     def get_patterns_by_type(self, pattern_type: PatternType) -> List[CodePattern]:
         """Get patterns by type."""
-        return [
-            p for p in self.learned_patterns.values()
-            if p.pattern_type == pattern_type
-        ]
+        return [p for p in self.learned_patterns.values() if p.pattern_type == pattern_type]
 
     def get_patterns_by_category(self, category: PatternCategory) -> List[CodePattern]:
         """Get patterns by category."""
-        return [
-            p for p in self.learned_patterns.values()
-            if p.category == category
-        ]
+        return [p for p in self.learned_patterns.values() if p.category == category]
 
     def suggest_improvements(self, patterns: List[CodePattern]) -> Dict[str, List[str]]:
         """Suggest improvements based on detected patterns."""
@@ -447,12 +444,8 @@ class ProceduralMemoryIntegration:
                 "design_patterns": len(
                     self.analyzer.get_patterns_by_type(PatternType.DESIGN_PATTERN)
                 ),
-                "anti_patterns": len(
-                    self.analyzer.get_patterns_by_type(PatternType.ANTI_PATTERN)
-                ),
-                "idioms": len(
-                    self.analyzer.get_patterns_by_type(PatternType.CODING_IDIOM)
-                ),
+                "anti_patterns": len(self.analyzer.get_patterns_by_type(PatternType.ANTI_PATTERN)),
+                "idioms": len(self.analyzer.get_patterns_by_type(PatternType.CODING_IDIOM)),
             },
             "by_category": {
                 cat.value: len(self.analyzer.get_patterns_by_category(cat))
@@ -471,11 +464,13 @@ class ProceduralMemoryIntegration:
 
         suggestions = []
         for pattern in refactoring_patterns:
-            suggestions.append({
-                "pattern": pattern.name,
-                "affected_entities": pattern.entities,
-                "improvements": pattern.improvements,
-                "priority": "high" if pattern.confidence > 0.8 else "medium",
-            })
+            suggestions.append(
+                {
+                    "pattern": pattern.name,
+                    "affected_entities": pattern.entities,
+                    "improvements": pattern.improvements,
+                    "priority": "high" if pattern.confidence > 0.8 else "medium",
+                }
+            )
 
         return suggestions

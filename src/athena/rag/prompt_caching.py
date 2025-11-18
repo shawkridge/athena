@@ -141,9 +141,7 @@ class CacheMetrics:
         Returns:
             Dictionary with cost estimates
         """
-        without_cache = (
-            self.estimated_tokens_without_cache() * cost_per_regular_token
-        )
+        without_cache = self.estimated_tokens_without_cache() * cost_per_regular_token
         with_cache = (
             (self.total_input_tokens * cost_per_regular_token * 1.5)  # Write cost
             + (self.cache_hits * 100 * cost_per_cache_token)  # Read from cache
@@ -154,9 +152,9 @@ class CacheMetrics:
             "cost_without_cache": without_cache,
             "cost_with_cache": with_cache,
             "savings": without_cache - with_cache,
-            "savings_percentage": (without_cache - with_cache) / without_cache
-            if without_cache > 0
-            else 0.0,
+            "savings_percentage": (
+                (without_cache - with_cache) / without_cache if without_cache > 0 else 0.0
+            ),
         }
 
 
@@ -208,9 +206,7 @@ class PromptCacheManager:
         logger.debug(f"Created cache block {block_id} ({block_type.value})")
         return block
 
-    def mark_cached(
-        self, block_id: str, cache_tokens: int, input_tokens: int
-    ) -> bool:
+    def mark_cached(self, block_id: str, cache_tokens: int, input_tokens: int) -> bool:
         """Mark block as cached (after successful API call).
 
         Args:
@@ -232,8 +228,7 @@ class PromptCacheManager:
         block.input_tokens = input_tokens
 
         logger.info(
-            f"Marked {block_id} as cached "
-            f"({cache_tokens} tokens, {input_tokens} write cost)"
+            f"Marked {block_id} as cached " f"({cache_tokens} tokens, {input_tokens} write cost)"
         )
         return True
 
@@ -323,7 +318,7 @@ class PromptCacheManager:
                 reason = f"Medium size ({avg_size} tokens) and reused"
             else:
                 priority = "low"
-                reason = f"Small or infrequently accessed"
+                reason = "Small or infrequently accessed"
 
             estimated_hit_rate = min(total_access / max(total_access + 1, 10), 1.0)
 

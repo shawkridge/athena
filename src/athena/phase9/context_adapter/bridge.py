@@ -1,13 +1,11 @@
 """External system bridge for Phase 9.3: Infinite Context Adapter."""
 
-from typing import Optional
 
 from athena.phase9.context_adapter.models import (
     ExportedInsight,
     ExternalDataMapping,
     ExternalSourceConnection,
     ExternalSourceType,
-    ImportedData,
     SyncLog,
 )
 from athena.phase9.context_adapter.store import ContextAdapterStore
@@ -54,9 +52,7 @@ class ExternalSystemBridge:
             # Get appropriate connector
             connector = self.connectors.get(connection.source_type)
             if not connector:
-                raise ValueError(
-                    f"No connector for source type: {connection.source_type}"
-                )
+                raise ValueError(f"No connector for source type: {connection.source_type}")
 
             # Execute sync
             result = await connector(
@@ -108,9 +104,7 @@ class ExternalSystemBridge:
             # Get appropriate connector
             connector = self.connectors.get(connection.source_type)
             if not connector:
-                raise ValueError(
-                    f"No connector for source type: {connection.source_type}"
-                )
+                raise ValueError(f"No connector for source type: {connection.source_type}")
 
             # For now, simple implementation: track what would be exported
             sync_log.status = "completed"
@@ -177,8 +171,7 @@ class ExternalSystemBridge:
             "last_items_exported": latest.items_exported,
             "enabled": connection.enabled,
             "next_sync_timestamp": (
-                connection.last_sync_timestamp
-                + connection.sync_frequency_minutes * 60
+                connection.last_sync_timestamp + connection.sync_frequency_minutes * 60
                 if connection.last_sync_timestamp
                 else None
             ),

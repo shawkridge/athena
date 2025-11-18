@@ -147,8 +147,10 @@ class GistManager:
         self._metrics.total_input_tokens += entry.original_length
         self._update_metrics()
 
-        logger.info(f"Gisted {content_type}: {len(content):.0f} chars → {len(summary):.0f} "
-                    f"({entry.compression_ratio:.1f}x compression)")
+        logger.info(
+            f"Gisted {content_type}: {len(content):.0f} chars → {len(summary):.0f} "
+            f"({entry.compression_ratio:.1f}x compression)"
+        )
 
         return summary, entry
 
@@ -331,9 +333,7 @@ class GistManager:
         # Simple heuristic: ~4 chars per token on average
         return max(1, len(text) // 4)
 
-    def _generate_summary(
-        self, content: str, content_type: str, max_tokens: int
-    ) -> str:
+    def _generate_summary(self, content: str, content_type: str, max_tokens: int) -> str:
         """Generate summary using Claude.
 
         Args:
@@ -361,9 +361,7 @@ class GistManager:
                     "Include: key facts, timeline, impact.\n\n{content}"
                 )
             elif content_type == "query":
-                prompt = (
-                    f"Rephrase this query concisely in {max_tokens} tokens.\n\n{content}"
-                )
+                prompt = f"Rephrase this query concisely in {max_tokens} tokens.\n\n{content}"
             else:  # document
                 prompt = (
                     f"Summarize this document in {max_tokens} tokens. "
@@ -402,7 +400,7 @@ class GistManager:
         if not summary.endswith("."):
             summary += "."
 
-        return summary[:max_tokens * 4]  # Approximate max chars
+        return summary[: max_tokens * 4]  # Approximate max chars
 
     def _store_in_cache(self, gist_id: str, entry: GistCacheEntry) -> None:
         """Store gist in cache (memory + disk if configured).
@@ -536,9 +534,7 @@ class GistManager:
 
         # Calculate average compression ratio
         if self._gist_cache:
-            total_ratio = sum(
-                e.compression_ratio for e in self._gist_cache.values()
-            )
+            total_ratio = sum(e.compression_ratio for e in self._gist_cache.values())
             self._metrics.avg_compression_ratio = total_ratio / len(self._gist_cache)
 
     def _load_persisted_cache(self) -> None:

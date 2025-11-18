@@ -1,7 +1,7 @@
 """Comparison framework for evaluating and comparing solution approaches."""
 
 import logging
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ComparisonResult:
     """Result of comparing two approaches."""
+
     approach_a: str
     approach_b: str
     winner: str  # Which one is "better" overall
@@ -100,7 +101,7 @@ class ComparisonFramework:
         # Pairwise comparisons
         comparisons = []
         for i, approach_a in enumerate(approaches):
-            for approach_b in approaches[i + 1:]:
+            for approach_b in approaches[i + 1 :]:
                 comparison = self.compare_approaches(
                     approach_a,
                     approach_b,
@@ -199,13 +200,9 @@ class ComparisonFramework:
                 scores_a = approach_a.get("scores", {})
                 scores_b = approach_b.get("scores", {})
 
-                all_better = all(
-                    scores_b.get(k, 0) >= scores_a.get(k, 0)
-                    for k in scores_a.keys()
-                )
+                all_better = all(scores_b.get(k, 0) >= scores_a.get(k, 0) for k in scores_a.keys())
                 any_strictly_better = any(
-                    scores_b.get(k, 0) > scores_a.get(k, 0)
-                    for k in scores_a.keys()
+                    scores_b.get(k, 0) > scores_a.get(k, 0) for k in scores_a.keys()
                 )
 
                 if all_better and any_strictly_better:
@@ -249,7 +246,8 @@ class ComparisonFramework:
                 "approach_b_score": score_b,
                 "difference": diff,
                 "winner": (
-                    approach_b.get("name") if diff > 0.1
+                    approach_b.get("name")
+                    if diff > 0.1
                     else (approach_a.get("name") if diff < -0.1 else "tie")
                 ),
                 "analysis": self._analyze_dimension(dim, score_a, score_b),
@@ -291,17 +289,21 @@ class ComparisonFramework:
             # Significant difference = trade-off
             if abs(diff) > 0.2:
                 if diff > 0:
-                    trade_offs.append({
-                        "advantage": approach_b.get("name"),
-                        "dimension": dim,
-                        "description": comparison["analysis"],
-                    })
+                    trade_offs.append(
+                        {
+                            "advantage": approach_b.get("name"),
+                            "dimension": dim,
+                            "description": comparison["analysis"],
+                        }
+                    )
                 else:
-                    trade_offs.append({
-                        "advantage": approach_a.get("name"),
-                        "dimension": dim,
-                        "description": comparison["analysis"],
-                    })
+                    trade_offs.append(
+                        {
+                            "advantage": approach_a.get("name"),
+                            "dimension": dim,
+                            "description": comparison["analysis"],
+                        }
+                    )
 
         return trade_offs
 
@@ -340,8 +342,8 @@ class ComparisonFramework:
 
         if score_diff < 0.1:
             return (
-                f"Both approaches are roughly equivalent. Choice depends on "
-                f"team preference and specific constraints."
+                "Both approaches are roughly equivalent. Choice depends on "
+                "team preference and specific constraints."
             )
         elif score_diff < 0.2:
             return (
@@ -388,9 +390,7 @@ class ComparisonFramework:
         """Generate explanation for why a solution was chosen."""
         explanation = f"We chose '{chosen.get('name')}' because:\n\n"
 
-        strengths = [
-            f"- {k}: {v:.0%}" for k, v in chosen.get("scores", {}).items() if v > 0.7
-        ]
+        strengths = [f"- {k}: {v:.0%}" for k, v in chosen.get("scores", {}).items() if v > 0.7]
 
         if strengths:
             explanation += "**Strengths:**\n" + "\n".join(strengths) + "\n\n"
@@ -399,7 +399,9 @@ class ComparisonFramework:
         if alternatives:
             explanation += "**vs Alternatives:**\n"
             for alt in alternatives:
-                explanation += f"- Better than '{alt.get('name')}' in {self._get_better_dims(chosen, alt)}\n"
+                explanation += (
+                    f"- Better than '{alt.get('name')}' in {self._get_better_dims(chosen, alt)}\n"
+                )
 
         return explanation
 
@@ -408,9 +410,6 @@ class ComparisonFramework:
         chosen_scores = chosen.get("scores", {})
         alt_scores = alternative.get("scores", {})
 
-        better = [
-            dim for dim, score in chosen_scores.items()
-            if score > alt_scores.get(dim, 0.5)
-        ]
+        better = [dim for dim, score in chosen_scores.items() if score > alt_scores.get(dim, 0.5)]
 
         return ", ".join(better) if better else "similar areas"

@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, List
 
 from .models import CodeElement, CodeElementType, CodeLanguage
 
@@ -91,7 +91,6 @@ class CodeParser:
         Extracts: functions, classes, imports, async functions
         """
         import ast
-        import re
 
         elements = []
 
@@ -178,13 +177,8 @@ class CodeParser:
                             start_line=node.lineno,
                             end_line=node.end_lineno or node.lineno,
                             signature=signature,
-                            parameters=[
-                                arg.arg for arg in node.args.args
-                            ] if node.args else [],
-                            decorators=[
-                                d.id for d in node.decorator_list
-                                if hasattr(d, "id")
-                            ],
+                            parameters=[arg.arg for arg in node.args.args] if node.args else [],
+                            decorators=[d.id for d in node.decorator_list if hasattr(d, "id")],
                         )
                     )
 
@@ -246,8 +240,8 @@ class CodeParser:
                     element_type=CodeElementType.IMPORT,
                     name=match.group(1),
                     source_code=match.group(0),
-                    start_line=source[:match.start()].count("\n") + 1,
-                    end_line=source[:match.start()].count("\n") + 1,
+                    start_line=source[: match.start()].count("\n") + 1,
+                    end_line=source[: match.start()].count("\n") + 1,
                 )
             )
 
@@ -262,8 +256,8 @@ class CodeParser:
                     element_type=CodeElementType.FUNCTION,
                     name=match.group(1),
                     source_code=match.group(0),
-                    start_line=source[:match.start()].count("\n") + 1,
-                    end_line=source[:match.start()].count("\n") + 1,
+                    start_line=source[: match.start()].count("\n") + 1,
+                    end_line=source[: match.start()].count("\n") + 1,
                 )
             )
 
@@ -278,8 +272,8 @@ class CodeParser:
                     element_type=CodeElementType.CLASS,
                     name=match.group(1),
                     source_code=match.group(0),
-                    start_line=source[:match.start()].count("\n") + 1,
-                    end_line=source[:match.start()].count("\n") + 1,
+                    start_line=source[: match.start()].count("\n") + 1,
+                    end_line=source[: match.start()].count("\n") + 1,
                 )
             )
 
@@ -317,8 +311,8 @@ class CodeParser:
                     element_type=CodeElementType.IMPORT,
                     name=pkg,
                     source_code=match.group(0),
-                    start_line=source[:match.start()].count("\n") + 1,
-                    end_line=source[:match.start()].count("\n") + 1,
+                    start_line=source[: match.start()].count("\n") + 1,
+                    end_line=source[: match.start()].count("\n") + 1,
                 )
             )
 
@@ -333,8 +327,8 @@ class CodeParser:
                     element_type=CodeElementType.FUNCTION,
                     name=match.group(1),
                     source_code=match.group(0),
-                    start_line=source[:match.start()].count("\n") + 1,
-                    end_line=source[:match.start()].count("\n") + 1,
+                    start_line=source[: match.start()].count("\n") + 1,
+                    end_line=source[: match.start()].count("\n") + 1,
                 )
             )
 
@@ -349,8 +343,8 @@ class CodeParser:
                     element_type=CodeElementType.CLASS,
                     name=match.group(1),
                     source_code=match.group(0),
-                    start_line=source[:match.start()].count("\n") + 1,
-                    end_line=source[:match.start()].count("\n") + 1,
+                    start_line=source[: match.start()].count("\n") + 1,
+                    end_line=source[: match.start()].count("\n") + 1,
                 )
             )
 
@@ -383,7 +377,7 @@ class CodeParser:
         """Extract source code for an AST node."""
         lines = source.split("\n")
         start_line = node.lineno - 1
-        end_line = (node.end_lineno or node.lineno)
+        end_line = node.end_lineno or node.lineno
 
         if 0 <= start_line < len(lines) and 0 <= end_line <= len(lines):
             return "\n".join(lines[start_line:end_line])
@@ -392,7 +386,6 @@ class CodeParser:
     @staticmethod
     def _get_function_signature(node: Any) -> str:
         """Build function signature from AST node."""
-        import ast
 
         args = []
         if node.args:
@@ -401,9 +394,7 @@ class CodeParser:
 
         return f"def {node.name}({', '.join(args)})"
 
-    def parse_directory(
-        self, directory: str, pattern: str = "**/*.py"
-    ) -> List[CodeElement]:
+    def parse_directory(self, directory: str, pattern: str = "**/*.py") -> List[CodeElement]:
         """Parse all code files in a directory.
 
         Args:

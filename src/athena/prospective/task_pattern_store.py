@@ -1,6 +1,5 @@
 """Task pattern storage and analysis."""
 
-import json
 import logging
 from datetime import datetime
 from typing import Optional, List, Dict, Any
@@ -11,8 +10,6 @@ from .task_patterns import (
     TaskPattern,
     TaskExecutionMetrics,
     TaskPropertyCorrelation,
-    PatternType,
-    ExtractionMethod,
     PatternStatus,
 )
 
@@ -309,9 +306,11 @@ class TaskPatternStore(BaseStore):
                     pattern.system_2_validated,
                     pattern.validation_notes,
                     now,
-                    int(pattern.last_validated_at.timestamp() * 1000)
-                    if pattern.last_validated_at
-                    else None,
+                    (
+                        int(pattern.last_validated_at.timestamp() * 1000)
+                        if pattern.last_validated_at
+                        else None
+                    ),
                     pattern.learned_from_tasks,
                     pattern.related_patterns,
                     pattern.id,
@@ -347,9 +346,11 @@ class TaskPatternStore(BaseStore):
                     pattern.validation_notes,
                     created_at,
                     now,
-                    int(pattern.last_validated_at.timestamp() * 1000)
-                    if pattern.last_validated_at
-                    else None,
+                    (
+                        int(pattern.last_validated_at.timestamp() * 1000)
+                        if pattern.last_validated_at
+                        else None
+                    ),
                     pattern.learned_from_tasks,
                     pattern.related_patterns,
                 ),
@@ -483,9 +484,7 @@ class TaskPatternStore(BaseStore):
         data["completed_at"] = datetime.fromtimestamp(data["completed_at"] / 1000)
         return TaskExecutionMetrics(**data)
 
-    def get_recent_metrics(
-        self, project_id: int, limit: int = 100
-    ) -> List[TaskExecutionMetrics]:
+    def get_recent_metrics(self, project_id: int, limit: int = 100) -> List[TaskExecutionMetrics]:
         """Get recent execution metrics for analysis.
 
         Args:

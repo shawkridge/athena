@@ -10,7 +10,7 @@ Based on neuroscience research:
 """
 
 import math
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 from .models import EpisodicEvent
@@ -56,7 +56,9 @@ def compute_activation(
 
     # Base-level activation: logarithm of accumulated practice
     # With one access at time t: base_level = ln(t^(-d)) = -d * ln(t)
-    base_level = -decay_rate * math.log(time_since_access_hours) if time_since_access_hours > 0 else 0.0
+    base_level = (
+        -decay_rate * math.log(time_since_access_hours) if time_since_access_hours > 0 else 0.0
+    )
 
     # Apply activation count (frequency bonus)
     # More frequent accesses increase base level
@@ -81,7 +83,7 @@ def compute_activation(
     success_boost = 0.0
     if event.outcome:
         # Handle both enum and string outcomes (model uses use_enum_values=True)
-        outcome_str = event.outcome.value if hasattr(event.outcome, 'value') else str(event.outcome)
+        outcome_str = event.outcome.value if hasattr(event.outcome, "value") else str(event.outcome)
         if outcome_str == "success":
             success_boost = 0.5
 
@@ -229,10 +231,7 @@ def rank_by_activation(
     if current_time is None:
         current_time = datetime.now()
 
-    scored = [
-        (event, compute_activation(event, current_time))
-        for event in events
-    ]
+    scored = [(event, compute_activation(event, current_time)) for event in events]
     ranked = sorted(scored, key=lambda x: x[1], reverse=True)
 
     if limit is not None:

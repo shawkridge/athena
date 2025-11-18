@@ -10,14 +10,10 @@ Tests verify that:
 """
 
 import pytest
-import asyncio
 import sys
-import os
-from typing import Dict, Any
-from datetime import datetime
 
 # Add src to path
-sys.path.insert(0, '/home/user/.work/athena/src')
+sys.path.insert(0, "/home/user/.work/athena/src")
 
 from athena import initialize_athena
 from athena.agents.agent_bridge import AgentBridge
@@ -25,7 +21,6 @@ from athena.agents.research_coordinator import ResearchCoordinatorAgent
 from athena.agents.code_analyzer import CodeAnalyzerAgent
 from athena.agents.workflow_orchestrator import WorkflowOrchestratorAgent
 from athena.agents.metacognition import MetacognitionAgent
-from athena.episodic.operations import remember, recall
 
 
 class TestPhase4_2ResearchCoordinator:
@@ -44,7 +39,7 @@ class TestPhase4_2ResearchCoordinator:
 
         assert agent.agent_id == "research-coordinator"
         assert agent.agent_type == "research"
-        assert hasattr(agent, 'research_tasks')
+        assert hasattr(agent, "research_tasks")
 
     @pytest.mark.asyncio
     async def test_research_coordinator_plan_research(self):
@@ -58,7 +53,7 @@ class TestPhase4_2ResearchCoordinator:
 
         assert plan is not None
         # plan is a ResearchPlan object, not dict
-        assert hasattr(plan, 'query')
+        assert hasattr(plan, "query")
 
     @pytest.mark.asyncio
     async def test_agent_bridge_activate_research_coordinator(self):
@@ -91,7 +86,7 @@ class TestPhase4_2CodeAnalyzer:
         agent = CodeAnalyzerAgent()
 
         assert agent.agent_id == "code-analyzer"
-        assert hasattr(agent, 'agent_type')
+        assert hasattr(agent, "agent_type")
 
     @pytest.mark.asyncio
     async def test_code_analyzer_find_anti_patterns(self):
@@ -137,7 +132,7 @@ class TestPhase4_2WorkflowOrchestrator:
         agent = WorkflowOrchestratorAgent()
 
         assert agent.agent_id == "workflow-orchestrator"
-        assert hasattr(agent, 'agent_type')
+        assert hasattr(agent, "agent_type")
 
     @pytest.mark.asyncio
     async def test_agent_bridge_activate_workflow_orchestrator(self):
@@ -169,7 +164,7 @@ class TestPhase4_2Metacognition:
         agent = MetacognitionAgent()
 
         assert agent.agent_id == "metacognition"
-        assert hasattr(agent, 'agent_type')
+        assert hasattr(agent, "agent_type")
 
     @pytest.mark.asyncio
     async def test_agent_bridge_activate_metacognition(self):

@@ -77,9 +77,7 @@ class HealthMonitorAgent:
                         health_score=health.health_score,
                         status="critical",
                         primary_issue=self._identify_primary_issue(health),
-                        recommendation=self._suggest_intervention(
-                            health, "critical"
-                        ),
+                        recommendation=self._suggest_intervention(health, "critical"),
                     )
                     alerts.append(alert)
                 elif health.health_score < self.warning_threshold:
@@ -88,16 +86,12 @@ class HealthMonitorAgent:
                         health_score=health.health_score,
                         status="warning",
                         primary_issue=self._identify_primary_issue(health),
-                        recommendation=self._suggest_intervention(
-                            health, "warning"
-                        ),
+                        recommendation=self._suggest_intervention(health, "warning"),
                     )
                     alerts.append(alert)
             except Exception as e:
                 # Log error but continue monitoring other tasks
-                print(
-                    f"Error checking health for task {task_id}: {e}"
-                )
+                print(f"Error checking health for task {task_id}: {e}")
 
         return alerts
 
@@ -142,7 +136,9 @@ class HealthMonitorAgent:
 
         elif primary_issue == "errors":
             if health.errors >= 5:
-                return "CRITICAL: High error rate detected. Consider different approach or escalate."
+                return (
+                    "CRITICAL: High error rate detected. Consider different approach or escalate."
+                )
             else:
                 return f"Address errors ({health.errors} logged). Review error log and adjust implementation."
 

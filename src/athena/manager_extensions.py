@@ -8,12 +8,11 @@ import logging
 import time
 from typing import Any, Dict, List, Optional
 
-from .core.confidence_scoring import ConfidenceScorer, ConfidenceFilter
+from .core.confidence_scoring import ConfidenceScorer
 from .core.result_models import (
     ConfidenceLevel,
     MemoryWithConfidence,
     QueryExplanation,
-    SearchResultWithExplain,
 )
 
 logger = logging.getLogger(__name__)
@@ -190,16 +189,10 @@ class ManagerExtensions:
                 "meta": "Meta-memory layer search (knowledge about knowledge)",
                 "planning": "Planning layer search (decomposition)",
             }
-            search_strategy = strategy_map.get(
-                query_type, "Unknown strategy"
-            )
+            search_strategy = strategy_map.get(query_type, "Unknown strategy")
 
         # Count total candidates
-        total_candidates = sum(
-            len(v) if isinstance(v, list) else 1
-            for v in results.values()
-            if v
-        )
+        total_candidates = sum(len(v) if isinstance(v, list) else 1 for v in results.values() if v)
 
         # Count returned results
         results_returned = total_candidates
@@ -369,24 +362,13 @@ class ManagerExtensions:
         # Count by level
         by_level = {
             "very_high": sum(
-                1 for r in all_results
-                if r.confidence_level == ConfidenceLevel.VERY_HIGH
+                1 for r in all_results if r.confidence_level == ConfidenceLevel.VERY_HIGH
             ),
-            "high": sum(
-                1 for r in all_results
-                if r.confidence_level == ConfidenceLevel.HIGH
-            ),
-            "medium": sum(
-                1 for r in all_results
-                if r.confidence_level == ConfidenceLevel.MEDIUM
-            ),
-            "low": sum(
-                1 for r in all_results
-                if r.confidence_level == ConfidenceLevel.LOW
-            ),
+            "high": sum(1 for r in all_results if r.confidence_level == ConfidenceLevel.HIGH),
+            "medium": sum(1 for r in all_results if r.confidence_level == ConfidenceLevel.MEDIUM),
+            "low": sum(1 for r in all_results if r.confidence_level == ConfidenceLevel.LOW),
             "very_low": sum(
-                1 for r in all_results
-                if r.confidence_level == ConfidenceLevel.VERY_LOW
+                1 for r in all_results if r.confidence_level == ConfidenceLevel.VERY_LOW
             ),
         }
 

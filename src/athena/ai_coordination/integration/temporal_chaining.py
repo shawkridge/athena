@@ -9,12 +9,11 @@ and build causal chains across AI Coordination executions.
 """
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from athena.core.database import Database
-    from athena.ai_coordination.execution_traces import ExecutionTrace
 
 
 class TemporalChainer:
@@ -44,12 +43,14 @@ class TemporalChainer:
             db: Database connection
         """
         self.db = db
+
     def _ensure_schema(self):
         """Create temporal_chains tables if they don't exist."""
         cursor = self.db.get_cursor()
 
         # Table: Temporal chains linking events
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS temporal_chains (
                 id INTEGER PRIMARY KEY,
                 from_event_id INTEGER NOT NULL,    -- episodic_event ID
@@ -62,10 +63,12 @@ class TemporalChainer:
                 FOREIGN KEY (from_event_id) REFERENCES episodic_events(id),
                 FOREIGN KEY (to_event_id) REFERENCES episodic_events(id)
             )
-        """)
+        """
+        )
 
         # Table: Execution sequences (ordered chains)
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS execution_sequences (
                 id INTEGER PRIMARY KEY,
                 session_id TEXT NOT NULL,
@@ -79,28 +82,37 @@ class TemporalChainer:
                 created_at INTEGER NOT NULL,
                 FOREIGN KEY (event_id) REFERENCES episodic_events(id)
             )
-        """)
+        """
+        )
 
         # Indexes for performance
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_temporal_chains_from
             ON temporal_chains(from_event_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_temporal_chains_to
             ON temporal_chains(to_event_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_temporal_chains_relation
             ON temporal_chains(relation_type)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_execution_sequences_session
             ON execution_sequences(session_id, sequence_order)
-        """)
+        """
+        )
 
         # commit handled by cursor context
 
@@ -111,7 +123,7 @@ class TemporalChainer:
         from_timestamp: int,
         to_timestamp: int,
         session_continuity: bool = False,
-        file_overlap: bool = False
+        file_overlap: bool = False,
     ) -> Optional[int]:
         """Link two events in temporal chain.
 
@@ -167,30 +179,30 @@ class TemporalChainer:
         cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO temporal_chains
             (from_event_id, to_event_id, relation_type, time_delta_seconds,
              causal_strength, metadata, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            from_event_id,
-            to_event_id,
-            relation_type,
-            int(time_delta),
-            causal_strength,
-            json.dumps(metadata),
-            now
-        ))
+        """,
+            (
+                from_event_id,
+                to_event_id,
+                relation_type,
+                int(time_delta),
+                causal_strength,
+                json.dumps(metadata),
+                now,
+            ),
+        )
 
         chain_id = cursor.lastrowid
         # commit handled by cursor context
         return chain_id
 
     def build_session_sequence(
-        self,
-        session_id: str,
-        goal_id: Optional[str],
-        task_id: Optional[str]
+        self, session_id: str, goal_id: Optional[str], task_id: Optional[str]
     ) -> int:
         """Build execution sequence for a session.
 
@@ -205,12 +217,15 @@ class TemporalChainer:
         cursor = self.db.get_cursor()
 
         # Get all events for this session, ordered by timestamp
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT id, timestamp, outcome, content
             FROM episodic_events
             WHERE session_id = ?
             ORDER BY timestamp ASC
-        """, (session_id,))
+        """,
+            (session_id,),
+        )
 
         events = cursor.fetchall()
         sequence_count = 0
@@ -223,22 +238,25 @@ class TemporalChainer:
                 "content": content,
             }
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO execution_sequences
                 (session_id, goal_id, task_id, sequence_order, event_id,
                  timestamp, outcome, metadata, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                session_id,
-                goal_id,
-                task_id,
-                order,
-                event_id,
-                timestamp,
-                outcome,
-                json.dumps(metadata),
-                int(datetime.now().timestamp() * 1000)
-            ))
+            """,
+                (
+                    session_id,
+                    goal_id,
+                    task_id,
+                    order,
+                    event_id,
+                    timestamp,
+                    outcome,
+                    json.dumps(metadata),
+                    int(datetime.now().timestamp() * 1000),
+                ),
+            )
 
             sequence_count += 1
 
@@ -257,36 +275,34 @@ class TemporalChainer:
         cursor = self.db.get_cursor()
 
         # Get events that led to this one (predecessors)
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT from_event_id, relation_type, causal_strength
             FROM temporal_chains
             WHERE to_event_id = ?
             ORDER BY causal_strength DESC
-        """, (event_id,))
+        """,
+            (event_id,),
+        )
 
         predecessors = [
-            {
-                "event_id": row[0],
-                "relation_type": row[1],
-                "causal_strength": row[2]
-            }
+            {"event_id": row[0], "relation_type": row[1], "causal_strength": row[2]}
             for row in cursor.fetchall()
         ]
 
         # Get events that follow this one (successors)
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT to_event_id, relation_type, causal_strength
             FROM temporal_chains
             WHERE from_event_id = ?
             ORDER BY causal_strength DESC
-        """, (event_id,))
+        """,
+            (event_id,),
+        )
 
         successors = [
-            {
-                "event_id": row[0],
-                "relation_type": row[1],
-                "causal_strength": row[2]
-            }
+            {"event_id": row[0], "relation_type": row[1], "causal_strength": row[2]}
             for row in cursor.fetchall()
         ]
 
@@ -296,11 +312,7 @@ class TemporalChainer:
             "successors": successors,
         }
 
-    def get_execution_sequence(
-        self,
-        session_id: str,
-        limit: int = 50
-    ) -> list[dict]:
+    def get_execution_sequence(self, session_id: str, limit: int = 50) -> list[dict]:
         """Get execution sequence for a session.
 
         Args:
@@ -312,13 +324,16 @@ class TemporalChainer:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT sequence_order, event_id, timestamp, outcome, metadata
             FROM execution_sequences
             WHERE session_id = ?
             ORDER BY sequence_order ASC
             LIMIT ?
-        """, (session_id, limit))
+        """,
+            (session_id, limit),
+        )
 
         sequence = []
         for order, event_id, timestamp, outcome, metadata_json in cursor.fetchall():
@@ -327,21 +342,19 @@ class TemporalChainer:
             except json.JSONDecodeError:
                 metadata = {}
 
-            sequence.append({
-                "order": order,
-                "event_id": event_id,
-                "timestamp": timestamp,
-                "outcome": outcome,
-                "metadata": metadata,
-            })
+            sequence.append(
+                {
+                    "order": order,
+                    "event_id": event_id,
+                    "timestamp": timestamp,
+                    "outcome": outcome,
+                    "metadata": metadata,
+                }
+            )
 
         return sequence
 
-    def get_causal_relationships(
-        self,
-        event_id: int,
-        min_strength: float = 0.5
-    ) -> list[dict]:
+    def get_causal_relationships(self, event_id: int, min_strength: float = 0.5) -> list[dict]:
         """Get causally strong relationships for an event.
 
         Args:
@@ -353,31 +366,32 @@ class TemporalChainer:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT from_event_id, to_event_id, relation_type, causal_strength
             FROM temporal_chains
             WHERE (from_event_id = ? OR to_event_id = ?)
             AND causal_strength >= ?
             ORDER BY causal_strength DESC
-        """, (event_id, event_id, min_strength))
+        """,
+            (event_id, event_id, min_strength),
+        )
 
         relationships = []
         for from_id, to_id, relation_type, strength in cursor.fetchall():
-            relationships.append({
-                "from_event_id": from_id,
-                "to_event_id": to_id,
-                "relation_type": relation_type,
-                "causal_strength": strength,
-                "direction": "forward" if from_id == event_id else "backward",
-            })
+            relationships.append(
+                {
+                    "from_event_id": from_id,
+                    "to_event_id": to_id,
+                    "relation_type": relation_type,
+                    "causal_strength": strength,
+                    "direction": "forward" if from_id == event_id else "backward",
+                }
+            )
 
         return relationships
 
-    def detect_event_patterns(
-        self,
-        session_id: str,
-        pattern_length: int = 3
-    ) -> list[list[int]]:
+    def detect_event_patterns(self, session_id: str, pattern_length: int = 3) -> list[list[int]]:
         """Detect repeating patterns in event sequence.
 
         Args:
@@ -390,12 +404,15 @@ class TemporalChainer:
         cursor = self.db.get_cursor()
 
         # Get sequence for session
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT event_id
             FROM execution_sequences
             WHERE session_id = ?
             ORDER BY sequence_order ASC
-        """, (session_id,))
+        """,
+            (session_id,),
+        )
 
         event_ids = [row[0] for row in cursor.fetchall()]
 
@@ -403,10 +420,10 @@ class TemporalChainer:
         patterns = []
         if len(event_ids) >= pattern_length:
             for i in range(len(event_ids) - pattern_length + 1):
-                pattern = event_ids[i:i + pattern_length]
+                pattern = event_ids[i : i + pattern_length]
                 # Check if this pattern appears again later
                 for j in range(i + pattern_length, len(event_ids) - pattern_length + 1):
-                    if event_ids[j:j + pattern_length] == pattern:
+                    if event_ids[j : j + pattern_length] == pattern:
                         if pattern not in patterns:
                             patterns.append(pattern)
                         break
@@ -424,7 +441,8 @@ class TemporalChainer:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT COUNT(*), AVG(time_delta_seconds)
             FROM temporal_chains tc
             WHERE EXISTS (
@@ -434,18 +452,23 @@ class TemporalChainer:
                     es.event_id = tc.to_event_id
                 )
             )
-        """, (session_id,))
+        """,
+            (session_id,),
+        )
 
         row = cursor.fetchone()
         link_count = row[0] or 0
         avg_time_delta = row[1] or 0
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT COUNT(DISTINCT outcome), outcome
             FROM execution_sequences
             WHERE session_id = ?
             GROUP BY outcome
-        """, (session_id,))
+        """,
+            (session_id,),
+        )
 
         outcomes = {row[1]: row[0] for row in cursor.fetchall()}
 

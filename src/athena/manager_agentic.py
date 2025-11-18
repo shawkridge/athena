@@ -83,14 +83,13 @@ class AgenticMemoryManager:
                         "result_count": len(results),
                         "execution_time_ms": execution_time,
                         "base_confidence": 0.8,  # Default for retrieval
-                    }
+                    },
                 )
 
                 # Record decision
                 if track_decision:
                     outcome = self.observer.record_decision(
-                        result,
-                        "accepted" if result.passed else "rejected"
+                        result, "accepted" if result.passed else "rejected"
                     )
 
                 # Record metrics
@@ -105,15 +104,16 @@ class AgenticMemoryManager:
                         "violations": len(result.violations),
                         "confidence": result.confidence_score,
                         "execution_time_ms": execution_time,
-                    }
+                    },
                 }
 
             return results
 
         except Exception as e:
             logger.error(f"Retrieval failed: {e}")
-            self.metrics.record_metric("operation_latency_ms",
-                                      (datetime.now() - start_time).total_seconds() * 1000)
+            self.metrics.record_metric(
+                "operation_latency_ms", (datetime.now() - start_time).total_seconds() * 1000
+            )
             raise
 
     def store(
@@ -156,14 +156,13 @@ class AgenticMemoryManager:
                         "content_length": len(content),
                         "execution_time_ms": execution_time,
                         "base_confidence": 0.9,  # Higher for store operations
-                    }
+                    },
                 )
 
                 # Record decision
                 if track_decision:
                     outcome = self.observer.record_decision(
-                        gate_result,
-                        "accepted" if gate_result.passed else "rejected"
+                        gate_result, "accepted" if gate_result.passed else "rejected"
                     )
 
                 # Record metrics
@@ -178,15 +177,16 @@ class AgenticMemoryManager:
                         "violations": len(gate_result.violations),
                         "confidence": gate_result.confidence_score,
                         "execution_time_ms": execution_time,
-                    }
+                    },
                 }
 
             return result
 
         except Exception as e:
             logger.error(f"Store failed: {e}")
-            self.metrics.record_metric("operation_latency_ms",
-                                      (datetime.now() - start_time).total_seconds() * 1000)
+            self.metrics.record_metric(
+                "operation_latency_ms", (datetime.now() - start_time).total_seconds() * 1000
+            )
             raise
 
     def verify_operation(
@@ -295,12 +295,7 @@ class AgenticMemoryManager:
             was_correct: Was the decision correct in hindsight?
             lessons: Lessons learned
         """
-        self.observer.record_outcome(
-            decision_id,
-            actual_outcome,
-            was_correct,
-            lessons
-        )
+        self.observer.record_outcome(decision_id, actual_outcome, was_correct, lessons)
 
         # Record decision accuracy metric
         if was_correct:

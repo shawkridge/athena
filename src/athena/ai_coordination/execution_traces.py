@@ -3,11 +3,9 @@
 from datetime import datetime
 from enum import Enum
 from typing import Optional
-from uuid import UUID
 
 from pydantic import BaseModel, Field, ConfigDict
 
-from ..episodic.models import EpisodicEvent, EventOutcome, EventType
 
 
 class ExecutionOutcome(str, Enum):

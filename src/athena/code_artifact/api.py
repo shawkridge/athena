@@ -1,6 +1,5 @@
 """Public API for code artifact analysis."""
 
-from pathlib import Path
 from typing import Optional
 
 from athena.core.database import Database, get_database
@@ -167,7 +166,13 @@ class CodeArtifactAPI:
             Dictionary with issue information
         """
         issue = self.manager.report_quality_issue(
-            project_id, file_path, line_number, issue_type, severity, message, fix_suggestion=fix_suggestion
+            project_id,
+            file_path,
+            line_number,
+            issue_type,
+            severity,
+            message,
+            fix_suggestion=fix_suggestion,
         )
         return {
             "id": issue.id,
@@ -275,9 +280,7 @@ class CodeArtifactAPI:
         classes = [e for e in entities if e.entity_type == EntityType.CLASS]
 
         avg_complexity = (
-            sum(e.cyclomatic_complexity for e in functions) / len(functions)
-            if functions
-            else 0
+            sum(e.cyclomatic_complexity for e in functions) / len(functions) if functions else 0
         )
         avg_loc = sum(e.lines_of_code for e in entities) / len(entities) if entities else 0
 
@@ -288,7 +291,5 @@ class CodeArtifactAPI:
             "total_classes": len(classes),
             "average_complexity": round(avg_complexity, 2),
             "average_loc": round(avg_loc, 1),
-            "high_complexity_count": len(
-                [e for e in functions if e.cyclomatic_complexity > 10]
-            ),
+            "high_complexity_count": len([e for e in functions if e.cyclomatic_complexity > 10]),
         }

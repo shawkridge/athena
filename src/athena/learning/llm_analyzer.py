@@ -7,7 +7,6 @@ This implements Option C: LLMClient integration for learning feedback.
 """
 
 from typing import Optional, Dict, Any, List
-from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -38,7 +37,7 @@ class LLMOutcomeAnalyzer:
         events_processed: int,
         patterns_extracted: int,
         execution_time_ms: float,
-        strategy: str = "balanced"
+        strategy: str = "balanced",
     ) -> Dict[str, Any]:
         """Analyze why consolidation succeeded or failed.
 
@@ -57,7 +56,11 @@ class LLMOutcomeAnalyzer:
             - reasoning_quality: How good was the reasoning?
         """
         # Build analysis prompt
-        status = "succeeded" if success_rate > 0.8 else "partially succeeded" if success_rate > 0.5 else "failed"
+        status = (
+            "succeeded"
+            if success_rate > 0.8
+            else "partially succeeded" if success_rate > 0.5 else "failed"
+        )
 
         analysis_prompt = f"""Analyze this consolidation outcome:
 - Status: {status}
@@ -74,20 +77,18 @@ Keep response short (2-3 sentences max)."""
             # Try to use LLM if available
             if self.llm_client:
                 reasoning_result = await self._get_llm_reasoning(analysis_prompt)
-                reason = reasoning_result['text'] if reasoning_result else "Analysis unavailable"
+                reason = reasoning_result["text"] if reasoning_result else "Analysis unavailable"
             else:
                 reason = await self._heuristic_analysis(
                     success_rate=success_rate,
                     events_processed=events_processed,
                     patterns_extracted=patterns_extracted,
-                    execution_time_ms=execution_time_ms
+                    execution_time_ms=execution_time_ms,
                 )
 
             # Generate recommendations
             recommendations = await self._generate_recommendations(
-                status=status,
-                success_rate=success_rate,
-                execution_time_ms=execution_time_ms
+                status=status, success_rate=success_rate, execution_time_ms=execution_time_ms
             )
 
             return {
@@ -95,7 +96,7 @@ Keep response short (2-3 sentences max)."""
                 "reason": reason,
                 "confidence": 0.8,  # Confidence in this analysis
                 "recommendations": recommendations,
-                "reasoning_quality": "heuristic" if not self.llm_client else "llm-based"
+                "reasoning_quality": "heuristic" if not self.llm_client else "llm-based",
             }
 
         except Exception as e:
@@ -105,7 +106,7 @@ Keep response short (2-3 sentences max)."""
                 "error": str(e),
                 "reason": "Analysis failed",
                 "confidence": 0.0,
-                "recommendations": []
+                "recommendations": [],
             }
 
     async def analyze_agent_decision(
@@ -114,7 +115,7 @@ Keep response short (2-3 sentences max)."""
         decision: str,
         outcome: str,
         success_rate: float,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Analyze quality of an agent decision using reasoning.
 
@@ -130,7 +131,9 @@ Keep response short (2-3 sentences max)."""
         """
         context_str = ""
         if context:
-            context_str = "\nContext: " + ", ".join(f"{k}={v}" for k, v in list(context.items())[:3])
+            context_str = "\nContext: " + ", ".join(
+                f"{k}={v}" for k, v in list(context.items())[:3]
+            )
 
         analysis_prompt = f"""Evaluate this agent decision:
 - Agent: {agent_name}
@@ -144,7 +147,9 @@ Keep response short (2-3 sentences max)."""
         try:
             if self.llm_client:
                 reasoning_result = await self._get_llm_reasoning(analysis_prompt)
-                assessment = reasoning_result['text'] if reasoning_result else "Assessment unavailable"
+                assessment = (
+                    reasoning_result["text"] if reasoning_result else "Assessment unavailable"
+                )
             else:
                 assessment = self._heuristic_assessment(agent_name, success_rate)
 
@@ -154,7 +159,7 @@ Keep response short (2-3 sentences max)."""
                 "decision": decision,
                 "assessment": assessment,
                 "quality_score": success_rate,  # Use success_rate as quality indicator
-                "reasoning_type": "llm-based" if self.llm_client else "heuristic"
+                "reasoning_type": "llm-based" if self.llm_client else "heuristic",
             }
 
         except Exception as e:
@@ -163,15 +168,11 @@ Keep response short (2-3 sentences max)."""
                 "status": "error",
                 "error": str(e),
                 "agent": agent_name,
-                "quality_score": success_rate
+                "quality_score": success_rate,
             }
 
     async def evaluate_reasoning_pattern(
-        self,
-        pattern_name: str,
-        success_count: int,
-        failure_count: int,
-        avg_success_rate: float
+        self, pattern_name: str, success_count: int, failure_count: int, avg_success_rate: float
     ) -> Dict[str, Any]:
         """Evaluate quality of a reasoning pattern used by agents.
 
@@ -198,7 +199,9 @@ Keep response short (2-3 sentences max)."""
         try:
             if self.llm_client:
                 reasoning_result = await self._get_llm_reasoning(pattern_prompt)
-                assessment = reasoning_result['text'] if reasoning_result else "Assessment unavailable"
+                assessment = (
+                    reasoning_result["text"] if reasoning_result else "Assessment unavailable"
+                )
             else:
                 assessment = self._heuristic_pattern_assessment(success_pct, avg_success_rate)
 
@@ -216,7 +219,7 @@ Keep response short (2-3 sentences max)."""
                 "success_rate": success_pct,
                 "assessment": assessment,
                 "recommendation": recommendation,
-                "reasoning_type": "llm-based" if self.llm_client else "heuristic"
+                "reasoning_type": "llm-based" if self.llm_client else "heuristic",
             }
 
         except Exception as e:
@@ -225,7 +228,7 @@ Keep response short (2-3 sentences max)."""
                 "status": "error",
                 "error": str(e),
                 "pattern": pattern_name,
-                "success_rate": success_pct
+                "success_rate": success_pct,
             }
 
     async def _get_llm_reasoning(self, prompt: str) -> Optional[Dict[str, Any]]:
@@ -246,7 +249,7 @@ Keep response short (2-3 sentences max)."""
             return {
                 "text": reasoning_result.text,
                 "tokens": reasoning_result.tokens,
-                "latency_ms": reasoning_result.latency_ms
+                "latency_ms": reasoning_result.latency_ms,
             }
         except Exception as e:
             logger.warning(f"LLM reasoning failed: {e}")
@@ -257,7 +260,7 @@ Keep response short (2-3 sentences max)."""
         success_rate: float,
         events_processed: int,
         patterns_extracted: int,
-        execution_time_ms: float
+        execution_time_ms: float,
     ) -> str:
         """Fallback: heuristic analysis without LLM.
 
@@ -300,10 +303,7 @@ Keep response short (2-3 sentences max)."""
         )
 
     async def _generate_recommendations(
-        self,
-        status: str,
-        success_rate: float,
-        execution_time_ms: float
+        self, status: str, success_rate: float, execution_time_ms: float
     ) -> List[str]:
         """Generate recommendations for improvement.
 
@@ -322,7 +322,9 @@ Keep response short (2-3 sentences max)."""
             recommendations.append("Review consolidation strategy for this session type")
 
         if execution_time_ms > 5000:
-            recommendations.append("Profile consolidation bottlenecks - consider caching frequent patterns")
+            recommendations.append(
+                "Profile consolidation bottlenecks - consider caching frequent patterns"
+            )
 
         if not recommendations:
             recommendations.append("Current consolidation strategy is working well")
@@ -385,7 +387,7 @@ class DecisionQualityEvaluator:
         decision_made: str,
         outcome: str,
         success_rate: float,
-        execution_context: Optional[Dict[str, Any]] = None
+        execution_context: Optional[Dict[str, Any]] = None,
     ) -> float:
         """Score quality of a decision (0.0-1.0).
 
@@ -417,7 +419,7 @@ class DecisionQualityEvaluator:
                 decision=decision_made,
                 outcome=outcome,
                 success_rate=success_rate,
-                context=execution_context
+                context=execution_context,
             )
 
             # Use analyzer's quality score if available
@@ -429,11 +431,7 @@ class DecisionQualityEvaluator:
         return min(1.0, max(0.0, base_quality))
 
     async def extract_learning_insight(
-        self,
-        agent_name: str,
-        decision: str,
-        outcome: str,
-        context: Optional[Dict[str, Any]] = None
+        self, agent_name: str, decision: str, outcome: str, context: Optional[Dict[str, Any]] = None
     ) -> Optional[str]:
         """Extract a learning insight from decision outcome.
 
@@ -454,7 +452,7 @@ class DecisionQualityEvaluator:
                 decision=decision,
                 outcome=outcome,
                 success_rate=1.0 if outcome == "success" else 0.0,
-                context=context
+                context=context,
             )
 
             if analysis.get("status") == "success":

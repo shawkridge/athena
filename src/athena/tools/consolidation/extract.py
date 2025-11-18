@@ -1,4 +1,5 @@
 """Extract patterns from consolidated memories tool."""
+
 import time
 from typing import Any, Dict
 from athena.tools import BaseTool, ToolMetadata
@@ -37,7 +38,7 @@ class ExtractPatternsTool(BaseTool):
                     "enum": ["statistical", "causal", "temporal", "all"],
                     "description": "Type of patterns to extract",
                     "required": False,
-                    "default": "all"
+                    "default": "all",
                 },
                 "min_frequency": {
                     "type": "integer",
@@ -45,7 +46,7 @@ class ExtractPatternsTool(BaseTool):
                     "required": False,
                     "default": 3,
                     "minimum": 1,
-                    "maximum": 1000
+                    "maximum": 1000,
                 },
                 "max_patterns": {
                     "type": "integer",
@@ -53,7 +54,7 @@ class ExtractPatternsTool(BaseTool):
                     "required": False,
                     "default": 100,
                     "minimum": 1,
-                    "maximum": 10000
+                    "maximum": 10000,
                 },
                 "confidence_threshold": {
                     "type": "number",
@@ -61,20 +62,17 @@ class ExtractPatternsTool(BaseTool):
                     "required": False,
                     "default": 0.6,
                     "minimum": 0.0,
-                    "maximum": 1.0
-                }
+                    "maximum": 1.0,
+                },
             },
             returns={
                 "type": "object",
                 "properties": {
                     "patterns_found": {
                         "type": "integer",
-                        "description": "Number of patterns extracted"
+                        "description": "Number of patterns extracted",
                     },
-                    "pattern_type": {
-                        "type": "string",
-                        "description": "Type of patterns extracted"
-                    },
+                    "pattern_type": {"type": "string", "description": "Type of patterns extracted"},
                     "patterns": {
                         "type": "array",
                         "description": "List of extracted patterns",
@@ -85,16 +83,16 @@ class ExtractPatternsTool(BaseTool):
                                 "type": {"type": "string"},
                                 "description": {"type": "string"},
                                 "frequency": {"type": "integer"},
-                                "confidence": {"type": "number"}
-                            }
-                        }
+                                "confidence": {"type": "number"},
+                            },
+                        },
                     },
                     "extraction_time_ms": {
                         "type": "number",
-                        "description": "Time taken to extract patterns"
-                    }
-                }
-            }
+                        "description": "Time taken to extract patterns",
+                    },
+                },
+            },
         )
 
     def validate_input(self, **kwargs) -> None:
@@ -137,6 +135,7 @@ class ExtractPatternsTool(BaseTool):
 
             try:
                 from athena.core.database import get_database
+
                 db = get_database()
 
                 try:
@@ -148,7 +147,7 @@ class ExtractPatternsTool(BaseTool):
                            FROM episodic_events
                            ORDER BY timestamp DESC
                            LIMIT ?""",
-                        (max_events,)
+                        (max_events,),
                     )
                     rows = cursor.fetchall()
 
@@ -165,27 +164,33 @@ class ExtractPatternsTool(BaseTool):
                                         content_words[word] = content_words.get(word, 0) + 1
 
                             # Find frequent patterns
-                            for word, freq in sorted(content_words.items(), key=lambda x: x[1], reverse=True)[:5]:
+                            for word, freq in sorted(
+                                content_words.items(), key=lambda x: x[1], reverse=True
+                            )[:5]:
                                 if freq >= min_frequency:
                                     confidence = min(1.0, freq / len(rows))
                                     if confidence >= confidence_threshold:
-                                        patterns.append({
-                                            "pattern": word,
-                                            "type": "keyword",
-                                            "frequency": freq,
-                                            "confidence": confidence
-                                        })
+                                        patterns.append(
+                                            {
+                                                "pattern": word,
+                                                "type": "keyword",
+                                                "frequency": freq,
+                                                "confidence": confidence,
+                                            }
+                                        )
 
                         elif pattern_type == "causal":
                             # Extract causal patterns (event sequences)
                             for i in range(len(rows) - 1):
                                 if rows[i][3] == rows[i + 1][3]:  # Same event type
-                                    patterns.append({
-                                        "pattern": f"{rows[i][3]} → {rows[i + 1][3]}",
-                                        "type": "causal",
-                                        "confidence": 0.7,
-                                        "events": [rows[i][0], rows[i + 1][0]]
-                                    })
+                                    patterns.append(
+                                        {
+                                            "pattern": f"{rows[i][3]} → {rows[i + 1][3]}",
+                                            "type": "causal",
+                                            "confidence": 0.7,
+                                            "events": [rows[i][0], rows[i + 1][0]],
+                                        }
+                                    )
 
                         elif pattern_type == "temporal":
                             # Extract temporal patterns (periodic occurrences)
@@ -198,12 +203,14 @@ class ExtractPatternsTool(BaseTool):
 
                             for event_type, times in event_times.items():
                                 if len(times) >= min_frequency:
-                                    patterns.append({
-                                        "pattern": f"Periodic {event_type}",
-                                        "type": "temporal",
-                                        "frequency": len(times),
-                                        "confidence": min(1.0, len(times) / len(rows))
-                                    })
+                                    patterns.append(
+                                        {
+                                            "pattern": f"Periodic {event_type}",
+                                            "type": "temporal",
+                                            "frequency": len(times),
+                                            "confidence": min(1.0, len(times) / len(rows)),
+                                        }
+                                    )
 
                         else:
                             # Default: statistical
@@ -215,25 +222,31 @@ class ExtractPatternsTool(BaseTool):
                                     if len(word) > 5:
                                         content_words[word] = content_words.get(word, 0) + 1
 
-                            for word, freq in sorted(content_words.items(), key=lambda x: x[1], reverse=True)[:5]:
+                            for word, freq in sorted(
+                                content_words.items(), key=lambda x: x[1], reverse=True
+                            )[:5]:
                                 if freq >= min_frequency:
                                     confidence = min(1.0, freq / len(rows))
                                     if confidence >= confidence_threshold:
-                                        patterns.append({
-                                            "pattern": word,
-                                            "type": "keyword",
-                                            "frequency": freq,
-                                            "confidence": confidence
-                                        })
+                                        patterns.append(
+                                            {
+                                                "pattern": word,
+                                                "type": "keyword",
+                                                "frequency": freq,
+                                                "confidence": confidence,
+                                            }
+                                        )
 
                         patterns_found = len(patterns)
 
                 except Exception as db_err:
                     import logging
+
                     logging.warning(f"Pattern extraction query failed: {db_err}")
 
             except Exception as e:
                 import logging
+
                 logging.debug(f"Pattern extraction unavailable: {e}")
 
             elapsed = (time.time() - start_time) * 1000
@@ -246,18 +259,18 @@ class ExtractPatternsTool(BaseTool):
                 "confidence_threshold": confidence_threshold,
                 "max_events_analyzed": max_events,
                 "extraction_time_ms": elapsed,
-                "status": "success"
+                "status": "success",
             }
 
         except ValueError as e:
             return {
                 "error": str(e),
                 "status": "error",
-                "extraction_time_ms": (time.time() - start_time) * 1000
+                "extraction_time_ms": (time.time() - start_time) * 1000,
             }
         except Exception as e:
             return {
                 "error": f"Unexpected error: {str(e)}",
                 "status": "error",
-                "extraction_time_ms": (time.time() - start_time) * 1000
+                "extraction_time_ms": (time.time() - start_time) * 1000,
             }

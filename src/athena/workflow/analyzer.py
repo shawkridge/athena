@@ -6,9 +6,7 @@ Analyzes task types and calculates pattern strength.
 
 import logging
 import json
-import re
-from typing import Optional, Dict, Any, List, Tuple
-from datetime import datetime
+from typing import Optional, Dict, Any, List
 from collections import defaultdict, Counter
 
 from ..core.database import Database
@@ -108,11 +106,13 @@ class TaskSequenceAnalyzer:
                 tags = json.loads(tags_json) if tags_json else []
                 task_type = TaskTypeClassifier.classify(content, tags)
 
-                task_sequence.append({
-                    "id": task_id,
-                    "type": task_type,
-                    "completed_at": completed_at,
-                })
+                task_sequence.append(
+                    {
+                        "id": task_id,
+                        "type": task_type,
+                        "completed_at": completed_at,
+                    }
+                )
 
             # Mine transitions
             patterns_found = 0
@@ -127,9 +127,8 @@ class TaskSequenceAnalyzer:
 
                 # Calculate duration in hours
                 duration_hours = (
-                    (next_task["completed_at"] - current["completed_at"]).total_seconds()
-                    / 3600
-                )
+                    next_task["completed_at"] - current["completed_at"]
+                ).total_seconds() / 3600
 
                 # Store pattern
                 self.pattern_store.store_pattern(
@@ -310,7 +309,9 @@ class TaskSequenceAnalyzer:
                 "avg_frequency": round(avg_frequency, 1),
                 "high_confidence": high_confidence,
                 "anomalies": anomalies,
-                "process_maturity": "high" if avg_confidence > 0.75 else "medium" if avg_confidence > 0.5 else "low",
+                "process_maturity": (
+                    "high" if avg_confidence > 0.75 else "medium" if avg_confidence > 0.5 else "low"
+                ),
             }
 
         except Exception as e:

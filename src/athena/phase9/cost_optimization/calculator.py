@@ -6,7 +6,6 @@ from athena.phase9.cost_optimization.models import (
     BudgetAllocation,
     CostAnomalyAlert,
     CostOptimization,
-    ResourceType,
     ROICalculation,
     TaskCost,
 )
@@ -74,9 +73,7 @@ class CostCalculator:
         infrastructure_cost = 0.0
         if infrastructure_hours > 0:
             # Look for AWS/compute rate
-            compute_rate = next(
-                (r for r in rates if "compute" in r.name.lower()), None
-            )
+            compute_rate = next((r for r in rates if "compute" in r.name.lower()), None)
             if compute_rate:
                 infrastructure_cost = infrastructure_hours * compute_rate.rate
             else:
@@ -96,11 +93,7 @@ class CostCalculator:
 
         # Total cost
         total_cost = (
-            labor_cost
-            + tool_cost
-            + infrastructure_cost
-            + external_service_cost
-            + training_cost
+            labor_cost + tool_cost + infrastructure_cost + external_service_cost + training_cost
         )
 
         cost_breakdown = {
@@ -192,9 +185,9 @@ class CostCalculator:
                 estimated_cost_current=current_cost,
                 estimated_cost_suggested=parallel_cost,
                 cost_saving=current_cost - parallel_cost,
-                cost_saving_percentage=((current_cost - parallel_cost) / current_cost * 100)
-                if current_cost > 0
-                else 0,
+                cost_saving_percentage=(
+                    ((current_cost - parallel_cost) / current_cost * 100) if current_cost > 0 else 0
+                ),
                 risk_level="low",
                 implementation_effort="easy",
                 reasoning="Run independent tasks in parallel to reduce total duration",
@@ -212,9 +205,11 @@ class CostCalculator:
                 estimated_cost_current=current_cost,
                 estimated_cost_suggested=resource_optimized_cost,
                 cost_saving=current_cost - resource_optimized_cost,
-                cost_saving_percentage=((current_cost - resource_optimized_cost) / current_cost * 100)
-                if current_cost > 0
-                else 0,
+                cost_saving_percentage=(
+                    ((current_cost - resource_optimized_cost) / current_cost * 100)
+                    if current_cost > 0
+                    else 0
+                ),
                 risk_level="medium",
                 implementation_effort="moderate",
                 reasoning="Use lower-cost resources or automate repetitive tasks",
@@ -232,9 +227,11 @@ class CostCalculator:
                 estimated_cost_current=current_cost,
                 estimated_cost_suggested=iterative_cost,
                 cost_saving=current_cost - iterative_cost,
-                cost_saving_percentage=((current_cost - iterative_cost) / current_cost * 100)
-                if current_cost > 0
-                else 0,
+                cost_saving_percentage=(
+                    ((current_cost - iterative_cost) / current_cost * 100)
+                    if current_cost > 0
+                    else 0
+                ),
                 risk_level="medium",
                 implementation_effort="moderate",
                 reasoning="Deliver in iterations, focusing on high-value items first",
@@ -252,9 +249,11 @@ class CostCalculator:
                 estimated_cost_current=current_cost,
                 estimated_cost_suggested=tool_optimized_cost,
                 cost_saving=current_cost - tool_optimized_cost,
-                cost_saving_percentage=((current_cost - tool_optimized_cost) / current_cost * 100)
-                if current_cost > 0
-                else 0,
+                cost_saving_percentage=(
+                    ((current_cost - tool_optimized_cost) / current_cost * 100)
+                    if current_cost > 0
+                    else 0
+                ),
                 risk_level="low",
                 implementation_effort="easy",
                 reasoning="Consolidate tools, negotiate better rates, or use open-source alternatives",
@@ -299,9 +298,7 @@ class CostCalculator:
             )
         # Check if budget utilization is high (>80%)
         elif current_total_cost > budget_allocation.total_budget * 0.8:
-            variance = (
-                (current_total_cost / budget_allocation.total_budget) * 100 - 100
-            )
+            variance = (current_total_cost / budget_allocation.total_budget) * 100 - 100
             alerts.append(
                 CostAnomalyAlert(
                     project_id=project_id,
@@ -326,7 +323,9 @@ class CostCalculator:
                     message=f"Rapid spending detected: {(current_total_cost / budget_allocation.total_budget * 100):.0f}% of budget spent",
                     current_cost=current_total_cost,
                     expected_cost=budget_allocation.total_budget * 0.3,
-                    variance_percentage=((current_total_cost / (budget_allocation.total_budget * 0.3) - 1) * 100),
+                    variance_percentage=(
+                        (current_total_cost / (budget_allocation.total_budget * 0.3) - 1) * 100
+                    ),
                     recommended_action="Review task priorities and cost efficiency",
                 )
             )

@@ -155,7 +155,6 @@ def _register_default_checks(checker: HealthChecker):
     def check_disk_space():
         """Check disk space availability."""
         import psutil
-        import os
 
         try:
             disk = psutil.disk_usage("/")
@@ -185,6 +184,7 @@ def create_database_check(db_path: str):
     def check():
         """Check database connectivity."""
         import time
+
         try:
             start = time.perf_counter()
             # PostgreSQL connection should be used instead

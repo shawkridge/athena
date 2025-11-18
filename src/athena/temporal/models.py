@@ -23,7 +23,7 @@ class TemporalRelation:
 
     def __post_init__(self):
         """Validate temporal relation."""
-        valid_types = ['immediately_after', 'shortly_after', 'later_after', 'caused']
+        valid_types = ["immediately_after", "shortly_after", "later_after", "caused"]
         if self.relation_type not in valid_types:
             raise ValueError(f"Invalid relation_type: {self.relation_type}")
         if not (0.0 <= self.strength <= 1.0):
@@ -81,7 +81,7 @@ class TemporalQuery:
         if self.lookback_days < 1:
             raise ValueError("lookback_days must be >= 1")
         if not (0.0 <= self.min_confidence <= 1.0):
-            raise ValueError(f"min_confidence must be in [0.0, 1.0]")
+            raise ValueError("min_confidence must be in [0.0, 1.0]")
 
 
 @dataclass

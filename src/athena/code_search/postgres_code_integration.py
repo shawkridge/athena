@@ -12,14 +12,13 @@ Features:
 """
 
 import logging
-from typing import List, Dict, Optional, Set, Tuple, Any
+from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
-import json
 
 from ..core.database_postgres import PostgresDatabase
 from ..core.database import Database
-from .code_graph_integration import CodeEntity, CodeRelationship, CodeEntityType, CodeRelationType
-from .code_dependency_analysis import Dependency, DependencyMetrics, DependencyGraph
+from .code_graph_integration import CodeEntity
+from .code_dependency_analysis import DependencyGraph
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +81,7 @@ LANGUAGE_EXTENSIONS = {
 @dataclass
 class CodeSearchResult:
     """Result from PostgreSQL code search."""
+
     code_id: int
     file_path: str
     entity_name: str
@@ -375,6 +375,7 @@ class PostgresCodeIntegration:
         """Compute semantic hash for code entity."""
         content = f"{entity.name}:{entity.entity_type.value}:{entity.docstring}"
         import hashlib
+
         return hashlib.sha256(content.encode()).hexdigest()[:16]
 
 

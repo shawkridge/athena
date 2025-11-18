@@ -19,33 +19,35 @@ from .symbol_models import Symbol
 @dataclass
 class ReportSection:
     """Single section of a report."""
+
     title: str
     content: str
-    subsections: List['ReportSection'] = None
+    subsections: List["ReportSection"] = None
 
 
 @dataclass
 class AnalysisReport:
     """Comprehensive analysis report."""
+
     title: str
     generated_at: str
     symbols_analyzed: int
     quality_score: float
     health_score: float
     status: str  # excellent, good, fair, poor, critical
-    
+
     # Sections
     executive_summary: str
     findings: List[str]
     recommendations: List[str]
-    
+
     # Metrics
     metrics: Dict[str, Any]
-    
+
     # Details
     high_risk_items: List[Dict]
     improvement_opportunities: List[Dict]
-    
+
     # Trends
     trends: List[Dict] = None
 
@@ -83,7 +85,7 @@ class ReportGenerator:
             AnalysisReport
         """
         symbols_analyzed = len(symbols)
-        
+
         # Calculate overall scores
         quality_score = quality_metrics.get("overall_score", 0.0)
         health_score = quality_metrics.get("health_score", 0.0)
@@ -198,7 +200,9 @@ class ReportGenerator:
 
         return findings
 
-    def _generate_recommendations(self, quality: Dict, complexity: Dict, violations: List) -> List[str]:
+    def _generate_recommendations(
+        self, quality: Dict, complexity: Dict, violations: List
+    ) -> List[str]:
         """Generate recommendations.
 
         Args:
@@ -259,7 +263,7 @@ class ReportGenerator:
                 "complex_symbols": complexity.get("complex_count", 0),
                 "violations": len(quality.get("violations", [])),
                 "hotspot_symbols": len(dependency.get("hotspots", [])),
-            }
+            },
         }
 
     def _identify_high_risk_items(self, violations: List) -> List[Dict]:
@@ -276,11 +280,13 @@ class ReportGenerator:
         for violation in violations[:10]:  # Top 10
             if isinstance(violation, dict):
                 if violation.get("severity") in ["error", "critical"]:
-                    high_risk.append({
-                        "symbol": violation.get("symbol", "unknown"),
-                        "issue": violation.get("message", ""),
-                        "severity": violation.get("severity", ""),
-                    })
+                    high_risk.append(
+                        {
+                            "symbol": violation.get("symbol", "unknown"),
+                            "issue": violation.get("message", ""),
+                            "severity": violation.get("severity", ""),
+                        }
+                    )
 
         return high_risk
 
@@ -298,31 +304,37 @@ class ReportGenerator:
 
         # Improvement: Security
         if quality.get("security_stats", {}).get("mean", 0) < 0.7:
-            improvements.append({
-                "area": "Security",
-                "current": quality.get("security_stats", {}).get("mean", 0),
-                "target": 0.85,
-                "impact": "high",
-            })
+            improvements.append(
+                {
+                    "area": "Security",
+                    "current": quality.get("security_stats", {}).get("mean", 0),
+                    "target": 0.85,
+                    "impact": "high",
+                }
+            )
 
         # Improvement: Complexity
         avg_complexity = complexity.get("average_complexity", 0)
         if avg_complexity > 15:
-            improvements.append({
-                "area": "Code Complexity",
-                "current": avg_complexity,
-                "target": 10,
-                "impact": "high",
-            })
+            improvements.append(
+                {
+                    "area": "Code Complexity",
+                    "current": avg_complexity,
+                    "target": 10,
+                    "impact": "high",
+                }
+            )
 
         # Improvement: Documentation
         if quality.get("documentation_stats", {}).get("mean", 0) < 0.7:
-            improvements.append({
-                "area": "Documentation",
-                "current": quality.get("documentation_stats", {}).get("mean", 0),
-                "target": 0.85,
-                "impact": "medium",
-            })
+            improvements.append(
+                {
+                    "area": "Documentation",
+                    "current": quality.get("documentation_stats", {}).get("mean", 0),
+                    "target": 0.85,
+                    "impact": "medium",
+                }
+            )
 
         return improvements
 
@@ -454,18 +466,22 @@ class ReportGenerator:
         for finding in self.report.findings:
             html_parts.append(f"<li>{finding}</li>")
 
-        html_parts.extend([
-            "</ul>",
-            "<h2>Recommendations</h2>",
-        ])
+        html_parts.extend(
+            [
+                "</ul>",
+                "<h2>Recommendations</h2>",
+            ]
+        )
 
         for rec in self.report.recommendations:
             html_parts.append(f"<div class='recommendation'>{rec}</div>")
 
-        html_parts.extend([
-            "</body>",
-            "</html>",
-        ])
+        html_parts.extend(
+            [
+                "</body>",
+                "</html>",
+            ]
+        )
 
         return "\n".join(html_parts)
 

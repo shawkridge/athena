@@ -8,16 +8,17 @@ Provides:
 - Cross-file call tracking
 """
 
-from typing import Optional, Dict, List, Set, Tuple
-from dataclasses import dataclass, field
+from typing import Dict, List, Set, Tuple
+from dataclasses import dataclass
 import re
 
-from .symbol_models import Symbol, SymbolType
+from .symbol_models import Symbol
 
 
 @dataclass
 class CallNode:
     """A node in the call graph (a function/method)."""
+
     symbol: Symbol
     in_degree: int = 0  # Number of callers
     out_degree: int = 0  # Number of callees
@@ -29,6 +30,7 @@ class CallNode:
 @dataclass
 class CallEdge:
     """An edge in the call graph (a function call)."""
+
     from_symbol: Symbol
     to_symbol: Symbol
     call_count: int = 1
@@ -39,6 +41,7 @@ class CallEdge:
 @dataclass
 class CallPath:
     """A path of function calls."""
+
     symbols: List[Symbol]
     length: int = 0
 
@@ -83,15 +86,15 @@ class CallGraphAnalyzer:
         calls: List[CallEdge] = []
 
         # Detect language and use appropriate analyzer
-        if file_path.endswith(('.py', '.pyw')):
+        if file_path.endswith((".py", ".pyw")):
             calls.extend(self._analyze_python_calls(file_path, code))
-        elif file_path.endswith(('.js', '.jsx', '.ts', '.tsx')):
+        elif file_path.endswith((".js", ".jsx", ".ts", ".tsx")):
             calls.extend(self._analyze_js_calls(file_path, code))
-        elif file_path.endswith('.java'):
+        elif file_path.endswith(".java"):
             calls.extend(self._analyze_java_calls(file_path, code))
-        elif file_path.endswith('.go'):
+        elif file_path.endswith(".go"):
             calls.extend(self._analyze_go_calls(file_path, code))
-        elif file_path.endswith('.rs'):
+        elif file_path.endswith(".rs"):
             calls.extend(self._analyze_rust_calls(file_path, code))
 
         return calls
@@ -99,26 +102,22 @@ class CallGraphAnalyzer:
     def _analyze_python_calls(self, file_path: str, code: str) -> List[CallEdge]:
         """Analyze Python function calls."""
         calls: List[CallEdge] = []
-        lines = code.split('\n')
+        lines = code.split("\n")
 
         # Pattern: function_name() or object.method()
-        call_pattern = re.compile(r'(\w+)\s*\(')
+        call_pattern = re.compile(r"(\w+)\s*\(")
 
         for line_num, line in enumerate(lines, 1):
             # Skip comments and strings
-            if '#' in line:
-                line = line[:line.index('#')]
+            if "#" in line:
+                line = line[: line.index("#")]
 
             matches = call_pattern.findall(line)
             for func_name in matches:
                 # Try to find this function in symbol index
                 for qname, symbol in self.symbol_index.items():
                     if symbol.name == func_name:
-                        call = CallEdge(
-                            from_symbol=None,
-                            to_symbol=symbol,
-                            line_number=line_num
-                        )
+                        call = CallEdge(from_symbol=None, to_symbol=symbol, line_number=line_num)
                         calls.append(call)
                         break
 
@@ -127,25 +126,21 @@ class CallGraphAnalyzer:
     def _analyze_js_calls(self, file_path: str, code: str) -> List[CallEdge]:
         """Analyze JavaScript/TypeScript function calls."""
         calls: List[CallEdge] = []
-        lines = code.split('\n')
+        lines = code.split("\n")
 
         # Pattern: functionName() or object.method() or await func()
-        call_pattern = re.compile(r'(?:await\s+)?(\w+)\s*\(')
+        call_pattern = re.compile(r"(?:await\s+)?(\w+)\s*\(")
 
         for line_num, line in enumerate(lines, 1):
             # Skip comments and strings
-            if '//' in line:
-                line = line[:line.index('//')]
+            if "//" in line:
+                line = line[: line.index("//")]
 
             matches = call_pattern.findall(line)
             for func_name in matches:
                 for qname, symbol in self.symbol_index.items():
                     if symbol.name == func_name:
-                        call = CallEdge(
-                            from_symbol=None,
-                            to_symbol=symbol,
-                            line_number=line_num
-                        )
+                        call = CallEdge(from_symbol=None, to_symbol=symbol, line_number=line_num)
                         calls.append(call)
                         break
 
@@ -154,21 +149,17 @@ class CallGraphAnalyzer:
     def _analyze_java_calls(self, file_path: str, code: str) -> List[CallEdge]:
         """Analyze Java method calls."""
         calls: List[CallEdge] = []
-        lines = code.split('\n')
+        lines = code.split("\n")
 
         # Pattern: methodName() or object.methodName()
-        call_pattern = re.compile(r'(\w+)\s*\(')
+        call_pattern = re.compile(r"(\w+)\s*\(")
 
         for line_num, line in enumerate(lines, 1):
             matches = call_pattern.findall(line)
             for method_name in matches:
                 for qname, symbol in self.symbol_index.items():
                     if symbol.name == method_name:
-                        call = CallEdge(
-                            from_symbol=None,
-                            to_symbol=symbol,
-                            line_number=line_num
-                        )
+                        call = CallEdge(from_symbol=None, to_symbol=symbol, line_number=line_num)
                         calls.append(call)
                         break
 
@@ -177,21 +168,17 @@ class CallGraphAnalyzer:
     def _analyze_go_calls(self, file_path: str, code: str) -> List[CallEdge]:
         """Analyze Go function calls."""
         calls: List[CallEdge] = []
-        lines = code.split('\n')
+        lines = code.split("\n")
 
         # Pattern: FunctionName() or pkg.FunctionName()
-        call_pattern = re.compile(r'(\w+)\s*\(')
+        call_pattern = re.compile(r"(\w+)\s*\(")
 
         for line_num, line in enumerate(lines, 1):
             matches = call_pattern.findall(line)
             for func_name in matches:
                 for qname, symbol in self.symbol_index.items():
                     if symbol.name == func_name:
-                        call = CallEdge(
-                            from_symbol=None,
-                            to_symbol=symbol,
-                            line_number=line_num
-                        )
+                        call = CallEdge(from_symbol=None, to_symbol=symbol, line_number=line_num)
                         calls.append(call)
                         break
 
@@ -200,21 +187,17 @@ class CallGraphAnalyzer:
     def _analyze_rust_calls(self, file_path: str, code: str) -> List[CallEdge]:
         """Analyze Rust function calls."""
         calls: List[CallEdge] = []
-        lines = code.split('\n')
+        lines = code.split("\n")
 
         # Pattern: function_name() or object.method()
-        call_pattern = re.compile(r'(\w+)\s*\(')
+        call_pattern = re.compile(r"(\w+)\s*\(")
 
         for line_num, line in enumerate(lines, 1):
             matches = call_pattern.findall(line)
             for func_name in matches:
                 for qname, symbol in self.symbol_index.items():
                     if symbol.name == func_name:
-                        call = CallEdge(
-                            from_symbol=None,
-                            to_symbol=symbol,
-                            line_number=line_num
-                        )
+                        call = CallEdge(from_symbol=None, to_symbol=symbol, line_number=line_num)
                         calls.append(call)
                         break
 
@@ -231,8 +214,16 @@ class CallGraphAnalyzer:
                 continue
 
             # Get qualified names
-            from_qname = call.from_symbol.full_qualified_name or f"{call.from_symbol.file_path}:{call.from_symbol.name}" if call.from_symbol else "unknown"
-            to_qname = call.to_symbol.full_qualified_name or f"{call.to_symbol.file_path}:{call.to_symbol.name}"
+            from_qname = (
+                call.from_symbol.full_qualified_name
+                or f"{call.from_symbol.file_path}:{call.from_symbol.name}"
+                if call.from_symbol
+                else "unknown"
+            )
+            to_qname = (
+                call.to_symbol.full_qualified_name
+                or f"{call.to_symbol.file_path}:{call.to_symbol.name}"
+            )
 
             # Add to call_graph (from -> to)
             if from_qname not in self.call_graph:
@@ -317,7 +308,9 @@ class CallGraphAnalyzer:
             "entry_points": len([n for n in self.call_nodes.values() if n.in_degree == 0]),
         }
 
-    def find_call_paths(self, from_symbol: Symbol, to_symbol: Symbol, max_depth: int = 5) -> List[CallPath]:
+    def find_call_paths(
+        self, from_symbol: Symbol, to_symbol: Symbol, max_depth: int = 5
+    ) -> List[CallPath]:
         """Find all call paths between two symbols.
 
         Args:
@@ -328,7 +321,9 @@ class CallGraphAnalyzer:
         Returns:
             List of call paths from from_symbol to to_symbol
         """
-        from_qname = from_symbol.full_qualified_name or f"{from_symbol.file_path}:{from_symbol.name}"
+        from_qname = (
+            from_symbol.full_qualified_name or f"{from_symbol.file_path}:{from_symbol.name}"
+        )
         to_qname = to_symbol.full_qualified_name or f"{to_symbol.file_path}:{to_symbol.name}"
 
         paths: List[CallPath] = []
@@ -349,7 +344,10 @@ class CallGraphAnalyzer:
 
             for call in self.call_graph.get(current_qname, []):
                 if call.to_symbol:
-                    next_qname = call.to_symbol.full_qualified_name or f"{call.to_symbol.file_path}:{call.to_symbol.name}"
+                    next_qname = (
+                        call.to_symbol.full_qualified_name
+                        or f"{call.to_symbol.file_path}:{call.to_symbol.name}"
+                    )
                     path.append(call.to_symbol)
                     dfs(next_qname, path)
                     path.pop()
@@ -391,7 +389,9 @@ class CallGraphAnalyzer:
                 report += f"{node.symbol.name:30} called {node.in_degree} times\n"
 
         # Top callee makers
-        top_callee_makers = sorted(self.call_nodes.values(), key=lambda n: n.out_degree, reverse=True)[:5]
+        top_callee_makers = sorted(
+            self.call_nodes.values(), key=lambda n: n.out_degree, reverse=True
+        )[:5]
         if top_callee_makers:
             report += "\n" + "─" * 70 + "\n"
             report += "Top Calling Functions:\n"

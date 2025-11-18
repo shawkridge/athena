@@ -12,11 +12,12 @@ from datetime import datetime
 import asyncio
 
 from .retrieval_evaluator import RetrievalEvaluator, RelevanceLevel, RelevanceScore
-from .answer_generator import AnswerGenerator, GeneratedAnswer, CritiqueType
+from .answer_generator import AnswerGenerator, GeneratedAnswer
 
 
 class SelfRAGStage(str, Enum):
     """Stages in Self-RAG pipeline"""
+
     RETRIEVE = "retrieve"
     EVALUATE_RETRIEVAL = "evaluate_retrieval"
     GENERATE = "generate"
@@ -28,6 +29,7 @@ class SelfRAGStage(str, Enum):
 @dataclass
 class RetrievalResult:
     """Result of retrieval phase"""
+
     query: str
     documents: List[str]
     relevance_scores: List[RelevanceScore] = field(default_factory=list)
@@ -48,6 +50,7 @@ class RetrievalResult:
 @dataclass
 class SelfRAGResult:
     """Complete result of Self-RAG pipeline"""
+
     query: str
     final_answer: str
     confidence: float
@@ -156,13 +159,13 @@ class SelfRAG:
             List of retrieved documents
         """
         # Use provided retriever or default
-        return await self.retriever(query) if asyncio.iscoroutinefunction(
-            self.retriever
-        ) else self.retriever(query)
+        return (
+            await self.retriever(query)
+            if asyncio.iscoroutinefunction(self.retriever)
+            else self.retriever(query)
+        )
 
-    async def _evaluate_retrieval(
-        self, query: str, documents: List[str]
-    ) -> RetrievalResult:
+    async def _evaluate_retrieval(self, query: str, documents: List[str]) -> RetrievalResult:
         """Evaluate quality of retrieved documents
 
         Args:
@@ -179,8 +182,7 @@ class SelfRAG:
         relevant_count = sum(
             1
             for score in relevance_scores
-            if score.relevance_level
-            in [RelevanceLevel.RELEVANT, RelevanceLevel.HIGHLY_RELEVANT]
+            if score.relevance_level in [RelevanceLevel.RELEVANT, RelevanceLevel.HIGHLY_RELEVANT]
         )
 
         # Compute average relevance
@@ -198,9 +200,7 @@ class SelfRAG:
             relevance_score_avg=avg_relevance,
         )
 
-    async def _generate_and_critique(
-        self, query: str, documents: List[str]
-    ) -> tuple:
+    async def _generate_and_critique(self, query: str, documents: List[str]) -> tuple:
         """Generate answer and perform iterative critique
 
         Args:
@@ -222,9 +222,7 @@ class SelfRAG:
 
         return generated_answer.answer, generated_answer, iterations + 1
 
-    async def adaptive_retrieval(
-        self, query: str, max_retrievals: int = 3
-    ) -> RetrievalResult:
+    async def adaptive_retrieval(self, query: str, max_retrievals: int = 3) -> RetrievalResult:
         """Adaptive retrieval that continues until quality threshold
 
         Args:
@@ -257,9 +255,7 @@ class SelfRAG:
 
         return best_result
 
-    async def stream_result(
-        self, query: str, initial_documents: List[str] = None
-    ) -> Any:
+    async def stream_result(self, query: str, initial_documents: List[str] = None) -> Any:
         """Stream result generation for real-time feedback
 
         Args:

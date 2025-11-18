@@ -6,7 +6,7 @@ Tracks MAPE, RMSE, bias, and identifies systematic over/underestimation patterns
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from enum import Enum
 import math
@@ -16,6 +16,7 @@ from ..core.database import Database
 
 class TaskPriority(str, Enum):
     """Task priority levels."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -24,6 +25,7 @@ class TaskPriority(str, Enum):
 
 class TaskComplexity(str, Enum):
     """Task complexity levels."""
+
     TRIVIAL = "trivial"
     SIMPLE = "simple"
     MODERATE = "moderate"
@@ -34,16 +36,21 @@ class TaskComplexity(str, Enum):
 @dataclass
 class AccuracyMetrics:
     """Metrics for estimation accuracy."""
-    mape: float                          # Mean Absolute Percentage Error
-    rmse: float                          # Root Mean Square Error
-    bias: float                          # Over/underestimation bias (-1 to 1)
-    accuracy_percentage: float           # % of estimates within ±15%
+
+    mape: float  # Mean Absolute Percentage Error
+    rmse: float  # Root Mean Square Error
+    bias: float  # Over/underestimation bias (-1 to 1)
+    accuracy_percentage: float  # % of estimates within ±15%
     sample_size: int
     confidence_interval: Tuple[float, float]  # (lower, upper) bounds at 95%
 
     def __str__(self) -> str:
         """Human-readable representation."""
-        accuracy_emoji = "✓" if self.accuracy_percentage >= 80 else "⚠" if self.accuracy_percentage >= 60 else "✗"
+        accuracy_emoji = (
+            "✓"
+            if self.accuracy_percentage >= 80
+            else "⚠" if self.accuracy_percentage >= 60 else "✗"
+        )
         return (
             f"{accuracy_emoji} MAPE: {self.mape:.1f}% | "
             f"RMSE: {self.rmse:.1f}h | "
@@ -56,35 +63,38 @@ class AccuracyMetrics:
 @dataclass
 class Trend:
     """A trend in estimation accuracy."""
-    period: str                          # "week" | "month"
+
+    period: str  # "week" | "month"
     start_date: datetime
     end_date: datetime
     metrics: AccuracyMetrics
-    direction: str                       # "improving" | "degrading" | "stable"
-    change_percentage: float             # % change from previous period
+    direction: str  # "improving" | "degrading" | "stable"
+    change_percentage: float  # % change from previous period
 
 
 @dataclass
 class EstimationPattern:
     """A discovered pattern in estimation."""
+
     name: str
     description: str
-    affected_type: str                   # Task type this pattern affects
-    frequency: int                       # How many tasks match this pattern
-    avg_error: float                     # Average error in this pattern (percentage)
-    error_direction: str                 # "underestimated" | "overestimated"
-    suggested_action: str                # Recommended action
-    confidence: float                    # 0-1 confidence in pattern
+    affected_type: str  # Task type this pattern affects
+    frequency: int  # How many tasks match this pattern
+    avg_error: float  # Average error in this pattern (percentage)
+    error_direction: str  # "underestimated" | "overestimated"
+    suggested_action: str  # Recommended action
+    confidence: float  # 0-1 confidence in pattern
 
 
 @dataclass
 class TaskEstimate:
     """A task estimation record."""
+
     task_id: int
     estimated_hours: float
     actual_hours: float
-    error_hours: float                   # actual - estimated
-    error_percentage: float              # (actual - estimated) / estimated * 100
+    error_hours: float  # actual - estimated
+    error_percentage: float  # (actual - estimated) / estimated * 100
     task_type: str
     priority: str
     complexity: str
@@ -96,6 +106,7 @@ class TaskEstimate:
 @dataclass
 class AccuracyReport:
     """Complete accuracy analysis report."""
+
     project_id: int
     overall: AccuracyMetrics
     by_priority: Dict[str, AccuracyMetrics]
@@ -114,31 +125,39 @@ class AccuracyReport:
             "ESTIMATION ACCURACY REPORT",
             "=" * 60,
             f"\nOverall Accuracy: {self.overall}",
-            f"\nBy Priority:",
+            "\nBy Priority:",
         ]
         for priority, metrics in sorted(self.by_priority.items()):
             lines.append(f"  {priority:10s}: {metrics}")
 
-        lines.extend([
-            f"\nBy Complexity:",
-        ])
+        lines.extend(
+            [
+                "\nBy Complexity:",
+            ]
+        )
         for complexity, metrics in sorted(self.by_complexity.items()):
             lines.append(f"  {complexity:10s}: {metrics}")
 
         if self.trends:
-            lines.append(f"\nTrends:")
+            lines.append("\nTrends:")
             for trend in self.trends[:3]:  # Top 3 trends
-                direction_emoji = "📈" if trend.direction == "improving" else "📉" if trend.direction == "degrading" else "➡️"
-                lines.append(f"  {direction_emoji} {trend.period}: {trend.direction} ({trend.change_percentage:+.1f}%)")
+                direction_emoji = (
+                    "📈"
+                    if trend.direction == "improving"
+                    else "📉" if trend.direction == "degrading" else "➡️"
+                )
+                lines.append(
+                    f"  {direction_emoji} {trend.period}: {trend.direction} ({trend.change_percentage:+.1f}%)"
+                )
 
         if self.patterns:
-            lines.append(f"\nKey Patterns:")
+            lines.append("\nKey Patterns:")
             for pattern in self.patterns[:5]:  # Top 5 patterns
                 lines.append(f"  • {pattern.name}: {pattern.description}")
                 lines.append(f"    Action: {pattern.suggested_action}")
 
         if self.recommendations:
-            lines.append(f"\nRecommendations:")
+            lines.append("\nRecommendations:")
             for rec in self.recommendations[:5]:
                 lines.append(f"  ✓ {rec}")
 
@@ -249,7 +268,7 @@ class EstimationAnalyzer:
         mape = sum(error_percentages) / n
 
         # RMSE: Root Mean Square Error
-        rmse = math.sqrt(sum(e ** 2 for e in errors) / n)
+        rmse = math.sqrt(sum(e**2 for e in errors) / n)
 
         # Bias: Average error (positive = underestimated, negative = overestimated)
         bias = sum(task.error_percentage for task in tasks) / n / 100
@@ -258,7 +277,9 @@ class EstimationAnalyzer:
         accuracy_pct = (within_tolerance / n) * 100
 
         # Confidence interval (95%) using standard error
-        std_error = math.sqrt(sum((abs(e) - mape) ** 2 for e in error_percentages) / n) / math.sqrt(n)
+        std_error = math.sqrt(sum((abs(e) - mape) ** 2 for e in error_percentages) / n) / math.sqrt(
+            n
+        )
         ci_lower = max(0, mape - 1.96 * std_error)
         ci_upper = mape + 1.96 * std_error
 
@@ -294,7 +315,9 @@ class EstimationAnalyzer:
         # Would analyze weekly/monthly trends
         return []
 
-    def _find_outliers(self, tasks: List[TaskEstimate], threshold: float = 50.0) -> List[TaskEstimate]:
+    def _find_outliers(
+        self, tasks: List[TaskEstimate], threshold: float = 50.0
+    ) -> List[TaskEstimate]:
         """Find tasks with extreme estimation errors."""
         return [t for t in tasks if abs(t.error_percentage) > threshold]
 
@@ -312,27 +335,31 @@ class EstimationAnalyzer:
         for task_type, metrics in by_task_type.items():
             if metrics.sample_size >= 3:  # Minimum sample size
                 if metrics.bias > 0.15:  # Consistently underestimated
-                    patterns.append(EstimationPattern(
-                        name=f"{task_type} underestimated",
-                        description=f"{task_type} tasks are consistently underestimated by {metrics.mape:.0f}%",
-                        affected_type=task_type,
-                        frequency=metrics.sample_size,
-                        avg_error=metrics.mape,
-                        error_direction="underestimated",
-                        suggested_action=f"Add {metrics.mape:.0f}% buffer to {task_type} estimates",
-                        confidence=min(1.0, metrics.sample_size / 10),
-                    ))
+                    patterns.append(
+                        EstimationPattern(
+                            name=f"{task_type} underestimated",
+                            description=f"{task_type} tasks are consistently underestimated by {metrics.mape:.0f}%",
+                            affected_type=task_type,
+                            frequency=metrics.sample_size,
+                            avg_error=metrics.mape,
+                            error_direction="underestimated",
+                            suggested_action=f"Add {metrics.mape:.0f}% buffer to {task_type} estimates",
+                            confidence=min(1.0, metrics.sample_size / 10),
+                        )
+                    )
                 elif metrics.bias < -0.15:  # Consistently overestimated
-                    patterns.append(EstimationPattern(
-                        name=f"{task_type} overestimated",
-                        description=f"{task_type} tasks are consistently overestimated by {abs(metrics.mape):.0f}%",
-                        affected_type=task_type,
-                        frequency=metrics.sample_size,
-                        avg_error=metrics.mape,
-                        error_direction="overestimated",
-                        suggested_action=f"Reduce {task_type} estimates by {abs(metrics.mape):.0f}%",
-                        confidence=min(1.0, metrics.sample_size / 10),
-                    ))
+                    patterns.append(
+                        EstimationPattern(
+                            name=f"{task_type} overestimated",
+                            description=f"{task_type} tasks are consistently overestimated by {abs(metrics.mape):.0f}%",
+                            affected_type=task_type,
+                            frequency=metrics.sample_size,
+                            avg_error=metrics.mape,
+                            error_direction="overestimated",
+                            suggested_action=f"Reduce {task_type} estimates by {abs(metrics.mape):.0f}%",
+                            confidence=min(1.0, metrics.sample_size / 10),
+                        )
+                    )
 
         # Sort by frequency
         patterns.sort(key=lambda p: p.frequency, reverse=True)
@@ -350,14 +377,20 @@ class EstimationAnalyzer:
 
         # Overall accuracy recommendations
         if overall.accuracy_percentage < 60:
-            recommendations.append("Overall estimation accuracy is poor - review estimation process")
+            recommendations.append(
+                "Overall estimation accuracy is poor - review estimation process"
+            )
         elif overall.accuracy_percentage < 80:
-            recommendations.append("Estimation accuracy is below target - apply identified patterns")
+            recommendations.append(
+                "Estimation accuracy is below target - apply identified patterns"
+            )
 
         # Priority-specific recommendations
         for priority, metrics in by_priority.items():
             if priority == "critical" and metrics.accuracy_percentage < 80:
-                recommendations.append(f"Critical tasks have {metrics.accuracy_percentage:.0f}% accuracy - prioritize estimation for these")
+                recommendations.append(
+                    f"Critical tasks have {metrics.accuracy_percentage:.0f}% accuracy - prioritize estimation for these"
+                )
 
         # Pattern-based recommendations
         for pattern in patterns[:3]:

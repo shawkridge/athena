@@ -10,14 +10,14 @@ Enables "why?" queries: "Why did this fail?" → trace causality chain.
 """
 
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Set, Tuple
-from datetime import datetime, timedelta
+from typing import List, Optional, Dict, Set
 from enum import Enum
-from bisect import bisect_left, bisect_right
+from bisect import bisect_right
 
 
 class CausalityType(Enum):
     """Types of causal relationships detected."""
+
     DIRECT_CAUSE = "direct_cause"  # Likely cause-effect
     CONTRIBUTING_FACTOR = "contributing_factor"  # Partial cause
     TEMPORAL_CORRELATION = "temporal_correlation"  # Just correlated in time
@@ -27,6 +27,7 @@ class CausalityType(Enum):
 @dataclass
 class CausalLink:
     """Represents a causal relationship between two events."""
+
     source_event_id: int
     target_event_id: int
     causality_type: CausalityType
@@ -42,6 +43,7 @@ class CausalLink:
 @dataclass
 class EventSignature:
     """Compact representation of an episodic event for causality analysis."""
+
     event_id: int
     timestamp: int  # Unix milliseconds
     event_type: str
@@ -114,7 +116,7 @@ class TemporalCausalityDetector:
             candidates_indices = self._find_candidate_indices(
                 source_event.timestamp,
                 self.TEMPORAL_WINDOW_MS,
-                start_index=i + 1  # Only look forward in time
+                start_index=i + 1,  # Only look forward in time
             )
 
             # Evaluate only candidates (O(K) where K << N)
@@ -140,10 +142,7 @@ class TemporalCausalityDetector:
         self._timestamp_index = [e.timestamp for e in events]
 
     def _find_candidate_indices(
-        self,
-        source_timestamp: int,
-        window_ms: int,
-        start_index: int
+        self, source_timestamp: int, window_ms: int, start_index: int
     ) -> List[int]:
         """Find event indices within temporal window using binary search.
 
@@ -171,10 +170,7 @@ class TemporalCausalityDetector:
         return list(range(start_index, min(right_idx, len(self._events_by_index))))
 
     def _evaluate_causality(
-        self,
-        source: EventSignature,
-        target: EventSignature,
-        time_diff_ms: int
+        self, source: EventSignature, target: EventSignature, time_diff_ms: int
     ) -> Optional[CausalLink]:
         """Evaluate if source event caused target event.
 
@@ -194,9 +190,9 @@ class TemporalCausalityDetector:
 
         # Weighted combination
         confidence = (
-            temporal_score * self.TEMPORAL_PROXIMITY_WEIGHT +
-            context_score * self.CONTEXT_OVERLAP_WEIGHT +
-            code_signal_score * self.CODE_SIGNAL_WEIGHT
+            temporal_score * self.TEMPORAL_PROXIMITY_WEIGHT
+            + context_score * self.CONTEXT_OVERLAP_WEIGHT
+            + code_signal_score * self.CODE_SIGNAL_WEIGHT
         )
 
         if confidence < self.MIN_CONFIDENCE:
@@ -204,7 +200,9 @@ class TemporalCausalityDetector:
 
         # Determine causality type
         causality_type = self._determine_causality_type(source, target, confidence)
-        reasoning = self._generate_reasoning(source, target, temporal_score, context_score, code_signal_score)
+        reasoning = self._generate_reasoning(
+            source, target, temporal_score, context_score, code_signal_score
+        )
 
         return CausalLink(
             source_event_id=source.event_id,
@@ -214,7 +212,7 @@ class TemporalCausalityDetector:
             reasoning=reasoning,
             temporal_proximity_ms=time_diff_ms,
             shared_context_score=context_score,
-            code_signal_strength=code_signal_score
+            code_signal_strength=code_signal_score,
         )
 
     def _score_temporal_proximity(self, time_diff_ms: int) -> float:
@@ -318,10 +316,7 @@ class TemporalCausalityDetector:
         return 0.0
 
     def _determine_causality_type(
-        self,
-        source: EventSignature,
-        target: EventSignature,
-        confidence: float
+        self, source: EventSignature, target: EventSignature, confidence: float
     ) -> CausalityType:
         """Determine the type of causal relationship.
 
@@ -355,7 +350,7 @@ class TemporalCausalityDetector:
         target: EventSignature,
         temporal_score: float,
         context_score: float,
-        code_signal_score: float
+        code_signal_score: float,
     ) -> str:
         """Generate human-readable reasoning for the causal link.
 
@@ -410,25 +405,29 @@ def events_to_signatures(events_dict_list: List[Dict]) -> List[EventSignature]:
     for event_dict in events_dict_list:
         # Parse files from context_files array
         files = set()
-        if event_dict.get('context_files'):
-            files = set(event_dict['context_files'])
+        if event_dict.get("context_files"):
+            files = set(event_dict["context_files"])
 
         signature = EventSignature(
-            event_id=event_dict['id'],
-            timestamp=event_dict.get('timestamp', 0),
-            event_type=event_dict.get('event_type', 'unknown'),
-            outcome=event_dict.get('outcome'),
+            event_id=event_dict["id"],
+            timestamp=event_dict.get("timestamp", 0),
+            event_type=event_dict.get("event_type", "unknown"),
+            outcome=event_dict.get("outcome"),
             files=files,
-            task=event_dict.get('context_task'),
-            phase=event_dict.get('context_phase'),
-            session_id=event_dict.get('session_id'),
+            task=event_dict.get("context_task"),
+            phase=event_dict.get("context_phase"),
+            session_id=event_dict.get("session_id"),
             has_code_change=(
-                event_dict.get('event_type') in ['FILE_CHANGE', 'CODE_EDIT', 'REFACTORING']
-                or event_dict.get('files_changed', 0) > 0
+                event_dict.get("event_type") in ["FILE_CHANGE", "CODE_EDIT", "REFACTORING"]
+                or event_dict.get("files_changed", 0) > 0
             ),
-            has_test_result=event_dict.get('event_type') == 'TEST_RUN',
-            test_passed=event_dict.get('outcome') == 'success' if event_dict.get('event_type') == 'TEST_RUN' else None,
-            error_type=event_dict.get('error_type')
+            has_test_result=event_dict.get("event_type") == "TEST_RUN",
+            test_passed=(
+                event_dict.get("outcome") == "success"
+                if event_dict.get("event_type") == "TEST_RUN"
+                else None
+            ),
+            error_type=event_dict.get("error_type"),
         )
         signatures.append(signature)
 

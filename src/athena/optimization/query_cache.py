@@ -13,7 +13,7 @@ Key features:
 
 import hashlib
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -155,11 +155,7 @@ class QueryCache:
             Dict with hit rate, size, evictions, etc.
         """
         total_requests = self.total_hits + self.total_misses
-        hit_rate = (
-            (self.total_hits / total_requests * 100)
-            if total_requests > 0
-            else 0.0
-        )
+        hit_rate = (self.total_hits / total_requests * 100) if total_requests > 0 else 0.0
 
         # Analyze entry ages
         ages = [entry.get_age_seconds() for entry in self.cache.values()]
@@ -182,9 +178,7 @@ class QueryCache:
         Returns:
             Number of entries removed
         """
-        expired_keys = [
-            key for key, entry in self.cache.items() if entry.is_expired()
-        ]
+        expired_keys = [key for key, entry in self.cache.items() if entry.is_expired()]
 
         for key in expired_keys:
             del self.cache[key]
@@ -209,9 +203,7 @@ class QueryCache:
             # Only include specific cache-relevant keys to avoid over-hashing
             cache_keys = ["session_id", "phase", "task", "k"]
             context_str = ",".join(
-                f"{k}={context.get(k)}"
-                for k in sorted(cache_keys)
-                if k in context
+                f"{k}={context.get(k)}" for k in sorted(cache_keys) if k in context
             )
             hash_input += f"|{context_str}"
 

@@ -8,7 +8,7 @@ https://github.com/microsoft/graphrag
 """
 
 import logging
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 from datetime import datetime
 from dataclasses import dataclass, field
 
@@ -60,10 +60,7 @@ class GraphRAGManager:
     - Hybrid search: Combine semantic, graph, and text-based retrieval
     """
 
-    def __init__(self,
-                 graph_store: GraphStore,
-                 semantic_search: RAGManager,
-                 llm_client=None):
+    def __init__(self, graph_store: GraphStore, semantic_search: RAGManager, llm_client=None):
         """Initialize GraphRAG manager.
 
         Args:
@@ -106,9 +103,7 @@ class GraphRAGManager:
         if not summaries:
             logger.warning("No community summaries available for global search")
             return RetrievalResult(
-                documents=[],
-                source="global",
-                reasoning="No knowledge graph communities found"
+                documents=[], source="global", reasoning="No knowledge graph communities found"
             )
 
         # Rank summaries by relevance
@@ -131,7 +126,7 @@ class GraphRAGManager:
                 project_id=project_id,
                 content=summary.summary_text,
                 memory_type="summary",
-                tags=[summary.name, "community_summary", "global"]
+                tags=[summary.name, "community_summary", "global"],
             )
             memory_results.append(memory)
             community_ids.append(summary.community_id)
@@ -143,15 +138,14 @@ class GraphRAGManager:
             relevance_scores=relevance_map,
             confidence=0.9,
             community_ids=community_ids,
-            reasoning=reasoning
+            reasoning=reasoning,
         )
 
     # ========== Local Search ==========
 
-    def local_search(self, query: str,
-                    community_id: Optional[int] = None,
-                    max_hops: int = 2,
-                    top_k: int = 10) -> RetrievalResult:
+    def local_search(
+        self, query: str, community_id: Optional[int] = None, max_hops: int = 2, top_k: int = 10
+    ) -> RetrievalResult:
         """Deep dive into specific knowledge area.
 
         Approach:
@@ -177,15 +171,11 @@ class GraphRAGManager:
             if not community_id:
                 logger.warning("Could not find relevant community for local search")
                 return RetrievalResult(
-                    documents=[],
-                    source="local",
-                    reasoning="No relevant knowledge area found"
+                    documents=[], source="local", reasoning="No relevant knowledge area found"
                 )
 
         # Get entities in community with multi-hop expansion
-        entities = self._get_community_entities_with_expansion(
-            community_id, max_hops
-        )
+        entities = self._get_community_entities_with_expansion(community_id, max_hops)
 
         # Rank by relevance to query
         ranked_entities = self._rank_entities(query, entities, top_k)
@@ -201,10 +191,10 @@ class GraphRAGManager:
                 project_id=1,
                 content=self._entity_to_text(entity),
                 memory_type="entity",
-                tags=["local_search", entity.get('type', 'unknown')]
+                tags=["local_search", entity.get("type", "unknown")],
             )
             memory_results.append(memory)
-            relevance_map[entity['id']] = entity.get('relevance', 0.5)
+            relevance_map[entity["id"]] = entity.get("relevance", 0.5)
 
         reasoning = f"Deep dive into '{self._get_community_name(community_id)}' knowledge area"
 
@@ -214,16 +204,19 @@ class GraphRAGManager:
             relevance_scores=relevance_map,
             confidence=0.85,
             community_ids=[community_id],
-            reasoning=reasoning
+            reasoning=reasoning,
         )
 
     # ========== Hybrid Search ==========
 
-    def hybrid_search(self, query: str,
-                     use_global: bool = True,
-                     use_local: bool = True,
-                     use_semantic: bool = True,
-                     weights: Optional[Dict[str, float]] = None) -> RetrievalResult:
+    def hybrid_search(
+        self,
+        query: str,
+        use_global: bool = True,
+        use_local: bool = True,
+        use_semantic: bool = True,
+        weights: Optional[Dict[str, float]] = None,
+    ) -> RetrievalResult:
         """Combine semantic, graph, and BM25 retrieval.
 
         Fusion approach:
@@ -247,11 +240,7 @@ class GraphRAGManager:
 
         # Set default weights
         if not weights:
-            weights = {
-                "global": 0.25,
-                "local": 0.25,
-                "semantic": 0.5
-            }
+            weights = {"global": 0.25, "local": 0.25, "semantic": 0.5}
 
         all_results = []
         relevance_scores = {}
@@ -282,8 +271,9 @@ class GraphRAGManager:
             semantic_results = self.semantic.recall(query, top_k=10)
             for result in semantic_results:
                 all_results.append(result.memory)
-                relevance_scores[f"semantic_{result.memory.id}"] = \
+                relevance_scores[f"semantic_{result.memory.id}"] = (
                     result.similarity * weights["semantic"]
+                )
             sources_used.append("semantic")
 
         # Deduplicate and rerank
@@ -300,7 +290,7 @@ class GraphRAGManager:
             source="hybrid",
             relevance_scores=relevance_scores,
             confidence=0.88,
-            reasoning=reasoning
+            reasoning=reasoning,
         )
 
     # ========== Helper Methods ==========
@@ -317,10 +307,12 @@ class GraphRAGManager:
 
             for community in communities:
                 summary = CommunitySummary(
-                    community_id=community.get('id'),
-                    name=community.get('name', f"Community {community.get('id')}"),
-                    summary_text=community.get('summary',
-                        f"Knowledge area focused on {community.get('topic', 'general topics')}")
+                    community_id=community.get("id"),
+                    name=community.get("name", f"Community {community.get('id')}"),
+                    summary_text=community.get(
+                        "summary",
+                        f"Knowledge area focused on {community.get('topic', 'general topics')}",
+                    ),
                 )
                 summaries.append(summary)
                 self._community_summaries[summary.community_id] = summary
@@ -330,9 +322,9 @@ class GraphRAGManager:
             logger.error(f"Error loading community summaries: {e}")
             return []
 
-    def _rank_summaries(self, query: str,
-                       summaries: List[CommunitySummary],
-                       top_k: int) -> List[CommunitySummary]:
+    def _rank_summaries(
+        self, query: str, summaries: List[CommunitySummary], top_k: int
+    ) -> List[CommunitySummary]:
         """Rank summaries by relevance to query."""
         if not summaries:
             return []
@@ -346,13 +338,10 @@ class GraphRAGManager:
             scored.append(summary)
 
         # Sort and return top-k
-        sorted_summaries = sorted(scored, key=lambda x: x.relevance_score or 0,
-                                 reverse=True)
+        sorted_summaries = sorted(scored, key=lambda x: x.relevance_score or 0, reverse=True)
         return sorted_summaries[:top_k]
 
-    def _rank_entities(self, query: str,
-                      entities: List[Dict],
-                      top_k: int) -> List[Dict]:
+    def _rank_entities(self, query: str, entities: List[Dict], top_k: int) -> List[Dict]:
         """Rank entities by relevance to query."""
         if not entities:
             return []
@@ -360,14 +349,12 @@ class GraphRAGManager:
         scored = []
         for entity in entities:
             score = self._compute_relevance(
-                query,
-                f"{entity.get('name', '')} {entity.get('description', '')}"
+                query, f"{entity.get('name', '')} {entity.get('description', '')}"
             )
-            entity['relevance'] = score
+            entity["relevance"] = score
             scored.append(entity)
 
-        sorted_entities = sorted(scored, key=lambda x: x.get('relevance', 0),
-                                reverse=True)
+        sorted_entities = sorted(scored, key=lambda x: x.get("relevance", 0), reverse=True)
         return sorted_entities[:top_k]
 
     def _compute_relevance(self, query: str, text: str) -> float:
@@ -404,25 +391,25 @@ class GraphRAGManager:
 
         return best_community
 
-    def _get_community_entities_with_expansion(self,
-                                              community_id: int,
-                                              max_hops: int) -> List[Dict]:
+    def _get_community_entities_with_expansion(
+        self, community_id: int, max_hops: int
+    ) -> List[Dict]:
         """Get entities in community with multi-hop expansion."""
         try:
             entities = self.graph.get_community_entities(community_id)
             expanded = list(entities) if entities else []
 
             # Multi-hop expansion
-            visited = set([e.get('id') for e in expanded])
+            visited = set([e.get("id") for e in expanded])
             frontier = list(expanded)
 
             for _ in range(max_hops - 1):
                 next_frontier = []
                 for entity in frontier:
-                    neighbors = self.graph.get_neighbors(entity.get('id'), max_hops=1)
+                    neighbors = self.graph.get_neighbors(entity.get("id"), max_hops=1)
                     for neighbor in neighbors:
-                        if neighbor.get('id') not in visited:
-                            visited.add(neighbor.get('id'))
+                        if neighbor.get("id") not in visited:
+                            visited.add(neighbor.get("id"))
                             expanded.append(neighbor)
                             next_frontier.append(neighbor)
                 frontier = next_frontier
@@ -442,11 +429,11 @@ class GraphRAGManager:
     def _entity_to_text(self, entity: Dict) -> str:
         """Convert entity to text for Memory object."""
         parts = []
-        if entity.get('name'):
+        if entity.get("name"):
             parts.append(f"**{entity['name']}**")
-        if entity.get('description'):
-            parts.append(entity['description'])
-        if entity.get('type'):
+        if entity.get("description"):
+            parts.append(entity["description"])
+        if entity.get("type"):
             parts.append(f"Type: {entity['type']}")
         return "\n".join(parts)
 
@@ -457,8 +444,7 @@ class GraphRAGManager:
 
     # ========== Management Methods ==========
 
-    def update_community_summary(self, community_id: int,
-                                summary_text: str) -> None:
+    def update_community_summary(self, community_id: int, summary_text: str) -> None:
         """Update summary for a community."""
         if community_id in self._community_summaries:
             self._community_summaries[community_id].summary_text = summary_text
@@ -477,6 +463,8 @@ class GraphRAGManager:
         return {
             "num_communities": len(summaries),
             "cached_summaries": len(self._community_summaries),
-            "avg_summary_length": sum(s.summary_tokens for s in summaries) / len(summaries) if summaries else 0,
-            "last_cache_update": self._last_update
+            "avg_summary_length": (
+                sum(s.summary_tokens for s in summaries) / len(summaries) if summaries else 0
+            ),
+            "last_cache_update": self._last_update,
         }

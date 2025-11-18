@@ -9,7 +9,7 @@ Provides:
 """
 
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 # Type stubs - import at runtime to avoid circular dependencies
 # These will be injected via factory methods
@@ -38,19 +38,18 @@ class TemporalInferenceEngine:
             - later_after: >3600s, strength 0.3-0.9 (decaying)
         """
         if time_gap_seconds < TemporalInferenceEngine.IMMEDIATELY_AFTER_SECONDS:
-            return 'immediately_after', 0.9
+            return "immediately_after", 0.9
         elif time_gap_seconds < TemporalInferenceEngine.SHORTLY_AFTER_SECONDS:
-            return 'shortly_after', 0.7
+            return "shortly_after", 0.7
         else:
             # Decay over 1 day
             decay_factor = max(0.0, 1.0 - (time_gap_seconds / 86400))
             strength = max(0.3, 0.9 * decay_factor)
-            return 'later_after', strength
+            return "later_after", strength
 
     @staticmethod
     def calculate_causal_strength(
-        cause_event,  # EpisodicEvent
-        effect_event  # EpisodicEvent
+        cause_event, effect_event  # EpisodicEvent  # EpisodicEvent
     ) -> float:
         """Calculate causal strength between two events.
 
@@ -97,10 +96,7 @@ class TemporalInferenceEngine:
         return min(strength, 1.0)
 
     @staticmethod
-    def is_likely_causal(
-        event1,  # EpisodicEvent
-        event2   # EpisodicEvent
-    ) -> bool:
+    def is_likely_causal(event1, event2) -> bool:  # EpisodicEvent  # EpisodicEvent
         """Determine if event1 likely caused event2.
 
         Uses heuristics based on event types:
@@ -117,11 +113,19 @@ class TemporalInferenceEngine:
             True if likely causal relationship
         """
         # Get event type as string
-        type1 = event1.event_type.value if hasattr(event1.event_type, 'value') else str(event1.event_type)
-        type2 = event2.event_type.value if hasattr(event2.event_type, 'value') else str(event2.event_type)
+        type1 = (
+            event1.event_type.value
+            if hasattr(event1.event_type, "value")
+            else str(event1.event_type)
+        )
+        type2 = (
+            event2.event_type.value
+            if hasattr(event2.event_type, "value")
+            else str(event2.event_type)
+        )
 
         # Pattern 1: Error followed by fix/success
-        if type1 == 'error' and type2 in ['file_change', 'success']:
+        if type1 == "error" and type2 in ["file_change", "success"]:
             if event1.context and event2.context:
                 files1 = set(event1.context.files or [])
                 files2 = set(event2.context.files or [])
@@ -129,7 +133,7 @@ class TemporalInferenceEngine:
             return True
 
         # Pattern 2: Code change followed by test success
-        if type1 == 'file_change' and type2 == 'test_run':
+        if type1 == "file_change" and type2 == "test_run":
             if event1.context and event2.context:
                 files1 = set(event1.context.files or [])
                 files2 = set(event2.context.files or [])
@@ -137,15 +141,15 @@ class TemporalInferenceEngine:
             return True
 
         # Pattern 3: Decision followed by action
-        if type1 == 'decision' and type2 == 'action':
+        if type1 == "decision" and type2 == "action":
             return True
 
         # Pattern 4: Debugging followed by fix
-        if type1 == 'debugging' and type2 in ['file_change', 'success']:
+        if type1 == "debugging" and type2 in ["file_change", "success"]:
             return True
 
         # Pattern 5: Test failure followed by investigation
-        if type1 == 'test_run' and type2 in ['debugging', 'file_change']:
+        if type1 == "test_run" and type2 in ["debugging", "file_change"]:
             return True
 
         return False
@@ -191,7 +195,7 @@ class TemporalInferenceEngine:
                 to_event_id=next_event.id,
                 relation_type=relation_type,
                 strength=strength,
-                inferred_at=datetime.now()
+                inferred_at=datetime.now(),
             )
 
             relations.append(relation)
@@ -231,9 +235,7 @@ class TemporalInferenceEngine:
 
             # Apply causal heuristics
             if TemporalInferenceEngine.is_likely_causal(current, next_event):
-                strength = TemporalInferenceEngine.calculate_causal_strength(
-                    current, next_event
-                )
+                strength = TemporalInferenceEngine.calculate_causal_strength(current, next_event)
 
                 # Import TemporalRelation here to avoid circular import
                 from ..temporal.models import TemporalRelation
@@ -241,9 +243,9 @@ class TemporalInferenceEngine:
                 causal_relation = TemporalRelation(
                     from_event_id=current.id,
                     to_event_id=next_event.id,
-                    relation_type='caused',
+                    relation_type="caused",
                     strength=strength,
-                    inferred_at=datetime.now()
+                    inferred_at=datetime.now(),
                 )
 
                 causal_relations.append(causal_relation)

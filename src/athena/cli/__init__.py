@@ -36,24 +36,29 @@ try:
     else:
         raise ImportError("Could not load cli.py module")
 
-except (ImportError, AttributeError, Exception) as e:
+except (ImportError, AttributeError, Exception):
     # Create stubs if import fails
     class ATHENAAnalyzer:
         """Stub for when cli.py is unavailable."""
+
         def __init__(self, *args, **kwargs):
             raise NotImplementedError("ATHENAAnalyzer is not available")
 
     class AnalysisConfig:
         """Stub for when cli.py is unavailable."""
+
         pass
 
     class AnalysisProfile:
         """Stub for when cli.py is unavailable."""
+
         pass
 
     class OutputFormat:
         """Stub for when cli.py is unavailable."""
+
         pass
+
 
 __all__ = [
     "MemorySearchCommand",

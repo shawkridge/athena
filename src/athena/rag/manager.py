@@ -147,7 +147,9 @@ class RAGManager:
             logger.info("Temporal KG search enrichment (P2) enabled")
         else:
             self.temporal_enricher = None
-            if self.config.temporal_enrichment_enabled and not (self.db and self.graph_store and self.temporal_kg):
+            if self.config.temporal_enrichment_enabled and not (
+                self.db and self.graph_store and self.temporal_kg
+            ):
                 logger.warning(
                     "Temporal enrichment requested but dependencies missing. "
                     "(requires db, graph_store, temporal_kg)"
@@ -179,7 +181,9 @@ class RAGManager:
         """
         # Fallback to basic if no LLM
         if not self.llm and strategy != RAGStrategy.BASIC:
-            logger.warning(f"Strategy '{strategy}' requires LLM client. Falling back to basic search.")
+            logger.warning(
+                f"Strategy '{strategy}' requires LLM client. Falling back to basic search."
+            )
             strategy = RAGStrategy.BASIC
 
         # Auto-select strategy
@@ -240,10 +244,26 @@ class RAGManager:
         # Check for planning-related queries (high priority)
         if self.config.planning_enabled and self.planning_rag:
             planning_keywords = {
-                "decompose", "break down", "split", "chunk", "hierarchical",
-                "recursive", "planning", "strategy", "approach", "structure",
-                "organize", "orchestrate", "coordinate", "validate", "verify",
-                "pattern", "workflow", "timeline", "estimate", "complexity"
+                "decompose",
+                "break down",
+                "split",
+                "chunk",
+                "hierarchical",
+                "recursive",
+                "planning",
+                "strategy",
+                "approach",
+                "structure",
+                "organize",
+                "orchestrate",
+                "coordinate",
+                "validate",
+                "verify",
+                "pattern",
+                "workflow",
+                "timeline",
+                "estimate",
+                "complexity",
             }
             if any(kw in query_lower for kw in planning_keywords):
                 logger.info(f"Auto-selected PLANNING strategy for query: {query[:50]}")
@@ -268,7 +288,9 @@ class RAGManager:
             if len(query.split()) < 5:
                 return RAGStrategy.HYDE
             # "How does X work" type questions
-            if any(phrase in query_lower for phrase in ["how does", "how do", "what is", "explain"]):
+            if any(
+                phrase in query_lower for phrase in ["how does", "how do", "what is", "explain"]
+            ):
                 return RAGStrategy.HYDE
 
         # Default to reranking for better relevance scoring
@@ -302,7 +324,11 @@ class RAGManager:
             # Build conversation context if available
             context = ""
             if conversation_history and len(conversation_history) > 0:
-                recent = conversation_history[-2:] if len(conversation_history) >= 2 else conversation_history
+                recent = (
+                    conversation_history[-2:]
+                    if len(conversation_history) >= 2
+                    else conversation_history
+                )
                 context = "\nRecent context:\n"
                 for msg in recent:
                     context += f"- {msg.get('role', 'user')}: {msg.get('content', '')[:100]}\n"
@@ -352,7 +378,9 @@ Choose the SINGLE best strategy. Default to RERANK if unsure.
             logger.debug(f"LLM strategy analysis failed, falling back to heuristics: {e}")
             return "fallback"
 
-    async def _retrieve_planning(self, query: str, project_id: int, k: int) -> list[MemorySearchResult]:
+    async def _retrieve_planning(
+        self, query: str, project_id: int, k: int
+    ) -> list[MemorySearchResult]:
         """Planning-aware RAG retrieval."""
         if not self.planning_rag:
             raise ValueError("Planning RAG not available (no planning store)")
@@ -379,7 +407,9 @@ Choose the SINGLE best strategy. Default to RERANK if unsure.
             # Fallback to basic search
             return await self.store.recall(query, project_id, k)
 
-    async def _retrieve_basic(self, query: str, project_id: int, k: int) -> list[MemorySearchResult]:
+    async def _retrieve_basic(
+        self, query: str, project_id: int, k: int
+    ) -> list[MemorySearchResult]:
         """Basic vector search."""
         return await self.store.recall(query, project_id, k)
 
@@ -389,7 +419,9 @@ Choose the SINGLE best strategy. Default to RERANK if unsure.
             raise ValueError("HyDE not available (no LLM client)")
         return self.hyde.retrieve(query, project_id, k, use_hyde=True)
 
-    async def _retrieve_rerank(self, query: str, project_id: int, k: int) -> list[MemorySearchResult]:
+    async def _retrieve_rerank(
+        self, query: str, project_id: int, k: int
+    ) -> list[MemorySearchResult]:
         """Retrieval with LLM reranking."""
         if not self.reranker:
             raise ValueError("Reranker not available (no LLM client)")
@@ -417,12 +449,16 @@ Choose the SINGLE best strategy. Default to RERANK if unsure.
 
         # Use transformed query for retrieval with reranking
         if self.reranker:
-            candidates = await self.store.recall(transformed_query, project_id, k=k * 3, min_similarity=0.2)
+            candidates = await self.store.recall(
+                transformed_query, project_id, k=k * 3, min_similarity=0.2
+            )
             return self.reranker.rerank(transformed_query, candidates, k)
         else:
             return await self.store.recall(transformed_query, project_id, k)
 
-    async def _retrieve_reflective(self, query: str, project_id: int, k: int) -> list[MemorySearchResult]:
+    async def _retrieve_reflective(
+        self, query: str, project_id: int, k: int
+    ) -> list[MemorySearchResult]:
         """Reflective iterative retrieval."""
         if not self.reflective:
             raise ValueError("Reflective RAG not available (no LLM client)")
@@ -479,10 +515,7 @@ Choose the SINGLE best strategy. Default to RERANK if unsure.
         if not self.temporal_enricher:
             logger.debug("Temporal enrichment not available, returning base results")
             # Convert to enriched results without relations
-            return [
-                EnrichedSearchResult(base_result=r, causal_relations=[])
-                for r in results
-            ]
+            return [EnrichedSearchResult(base_result=r, causal_relations=[]) for r in results]
 
         try:
             return self.temporal_enricher.enrich_results(
@@ -494,10 +527,7 @@ Choose the SINGLE best strategy. Default to RERANK if unsure.
         except Exception as e:
             logger.error(f"Error enriching results with temporal KG: {e}")
             # Graceful degradation
-            return [
-                EnrichedSearchResult(base_result=r, causal_relations=[])
-                for r in results
-            ]
+            return [EnrichedSearchResult(base_result=r, causal_relations=[]) for r in results]
 
     def get_causal_context(
         self,

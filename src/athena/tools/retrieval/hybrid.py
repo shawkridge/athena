@@ -1,4 +1,5 @@
 """Hybrid RAG retrieval tool - advanced semantic search."""
+
 import time
 from typing import Any, Dict
 from athena.tools import BaseTool, ToolMetadata
@@ -34,14 +35,14 @@ class HybridSearchTool(BaseTool):
                 "query": {
                     "type": "string",
                     "description": "Query string for retrieval",
-                    "required": True
+                    "required": True,
                 },
                 "strategy": {
                     "type": "string",
                     "enum": ["semantic", "keyword", "hybrid", "hyde", "reranking", "reflective"],
                     "description": "Retrieval strategy to use",
                     "required": False,
-                    "default": "hybrid"
+                    "default": "hybrid",
                 },
                 "max_results": {
                     "type": "integer",
@@ -49,7 +50,7 @@ class HybridSearchTool(BaseTool):
                     "required": False,
                     "default": 10,
                     "minimum": 1,
-                    "maximum": 50
+                    "maximum": 50,
                 },
                 "min_relevance": {
                     "type": "number",
@@ -57,7 +58,7 @@ class HybridSearchTool(BaseTool):
                     "required": False,
                     "default": 0.3,
                     "minimum": 0.0,
-                    "maximum": 1.0
+                    "maximum": 1.0,
                 },
                 "context_length": {
                     "type": "integer",
@@ -65,8 +66,8 @@ class HybridSearchTool(BaseTool):
                     "required": False,
                     "default": 500,
                     "minimum": 100,
-                    "maximum": 2000
-                }
+                    "maximum": 2000,
+                },
             },
             returns={
                 "type": "object",
@@ -83,14 +84,14 @@ class HybridSearchTool(BaseTool):
                                 "content": {"type": "string"},
                                 "relevance": {"type": "number"},
                                 "source_type": {"type": "string"},
-                                "reranking_score": {"type": "number"}
-                            }
-                        }
+                                "reranking_score": {"type": "number"},
+                            },
+                        },
                     },
                     "total_results": {"type": "integer"},
-                    "retrieval_time_ms": {"type": "number"}
-                }
-            }
+                    "retrieval_time_ms": {"type": "number"},
+                },
+            },
         )
 
     def validate_input(self, **kwargs) -> None:
@@ -137,6 +138,7 @@ class HybridSearchTool(BaseTool):
 
             try:
                 from athena.core.database import get_database
+
                 db = get_database()
 
                 try:
@@ -155,7 +157,7 @@ class HybridSearchTool(BaseTool):
                                WHERE content LIKE ?
                                ORDER BY importance DESC
                                LIMIT ?""",
-                            (f"%{query}%", min(limit, 50))
+                            (f"%{query}%", min(limit, 50)),
                         )
                     else:
                         # Default hybrid: combine semantic + keyword
@@ -165,7 +167,7 @@ class HybridSearchTool(BaseTool):
                                WHERE content LIKE ? OR tags LIKE ?
                                ORDER BY importance DESC
                                LIMIT ?""",
-                            (f"%{query}%", f"%{query}%", min(limit, 50))
+                            (f"%{query}%", f"%{query}%", min(limit, 50)),
                         )
 
                     rows = cursor.fetchall() if strategy != "hyde" else []
@@ -179,7 +181,7 @@ class HybridSearchTool(BaseTool):
                                 "content": row[1][:context_length],
                                 "type": row[2],
                                 "relevance": relevance,
-                                "strategy_score": relevance
+                                "strategy_score": relevance,
                             }
                             results.append(result_item)
 
@@ -187,10 +189,12 @@ class HybridSearchTool(BaseTool):
 
                 except Exception as db_err:
                     import logging
+
                     logging.warning(f"Hybrid retrieval query failed: {db_err}")
 
             except Exception as e:
                 import logging
+
                 logging.debug(f"Hybrid retrieval unavailable: {e}")
 
             elapsed = (time.time() - start_time) * 1000
@@ -204,18 +208,18 @@ class HybridSearchTool(BaseTool):
                 "min_relevance_threshold": min_relevance,
                 "context_length": context_length,
                 "retrieval_time_ms": elapsed,
-                "status": "success"
+                "status": "success",
             }
 
         except ValueError as e:
             return {
                 "error": str(e),
                 "status": "error",
-                "retrieval_time_ms": (time.time() - start_time) * 1000
+                "retrieval_time_ms": (time.time() - start_time) * 1000,
             }
         except Exception as e:
             return {
                 "error": f"Unexpected error: {str(e)}",
                 "status": "error",
-                "retrieval_time_ms": (time.time() - start_time) * 1000
+                "retrieval_time_ms": (time.time() - start_time) * 1000,
             }

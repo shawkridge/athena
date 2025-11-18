@@ -173,12 +173,14 @@ class PatternSuggestionEngine:
                 if confidence < confidence_threshold:
                     break
 
-                steps.append({
-                    "step": step_num,
-                    "task_type": next_type["task_type"],
-                    "confidence": confidence,
-                    "frequency": next_type.get("frequency"),
-                })
+                steps.append(
+                    {
+                        "step": step_num,
+                        "task_type": next_type["task_type"],
+                        "confidence": confidence,
+                        "frequency": next_type.get("frequency"),
+                    }
+                )
 
                 current_type = next_type["task_type"]
 

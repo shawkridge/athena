@@ -19,6 +19,7 @@ from .symbol_models import Symbol, SymbolType
 
 class DocumentationQuality(str, Enum):
     """Documentation quality levels."""
+
     MISSING = "missing"  # No docstring
     INCOMPLETE = "incomplete"  # Missing key sections
     ADEQUATE = "adequate"  # Has docstring with basic info
@@ -29,6 +30,7 @@ class DocumentationQuality(str, Enum):
 @dataclass
 class DocumentationMetrics:
     """Documentation metrics for a symbol."""
+
     symbol: Symbol
     has_docstring: bool
     docstring_length: int
@@ -50,6 +52,7 @@ class DocumentationMetrics:
 @dataclass
 class DocumentationViolation:
     """A detected documentation issue."""
+
     symbol: Symbol
     violation_type: str  # "missing_docstring", "missing_params", "missing_return", etc.
     severity: str  # low, medium, high, critical
@@ -95,32 +98,42 @@ class DocumentationAnalyzer:
                 example_count=0,
                 parameter_coverage=0.0,
                 quality_score=0.0,
-                quality_grade=DocumentationQuality.MISSING
+                quality_grade=DocumentationQuality.MISSING,
             )
             self.metrics[symbol.full_qualified_name or symbol.name] = metrics
             self._check_violations(metrics)
             return metrics
 
         # Parse docstring
-        doc_lines = symbol.docstring.strip().split('\n')
+        doc_lines = symbol.docstring.strip().split("\n")
         has_summary = len(doc_lines) > 0 and len(doc_lines[0].strip()) > 0
         has_description = len(doc_lines) > 1
-        has_params = self._check_section_exists(symbol.docstring, ['Args:', 'Arguments:', 'Parameters:'])
-        has_return = self._check_section_exists(symbol.docstring, ['Returns:', 'Return:'])
-        has_raises = self._check_section_exists(symbol.docstring, ['Raises:', 'Exceptions:'])
-        has_examples = self._check_section_exists(symbol.docstring, ['Examples:', 'Example:'])
+        has_params = self._check_section_exists(
+            symbol.docstring, ["Args:", "Arguments:", "Parameters:"]
+        )
+        has_return = self._check_section_exists(symbol.docstring, ["Returns:", "Return:"])
+        has_raises = self._check_section_exists(symbol.docstring, ["Raises:", "Exceptions:"])
+        has_examples = self._check_section_exists(symbol.docstring, ["Examples:", "Example:"])
         example_count = self._count_examples(symbol.docstring)
 
         # Count documented parameters
         total_params = self._count_parameters(symbol)
         documented_params = self._count_documented_parameters(symbol.docstring) if has_params else 0
-        param_coverage = documented_params / total_params if total_params > 0 else 1.0 if not has_params else 0.0
+        param_coverage = (
+            documented_params / total_params if total_params > 0 else 1.0 if not has_params else 0.0
+        )
 
         has_return_desc = self._has_return_description(symbol.docstring) if has_return else False
 
         quality_score = self._calculate_quality_score(
-            has_summary, has_description, has_params, has_return,
-            has_raises, has_examples, param_coverage, doc_length
+            has_summary,
+            has_description,
+            has_params,
+            has_return,
+            has_raises,
+            has_examples,
+            param_coverage,
+            doc_length,
         )
         quality_grade = self._grade_quality(quality_score, has_docstring=True)
 
@@ -140,7 +153,7 @@ class DocumentationAnalyzer:
             example_count=example_count,
             parameter_coverage=param_coverage,
             quality_score=quality_score,
-            quality_grade=quality_grade
+            quality_grade=quality_grade,
         )
 
         self.metrics[symbol.full_qualified_name or symbol.name] = metrics
@@ -158,7 +171,7 @@ class DocumentationAnalyzer:
     def _count_examples(self, docstring: str) -> int:
         """Count number of code examples in docstring."""
         # Look for code blocks marked with >>> or ```
-        code_blocks = len(re.findall(r'```|>>>', docstring))
+        code_blocks = len(re.findall(r"```|>>>", docstring))
         return code_blocks
 
     def _count_parameters(self, symbol: Symbol) -> int:
@@ -166,34 +179,36 @@ class DocumentationAnalyzer:
         if not symbol.signature:
             return 0
 
-        sig = symbol.signature.strip('()')
+        sig = symbol.signature.strip("()")
         if not sig:
             return 0
 
-        params = [p.strip() for p in sig.split(',')]
-        params = [p for p in params if p and p not in ('self', 'cls')]
+        params = [p.strip() for p in sig.split(",")]
+        params = [p for p in params if p and p not in ("self", "cls")]
 
         return len(params)
 
     def _count_documented_parameters(self, docstring: str) -> int:
         """Count number of documented parameters in docstring."""
         # Look for parameter documentation patterns like "param_name:" or "- param_name"
-        param_pattern = re.compile(r'(\w+)\s*(?::|:=|-)')
+        param_pattern = re.compile(r"(\w+)\s*(?::|:=|-)")
         matches = param_pattern.findall(docstring)
 
         # Filter to likely parameter documentation (after Args/Parameters section)
         args_section = False
         documented = set()
 
-        for line in docstring.split('\n'):
-            if 'Args:' in line or 'Arguments:' in line or 'Parameters:' in line:
+        for line in docstring.split("\n"):
+            if "Args:" in line or "Arguments:" in line or "Parameters:" in line:
                 args_section = True
                 continue
-            if args_section and line.strip().startswith(('Returns:', 'Yields:', 'Raises:', 'Examples:')):
+            if args_section and line.strip().startswith(
+                ("Returns:", "Yields:", "Raises:", "Examples:")
+            ):
                 break
-            if args_section and ':' in line:
-                param_name = line.split(':')[0].strip().lstrip('-').strip()
-                if param_name and not param_name.startswith('*'):
+            if args_section and ":" in line:
+                param_name = line.split(":")[0].strip().lstrip("-").strip()
+                if param_name and not param_name.startswith("*"):
                     documented.add(param_name)
 
         return len(documented)
@@ -201,14 +216,14 @@ class DocumentationAnalyzer:
     def _has_return_description(self, docstring: str) -> bool:
         """Check if return section has description."""
         returns_section = False
-        for line in docstring.split('\n'):
-            if 'Returns:' in line or 'Return:' in line:
+        for line in docstring.split("\n"):
+            if "Returns:" in line or "Return:" in line:
                 returns_section = True
                 continue
             if returns_section:
-                if line.strip().startswith(('Raises:', 'Examples:', 'Args:')):
+                if line.strip().startswith(("Raises:", "Examples:", "Args:")):
                     break
-                if len(line.strip()) > 0 and not line.strip().startswith('-'):
+                if len(line.strip()) > 0 and not line.strip().startswith("-"):
                     return True
 
         return False
@@ -222,7 +237,7 @@ class DocumentationAnalyzer:
         has_raises: bool,
         has_examples: bool,
         param_coverage: float,
-        doc_length: int
+        doc_length: int,
     ) -> float:
         """Calculate documentation quality score (0-100)."""
         score = 0.0
@@ -275,15 +290,18 @@ class DocumentationAnalyzer:
         missing_items = []
 
         # Critical: no docstring for public functions/classes
-        if (metrics.symbol.visibility == "public" and
-            metrics.symbol.symbol_type in [SymbolType.FUNCTION, SymbolType.METHOD, SymbolType.CLASS] and
-            not metrics.has_docstring):
+        if (
+            metrics.symbol.visibility == "public"
+            and metrics.symbol.symbol_type
+            in [SymbolType.FUNCTION, SymbolType.METHOD, SymbolType.CLASS]
+            and not metrics.has_docstring
+        ):
             violation = DocumentationViolation(
                 symbol=metrics.symbol,
                 violation_type="missing_docstring",
                 severity="critical",
                 missing_items=["Docstring"],
-                recommendation=f"Add docstring to public {metrics.symbol.symbol_type.value} '{metrics.symbol.name}'."
+                recommendation=f"Add docstring to public {metrics.symbol.symbol_type.value} '{metrics.symbol.name}'.",
             )
             self.violations.append(violation)
             return
@@ -301,23 +319,33 @@ class DocumentationAnalyzer:
             missing_items.append(f"{undocumented} parameter(s)")
 
         # Missing return documentation for functions that return value
-        if (metrics.symbol.symbol_type in [SymbolType.FUNCTION, SymbolType.METHOD, SymbolType.ASYNC_FUNCTION] and
-            not metrics.has_return_type):
+        if (
+            metrics.symbol.symbol_type
+            in [SymbolType.FUNCTION, SymbolType.METHOD, SymbolType.ASYNC_FUNCTION]
+            and not metrics.has_return_type
+        ):
             missing_items.append("Return type documentation")
 
         # Missing examples for complex functions
-        if (metrics.symbol.symbol_type in [SymbolType.FUNCTION, SymbolType.METHOD] and
-            not metrics.has_examples and metrics.quality_score < 70):
+        if (
+            metrics.symbol.symbol_type in [SymbolType.FUNCTION, SymbolType.METHOD]
+            and not metrics.has_examples
+            and metrics.quality_score < 70
+        ):
             missing_items.append("Usage example")
 
         if missing_items:
-            severity = "critical" if metrics.quality_score < 30 else "high" if metrics.quality_score < 50 else "medium"
+            severity = (
+                "critical"
+                if metrics.quality_score < 30
+                else "high" if metrics.quality_score < 50 else "medium"
+            )
             violation = DocumentationViolation(
                 symbol=metrics.symbol,
                 violation_type="incomplete_documentation",
                 severity=severity,
                 missing_items=missing_items,
-                recommendation=f"Improve documentation by adding: {', '.join(missing_items)}"
+                recommendation=f"Improve documentation by adding: {', '.join(missing_items)}",
             )
             self.violations.append(violation)
 
@@ -340,12 +368,15 @@ class DocumentationAnalyzer:
             List of symbols without docstrings
         """
         undocumented = [
-            m.symbol for m in self.metrics.values()
+            m.symbol
+            for m in self.metrics.values()
             if not m.has_docstring and m.symbol.visibility == "public"
         ]
         return undocumented
 
-    def get_incomplete_documentation(self, quality_threshold: float = 70.0) -> List[Tuple[Symbol, float]]:
+    def get_incomplete_documentation(
+        self, quality_threshold: float = 70.0
+    ) -> List[Tuple[Symbol, float]]:
         """Get symbols with incomplete documentation.
 
         Args:
@@ -361,7 +392,9 @@ class DocumentationAnalyzer:
         ]
         return sorted(incomplete, key=lambda x: x[1])
 
-    def get_well_documented_symbols(self, quality_threshold: float = 85.0) -> List[Tuple[Symbol, float]]:
+    def get_well_documented_symbols(
+        self, quality_threshold: float = 85.0
+    ) -> List[Tuple[Symbol, float]]:
         """Get symbols with excellent documentation.
 
         Args:
@@ -397,8 +430,10 @@ class DocumentationAnalyzer:
             List of symbols that should have return documentation
         """
         missing = [
-            m.symbol for m in self.metrics.values()
-            if m.symbol.symbol_type in [SymbolType.FUNCTION, SymbolType.METHOD, SymbolType.ASYNC_FUNCTION]
+            m.symbol
+            for m in self.metrics.values()
+            if m.symbol.symbol_type
+            in [SymbolType.FUNCTION, SymbolType.METHOD, SymbolType.ASYNC_FUNCTION]
             and not m.has_return_type
         ]
         return missing
@@ -440,13 +475,27 @@ class DocumentationAnalyzer:
         undocumented = len(self.metrics) - documented
 
         coverage = documented / len(self.metrics) if self.metrics else 0.0
-        avg_score = sum(m.quality_score for m in self.metrics.values()) / len(self.metrics) if self.metrics else 0.0
+        avg_score = (
+            sum(m.quality_score for m in self.metrics.values()) / len(self.metrics)
+            if self.metrics
+            else 0.0
+        )
 
-        excellent = len([m for m in self.metrics.values() if m.quality_grade == DocumentationQuality.EXCELLENT])
-        good = len([m for m in self.metrics.values() if m.quality_grade == DocumentationQuality.GOOD])
-        adequate = len([m for m in self.metrics.values() if m.quality_grade == DocumentationQuality.ADEQUATE])
-        incomplete = len([m for m in self.metrics.values() if m.quality_grade == DocumentationQuality.INCOMPLETE])
-        missing = len([m for m in self.metrics.values() if m.quality_grade == DocumentationQuality.MISSING])
+        excellent = len(
+            [m for m in self.metrics.values() if m.quality_grade == DocumentationQuality.EXCELLENT]
+        )
+        good = len(
+            [m for m in self.metrics.values() if m.quality_grade == DocumentationQuality.GOOD]
+        )
+        adequate = len(
+            [m for m in self.metrics.values() if m.quality_grade == DocumentationQuality.ADEQUATE]
+        )
+        incomplete = len(
+            [m for m in self.metrics.values() if m.quality_grade == DocumentationQuality.INCOMPLETE]
+        )
+        missing = len(
+            [m for m in self.metrics.values() if m.quality_grade == DocumentationQuality.MISSING]
+        )
 
         return {
             "total_symbols": len(self.metrics),
@@ -553,10 +602,11 @@ class DocumentationAnalyzer:
             )
 
         # Missing return documentation
-        if not metrics.has_return_type and metrics.symbol.symbol_type in [SymbolType.FUNCTION, SymbolType.METHOD]:
-            suggestions.append(
-                "Add a Returns section documenting the return type and value."
-            )
+        if not metrics.has_return_type and metrics.symbol.symbol_type in [
+            SymbolType.FUNCTION,
+            SymbolType.METHOD,
+        ]:
+            suggestions.append("Add a Returns section documenting the return type and value.")
 
         # Missing examples
         if not metrics.has_examples and metrics.quality_score < 80:
@@ -566,8 +616,6 @@ class DocumentationAnalyzer:
 
         # Missing raises documentation
         if not metrics.has_raises and metrics.quality_score < 70:
-            suggestions.append(
-                "Document any exceptions that might be raised in a Raises section."
-            )
+            suggestions.append("Document any exceptions that might be raised in a Raises section.")
 
         return suggestions

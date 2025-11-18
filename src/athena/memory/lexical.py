@@ -62,9 +62,7 @@ class LexicalSearch:
 
         # Filter out zero scores
         results = [
-            (self.memory_ids[idx], float(scores[idx]))
-            for idx in top_indices
-            if scores[idx] > 0
+            (self.memory_ids[idx], float(scores[idx])) for idx in top_indices if scores[idx] > 0
         ]
 
         return results
@@ -83,8 +81,7 @@ class LexicalSearch:
 
 
 def reciprocal_rank_fusion(
-    result_sets: List[List[Tuple[int, float]]],
-    k: int = 60
+    result_sets: List[List[Tuple[int, float]]], k: int = 60
 ) -> List[Tuple[int, float]]:
     """Combine multiple ranked result sets using Reciprocal Rank Fusion.
 
@@ -118,8 +115,8 @@ def reciprocal_rank_fusion(
 def hybrid_search(
     query: str,
     vector_results: List[Tuple[int, float]],
-    lexical_search: Optional['LexicalSearch'] = None,
-    k: int = 10
+    lexical_search: Optional["LexicalSearch"] = None,
+    k: int = 10,
 ) -> List[Tuple[int, float]]:
     """Combine vector and lexical search using RRF.
 
@@ -136,7 +133,7 @@ def hybrid_search(
 
     # Add BM25 results if available
     if lexical_search and lexical_search._initialized:
-        bm25_results = lexical_search.search(query, k=k*2)  # Get more for fusion
+        bm25_results = lexical_search.search(query, k=k * 2)  # Get more for fusion
         if bm25_results:
             result_sets.append(bm25_results)
 

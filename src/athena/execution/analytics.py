@@ -2,11 +2,11 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 import statistics
 import logging
 
-from .models import TaskExecutionRecord, ExecutionPattern
+from .models import TaskExecutionRecord
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ExecutionCost:
     """Cost metrics for an execution."""
+
     execution_id: str
     labor_cost: float  # Estimated labor cost
     resource_cost: float  # Resource consumption cost
@@ -26,6 +27,7 @@ class ExecutionCost:
 @dataclass
 class TeamVelocity:
     """Team velocity metrics."""
+
     period_start: datetime
     period_end: datetime
     tasks_completed: int
@@ -40,6 +42,7 @@ class TeamVelocity:
 @dataclass
 class PerformanceTrend:
     """Performance trend data."""
+
     metric_name: str
     current_value: float
     previous_value: Optional[float]
@@ -53,6 +56,7 @@ class PerformanceTrend:
 @dataclass
 class ExecutionForecast:
     """Forecast for future executions."""
+
     metric_name: str
     current_value: float
     forecasted_value: float
@@ -66,6 +70,7 @@ class ExecutionForecast:
 @dataclass
 class AnalyticsReport:
     """Comprehensive analytics report."""
+
     execution_id: str
     period_start: datetime
     period_end: datetime
@@ -229,7 +234,9 @@ class ExecutionAnalytics:
         velocity = total_tasks / duration_hours if duration_hours > 0 else 0.0
 
         # Calculate efficiency (actual/estimated)
-        efficiency = (total_actual_points / total_estimated_points) if total_estimated_points > 0 else 0.0
+        efficiency = (
+            (total_actual_points / total_estimated_points) if total_estimated_points > 0 else 0.0
+        )
 
         # Productivity index (0-1 scale)
         productivity_index = min(1.0, efficiency * velocity / 5.0)  # Normalize to 5 tasks/hr
@@ -248,8 +255,7 @@ class ExecutionAnalytics:
 
         self.velocity_history.append(team_velocity)
         logger.info(
-            f"Calculated velocity: {velocity:.2f} tasks/hr, "
-            f"efficiency: {efficiency:.1%}"
+            f"Calculated velocity: {velocity:.2f} tasks/hr, " f"efficiency: {efficiency:.1%}"
         )
 
         return team_velocity
@@ -365,7 +371,7 @@ class ExecutionAnalytics:
         elif methodology == "linear":
             # Linear extrapolation
             if len(values) > 1:
-                slope = (values[-1] - values[-2])
+                slope = values[-1] - values[-2]
                 forecasted_value = current_value + (slope * forecast_periods)
             else:
                 forecasted_value = current_value
@@ -445,9 +451,7 @@ class ExecutionAnalytics:
         avg_cost = total_cost / len(executions) if executions else 0.0
 
         # Get velocity
-        velocity = self.calculate_team_velocity(
-            period_start, period_end, executions, team_size
-        )
+        velocity = self.calculate_team_velocity(period_start, period_end, executions, team_size)
 
         # Calculate trends
         trends = []
@@ -464,9 +468,7 @@ class ExecutionAnalytics:
                 forecasts.append(forecast)
 
         # Generate recommendations
-        recommendations = self._generate_recommendations(
-            velocity, trends, forecasts
-        )
+        recommendations = self._generate_recommendations(velocity, trends, forecasts)
 
         report = AnalyticsReport(
             execution_id=execution_id,

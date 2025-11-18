@@ -12,8 +12,7 @@ No MCP protocol, no wrapper overhead. Just Python async functions.
 """
 
 import logging
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from ..core.database import Database
 from .system import ConsolidationSystem
@@ -196,7 +195,9 @@ async def extract_procedures(
 ) -> List[Dict[str, Any]]:
     """Extract procedures. See ConsolidationOperations.extract_procedures for details."""
     ops = get_operations()
-    return await ops.extract_procedures(memory_limit=memory_limit, min_success_rate=min_success_rate)
+    return await ops.extract_procedures(
+        memory_limit=memory_limit, min_success_rate=min_success_rate
+    )
 
 
 async def get_consolidation_history(limit: int = 10) -> List[Dict[str, Any]]:

@@ -51,6 +51,7 @@ def get_pattern_metrics(
     try:
         if db is None:
             from ..core.database import Database
+
             db = Database()
 
         from ..workflow.analyzer import TaskSequenceAnalyzer

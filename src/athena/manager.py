@@ -2,17 +2,15 @@
 
 import asyncio
 import logging
-import re
 import time
 from datetime import datetime
 from typing import Any, Optional
 
 from .consolidation.system import ConsolidationSystem
 from .core.confidence_scoring import ConfidenceScorer
-from .core.database import Database
 from .episodic.models import EpisodicEvent, EventContext, EventType
 from .episodic.store import EpisodicStore
-from .graph.models import Entity, Observation, Relation
+from .graph.models import Entity, Relation
 from .graph.store import GraphStore
 from .memory.store import MemoryStore
 from .meta.store import MetaMemoryStore
@@ -34,6 +32,7 @@ from .temporal.kg_synthesis import TemporalKGSynthesis
 try:
     from .rag import RAGConfig, RAGManager
     from .rag.llm_client import LLMClient, create_llm_client
+
     RAG_AVAILABLE = True
 except ImportError:
     RAG_AVAILABLE = False
@@ -169,7 +168,9 @@ class UnifiedMemoryManager:
                     llm_client = create_llm_client(provider="local")  # type: ignore
                     logger.info("RAG Manager: Initialized with local llamacpp LLM")
                 except Exception as local_err:
-                    logger.debug(f"Local LLM unavailable ({local_err}), RAG features will be disabled")
+                    logger.debug(
+                        f"Local LLM unavailable ({local_err}), RAG features will be disabled"
+                    )
                     llm_client = None
 
                 # Create temporal KG synthesis for temporal enrichment features
@@ -187,7 +188,9 @@ class UnifiedMemoryManager:
                     graph_store=graph,
                     temporal_kg=temporal_kg,
                 )
-                logger.info(f"Advanced RAG initialized successfully with temporal enrichment enabled")
+                logger.info(
+                    "Advanced RAG initialized successfully with temporal enrichment enabled"
+                )
             except Exception as e:
                 logger.warning(f"Failed to initialize advanced RAG: {e}")
                 self.rag_manager = None
@@ -200,7 +203,7 @@ class UnifiedMemoryManager:
         fields: Optional[list[str]] = None,
         conversation_history: Optional[list[dict]] = None,
         include_confidence_scores: bool = True,
-        explain_reasoning: bool = False
+        explain_reasoning: bool = False,
     ) -> dict:
         """Intelligent multi-layer retrieval with optional confidence scoring and explanation.
 
@@ -224,12 +227,14 @@ class UnifiedMemoryManager:
                 session_context = self.session_manager.get_current_session()
                 if session_context:
                     # Merge session context into query context
-                    context.update({
-                        "session_id": session_context.session_id,
-                        "task": session_context.current_task,
-                        "phase": session_context.current_phase,
-                        "recent_events": session_context.recent_events,
-                    })
+                    context.update(
+                        {
+                            "session_id": session_context.session_id,
+                            "task": session_context.current_task,
+                            "phase": session_context.current_phase,
+                            "recent_events": session_context.recent_events,
+                        }
+                    )
             except Exception as e:
                 logger.warning(f"Failed to load session context: {e}")
 
@@ -422,7 +427,9 @@ class UnifiedMemoryManager:
                     memory_count=1,
                     episodic_count=1 if content_type == "event" else 0,
                     procedural_count=1 if content_type == "procedure" else 0,
-                    entity_count=len(metadata.get("entities", [])) if metadata.get("entities") else 0,
+                    entity_count=(
+                        len(metadata.get("entities", [])) if metadata.get("entities") else 0
+                    ),
                     avg_confidence=metadata.get("confidence", 0.8),
                     avg_usefulness=metadata.get("usefulness", 0.5),
                     first_encounter=datetime.now(),
@@ -495,7 +502,9 @@ class UnifiedMemoryManager:
         )
 
         # 4. Mark related events as consolidated
-        consolidation_score = consolidation_result.get("confidence", 0.0) if consolidation_result else 0.0
+        consolidation_score = (
+            consolidation_result.get("confidence", 0.0) if consolidation_result else 0.0
+        )
         from .episodic.activation import should_archive
 
         archived_count = 0
@@ -516,9 +525,9 @@ class UnifiedMemoryManager:
             "status": "completed",
             "consolidated_events": len(related_events),
             "archived_events": archived_count,
-            "patterns_extracted": consolidation_result.get("pattern_count", 0)
-            if consolidation_result
-            else 0,
+            "patterns_extracted": (
+                consolidation_result.get("pattern_count", 0) if consolidation_result else 0
+            ),
             "consolidation_score": consolidation_score,
         }
 
@@ -580,7 +589,9 @@ class UnifiedMemoryManager:
             consolidation_result = await self.consolidation.consolidate_async(
                 events=to_consolidate, consolidation_type="periodic_archival"
             )
-            consolidation_score = consolidation_result.get("confidence", 0.0) if consolidation_result else 0.0
+            consolidation_score = (
+                consolidation_result.get("confidence", 0.0) if consolidation_result else 0.0
+            )
 
             # Update consolidatable events
             for event in to_consolidate:
@@ -622,31 +633,59 @@ class UnifiedMemoryManager:
         query_lower = query.lower()
 
         # Temporal indicators
-        if any(word in query_lower for word in ["when", "last", "recent", "yesterday", "week", "month", "date", "time"]):
+        if any(
+            word in query_lower
+            for word in ["when", "last", "recent", "yesterday", "week", "month", "date", "time"]
+        ):
             return QueryType.TEMPORAL
 
         # Relational indicators
-        if any(word in query_lower for word in ["depends", "related", "connection", "linked", "uses", "implements"]):
+        if any(
+            word in query_lower
+            for word in ["depends", "related", "connection", "linked", "uses", "implements"]
+        ):
             return QueryType.RELATIONAL
 
         # Planning indicators (Phase 3.5 addition - check BEFORE procedural/prospective)
-        if any(word in query_lower for word in [
-            "decompose", "plan", "strategy", "orchestration", "validate",
-            "project status", "orchestrate", "execution", "recommendation",
-            "how should i", "suggest", "suggest a", "suggest"
-        ]):
+        if any(
+            word in query_lower
+            for word in [
+                "decompose",
+                "plan",
+                "strategy",
+                "orchestration",
+                "validate",
+                "project status",
+                "orchestrate",
+                "execution",
+                "recommendation",
+                "how should i",
+                "suggest",
+                "suggest a",
+                "suggest",
+            ]
+        ):
             return QueryType.PLANNING
 
         # Procedural indicators
-        if any(word in query_lower for word in ["how to", "how do", "workflow", "process", "steps", "procedure"]):
+        if any(
+            word in query_lower
+            for word in ["how to", "how do", "workflow", "process", "steps", "procedure"]
+        ):
             return QueryType.PROCEDURAL
 
         # Prospective indicators
-        if any(word in query_lower for word in ["task", "todo", "remind", "remember to", "pending", "need to"]):
+        if any(
+            word in query_lower
+            for word in ["task", "todo", "remind", "remember to", "pending", "need to"]
+        ):
             return QueryType.PROSPECTIVE
 
         # Meta indicators
-        if any(word in query_lower for word in ["what do we know", "what have we learned", "coverage", "expertise"]):
+        if any(
+            word in query_lower
+            for word in ["what do we know", "what have we learned", "coverage", "expertise"]
+        ):
             return QueryType.META
 
         # Default to factual
@@ -661,15 +700,23 @@ class UnifiedMemoryManager:
         # Check for date-specific queries
         if "yesterday" in query.lower():
             from datetime import timedelta
+
             start = datetime.now() - timedelta(days=1)
             events = self.episodic.get_events_by_date(project.id, start) if project.id else []
         elif "week" in query.lower():
-            events = self.episodic.get_recent_events(project.id, hours=168, limit=k) if project.id else []
+            events = (
+                self.episodic.get_recent_events(project.id, hours=168, limit=k)
+                if project.id
+                else []
+            )
         else:
             # General search
             events = self.episodic.search_events(project.id, query, limit=k) if project.id else []
 
-        return [{"event_id": e.id, "content": e.content, "timestamp": e.timestamp, "type": e.event_type} for e in events]
+        return [
+            {"event_id": e.id, "content": e.content, "timestamp": e.timestamp, "type": e.event_type}
+            for e in events
+        ]
 
     def _query_semantic(
         self,
@@ -677,7 +724,7 @@ class UnifiedMemoryManager:
         context: dict,
         k: int,
         use_advanced_rag: bool = True,
-        conversation_history: Optional[list[dict]] = None
+        conversation_history: Optional[list[dict]] = None,
     ) -> list:
         """Query semantic memory.
 
@@ -745,17 +792,19 @@ class UnifiedMemoryManager:
             if entity.id is None:
                 continue
             relations = self.graph.get_entity_relations(entity.id, direction="both")  # type: ignore
-            results.append({
-                "entity": entity.name,
-                "type": entity.entity_type.value,
-                "relations": [
-                    {
-                        "relation": r.relation_type.value,
-                        "to": related.name,
-                    }
-                    for r, related in relations[:5]
-                ],
-            })
+            results.append(
+                {
+                    "entity": entity.name,
+                    "type": entity.entity_type.value,
+                    "relations": [
+                        {
+                            "relation": r.relation_type.value,
+                            "to": related.name,
+                        }
+                        for r, related in relations[:5]
+                    ],
+                }
+            )
 
         return results
 
@@ -784,6 +833,7 @@ class UnifiedMemoryManager:
         # Check for status filters in query
         if "pending" in query.lower():
             from .prospective.models import TaskStatus
+
             tasks = self.prospective.list_tasks(project.id, status=TaskStatus.PENDING, limit=k)
         elif "ready" in query.lower():
             tasks = self.prospective.get_ready_tasks(project.id)[:k]
@@ -808,7 +858,11 @@ class UnifiedMemoryManager:
         if domain:
             coverage = self.meta.get_domain(domain)
             if coverage:
-                expertise_str = coverage.expertise_level.value if hasattr(coverage.expertise_level, 'value') else str(coverage.expertise_level)
+                expertise_str = (
+                    coverage.expertise_level.value
+                    if hasattr(coverage.expertise_level, "value")
+                    else str(coverage.expertise_level)
+                )
                 return {
                     "domain": coverage.domain,
                     "memory_count": coverage.memory_count,
@@ -823,7 +877,11 @@ class UnifiedMemoryManager:
                 {
                     "domain": c.domain,
                     "memory_count": c.memory_count,
-                    "expertise": c.expertise_level.value if hasattr(c.expertise_level, 'value') else str(c.expertise_level),
+                    "expertise": (
+                        c.expertise_level.value
+                        if hasattr(c.expertise_level, "value")
+                        else str(c.expertise_level)
+                    ),
                 }
                 for c in all_coverage[:10]
             ]
@@ -854,11 +912,7 @@ class UnifiedMemoryManager:
             planning_rag = PlanningRAGRouter(self.semantic)
 
             # Route through planning-aware RAG
-            results = planning_rag.route_planning_query(
-                query=query,
-                context=context,
-                k=k
-            )
+            results = planning_rag.route_planning_query(query=query, context=context, k=k)
 
             # Format results
             return [
@@ -877,11 +931,7 @@ class UnifiedMemoryManager:
             return []
 
     def _hybrid_search(
-        self,
-        query: str,
-        context: dict,
-        k: int,
-        conversation_history: Optional[list[dict]] = None
+        self, query: str, context: dict, k: int, conversation_history: Optional[list[dict]] = None
     ) -> dict:
         """Hybrid search combining vector, lexical, and graph search."""
         results = {}
@@ -898,14 +948,8 @@ class UnifiedMemoryManager:
         from .memory.lexical import reciprocal_rank_fusion
 
         # Convert to (id, score) tuples for fusion
-        semantic_tuples = [
-            (i, r.get('similarity', 0.5))
-            for i, r in enumerate(semantic_results)
-        ]
-        lexical_tuples = [
-            (i, r.get('score', 0.5))
-            for i, r in enumerate(lexical_results)
-        ]
+        semantic_tuples = [(i, r.get("similarity", 0.5)) for i, r in enumerate(semantic_results)]
+        lexical_tuples = [(i, r.get("score", 0.5)) for i, r in enumerate(lexical_results)]
 
         if semantic_tuples and lexical_tuples:
             # Fuse results
@@ -918,7 +962,7 @@ class UnifiedMemoryManager:
             for idx, score in fused[:k]:
                 if idx < len(all_results):
                     result = all_results[idx].copy()
-                    result['fused_score'] = score
+                    result["fused_score"] = score
                     fused_results.append(result)
 
             results["semantic"] = fused_results
@@ -947,9 +991,7 @@ class UnifiedMemoryManager:
 
         # Get all memories for indexing
         all_memories = self.semantic.list_memories(
-            project_id=project.id,
-            limit=1000,
-            sort_by='recent'
+            project_id=project.id, limit=1000, sort_by="recent"
         )
 
         if not all_memories:
@@ -973,12 +1015,18 @@ class UnifiedMemoryManager:
             # Find memory by ID
             memory = next((m for m in all_memories if m.id == memory_id), None)
             if memory:
-                formatted_results.append({
-                    'content': memory.content,
-                    'type': memory.memory_type.value if hasattr(memory.memory_type, 'value') else str(memory.memory_type),
-                    'score': score,
-                    'tags': memory.tags
-                })
+                formatted_results.append(
+                    {
+                        "content": memory.content,
+                        "type": (
+                            memory.memory_type.value
+                            if hasattr(memory.memory_type, "value")
+                            else str(memory.memory_type)
+                        ),
+                        "score": score,
+                        "tags": memory.tags,
+                    }
+                )
 
         return formatted_results
 
@@ -1011,13 +1059,15 @@ class UnifiedMemoryManager:
             scored_layer = []
             for result in layer_results:
                 # Create a copy to avoid modifying original
-                scored_result = dict(result) if isinstance(result, dict) else {"content": str(result)}
+                scored_result = (
+                    dict(result) if isinstance(result, dict) else {"content": str(result)}
+                )
 
                 # Compute confidence scores
                 confidence = self.confidence_scorer.score(
                     memory=scored_result,
                     source_layer=layer,
-                    semantic_score=result.get("similarity") if isinstance(result, dict) else None
+                    semantic_score=result.get("similarity") if isinstance(result, dict) else None,
                 )
 
                 # Add confidence scores to result
@@ -1065,9 +1115,15 @@ class UnifiedMemoryManager:
         return {
             "query": query,
             "query_type": query_type,
-            "reasoning": type_explanations.get(query_type, "Performed hybrid search across all layers"),
+            "reasoning": type_explanations.get(
+                query_type, "Performed hybrid search across all layers"
+            ),
             "layers_searched": searched_layers,
-            "result_count": sum(len(r) if isinstance(r, list) else 1 for r in results.values() if r != "_explanation"),
+            "result_count": sum(
+                len(r) if isinstance(r, list) else 1
+                for r in results.values()
+                if r != "_explanation"
+            ),
         }
 
     def recall(
@@ -1162,12 +1218,14 @@ class UnifiedMemoryManager:
                     # No cache key, fetch directly
                     session_context = self.session_manager.get_current_session()
                     if session_context:
-                        context.update({
-                            "session_id": session_context.session_id,
-                            "task": session_context.current_task,
-                            "phase": session_context.current_phase,
-                            "recent_events": session_context.recent_events,
-                        })
+                        context.update(
+                            {
+                                "session_id": session_context.session_id,
+                                "task": session_context.current_task,
+                                "phase": session_context.current_phase,
+                                "recent_events": session_context.recent_events,
+                            }
+                        )
             except Exception as e:
                 logger.warning(f"Failed to load session context in recall: {e}")
 
@@ -1187,10 +1245,12 @@ class UnifiedMemoryManager:
                 layer_quality_scores = self.quality_reweighter._compute_layer_quality_scores(
                     {}, context
                 )
-                cascade_depth, tier_selection_explanation = self.tier_selector.select_depth_with_quality(
-                    query,
-                    layer_quality_scores=layer_quality_scores,
-                    context=context,
+                cascade_depth, tier_selection_explanation = (
+                    self.tier_selector.select_depth_with_quality(
+                        query,
+                        layer_quality_scores=layer_quality_scores,
+                        context=context,
+                    )
                 )
             except Exception as e:
                 # Fallback to complexity-only selection if quality scoring fails
@@ -1214,16 +1274,12 @@ class UnifiedMemoryManager:
 
             # Tier 2: Enriched cross-layer context (if requested)
             if cascade_depth >= 2:
-                tier_2_results = self._recall_tier_2(
-                    query, context, tier_1_results, k
-                )
+                tier_2_results = self._recall_tier_2(query, context, tier_1_results, k)
                 results["tier_2"] = tier_2_results
 
             # Tier 3: LLM-synthesized results (if requested and RAG available)
             if cascade_depth >= 3 and self.rag_manager:
-                tier_3_results = self._recall_tier_3(
-                    query, context, tier_1_results, k
-                )
+                tier_3_results = self._recall_tier_3(query, context, tier_1_results, k)
                 results["tier_3"] = tier_3_results
 
             # Apply confidence scores if requested
@@ -1281,8 +1337,7 @@ class UnifiedMemoryManager:
         try:
             # Episodic: Temporal queries, recent events
             if context.get("phase") == "debugging" or any(
-                word in query.lower()
-                for word in ["when", "last", "recent", "error", "failed"]
+                word in query.lower() for word in ["when", "last", "recent", "error", "failed"]
             ):
                 tier_1["episodic"] = self._query_episodic(query, context, k)
 
@@ -1371,9 +1426,7 @@ class UnifiedMemoryManager:
             finally:
                 loop.close()
         except Exception as e:
-            logger.warning(
-                f"Parallel Tier 1 execution failed ({e}), falling back to sequential"
-            )
+            logger.warning(f"Parallel Tier 1 execution failed ({e}), falling back to sequential")
             # Record failed attempt
             elapsed_ms = (time.time() - start_time) * 1000
             self._record_query_metrics(
@@ -1390,9 +1443,7 @@ class UnifiedMemoryManager:
             # Fall back to sequential execution
             return self._recall_tier_1(query, context, k)
 
-    def _recall_tier_2(
-        self, query: str, context: dict, tier_1_results: dict, k: int
-    ) -> dict:
+    def _recall_tier_2(self, query: str, context: dict, tier_1_results: dict, k: int) -> dict:
         """Tier 2: Enriched cross-layer context.
 
         Uses results from tier 1 to inform cross-layer queries
@@ -1412,9 +1463,7 @@ class UnifiedMemoryManager:
         try:
             # Hybrid search across multiple layers
             if tier_1_results:
-                tier_2["hybrid"] = self._hybrid_search(
-                    query, context, k, conversation_history=None
-                )
+                tier_2["hybrid"] = self._hybrid_search(query, context, k, conversation_history=None)
 
             # Meta queries: What do we know about the situation?
             if context.get("phase"):
@@ -1435,9 +1484,7 @@ class UnifiedMemoryManager:
 
         return tier_2
 
-    def _recall_tier_3(
-        self, query: str, context: dict, tier_1_results: dict, k: int
-    ) -> dict:
+    def _recall_tier_3(self, query: str, context: dict, tier_1_results: dict, k: int) -> dict:
         """Tier 3: LLM-synthesized results.
 
         Uses RAG to synthesize insights from tier 1 results
@@ -1526,7 +1573,9 @@ class UnifiedMemoryManager:
 
             if isinstance(layer_results, list):
                 # Project each result in the list
-                projected[layer] = [self._project_record(record, fields) for record in layer_results]
+                projected[layer] = [
+                    self._project_record(record, fields) for record in layer_results
+                ]
             elif isinstance(layer_results, dict):
                 # Project dictionary result
                 projected[layer] = self._project_record(layer_results, fields)
@@ -1595,7 +1644,9 @@ class UnifiedMemoryManager:
             layer_latencies=layer_latencies,
             success=success,
             parallel_execution=parallel,
-            concurrency_level=self.parallel_tier1_executor.executor.max_concurrent if parallel else 1,
+            concurrency_level=(
+                self.parallel_tier1_executor.executor.max_concurrent if parallel else 1
+            ),
             accuracy_score=1.0 if success else 0.8,
         )
 

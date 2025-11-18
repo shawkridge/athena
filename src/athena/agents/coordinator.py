@@ -14,7 +14,6 @@ from ..memory.operations import store as store_fact, search as search_facts
 from ..prospective.operations import (
     create_task as create_prospective_task,
     get_active_tasks as get_prospective_tasks,
-    get_task as get_prospective_task,
     update_task_status as update_prospective_task_status,
 )
 from ..meta.operations import (
@@ -219,9 +218,7 @@ class AgentCoordinator:
         )
 
         self.statistics["events_emitted"] += 1
-        logger.info(
-            f"Agent {self.agent_id} emitted event {event_id} (type={event_type})"
-        )
+        logger.info(f"Agent {self.agent_id} emitted event {event_id} (type={event_type})")
 
         return event_id
 
@@ -250,15 +247,9 @@ class AgentCoordinator:
 
         # Filter by tags if specified
         if all_tags:
-            events = [
-                e
-                for e in events
-                if any(tag in e.get("tags", []) for tag in all_tags)
-            ]
+            events = [e for e in events if any(tag in e.get("tags", []) for tag in all_tags)]
 
-        logger.debug(
-            f"Agent {self.agent_id} queried {len(events)} events (query={query})"
-        )
+        logger.debug(f"Agent {self.agent_id} queried {len(events)} events (query={query})")
 
         return events
 
@@ -291,8 +282,7 @@ class AgentCoordinator:
 
         self.statistics["knowledge_shared"] += 1
         logger.info(
-            f"Agent {self.agent_id} shared knowledge {knowledge_id} "
-            f"(confidence={confidence})"
+            f"Agent {self.agent_id} shared knowledge {knowledge_id} " f"(confidence={confidence})"
         )
 
         return knowledge_id
@@ -318,9 +308,7 @@ class AgentCoordinator:
         # Filter by confidence
         facts = [f for f in facts if f.get("confidence", 0) >= min_confidence]
 
-        logger.debug(
-            f"Agent {self.agent_id} queried {len(facts)} facts (query={query})"
-        )
+        logger.debug(f"Agent {self.agent_id} queried {len(facts)} facts (query={query})")
 
         return facts
 
@@ -404,9 +392,7 @@ class AgentCoordinator:
                 properties=properties or {},
             )
 
-            logger.debug(
-                f"Agent {self.agent_id} added context entity {entity_name}"
-            )
+            logger.debug(f"Agent {self.agent_id} added context entity {entity_name}")
             return True
 
         except Exception as e:
@@ -436,15 +422,11 @@ class AgentCoordinator:
                 relationship=relationship,
             )
 
-            logger.debug(
-                f"Agent {self.agent_id} linked {from_entity} -> {to_entity}"
-            )
+            logger.debug(f"Agent {self.agent_id} linked {from_entity} -> {to_entity}")
             return True
 
         except Exception as e:
-            logger.error(
-                f"Failed to link entities {from_entity} -> {to_entity}: {e}"
-            )
+            logger.error(f"Failed to link entities {from_entity} -> {to_entity}: {e}")
             return False
 
     async def get_context(
@@ -488,6 +470,4 @@ class AgentCoordinator:
 
         # Log final statistics
         stats = self.get_statistics()
-        logger.info(
-            f"Agent {self.agent_id} shutdown: {stats}"
-        )
+        logger.info(f"Agent {self.agent_id} shutdown: {stats}")

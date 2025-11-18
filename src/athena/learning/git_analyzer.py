@@ -5,9 +5,8 @@ Extract decision context, understand why changes were made, prevent repeating mi
 
 import logging
 import subprocess
-import json
 from typing import Optional, List, Dict, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -16,6 +15,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CommitInfo:
     """Information about a git commit."""
+
     sha: str
     author: str
     date: str
@@ -29,6 +29,7 @@ class CommitInfo:
 @dataclass
 class ArchitecturalDecision:
     """A significant architectural decision from git history."""
+
     decision_id: str
     title: str
     description: str
@@ -45,6 +46,7 @@ class ArchitecturalDecision:
 @dataclass
 class PatternEvolution:
     """How a code pattern evolved over time."""
+
     pattern_name: str
     first_appeared: str
     last_modified: str

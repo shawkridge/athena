@@ -1,14 +1,11 @@
 """Confidence scoring system for Phase 9.1."""
 
-import math
 from typing import Optional
 
 from athena.phase9.uncertainty.models import (
     ConfidenceInterval,
     ConfidenceLevel,
     ConfidenceScore,
-    PlanAlternative,
-    UncertaintyBreakdown,
     UncertaintyType,
 )
 
@@ -54,10 +51,10 @@ class ConfidenceScorer:
 
         # Adjust for data availability (more data = higher confidence)
         data_factor = min(1.0, data_points / 20.0)  # Normalize to 20 points
-        base_score *= (0.5 + 0.5 * data_factor)
+        base_score *= 0.5 + 0.5 * data_factor
 
         # Adjust for complexity (more complex = lower confidence)
-        base_score *= (1.0 - estimate_complexity * 0.3)
+        base_score *= 1.0 - estimate_complexity * 0.3
 
         # Adjust for external factors (each factor reduces by ~10%)
         external_factor = max(0.5, 1.0 - len(external_factors) * 0.1)
@@ -130,13 +127,11 @@ class ConfidenceScorer:
         base_score = historical_accuracy
 
         # Adjust for supporting/conflicting data
-        evidence_ratio = len(supporting_data) / max(
-            1, len(supporting_data) + len(conflicting_data)
-        )
-        base_score *= (0.5 + 0.5 * evidence_ratio)
+        evidence_ratio = len(supporting_data) / max(1, len(supporting_data) + len(conflicting_data))
+        base_score *= 0.5 + 0.5 * evidence_ratio
 
         # Adjust for model uncertainty
-        base_score *= (1.0 - model_uncertainty * 0.3)
+        base_score *= 1.0 - model_uncertainty * 0.3
 
         final_score = max(0.0, min(1.0, base_score))
 
@@ -234,7 +229,7 @@ class ConfidenceScorer:
             slack_ratio = deadline_days / estimate_days if estimate_days > 0 else 1.0
             # More slack = higher confidence
             slack_score = min(1.0, slack_ratio / 2.0)  # 2x slack = max confidence
-            base_score *= (0.7 + 0.3 * slack_score)
+            base_score *= 0.7 + 0.3 * slack_score
 
         # More dependencies = less certainty
         dependency_factor = max(0.5, 1.0 - dependency_count * 0.1)

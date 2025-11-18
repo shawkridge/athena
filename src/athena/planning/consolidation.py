@@ -14,7 +14,6 @@ from .models import (
     DecompositionStrategy,
     ExecutionFeedback,
     PatternType,
-    DecompositionType,
     ExecutionOutcome,
 )
 from .store import PlanningStore
@@ -62,9 +61,7 @@ class PlanningConsolidator:
             return []
 
         # Convert rows to ExecutionFeedback objects
-        feedback_list = [
-            self.store._row_to_execution_feedback(row) for row in feedback_rows
-        ]
+        feedback_list = [self.store._row_to_execution_feedback(row) for row in feedback_rows]
         feedback_list = [f for f in feedback_list if f]
 
         if len(feedback_list) < min_executions:
@@ -77,9 +74,7 @@ class PlanningConsolidator:
         extracted_patterns = []
         for strategy_key, feedbacks in grouped.items():
             if len(feedbacks) >= min_executions:
-                pattern = self._extract_pattern_from_feedback(
-                    project_id, strategy_key, feedbacks
-                )
+                pattern = self._extract_pattern_from_feedback(project_id, strategy_key, feedbacks)
                 if pattern:
                     extracted_patterns.append(pattern)
 
@@ -109,25 +104,19 @@ class PlanningConsolidator:
 
         # Calculate success rate
         successful = sum(
-            1
-            for f in feedback_list
-            if f.execution_outcome == ExecutionOutcome.SUCCESS
+            1 for f in feedback_list if f.execution_outcome == ExecutionOutcome.SUCCESS
         )
         success_rate = successful / len(feedback_list) if feedback_list else 0.0
 
         # Calculate quality score (average of execution quality scores)
         quality_scores = [f.execution_quality_score for f in feedback_list if f]
-        quality_score = (
-            statistics.mean(quality_scores) if quality_scores else 0.0
-        )
+        quality_score = statistics.mean(quality_scores) if quality_scores else 0.0
 
         # Calculate actual vs planned ratio variance
         duration_variances = []
         for f in feedback_list:
             if f.planned_duration_minutes and f.actual_duration_minutes:
-                variance = (
-                    f.actual_duration_minutes / f.planned_duration_minutes
-                )
+                variance = f.actual_duration_minutes / f.planned_duration_minutes
                 duration_variances.append(variance)
 
         # Determine if this pattern helps with duration estimation
@@ -172,9 +161,7 @@ class PlanningConsolidator:
             List of tuples: (strategy, confidence_score, rationale)
         """
         # Find strategies applicable to this task type
-        strategies = self.store.find_strategies_by_type(
-            project_id, task_type, limit=10
-        )
+        strategies = self.store.find_strategies_by_type(project_id, task_type, limit=10)
 
         if not strategies:
             return []
@@ -196,10 +183,7 @@ class PlanningConsolidator:
             )
 
             feedback_rows = cursor.fetchall()
-            feedback_list = [
-                self.store._row_to_execution_feedback(row)
-                for row in feedback_rows
-            ]
+            feedback_list = [self.store._row_to_execution_feedback(row) for row in feedback_rows]
             feedback_list = [f for f in feedback_list if f]
 
             # Calculate confidence score
@@ -210,27 +194,19 @@ class PlanningConsolidator:
                 # Accuracy of time estimates (lower is better)
                 duration_accuracies = []
                 for f in feedback_list:
-                    if (
-                        f.planned_duration_minutes
-                        and f.actual_duration_minutes
-                    ):
+                    if f.planned_duration_minutes and f.actual_duration_minutes:
                         accuracy = min(
                             f.actual_duration_minutes / f.planned_duration_minutes,
-                            f.planned_duration_minutes
-                            / f.actual_duration_minutes,
+                            f.planned_duration_minutes / f.actual_duration_minutes,
                         )
                         duration_accuracies.append(accuracy)
 
                 avg_duration_accuracy = (
-                    statistics.mean(duration_accuracies)
-                    if duration_accuracies
-                    else 0.5
+                    statistics.mean(duration_accuracies) if duration_accuracies else 0.5
                 )
 
                 # Combined confidence
-                confidence = (success_rate * 0.6) + (
-                    avg_duration_accuracy * 0.4
-                )
+                confidence = (success_rate * 0.6) + (avg_duration_accuracy * 0.4)
 
                 # Generate rationale
                 rationale = (
@@ -240,9 +216,7 @@ class PlanningConsolidator:
                     f"adaptive depth: {strategy.adaptive_depth}"
                 )
 
-                scored_strategies.append(
-                    (strategy, confidence, rationale)
-                )
+                scored_strategies.append((strategy, confidence, rationale))
 
         # Sort by confidence descending
         scored_strategies.sort(key=lambda x: x[1], reverse=True)
@@ -250,9 +224,7 @@ class PlanningConsolidator:
         # Return top N
         return scored_strategies[:limit]
 
-    def _group_feedback_by_strategy(
-        self, feedback_list: List[ExecutionFeedback]
-    ) -> dict:
+    def _group_feedback_by_strategy(self, feedback_list: List[ExecutionFeedback]) -> dict:
         """Group feedback by strategy/task type combination.
 
         Args:
@@ -305,15 +277,11 @@ class PlanningConsolidator:
             return None
 
         # Calculate metrics
-        successful = sum(
-            1 for f in feedbacks if f.execution_outcome == ExecutionOutcome.SUCCESS
-        )
+        successful = sum(1 for f in feedbacks if f.execution_outcome == ExecutionOutcome.SUCCESS)
         success_rate = successful / len(feedbacks)
 
         quality_scores = [f.execution_quality_score for f in feedbacks]
-        quality_score = (
-            statistics.mean(quality_scores) if quality_scores else 0.0
-        )
+        quality_score = statistics.mean(quality_scores) if quality_scores else 0.0
 
         # Determine pattern type based on strategy
         pattern_type = PatternType.HIERARCHICAL  # Default

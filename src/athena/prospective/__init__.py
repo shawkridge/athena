@@ -1,6 +1,13 @@
 """Prospective memory layer for future tasks with intelligent triggers."""
 
-from .models import ProspectiveTask, TaskDependency, TaskPriority, TaskStatus, TaskTrigger, TriggerType
+from .models import (
+    ProspectiveTask,
+    TaskDependency,
+    TaskPriority,
+    TaskStatus,
+    TaskTrigger,
+    TriggerType,
+)
 from .store import ProspectiveStore
 from .triggers import (
     TriggerEvaluator,

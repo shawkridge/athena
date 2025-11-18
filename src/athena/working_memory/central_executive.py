@@ -9,13 +9,13 @@ Responsibilities:
 - Coordinate between phonological loop, visuospatial sketchpad, and episodic buffer
 """
 
-from typing import List, Optional, Union, Any
-from datetime import datetime, timedelta
+from typing import List, Optional, Any
+from datetime import datetime
 import json
 
 from ..core.database import Database
 from ..core.embeddings import EmbeddingModel
-from .models import Goal, GoalType, GoalStatus, WorkingMemoryItem, Component
+from .models import Goal, GoalType, GoalStatus
 from .saliency import SaliencyCalculator, saliency_to_focus_type, saliency_to_recommendation
 
 
@@ -42,23 +42,29 @@ class CentralExecutive:
     def _init_schema(self):
         """Ensure schema exists (for testing/standalone use)."""
         # For PostgreSQL async databases, skip sync schema initialization
-        if not hasattr(self.db, 'conn'):
+        if not hasattr(self.db, "conn"):
             import logging
+
             logger = logging.getLogger(__name__)
-            logger.debug(f"CentralExecutive: PostgreSQL async database detected. Schema management handled by _init_schema().")
+            logger.debug(
+                "CentralExecutive: PostgreSQL async database detected. Schema management handled by _init_schema()."
+            )
             return
 
         # Schema should already exist from migration, but create if needed for tests
         with self.db.conn:
             # Check if active_goals table exists
-            result = self.db.conn.execute("""
+            result = self.db.conn.execute(
+                """
                 SELECT table_name FROM information_schema.tables
                 WHERE table_schema='public' AND table_name='active_goals'
-            """).fetchone()
+            """
+            ).fetchone()
 
             if not result:
                 # Create table for testing/standalone use
-                self.db.conn.execute("""
+                self.db.conn.execute(
+                    """
                     CREATE TABLE IF NOT EXISTS active_goals (
                         id SERIAL PRIMARY KEY,
                         project_id INTEGER NOT NULL,
@@ -75,7 +81,8 @@ class CentralExecutive:
                         FOREIGN KEY (project_id) REFERENCES projects (id),
                         FOREIGN KEY (parent_goal_id) REFERENCES active_goals (id)
                     )
-                """)
+                """
+                )
                 # commit handled by cursor context
 
     # ========================================================================
@@ -90,7 +97,7 @@ class CentralExecutive:
         parent_goal_id: Optional[int] = None,
         priority: int = 5,
         deadline: Optional[datetime] = None,
-        completion_criteria: Optional[str] = None
+        completion_criteria: Optional[str] = None,
     ) -> Goal:
         """
         Set a new active goal.
@@ -111,21 +118,24 @@ class CentralExecutive:
         goal_type_str = goal_type.value if isinstance(goal_type, GoalType) else goal_type
 
         with self.db.conn:
-            cursor = self.db.conn.execute("""
+            cursor = self.db.conn.execute(
+                """
                 INSERT INTO active_goals
                 (project_id, goal_text, goal_type, parent_goal_id, priority,
                  deadline, completion_criteria, metadata)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                project_id,
-                goal_text,
-                goal_type_str,
-                parent_goal_id,
-                priority,
-                deadline.isoformat() if deadline else None,
-                completion_criteria,
-                json.dumps({})
-            ))
+            """,
+                (
+                    project_id,
+                    goal_text,
+                    goal_type_str,
+                    parent_goal_id,
+                    priority,
+                    deadline.isoformat() if deadline else None,
+                    completion_criteria,
+                    json.dumps({}),
+                ),
+            )
 
             goal_id = cursor.lastrowid
 
@@ -135,9 +145,12 @@ class CentralExecutive:
     def get_goal(self, goal_id: int) -> Goal:
         """Get goal by ID."""
         with self.db.conn:
-            row = self.db.conn.execute("""
+            row = self.db.conn.execute(
+                """
                 SELECT * FROM active_goals WHERE id = ?
-            """, (goal_id,)).fetchone()
+            """,
+                (goal_id,),
+            ).fetchone()
 
             if not row:
                 raise ValueError(f"Goal {goal_id} not found")
@@ -148,7 +161,7 @@ class CentralExecutive:
         self,
         project_id: int,
         include_subgoals: bool = True,
-        status_filter: Optional[GoalStatus] = None
+        status_filter: Optional[GoalStatus] = None,
     ) -> List[Goal]:
         """
         Get all active goals for project, sorted by priority.
@@ -182,10 +195,7 @@ class CentralExecutive:
             return [self._row_to_goal(row) for row in rows]
 
     def update_goal_progress(
-        self,
-        goal_id: int,
-        progress: float,
-        status: Optional[GoalStatus] = None
+        self, goal_id: int, progress: float, status: Optional[GoalStatus] = None
     ):
         """
         Update goal completion progress.
@@ -199,25 +209,34 @@ class CentralExecutive:
 
         with self.db.conn:
             if status:
-                self.db.conn.execute("""
+                self.db.conn.execute(
+                    """
                     UPDATE active_goals
                     SET progress = ?, status = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?
-                """, (progress, status.value, goal_id))
+                """,
+                    (progress, status.value, goal_id),
+                )
             else:
-                self.db.conn.execute("""
+                self.db.conn.execute(
+                    """
                     UPDATE active_goals
                     SET progress = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?
-                """, (progress, goal_id))
+                """,
+                    (progress, goal_id),
+                )
 
             # Auto-complete if progress reaches 1.0
             if progress >= 1.0:
-                self.db.conn.execute("""
+                self.db.conn.execute(
+                    """
                     UPDATE active_goals
                     SET status = ?
                     WHERE id = ? AND status = ?
-                """, (GoalStatus.COMPLETED.value, goal_id, GoalStatus.ACTIVE.value))
+                """,
+                    (GoalStatus.COMPLETED.value, goal_id, GoalStatus.ACTIVE.value),
+                )
 
     def complete_goal(self, goal_id: int, cascade_to_children: bool = False):
         """
@@ -228,53 +247,71 @@ class CentralExecutive:
             cascade_to_children: Also complete child goals
         """
         with self.db.conn:
-            self.db.conn.execute("""
+            self.db.conn.execute(
+                """
                 UPDATE active_goals
                 SET status = ?, progress = 1.0, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            """, (GoalStatus.COMPLETED.value, goal_id))
+            """,
+                (GoalStatus.COMPLETED.value, goal_id),
+            )
 
             if cascade_to_children:
-                self.db.conn.execute("""
+                self.db.conn.execute(
+                    """
                     UPDATE active_goals
                     SET status = ?, progress = 1.0, updated_at = CURRENT_TIMESTAMP
                     WHERE parent_goal_id = ?
-                """, (GoalStatus.COMPLETED.value, goal_id))
+                """,
+                    (GoalStatus.COMPLETED.value, goal_id),
+                )
 
     def suspend_goal(self, goal_id: int):
         """Temporarily suspend goal (can be resumed later)."""
         with self.db.conn:
-            self.db.conn.execute("""
+            self.db.conn.execute(
+                """
                 UPDATE active_goals
                 SET status = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            """, (GoalStatus.SUSPENDED.value, goal_id))
+            """,
+                (GoalStatus.SUSPENDED.value, goal_id),
+            )
 
     def resume_goal(self, goal_id: int):
         """Resume suspended goal."""
         with self.db.conn:
-            self.db.conn.execute("""
+            self.db.conn.execute(
+                """
                 UPDATE active_goals
                 SET status = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            """, (GoalStatus.ACTIVE.value, goal_id))
+            """,
+                (GoalStatus.ACTIVE.value, goal_id),
+            )
 
     def update_goal_status(self, goal_id: int, status: str):
         """Update goal status (active, suspended, completed, blocked)."""
         with self.db.conn:
-            self.db.conn.execute("""
+            self.db.conn.execute(
+                """
                 UPDATE active_goals SET status = ?, updated_at = datetime('now')
                 WHERE id = ?
-            """, (status, goal_id))
+            """,
+                (status, goal_id),
+            )
 
     def get_subgoals(self, parent_goal_id: int) -> List[Goal]:
         """Get all subgoals of a parent goal."""
         with self.db.conn:
-            rows = self.db.conn.execute("""
+            rows = self.db.conn.execute(
+                """
                 SELECT * FROM active_goals
                 WHERE parent_goal_id = ?
                 ORDER BY priority DESC
-            """, (parent_goal_id,)).fetchall()
+            """,
+                (parent_goal_id,),
+            ).fetchall()
             return [self._row_to_goal(row) for row in rows]
 
     def get_goal_hierarchy(self, project_id: int) -> List[dict]:
@@ -285,11 +322,14 @@ class CentralExecutive:
             List of goals with depth and path information
         """
         with self.db.conn:
-            rows = self.db.conn.execute("""
+            rows = self.db.conn.execute(
+                """
                 SELECT * FROM v_goals_hierarchy
                 WHERE project_id = ?
                 ORDER BY depth, priority DESC
-            """, (project_id,)).fetchall()
+            """,
+                (project_id,),
+            ).fetchall()
 
             return [dict(row) for row in rows]
 
@@ -309,19 +349,22 @@ class CentralExecutive:
     def is_at_capacity(self, project_id: int) -> bool:
         """Check if working memory is at capacity (7±2 items)."""
         capacity = self.get_capacity_status(project_id)
-        return capacity['at_capacity']
+        return capacity["at_capacity"]
 
     def get_capacity_status(self, project_id: int) -> dict:
         """Get current capacity status across all WM components."""
         with self.db.conn:
-            count = self.db.conn.execute("""
+            count = self.db.conn.execute(
+                """
                 SELECT COUNT(*) FROM working_memory WHERE project_id = ?
-            """, (project_id,)).fetchone()[0]
+            """,
+                (project_id,),
+            ).fetchone()[0]
             return {
-                'count': count,
-                'max_capacity': self.max_wm_capacity,
-                'available': self.max_wm_capacity - count,
-                'at_capacity': count >= self.max_wm_capacity
+                "count": count,
+                "max_capacity": self.max_wm_capacity,
+                "available": self.max_wm_capacity - count,
+                "at_capacity": count >= self.max_wm_capacity,
             }
 
     def trigger_consolidation(self, project_id: int, count: int = 3):
@@ -337,24 +380,30 @@ class CentralExecutive:
 
         # Get least active items
         with self.db.conn:
-            rows = self.db.conn.execute("""
+            rows = self.db.conn.execute(
+                """
                 SELECT id, content, content_type, component,
                        current_activation, importance_score
                 FROM v_working_memory_current
                 WHERE project_id = ?
                 ORDER BY current_activation ASC, importance_score ASC
                 LIMIT ?
-            """, (project_id, count)).fetchall()
+            """,
+                (project_id, count),
+            ).fetchall()
 
             consolidated_ids = []
             for row in rows:
                 # Mark for consolidation (actual consolidation handled by router)
-                item_id = row['id']
+                item_id = row["id"]
 
                 # Delete from working memory
-                self.db.conn.execute("""
+                self.db.conn.execute(
+                    """
                     DELETE FROM working_memory WHERE id = ?
-                """, (item_id,))
+                """,
+                    (item_id,),
+                )
 
                 consolidated_ids.append(item_id)
 
@@ -365,11 +414,7 @@ class CentralExecutive:
     # ========================================================================
 
     def set_attention_focus(
-        self,
-        project_id: int,
-        focus_target: str,
-        focus_type: str = "memory",
-        weight: float = 1.0
+        self, project_id: int, focus_target: str, focus_type: str = "memory", weight: float = 1.0
     ):
         """
         Set attention focus.
@@ -382,35 +427,48 @@ class CentralExecutive:
         """
         with self.db.conn:
             # Clear previous focus
-            self.db.conn.execute("""
+            self.db.conn.execute(
+                """
                 DELETE FROM attention_focus WHERE project_id = ?
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
 
             # Set new focus
-            self.db.conn.execute("""
+            self.db.conn.execute(
+                """
                 INSERT INTO attention_focus
                 (project_id, focus_target, focus_type, attention_weight)
                 VALUES (?, ?, ?, ?)
-            """, (project_id, focus_target, focus_type, weight))
+            """,
+                (project_id, focus_target, focus_type, weight),
+            )
 
     def allocate_attention(self, project_id: int, goal_id: int, weight: float = 0.8):
         """Allocate attention to a specific goal."""
         with self.db.conn:
-            self.db.conn.execute("""
+            self.db.conn.execute(
+                """
                 INSERT OR REPLACE INTO attention_focus
                 (project_id, goal_id, attention_weight, focused_at)
                 VALUES (?, ?, ?, datetime('now'))
-            """, (project_id, goal_id, weight))
+            """,
+                (project_id, goal_id, weight),
+            )
 
     def get_attention_focus(self, project_id: int) -> List:
         """Get current attention focus."""
         from types import SimpleNamespace
+
         with self.db.conn:
-            rows = self.db.conn.execute("""
+            rows = self.db.conn.execute(
+                """
                 SELECT goal_id, attention_weight FROM attention_focus
                 WHERE project_id = ?
                 ORDER BY focused_at DESC
-            """, (project_id,)).fetchall()
+            """,
+                (project_id,),
+            ).fetchall()
             return [SimpleNamespace(**dict(row)) for row in rows]
 
     # ========================================================================
@@ -486,11 +544,14 @@ class CentralExecutive:
         """
         with self.db.conn:
             # Get all memories in layer for project
-            rows = self.db.conn.execute(f"""
+            rows = self.db.conn.execute(
+                """
                 SELECT id FROM memories
                 WHERE project_id = ?
                 LIMIT 100
-            """, (project_id,)).fetchall()
+            """,
+                (project_id,),
+            ).fetchall()
 
             memory_ids = [row[0] for row in rows]
 
@@ -564,13 +625,15 @@ class CentralExecutive:
                 results.append(result)
             except (AttributeError, ValueError, TypeError):
                 # Include failed items with neutral score
-                results.append({
-                    "memory_id": memory_id,
-                    "layer": layer,
-                    "saliency": 0.5,
-                    "focus_type": "background",
-                    "recommendation": "BACKGROUND: Could not compute saliency",
-                })
+                results.append(
+                    {
+                        "memory_id": memory_id,
+                        "layer": layer,
+                        "saliency": 0.5,
+                        "focus_type": "background",
+                        "recommendation": "BACKGROUND: Could not compute saliency",
+                    }
+                )
 
         return results
 
@@ -581,19 +644,19 @@ class CentralExecutive:
     def _row_to_goal(self, row) -> Goal:
         """Convert database row to Goal object."""
         return Goal(
-            id=row['id'],
-            project_id=row['project_id'],
-            goal_text=row['goal_text'],
-            goal_type=GoalType(row['goal_type']),
-            parent_goal_id=row['parent_goal_id'],
-            priority=row['priority'],
-            status=GoalStatus(row['status']),
-            progress=row['progress'],
-            created_at=datetime.fromisoformat(row['created_at']),
-            updated_at=datetime.fromisoformat(row['updated_at']),
-            deadline=datetime.fromisoformat(row['deadline']) if row['deadline'] else None,
-            completion_criteria=row['completion_criteria'],
-            metadata=json.loads(row['metadata']) if row['metadata'] else None
+            id=row["id"],
+            project_id=row["project_id"],
+            goal_text=row["goal_text"],
+            goal_type=GoalType(row["goal_type"]),
+            parent_goal_id=row["parent_goal_id"],
+            priority=row["priority"],
+            status=GoalStatus(row["status"]),
+            progress=row["progress"],
+            created_at=datetime.fromisoformat(row["created_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+            deadline=datetime.fromisoformat(row["deadline"]) if row["deadline"] else None,
+            completion_criteria=row["completion_criteria"],
+            metadata=json.loads(row["metadata"]) if row["metadata"] else None,
         )
 
     def get_statistics(self, project_id: int) -> dict:
@@ -603,27 +666,29 @@ class CentralExecutive:
             capacity = self.check_capacity(project_id)
 
             # Goal stats
-            goal_stats = self.db.conn.execute("""
+            goal_stats = self.db.conn.execute(
+                """
                 SELECT status, COUNT(*) as count
                 FROM active_goals
                 WHERE project_id = ?
                 GROUP BY status
-            """, (project_id,)).fetchall()
+            """,
+                (project_id,),
+            ).fetchall()
 
-            goal_counts = {row['status']: row['count'] for row in goal_stats}
+            goal_counts = {row["status"]: row["count"] for row in goal_stats}
 
             # Component distribution
-            component_stats = self.db.conn.execute("""
+            component_stats = self.db.conn.execute(
+                """
                 SELECT component, COUNT(*) as count
                 FROM working_memory
                 WHERE project_id = ?
                 GROUP BY component
-            """, (project_id,)).fetchall()
+            """,
+                (project_id,),
+            ).fetchall()
 
-            component_counts = {row['component']: row['count'] for row in component_stats}
+            component_counts = {row["component"]: row["count"] for row in component_stats}
 
-            return {
-                'capacity': capacity,
-                'goals': goal_counts,
-                'components': component_counts
-            }
+            return {"capacity": capacity, "goals": goal_counts, "components": component_counts}

@@ -8,7 +8,7 @@ from typing import Dict, List, Any, Optional
 from ..consolidation.dream_store import DreamStore
 from ..consolidation.dream_models import DreamStatus, DreamTier, DreamProcedure
 from ..core.database import Database
-from .dream_sandbox import DreamSandbox, DreamTestResult, TestOutcome
+from .dream_sandbox import DreamSandbox, DreamTestResult
 from .synthetic_test_generator import SyntheticTestGenerator
 
 logger = logging.getLogger(__name__)
@@ -70,11 +70,7 @@ class DreamTestRunner:
             "tested_dreams": len(tested_dreams),
             "dreams_passed": self.dreams_passed,
             "dreams_failed": len(tested_dreams) - self.dreams_passed,
-            "pass_rate": (
-                self.dreams_passed / len(tested_dreams)
-                if tested_dreams
-                else 0.0
-            ),
+            "pass_rate": (self.dreams_passed / len(tested_dreams) if tested_dreams else 0.0),
             "statistics": stats,
             "tested_dreams_details": tested_dreams,
         }
@@ -107,9 +103,7 @@ class DreamTestRunner:
             test_inputs = [{}]  # Empty input as fallback
 
         # Get expected output type
-        expected_output_type = self.test_generator.get_expected_output_type(
-            dream.code
-        )
+        expected_output_type = self.test_generator.get_expected_output_type(dream.code)
 
         # Run tests
         test_results = []
@@ -142,10 +136,7 @@ class DreamTestRunner:
                 None,
             )
         else:
-            failed_count = sum(
-                1 for r in test_results
-                if not self._parse_result_dict(r)["success"]
-            )
+            failed_count = sum(1 for r in test_results if not self._parse_result_dict(r)["success"])
             await self._update_dream_status(
                 dream.id,
                 DreamStatus.TESTED,
@@ -182,9 +173,7 @@ class DreamTestRunner:
 
         # Generate edge case inputs
         edge_cases = self.test_generator.generate_edge_case_inputs(dream.code)
-        expected_output_type = self.test_generator.get_expected_output_type(
-            dream.code
-        )
+        expected_output_type = self.test_generator.get_expected_output_type(dream.code)
 
         # Run edge case tests
         results = []
@@ -314,33 +303,41 @@ class DreamTestRunner:
 
         for pattern_key, pattern in top_failures:
             if "syntax" in pattern.error_category.value:
-                improvements.append({
-                    "category": "Syntax",
-                    "issue": pattern.error_message,
-                    "frequency": pattern.frequency,
-                    "suggestion": "Add Python syntax validation before code generation",
-                })
+                improvements.append(
+                    {
+                        "category": "Syntax",
+                        "issue": pattern.error_message,
+                        "frequency": pattern.frequency,
+                        "suggestion": "Add Python syntax validation before code generation",
+                    }
+                )
             elif "type" in pattern.error_category.value:
-                improvements.append({
-                    "category": "Type",
-                    "issue": pattern.error_message,
-                    "frequency": pattern.frequency,
-                    "suggestion": "Enforce type hints and add type checking",
-                })
+                improvements.append(
+                    {
+                        "category": "Type",
+                        "issue": pattern.error_message,
+                        "frequency": pattern.frequency,
+                        "suggestion": "Enforce type hints and add type checking",
+                    }
+                )
             elif "dependency" in pattern.error_category.value:
-                improvements.append({
-                    "category": "Dependency",
-                    "issue": pattern.error_message,
-                    "frequency": pattern.frequency,
-                    "suggestion": "Check available imports and dependencies",
-                })
+                improvements.append(
+                    {
+                        "category": "Dependency",
+                        "issue": pattern.error_message,
+                        "frequency": pattern.frequency,
+                        "suggestion": "Check available imports and dependencies",
+                    }
+                )
             elif "resource" in pattern.error_category.value:
-                improvements.append({
-                    "category": "Resource",
-                    "issue": pattern.error_message,
-                    "frequency": pattern.frequency,
-                    "suggestion": "Add resource limits and optimize for memory",
-                })
+                improvements.append(
+                    {
+                        "category": "Resource",
+                        "issue": pattern.error_message,
+                        "frequency": pattern.frequency,
+                        "suggestion": "Add resource limits and optimize for memory",
+                    }
+                )
 
         stats = self._calculate_statistics()
 

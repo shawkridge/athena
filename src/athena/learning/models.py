@@ -7,6 +7,7 @@ from datetime import datetime
 @dataclass
 class AccessRecord:
     """Record of memory access for co-occurrence detection."""
+
     id: int
     project_id: int
     memory_id: int
@@ -18,6 +19,7 @@ class AccessRecord:
 @dataclass
 class HebbianStats:
     """Statistics for Hebbian learning process."""
+
     id: int
     project_id: int
     total_accesses: int

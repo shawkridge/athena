@@ -1,8 +1,7 @@
 """Storage and retrieval for code context."""
 
-import json
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 from ..core.database import Database
@@ -38,12 +37,14 @@ class CodeContextStore:
             db: Database instance
         """
         self.db = db
+
     def _ensure_schema(self) -> None:
         """Create tables if they don't exist."""
         cursor = self.db.get_cursor()
 
         # Code contexts table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS code_contexts (
                 id SERIAL PRIMARY KEY,
                 goal_id TEXT,
@@ -56,10 +57,12 @@ class CodeContextStore:
                 consolidation_status TEXT DEFAULT 'unconsolidated',
                 consolidated_at INTEGER
             )
-        """)
+        """
+        )
 
         # Relevant files table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS code_context_files (
                 id SERIAL PRIMARY KEY,
                 context_id INTEGER NOT NULL,
@@ -71,10 +74,12 @@ class CodeContextStore:
                 created_at INTEGER NOT NULL,
                 FOREIGN KEY (context_id) REFERENCES code_contexts(id)
             )
-        """)
+        """
+        )
 
         # Dependencies table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS code_dependencies (
                 id SERIAL PRIMARY KEY,
                 context_id INTEGER NOT NULL,
@@ -86,10 +91,12 @@ class CodeContextStore:
                 created_at INTEGER NOT NULL,
                 FOREIGN KEY (context_id) REFERENCES code_contexts(id)
             )
-        """)
+        """
+        )
 
         # Recent changes table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS code_recent_changes (
                 id SERIAL PRIMARY KEY,
                 context_id INTEGER NOT NULL,
@@ -101,10 +108,12 @@ class CodeContextStore:
                 created_at INTEGER NOT NULL,
                 FOREIGN KEY (context_id) REFERENCES code_contexts(id)
             )
-        """)
+        """
+        )
 
         # Known issues table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS code_known_issues (
                 id SERIAL PRIMARY KEY,
                 context_id INTEGER NOT NULL,
@@ -117,43 +126,58 @@ class CodeContextStore:
                 created_at INTEGER NOT NULL,
                 FOREIGN KEY (context_id) REFERENCES code_contexts(id)
             )
-        """)
+        """
+        )
 
         # Indexes for common queries
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_code_contexts_task
             ON code_contexts(task_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_code_contexts_goal
             ON code_contexts(goal_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_code_contexts_session
             ON code_contexts(session_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_code_context_files_context
             ON code_context_files(context_id, relevance DESC)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_code_context_files_path
             ON code_context_files(file_path)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_code_dependencies_context
             ON code_dependencies(context_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_code_dependencies_files
             ON code_dependencies(from_file, to_file)
-        """)
+        """
+        )
 
         # commit handled by cursor context
 
@@ -181,11 +205,14 @@ class CodeContextStore:
         now = int(time.time() * 1000)  # Milliseconds
         expires_at = now + (expires_in_hours * 3600 * 1000)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO code_contexts
             (goal_id, task_id, session_id, architecture_notes, created_at, expires_at)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (goal_id, task_id, session_id, architecture_notes, now, expires_at))
+        """,
+            (goal_id, task_id, session_id, architecture_notes, now, expires_at),
+        )
 
         # commit handled by cursor context
         return cursor.lastrowid
@@ -218,7 +245,7 @@ class CodeContextStore:
         cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT * FROM code_contexts WHERE task_id = ? ORDER BY created_at DESC LIMIT 1",
-            (task_id,)
+            (task_id,),
         )
         row = cursor.fetchone()
         if not row:
@@ -236,8 +263,7 @@ class CodeContextStore:
         """
         cursor = self.db.get_cursor()
         cursor.execute(
-            "SELECT * FROM code_contexts WHERE goal_id = ? ORDER BY created_at DESC",
-            (goal_id,)
+            "SELECT * FROM code_contexts WHERE goal_id = ? ORDER BY created_at DESC", (goal_id,)
         )
         return [self._row_to_context(row) for row in cursor.fetchall()]
 
@@ -271,11 +297,14 @@ class CodeContextStore:
         if last_modified:
             last_mod_ms = int(last_modified.timestamp() * 1000)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO code_context_files
             (context_id, file_path, relevance, file_role, lines_changed, last_modified, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (context_id, file_path, relevance, role_value, lines_changed, last_mod_ms, now))
+        """,
+            (context_id, file_path, relevance, role_value, lines_changed, last_mod_ms, now),
+        )
 
         # commit handled by cursor context
         return cursor.lastrowid
@@ -295,12 +324,15 @@ class CodeContextStore:
             List of FileInfo sorted by relevance descending
         """
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT file_path, relevance, file_role, lines_changed, last_modified
             FROM code_context_files
             WHERE context_id = ? AND relevance >= ?
             ORDER BY relevance DESC
-        """, (context_id, min_relevance))
+        """,
+            (context_id, min_relevance),
+        )
 
         files = []
         for row in cursor.fetchall():
@@ -309,13 +341,15 @@ class CodeContextStore:
             if last_mod:
                 last_modified = datetime.fromtimestamp(last_mod / 1000)
 
-            files.append(FileInfo(
-                path=path,
-                relevance=relevance,
-                role=FileRole(role),
-                lines_changed=lines_changed,
-                last_modified=last_modified,
-            ))
+            files.append(
+                FileInfo(
+                    path=path,
+                    relevance=relevance,
+                    role=FileRole(role),
+                    lines_changed=lines_changed,
+                    last_modified=last_modified,
+                )
+            )
         return files
 
     def add_dependency(
@@ -342,13 +376,18 @@ class CodeContextStore:
         """
         cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
-        dep_type_value = dependency_type.value if hasattr(dependency_type, "value") else dependency_type
+        dep_type_value = (
+            dependency_type.value if hasattr(dependency_type, "value") else dependency_type
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO code_dependencies
             (context_id, from_file, to_file, dependency_type, description, strength, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (context_id, from_file, to_file, dep_type_value, description, strength, now))
+        """,
+            (context_id, from_file, to_file, dep_type_value, description, strength, now),
+        )
 
         # commit handled by cursor context
         return cursor.lastrowid
@@ -363,23 +402,28 @@ class CodeContextStore:
             List of FileDependencies
         """
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT from_file, to_file, dependency_type, description, strength
             FROM code_dependencies
             WHERE context_id = ?
             ORDER BY strength DESC
-        """, (context_id,))
+        """,
+            (context_id,),
+        )
 
         deps = []
         for row in cursor.fetchall():
             from_file, to_file, dep_type, description, strength = row
-            deps.append(FileDependency(
-                from_file=from_file,
-                to_file=to_file,
-                dependency_type=DependencyType(dep_type),
-                description=description,
-                strength=strength,
-            ))
+            deps.append(
+                FileDependency(
+                    from_file=from_file,
+                    to_file=to_file,
+                    dependency_type=DependencyType(dep_type),
+                    description=description,
+                    strength=strength,
+                )
+            )
         return deps
 
     def get_dependencies_for_file(self, context_id: int, file_path: str) -> list[FileDependency]:
@@ -393,23 +437,28 @@ class CodeContextStore:
             List of dependencies (both to and from the file)
         """
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT from_file, to_file, dependency_type, description, strength
             FROM code_dependencies
             WHERE context_id = ? AND (from_file = ? OR to_file = ?)
             ORDER BY strength DESC
-        """, (context_id, file_path, file_path))
+        """,
+            (context_id, file_path, file_path),
+        )
 
         deps = []
         for row in cursor.fetchall():
             from_file, to_file, dep_type, description, strength = row
-            deps.append(FileDependency(
-                from_file=from_file,
-                to_file=to_file,
-                dependency_type=DependencyType(dep_type),
-                description=description,
-                strength=strength,
-            ))
+            deps.append(
+                FileDependency(
+                    from_file=from_file,
+                    to_file=to_file,
+                    dependency_type=DependencyType(dep_type),
+                    description=description,
+                    strength=strength,
+                )
+            )
         return deps
 
     def add_recent_change(
@@ -441,11 +490,14 @@ class CodeContextStore:
             timestamp = datetime.now()
         change_ts = int(timestamp.timestamp() * 1000)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO code_recent_changes
             (context_id, file_path, change_timestamp, change_summary, author, session_id, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (context_id, file_path, change_ts, change_summary, author, session_id, now))
+        """,
+            (context_id, file_path, change_ts, change_summary, author, session_id, now),
+        )
 
         # commit handled by cursor context
         return cursor.lastrowid
@@ -461,24 +513,29 @@ class CodeContextStore:
             List of recent changes sorted by timestamp descending
         """
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT file_path, change_timestamp, change_summary, author, session_id
             FROM code_recent_changes
             WHERE context_id = ?
             ORDER BY change_timestamp DESC
             LIMIT ?
-        """, (context_id, limit))
+        """,
+            (context_id, limit),
+        )
 
         changes = []
         for row in cursor.fetchall():
             path, change_ts, summary, author, session_id = row
-            changes.append(RecentChange(
-                file_path=path,
-                timestamp=datetime.fromtimestamp(change_ts / 1000),
-                change_summary=summary,
-                author=author,
-                session_id=session_id,
-            ))
+            changes.append(
+                RecentChange(
+                    file_path=path,
+                    timestamp=datetime.fromtimestamp(change_ts / 1000),
+                    change_summary=summary,
+                    author=author,
+                    session_id=session_id,
+                )
+            )
         return changes
 
     def add_known_issue(
@@ -515,11 +572,23 @@ class CodeContextStore:
         severity_value = severity.value if hasattr(severity, "value") else severity
         status_value = status.value if hasattr(status, "value") else status
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO code_known_issues
             (context_id, file_path, issue, severity, status, found_at, resolution_notes, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (context_id, file_path, issue, severity_value, status_value, found_ts, resolution_notes, now))
+        """,
+            (
+                context_id,
+                file_path,
+                issue,
+                severity_value,
+                status_value,
+                found_ts,
+                resolution_notes,
+                now,
+            ),
+        )
 
         # commit handled by cursor context
         return cursor.lastrowid
@@ -542,31 +611,39 @@ class CodeContextStore:
 
         if status_filter:
             status_value = status_filter.value if hasattr(status_filter, "value") else status_filter
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT file_path, issue, severity, status, found_at, resolution_notes
                 FROM code_known_issues
                 WHERE context_id = ? AND status = ?
                 ORDER BY severity DESC, found_at DESC
-            """, (context_id, status_value))
+            """,
+                (context_id, status_value),
+            )
         else:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT file_path, issue, severity, status, found_at, resolution_notes
                 FROM code_known_issues
                 WHERE context_id = ?
                 ORDER BY severity DESC, found_at DESC
-            """, (context_id,))
+            """,
+                (context_id,),
+            )
 
         issues = []
         for row in cursor.fetchall():
             path, issue, severity, status, found_ts, notes = row
-            issues.append(KnownIssue(
-                file_path=path,
-                issue=issue,
-                severity=IssueSeverity(severity),
-                status=IssueStatus(status),
-                found_at=datetime.fromtimestamp(found_ts / 1000),
-                resolution_notes=notes,
-            ))
+            issues.append(
+                KnownIssue(
+                    file_path=path,
+                    issue=issue,
+                    severity=IssueSeverity(severity),
+                    status=IssueStatus(status),
+                    found_at=datetime.fromtimestamp(found_ts / 1000),
+                    resolution_notes=notes,
+                )
+            )
         return issues
 
     def is_context_stale(self, context_id: int) -> bool:
@@ -579,10 +656,7 @@ class CodeContextStore:
             True if context is expired, False otherwise
         """
         cursor = self.db.get_cursor()
-        cursor.execute(
-            "SELECT expires_at FROM code_contexts WHERE id = ?",
-            (context_id,)
-        )
+        cursor.execute("SELECT expires_at FROM code_contexts WHERE id = ?", (context_id,))
         row = cursor.fetchone()
         if not row or row[0] is None:
             return False
@@ -606,11 +680,14 @@ class CodeContextStore:
         now = int(time.time() * 1000)
         expires_at = now + (expires_in_hours * 3600 * 1000)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE code_contexts
             SET expires_at = ?, last_refreshed = ?
             WHERE id = ?
-        """, (expires_at, now, context_id))
+        """,
+            (expires_at, now, context_id),
+        )
 
         # commit handled by cursor context
 
@@ -622,11 +699,14 @@ class CodeContextStore:
         """
         cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE code_contexts
             SET consolidation_status = 'consolidated', consolidated_at = ?
             WHERE id = ?
-        """, (now, context_id))
+        """,
+            (now, context_id),
+        )
         # commit handled by cursor context
 
     def get_unconsolidated_contexts(
@@ -646,19 +726,25 @@ class CodeContextStore:
         cursor = self.db.get_cursor()
 
         if goal_id:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM code_contexts
                 WHERE consolidation_status = 'unconsolidated' AND goal_id = ?
                 ORDER BY created_at ASC
                 LIMIT ?
-            """, (goal_id, limit))
+            """,
+                (goal_id, limit),
+            )
         else:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM code_contexts
                 WHERE consolidation_status = 'unconsolidated'
                 ORDER BY created_at ASC
                 LIMIT ?
-            """, (limit,))
+            """,
+                (limit,),
+            )
 
         return [self._row_to_context(row) for row in cursor.fetchall()]
 
@@ -690,7 +776,7 @@ class CodeContextStore:
         # Get relevant files
         cursor.execute(
             "SELECT file_path, relevance, file_role, lines_changed, last_modified FROM code_context_files WHERE context_id = ? ORDER BY relevance DESC",
-            (id_,)
+            (id_,),
         )
         relevant_files = []
         for file_row in cursor.fetchall():
@@ -698,62 +784,70 @@ class CodeContextStore:
             last_modified = None
             if last_mod:
                 last_modified = datetime.fromtimestamp(last_mod / 1000)
-            relevant_files.append(FileInfo(
-                path=path,
-                relevance=relevance,
-                role=FileRole(role),
-                lines_changed=lines_changed,
-                last_modified=last_modified,
-            ))
+            relevant_files.append(
+                FileInfo(
+                    path=path,
+                    relevance=relevance,
+                    role=FileRole(role),
+                    lines_changed=lines_changed,
+                    last_modified=last_modified,
+                )
+            )
 
         # Get dependencies
         cursor.execute(
             "SELECT from_file, to_file, dependency_type, description, strength FROM code_dependencies WHERE context_id = ? ORDER BY strength DESC",
-            (id_,)
+            (id_,),
         )
         dependencies = []
         for dep_row in cursor.fetchall():
             from_file, to_file, dep_type, description, strength = dep_row
-            dependencies.append(FileDependency(
-                from_file=from_file,
-                to_file=to_file,
-                dependency_type=DependencyType(dep_type),
-                description=description,
-                strength=strength,
-            ))
+            dependencies.append(
+                FileDependency(
+                    from_file=from_file,
+                    to_file=to_file,
+                    dependency_type=DependencyType(dep_type),
+                    description=description,
+                    strength=strength,
+                )
+            )
 
         # Get recent changes
         cursor.execute(
             "SELECT file_path, change_timestamp, change_summary, author, session_id FROM code_recent_changes WHERE context_id = ? ORDER BY change_timestamp DESC LIMIT 20",
-            (id_,)
+            (id_,),
         )
         recent_changes = []
         for change_row in cursor.fetchall():
             path, change_ts, summary, author, session_id = change_row
-            recent_changes.append(RecentChange(
-                file_path=path,
-                timestamp=datetime.fromtimestamp(change_ts / 1000),
-                change_summary=summary,
-                author=author,
-                session_id=session_id,
-            ))
+            recent_changes.append(
+                RecentChange(
+                    file_path=path,
+                    timestamp=datetime.fromtimestamp(change_ts / 1000),
+                    change_summary=summary,
+                    author=author,
+                    session_id=session_id,
+                )
+            )
 
         # Get known issues
         cursor.execute(
             "SELECT file_path, issue, severity, status, found_at, resolution_notes FROM code_known_issues WHERE context_id = ? ORDER BY severity DESC",
-            (id_,)
+            (id_,),
         )
         known_issues = []
         for issue_row in cursor.fetchall():
             path, issue, severity, status, found_ts, notes = issue_row
-            known_issues.append(KnownIssue(
-                file_path=path,
-                issue=issue,
-                severity=IssueSeverity(severity),
-                status=IssueStatus(status),
-                found_at=datetime.fromtimestamp(found_ts / 1000),
-                resolution_notes=notes,
-            ))
+            known_issues.append(
+                KnownIssue(
+                    file_path=path,
+                    issue=issue,
+                    severity=IssueSeverity(severity),
+                    status=IssueStatus(status),
+                    found_at=datetime.fromtimestamp(found_ts / 1000),
+                    resolution_notes=notes,
+                )
+            )
 
         return CodeContext(
             id=id_,
@@ -767,7 +861,11 @@ class CodeContextStore:
             session_id=session_id,
             created_at=datetime.fromtimestamp(created_at / 1000),
             expires_at=datetime.fromtimestamp(expires_at / 1000) if expires_at else None,
-            last_refreshed=datetime.fromtimestamp(last_refreshed / 1000) if last_refreshed else None,
+            last_refreshed=(
+                datetime.fromtimestamp(last_refreshed / 1000) if last_refreshed else None
+            ),
             consolidation_status=consolidation_status,
-            consolidated_at=datetime.fromtimestamp(consolidated_at / 1000) if consolidated_at else None,
+            consolidated_at=(
+                datetime.fromtimestamp(consolidated_at / 1000) if consolidated_at else None
+            ),
         )

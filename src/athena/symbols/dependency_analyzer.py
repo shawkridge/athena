@@ -17,6 +17,7 @@ from .symbol_models import Symbol
 
 class DependencyType(str, Enum):
     """Types of code dependencies."""
+
     CALLS = "calls"  # Function/method calls
     IMPORTS = "imports"  # Module imports
     INHERITS = "inherits"  # Class inheritance
@@ -27,6 +28,7 @@ class DependencyType(str, Enum):
 
 class CouplingLevel(str, Enum):
     """Coupling strength between symbols."""
+
     LOOSE = "loose"  # 1-2 dependencies
     MODERATE = "moderate"  # 3-5 dependencies
     TIGHT = "tight"  # 6-10 dependencies
@@ -36,6 +38,7 @@ class CouplingLevel(str, Enum):
 @dataclass
 class Dependency:
     """Single code dependency."""
+
     from_symbol: Symbol
     to_symbol: Symbol
     dependency_type: DependencyType
@@ -47,6 +50,7 @@ class Dependency:
 @dataclass
 class DependencyMetrics:
     """Metrics for a symbol's dependencies."""
+
     symbol: Symbol
     incoming_count: int  # Number of symbols depending on this
     outgoing_count: int  # Number of symbols this depends on
@@ -66,9 +70,13 @@ class DependencyAnalyzer:
         self.metrics: Dict[str, DependencyMetrics] = {}
         self.circular_chains: List[List[Symbol]] = []
 
-    def add_dependency(self, from_symbol: Symbol, to_symbol: Symbol,
-                       dependency_type: DependencyType = DependencyType.USES,
-                       strength: float = 0.5) -> None:
+    def add_dependency(
+        self,
+        from_symbol: Symbol,
+        to_symbol: Symbol,
+        dependency_type: DependencyType = DependencyType.USES,
+        strength: float = 0.5,
+    ) -> None:
         """Add a dependency relationship.
 
         Args:
@@ -81,7 +89,7 @@ class DependencyAnalyzer:
             from_symbol=from_symbol,
             to_symbol=to_symbol,
             dependency_type=dependency_type,
-            strength=strength
+            strength=strength,
         )
         self.dependencies.append(dep)
 
@@ -151,11 +159,19 @@ class DependencyAnalyzer:
 
     def _get_incoming_dependencies(self, symbol: Symbol) -> List[Dependency]:
         """Get dependencies pointing to this symbol."""
-        return [d for d in self.dependencies if d.to_symbol.full_qualified_name == symbol.full_qualified_name]
+        return [
+            d
+            for d in self.dependencies
+            if d.to_symbol.full_qualified_name == symbol.full_qualified_name
+        ]
 
     def _get_outgoing_dependencies(self, symbol: Symbol) -> List[Dependency]:
         """Get dependencies from this symbol."""
-        return [d for d in self.dependencies if d.from_symbol.full_qualified_name == symbol.full_qualified_name]
+        return [
+            d
+            for d in self.dependencies
+            if d.from_symbol.full_qualified_name == symbol.full_qualified_name
+        ]
 
     def _find_symbol(self, full_name: str) -> Optional[Symbol]:
         """Find symbol by full qualified name."""
@@ -176,9 +192,13 @@ class DependencyAnalyzer:
                 dep.is_circular = True
                 # Mark in metrics
                 if dep.to_symbol.full_qualified_name in self.metrics:
-                    self.metrics[dep.to_symbol.full_qualified_name].circular_dependencies.append(dep)
+                    self.metrics[dep.to_symbol.full_qualified_name].circular_dependencies.append(
+                        dep
+                    )
                 if dep.from_symbol.full_qualified_name in self.metrics:
-                    self.metrics[dep.from_symbol.full_qualified_name].circular_dependencies.append(dep)
+                    self.metrics[dep.from_symbol.full_qualified_name].circular_dependencies.append(
+                        dep
+                    )
 
     def _has_circular_path(self, current: Symbol, target: Symbol, visited: Set[str]) -> bool:
         """Check if there's a circular path from current to target."""
@@ -207,7 +227,7 @@ class DependencyAnalyzer:
         hotspots = sorted(
             [(name, m.incoming_count) for name, m in self.metrics.items()],
             key=lambda x: x[1],
-            reverse=True
+            reverse=True,
         )
         return hotspots[:limit]
 
@@ -244,7 +264,11 @@ class DependencyAnalyzer:
 
         return {
             "symbol": symbol.name,
-            "impact_scope": "high" if metrics.is_hotspot else "moderate" if metrics.incoming_count > 2 else "low",
+            "impact_scope": (
+                "high"
+                if metrics.is_hotspot
+                else "moderate" if metrics.incoming_count > 2 else "low"
+            ),
             "affected_symbols": len(downstream),
             "dependent_symbols": len(upstream),
             "total_impact": len(downstream) + len(upstream),
@@ -287,8 +311,12 @@ class DependencyAnalyzer:
         isolated = self.get_isolated_symbols()
         circular = self.get_circular_chains()
 
-        tight_coupling = sum(1 for m in self.metrics.values() if m.coupling_level == CouplingLevel.VERY_TIGHT)
-        moderate_coupling = sum(1 for m in self.metrics.values() if m.coupling_level == CouplingLevel.MODERATE)
+        tight_coupling = sum(
+            1 for m in self.metrics.values() if m.coupling_level == CouplingLevel.VERY_TIGHT
+        )
+        moderate_coupling = sum(
+            1 for m in self.metrics.values() if m.coupling_level == CouplingLevel.MODERATE
+        )
 
         return {
             "status": "analyzed",
@@ -300,6 +328,8 @@ class DependencyAnalyzer:
             "moderate_coupling_count": moderate_coupling,
             "circular_dependencies": len(circular),
             "circular_chains": circular,
-            "average_incoming_deps": sum(m.incoming_count for m in self.metrics.values()) / max(1, len(self.metrics)),
-            "average_outgoing_deps": sum(m.outgoing_count for m in self.metrics.values()) / max(1, len(self.metrics)),
+            "average_incoming_deps": sum(m.incoming_count for m in self.metrics.values())
+            / max(1, len(self.metrics)),
+            "average_outgoing_deps": sum(m.outgoing_count for m in self.metrics.values())
+            / max(1, len(self.metrics)),
         }

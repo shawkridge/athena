@@ -18,7 +18,7 @@ import sys
 import json
 import argparse
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 # Setup logging
 logging.basicConfig(level=logging.WARNING)
@@ -46,7 +46,9 @@ def format_output(result: Dict[str, Any], json_output: bool = False) -> str:
         if result.get("status") == "success":
             # Show key results
             for key, value in result.items():
-                if key not in ["status", "execution_time_ms"] and not isinstance(value, (dict, list)):
+                if key not in ["status", "execution_time_ms"] and not isinstance(
+                    value, (dict, list)
+                ):
                     output.append(f"{key}: {value}")
 
         if result.get("error"):

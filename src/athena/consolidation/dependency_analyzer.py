@@ -6,7 +6,7 @@ and data flow for safe constraint relaxation during dream generation.
 """
 
 import ast
-from typing import Dict, List, Set, Optional, Tuple
+from typing import Dict, List, Set, Optional
 from dataclasses import dataclass, field
 import logging
 
@@ -94,8 +94,8 @@ class DependencyGraph:
         if step_a.has_side_effects or step_b.has_side_effects:
             # Can only reorder if completely independent
             return not (
-                step_a.variables_assigned & step_b.variables_used or
-                step_b.variables_assigned & step_a.variables_used
+                step_a.variables_assigned & step_b.variables_used
+                or step_b.variables_assigned & step_a.variables_used
             )
 
         return True
@@ -119,10 +119,12 @@ class DependencyGraph:
 
         # Check all pairs
         for i, step_a in enumerate(steps):
-            for step_b in steps[i + 1:]:
+            for step_b in steps[i + 1 :]:
                 # Check if either uses variables from the other
-                if (step_a.variables_assigned & step_b.variables_used or
-                    step_b.variables_assigned & step_a.variables_used):
+                if (
+                    step_a.variables_assigned & step_b.variables_used
+                    or step_b.variables_assigned & step_a.variables_used
+                ):
                     return False
 
                 # Can't parallelize side-effecting operations
@@ -177,7 +179,7 @@ class ProcedureDependencyAnalyzer(ast.NodeVisitor):
         self.procedure_id = procedure_id
         self.procedure_code = procedure_code
         self.tree: Optional[ast.AST] = None
-        self.lines = procedure_code.split('\n')
+        self.lines = procedure_code.split("\n")
 
         # State tracking during traversal
         self.current_step_index = 0
@@ -202,8 +204,7 @@ class ProcedureDependencyAnalyzer(ast.NodeVisitor):
             logger.error(f"Syntax error in procedure {self.procedure_id}: {e}")
             # Return empty graph on parse error
             return DependencyGraph(
-                procedure_id=self.procedure_id,
-                procedure_code=self.procedure_code
+                procedure_id=self.procedure_id, procedure_code=self.procedure_code
             )
 
         # First pass: extract imports
@@ -225,7 +226,7 @@ class ProcedureDependencyAnalyzer(ast.NodeVisitor):
             function_calls=self.current_function_calls,
             imports=self.imports,
             has_loops=self.has_loops,
-            has_conditionals=self.has_conditionals
+            has_conditionals=self.has_conditionals,
         )
 
     def _extract_imports(self):
@@ -245,19 +246,21 @@ class ProcedureDependencyAnalyzer(ast.NodeVisitor):
 
         for i, node in enumerate(ast.walk(self.tree)):
             if isinstance(node, ast.Assign) or isinstance(node, ast.Expr):
-                if hasattr(node, 'lineno'):
+                if hasattr(node, "lineno"):
                     step_index += 1
                     line_start = node.lineno - 1 if node.lineno else 0
                     line_end = min(line_start + 5, len(self.lines))  # Assume 5-line max per step
 
-                    code = '\n'.join(self.lines[line_start:line_end])
+                    code = "\n".join(self.lines[line_start:line_end])
 
-                    self.steps.append(Step(
-                        index=step_index - 1,
-                        line_start=line_start,
-                        line_end=line_end,
-                        code=code
-                    ))
+                    self.steps.append(
+                        Step(
+                            index=step_index - 1,
+                            line_start=line_start,
+                            line_end=line_end,
+                            code=code,
+                        )
+                    )
 
     def _analyze_step_dependencies(self):
         """Analyze variable usage for each step."""
@@ -335,14 +338,14 @@ class StepAnalysisVisitor(ast.NodeVisitor):
         """Track function calls, especially side-effecting ones."""
         if isinstance(node.func, ast.Name):
             name = node.func.id
-            self.function_calls.append(FunctionCall(
-                name=name,
-                line_number=node.lineno,
-                args=[ast.unparse(arg) for arg in node.args]
-            ))
+            self.function_calls.append(
+                FunctionCall(
+                    name=name, line_number=node.lineno, args=[ast.unparse(arg) for arg in node.args]
+                )
+            )
 
             # Check for side-effecting functions
-            if name in ('open', 'write', 'remove', 'rename', 'system', 'exec', 'eval'):
+            if name in ("open", "write", "remove", "rename", "system", "exec", "eval"):
                 self.has_side_effects = True
 
         elif isinstance(node.func, ast.Attribute):
@@ -351,15 +354,21 @@ class StepAnalysisVisitor(ast.NodeVisitor):
                 module = node.func.value.id
                 func_name = node.func.attr
 
-                self.function_calls.append(FunctionCall(
-                    name=func_name,
-                    line_number=node.lineno,
-                    module=module,
-                    args=[ast.unparse(arg) for arg in node.args]
-                ))
+                self.function_calls.append(
+                    FunctionCall(
+                        name=func_name,
+                        line_number=node.lineno,
+                        module=module,
+                        args=[ast.unparse(arg) for arg in node.args],
+                    )
+                )
 
                 # Check for side-effecting operations
-                if module in ('subprocess', 'os', 'shutil') or func_name in ('write', 'remove', 'rename'):
+                if module in ("subprocess", "os", "shutil") or func_name in (
+                    "write",
+                    "remove",
+                    "rename",
+                ):
                     self.has_side_effects = True
 
         self.generic_visit(node)

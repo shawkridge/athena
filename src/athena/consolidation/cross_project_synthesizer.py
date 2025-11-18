@@ -10,7 +10,7 @@ from dataclasses import dataclass
 import logging
 import re
 
-from .openrouter_client import OpenRouterClient, OpenRouterModel, DREAM_MODELS_CONFIG
+from .openrouter_client import OpenRouterClient, DREAM_MODELS_CONFIG
 from .constraint_relaxer import DreamProcedure
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class CrossProjectSynthesizer:
         base_procedure_name: str,
         base_procedure_code: str,
         related_procedures: List[ProcedureReference],
-        max_variants: int = 15
+        max_variants: int = 15,
     ) -> List[DreamProcedure]:
         """
         Generate hybrid procedure variants by synthesizing with related procedures.
@@ -71,8 +71,7 @@ class CrossProjectSynthesizer:
 
         # Select best candidates to combine (avoid too many combinations)
         candidates = self._select_best_candidates(
-            related_procedures,
-            max_combinations=min(max_variants // 2, 5)
+            related_procedures, max_combinations=min(max_variants // 2, 5)
         )
 
         variants = []
@@ -83,7 +82,7 @@ class CrossProjectSynthesizer:
                 base_procedure_code,
                 related.name,
                 related.code_snippet,
-                related.description
+                related.description,
             )
 
             try:
@@ -93,23 +92,18 @@ class CrossProjectSynthesizer:
                     system=self._get_system_prompt(),
                     max_tokens=self.config["max_tokens"],
                     temperature=self.config["temperature"],
-                    top_p=self.config["top_p"]
+                    top_p=self.config["top_p"],
                 )
 
                 variant = self._extract_hybrid_variant(
-                    response["content"],
-                    base_procedure_id,
-                    base_procedure_name,
-                    related
+                    response["content"], base_procedure_id, base_procedure_name, related
                 )
 
                 if variant:
                     variants.append(variant)
 
             except Exception as e:
-                logger.error(
-                    f"Error synthesizing {base_procedure_name} with {related.name}: {e}"
-                )
+                logger.error(f"Error synthesizing {base_procedure_name} with {related.name}: {e}")
                 continue
 
         logger.info(
@@ -120,9 +114,7 @@ class CrossProjectSynthesizer:
         return variants
 
     def _select_best_candidates(
-        self,
-        procedures: List[ProcedureReference],
-        max_combinations: int
+        self, procedures: List[ProcedureReference], max_combinations: int
     ) -> List[ProcedureReference]:
         """
         Select best procedures to synthesize with.
@@ -172,7 +164,7 @@ The result should be syntactically valid and executable."""
         base_code: str,
         related_name: str,
         related_code: str,
-        related_description: str
+        related_description: str,
     ) -> str:
         """Build prompt for procedure synthesis."""
         prompt = f"""I need you to synthesize a hybrid procedure combining two approaches:
@@ -215,48 +207,36 @@ Remember: You are combining techniques from different domains. Look for:
         return prompt
 
     def _extract_hybrid_variant(
-        self,
-        response: str,
-        base_id: int,
-        base_name: str,
-        related: ProcedureReference
+        self, response: str, base_id: int, base_name: str, related: ProcedureReference
     ) -> Optional[DreamProcedure]:
         """Extract hybrid variant from Qwen response."""
         # Extract Python code block
-        code_match = re.search(
-            r'```python\n(.*?)\n```',
-            response,
-            re.DOTALL
-        )
+        code_match = re.search(r"```python\n(.*?)\n```", response, re.DOTALL)
 
         if not code_match:
-            code_match = re.search(
-                r'```\n(.*?)\n```',
-                response,
-                re.DOTALL
-            )
+            code_match = re.search(r"```\n(.*?)\n```", response, re.DOTALL)
 
         if not code_match:
-            logger.warning(f"Could not find code block in synthesis response")
+            logger.warning("Could not find code block in synthesis response")
             return None
 
         code = code_match.group(1).strip()
 
         # Validate syntax
         try:
-            compile(code, '<string>', 'exec')
+            compile(code, "<string>", "exec")
         except SyntaxError as e:
             logger.warning(f"Synthesis generated invalid Python: {e}")
             return None
 
         # Extract name and description
-        lines = response.split('\n')
+        lines = response.split("\n")
         hybrid_name = f"{base_name}_×_{related.name[:15]}_hybrid"
         description = f"Hybrid of {base_name} and {related.name} approaches"
 
         # Extract any description provided
         for line in lines[:5]:
-            if line.strip() and not line.startswith('```'):
+            if line.strip() and not line.startswith("```"):
                 description = line.strip()
                 break
 
@@ -268,7 +248,7 @@ Remember: You are combining techniques from different domains. Look for:
             code=code,
             model_used="qwen/qwen-2.5-coder-32b-instruct:free",
             reasoning=f"Synthesized {base_name} with {related.name} ({related.category})",
-            generated_description=description
+            generated_description=description,
         )
 
 
@@ -287,7 +267,7 @@ class SemanticProcedureMatcher:
         procedure: ProcedureReference,
         all_procedures: List[ProcedureReference],
         max_results: int = 5,
-        exclude_project: Optional[str] = None
+        exclude_project: Optional[str] = None,
     ) -> List[Tuple[ProcedureReference, float]]:
         """
         Find procedures semantically related to the given procedure.
@@ -322,9 +302,7 @@ class SemanticProcedureMatcher:
         return scores[:max_results]
 
     def _calculate_similarity(
-        self,
-        proc_a: ProcedureReference,
-        proc_b: ProcedureReference
+        self, proc_a: ProcedureReference, proc_b: ProcedureReference
     ) -> float:
         """Calculate similarity between two procedures."""
         score = 0.0

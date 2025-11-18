@@ -9,7 +9,7 @@ Implements the missing integration point from P2:
 """
 
 import logging
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Any
 from dataclasses import dataclass, field
 
 from ..core.models import MemorySearchResult
@@ -351,9 +351,7 @@ class TemporalSearchEnricher:
                 "causes": causes,
                 "effects": effects,
                 "total_relations": len(causes) + len(effects),
-                "critical_relations": sum(
-                    1 for r in causes + effects if r.is_critical
-                ),
+                "critical_relations": sum(1 for r in causes + effects if r.is_critical),
             }
 
         except Exception as e:

@@ -30,7 +30,7 @@ import numpy as np
 
 from ..core.database import Database
 from ..core.async_utils import run_async
-from .models import WorkingMemoryItem, TargetLayer, ConsolidationRoute
+from .models import WorkingMemoryItem, TargetLayer
 
 logger = logging.getLogger(__name__)
 
@@ -53,17 +53,17 @@ class ConsolidationRouter:
         self.model = None
         self.is_trained = False
         self.feature_names = [
-            'content_length',
-            'is_verbal',
-            'is_spatial',
-            'activation_level',
-            'importance_score',
-            'time_in_wm_seconds',
-            'has_temporal_markers',
-            'has_action_verbs',
-            'has_future_markers',
-            'has_question_words',
-            'has_file_references'
+            "content_length",
+            "is_verbal",
+            "is_spatial",
+            "activation_level",
+            "importance_score",
+            "time_in_wm_seconds",
+            "has_temporal_markers",
+            "has_action_verbs",
+            "has_future_markers",
+            "has_question_words",
+            "has_file_references",
         ]
 
     @staticmethod
@@ -80,14 +80,12 @@ class ConsolidationRouter:
 
     def route_item(self, project_id: int, item_id: int, use_ml: bool = True) -> dict:
         """Route working memory item to appropriate LTM layer."""
+
         # Get item using async database operation
         async def _get_item():
             async with self.db.get_connection() as conn:
                 async with conn.cursor(row_factory=self._dict_row_factory) as cur:
-                    await cur.execute(
-                        "SELECT * FROM working_memory WHERE id = %s",
-                        (item_id,)
-                    )
+                    await cur.execute("SELECT * FROM working_memory WHERE id = %s", (item_id,))
                     return await cur.fetchone()
 
         row = run_async(_get_item())
@@ -115,27 +113,19 @@ class ConsolidationRouter:
                         """INSERT INTO consolidation_routes
                            (wm_id, target_layer, confidence, routed_at)
                            VALUES (%s, %s, %s, NOW())""",
-                        (item_id, target_layer.value, confidence)
+                        (item_id, target_layer.value, confidence),
                     )
                     await conn.commit()
 
         run_async(_log_route())
 
-        return {
-            'item_id': item_id,
-            'target_layer': target_layer.value,
-            'confidence': confidence
-        }
+        return {"item_id": item_id, "target_layer": target_layer.value, "confidence": confidence}
 
     def route_batch(self, project_id: int, item_ids: List[int]) -> List[dict]:
         """Route multiple items in batch."""
         return [self.route_item(project_id, item_id) for item_id in item_ids]
 
-    def route(
-        self,
-        wm_item: WorkingMemoryItem,
-        project_id: int
-    ) -> Tuple[TargetLayer, float]:
+    def route(self, wm_item: WorkingMemoryItem, project_id: int) -> Tuple[TargetLayer, float]:
         """
         Determine target layer for consolidation.
 
@@ -157,12 +147,7 @@ class ConsolidationRouter:
             confidence = 0.6  # Moderate confidence for heuristics
 
         # Log decision
-        self._log_route_decision(
-            wm_item.id,
-            prediction,
-            confidence,
-            features
-        )
+        self._log_route_decision(wm_item.id, prediction, confidence, features)
 
         return prediction, confidence
 
@@ -170,7 +155,7 @@ class ConsolidationRouter:
         self,
         wm_item: WorkingMemoryItem,
         project_id: int,
-        target_layer: Optional[TargetLayer] = None
+        target_layer: Optional[TargetLayer] = None,
     ) -> Dict:
         """
         Consolidate working memory item to long-term memory.
@@ -196,19 +181,16 @@ class ConsolidationRouter:
         async def _delete_wm_item():
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cur:
-                    await cur.execute(
-                        "DELETE FROM working_memory WHERE id = %s",
-                        (wm_item.id,)
-                    )
+                    await cur.execute("DELETE FROM working_memory WHERE id = %s", (wm_item.id,))
                     await conn.commit()
 
         run_async(_delete_wm_item())
 
         return {
-            'wm_item_id': wm_item.id,
-            'target_layer': target_layer.value,
-            'ltm_id': ltm_id,
-            'confidence': confidence
+            "wm_item_id": wm_item.id,
+            "target_layer": target_layer.value,
+            "ltm_id": ltm_id,
+            "confidence": confidence,
         }
 
     # ========================================================================
@@ -237,13 +219,11 @@ class ConsolidationRouter:
         """
         # Accept either WorkingMemoryItem or int (item_id)
         if isinstance(wm_item, int):
+
             async def _get_item():
                 async with self.db.get_connection() as conn:
                     async with conn.cursor(row_factory=self._dict_row_factory) as cur:
-                        await cur.execute(
-                            "SELECT * FROM working_memory WHERE id = %s",
-                            (wm_item,)
-                        )
+                        await cur.execute("SELECT * FROM working_memory WHERE id = %s", (wm_item,))
                         return await cur.fetchone()
 
             row = run_async(_get_item())
@@ -255,8 +235,8 @@ class ConsolidationRouter:
 
         features = [
             len(wm_item.content),  # 1. Content length
-            1 if wm_item.component.value == 'phonological' else 0,  # 2. Is verbal
-            1 if wm_item.component.value == 'visuospatial' else 0,  # 3. Is spatial
+            1 if wm_item.component.value == "phonological" else 0,  # 2. Is verbal
+            1 if wm_item.component.value == "visuospatial" else 0,  # 3. Is spatial
             wm_item.activation_level,  # 4. Activation
             wm_item.importance_score,  # 5. Importance
             (datetime.now() - wm_item.created_at).total_seconds(),  # 6. Time in WM
@@ -264,7 +244,7 @@ class ConsolidationRouter:
             self._has_action_verbs(content),  # 8. Action
             self._has_future_markers(content),  # 9. Future
             self._has_question_words(content),  # 10. Questions
-            self._has_file_references(wm_item.content)  # 11. Files
+            self._has_file_references(wm_item.content),  # 11. Files
         ]
 
         return np.array(features, dtype=float)
@@ -272,43 +252,83 @@ class ConsolidationRouter:
     def _has_temporal_markers(self, content: str) -> int:
         """Check for temporal markers (episodic memory indicators)."""
         markers = [
-            r'\bwhen\b', r'\bat\b', r'\bon\b', r'\byesterday\b', r'\btoday\b', r'\btomorrow\b',
-            r'\blast week\b', r'\boccurred\b', r'\bhappened\b', r'\bduring\b', r'\bwhile\b',
-            r'\bbefore\b', r'\bafter\b', r'\bsince\b', r'\buntil\b', r'\d{1,2}:\d{2}',  # time patterns
-            r'\d{4}-\d{2}-\d{2}'  # date patterns
+            r"\bwhen\b",
+            r"\bat\b",
+            r"\bon\b",
+            r"\byesterday\b",
+            r"\btoday\b",
+            r"\btomorrow\b",
+            r"\blast week\b",
+            r"\boccurred\b",
+            r"\bhappened\b",
+            r"\bduring\b",
+            r"\bwhile\b",
+            r"\bbefore\b",
+            r"\bafter\b",
+            r"\bsince\b",
+            r"\buntil\b",
+            r"\d{1,2}:\d{2}",  # time patterns
+            r"\d{4}-\d{2}-\d{2}",  # date patterns
         ]
         return int(any(re.search(marker, content) for marker in markers))
 
     def _has_action_verbs(self, content: str) -> int:
         """Check for action verbs (procedural memory indicators)."""
         verbs = [
-            'implement', 'fix', 'create', 'update', 'delete', 'test',
-            'deploy', 'configure', 'setup', 'build', 'run', 'execute',
-            'install', 'compile', 'debug', 'refactor', 'optimize',
-            'how to', 'step', 'procedure', 'workflow', 'process'
+            "implement",
+            "fix",
+            "create",
+            "update",
+            "delete",
+            "test",
+            "deploy",
+            "configure",
+            "setup",
+            "build",
+            "run",
+            "execute",
+            "install",
+            "compile",
+            "debug",
+            "refactor",
+            "optimize",
+            "how to",
+            "step",
+            "procedure",
+            "workflow",
+            "process",
         ]
         return int(any(verb in content for verb in verbs))
 
     def _has_future_markers(self, content: str) -> int:
         """Check for future markers (prospective memory indicators)."""
         markers = [
-            'will', 'todo', 'task', 'reminder', 'scheduled', 'plan',
-            'need to', 'should', 'must', 'going to', 'next', 'later',
-            'upcoming', 'deadline', 'due'
+            "will",
+            "todo",
+            "task",
+            "reminder",
+            "scheduled",
+            "plan",
+            "need to",
+            "should",
+            "must",
+            "going to",
+            "next",
+            "later",
+            "upcoming",
+            "deadline",
+            "due",
         ]
         return int(any(marker in content for marker in markers))
 
     def _has_question_words(self, content: str) -> int:
         """Check for question words (procedural/semantic indicators)."""
-        questions = ['how', 'what', 'why', 'when', 'where', 'which', 'who']
-        return int(any(content.startswith(q) for q in questions) or '?' in content)
+        questions = ["how", "what", "why", "when", "where", "which", "who"]
+        return int(any(content.startswith(q) for q in questions) or "?" in content)
 
     def _has_file_references(self, content: str) -> int:
         """Check for file path references (spatial/procedural indicators)."""
-        patterns = [
-            r'\.py$', r'\.js$', r'\.ts$', r'\.java$', r'\.cpp$',
-            r'/', r'\\', r'\.\w+$'
-        ]
+        patterns = [r"\.py$", r"\.js$", r"\.ts$", r"\.java$", r"\.cpp$", r"/", r"\\", r"\.\w+$"]
         return int(any(re.search(pattern, content) for pattern in patterns))
 
     def _has_temporal_indicators(self, text: str) -> bool:
@@ -317,9 +337,19 @@ class ConsolidationRouter:
 
     def _has_procedural_patterns(self, text: str) -> bool:
         """Check if text has procedural workflow patterns."""
-        procedural_keywords = [r'\bthen\b', r'\bnext\b', r'\bfirst\b', r'\bfinally\b',
-                               r'\bstep\b', r'\brun\b', r'\bexecute\b',
-                               r'\bdeploy\b', r'\bbuild\b', r'\binstall\b', r'\bconfigure\b']
+        procedural_keywords = [
+            r"\bthen\b",
+            r"\bnext\b",
+            r"\bfirst\b",
+            r"\bfinally\b",
+            r"\bstep\b",
+            r"\brun\b",
+            r"\bexecute\b",
+            r"\bdeploy\b",
+            r"\bbuild\b",
+            r"\binstall\b",
+            r"\bconfigure\b",
+        ]
         return any(re.search(keyword, text.lower()) for keyword in procedural_keywords)
 
     # ========================================================================
@@ -337,22 +367,28 @@ class ConsolidationRouter:
         Returns:
             True if training succeeded
         """
+
         # Fetch training data
         async def _fetch_training_data():
             async with self.db.get_connection() as conn:
                 async with conn.cursor(row_factory=self._dict_row_factory) as cur:
-                    await cur.execute("""
+                    await cur.execute(
+                        """
                         SELECT wm.*, cr.target_layer, cr.features
                         FROM consolidation_routes cr
                         JOIN working_memory wm ON cr.wm_id = wm.id
                         WHERE wm.project_id = %s AND cr.was_correct = 1
-                    """, (project_id,))
+                    """,
+                        (project_id,),
+                    )
                     return await cur.fetchall()
 
         rows = run_async(_fetch_training_data())
 
         if len(rows) < min_samples:
-            logger.warning(f"Insufficient training data: {len(rows)} samples (need >= {min_samples})")
+            logger.warning(
+                f"Insufficient training data: {len(rows)} samples (need >= {min_samples})"
+            )
             return False
 
         # Extract features and labels
@@ -361,8 +397,8 @@ class ConsolidationRouter:
 
         for row in rows:
             # Use stored features if available
-            if row['features']:
-                features = json.loads(row['features'])
+            if row["features"]:
+                features = json.loads(row["features"])
                 X.append(features)
             else:
                 # Reconstruct working memory item and extract features
@@ -370,7 +406,7 @@ class ConsolidationRouter:
                 features = self._extract_features(wm_item)
                 X.append(features.tolist())
 
-            y.append(row['target_layer'])
+            y.append(row["target_layer"])
 
         X = np.array(X)
         y = np.array(y)
@@ -378,18 +414,18 @@ class ConsolidationRouter:
         # Train Random Forest
         try:
             from sklearn.ensemble import RandomForestClassifier
+
             self.model = RandomForestClassifier(
-                n_estimators=100,
-                max_depth=10,
-                min_samples_split=5,
-                random_state=42
+                n_estimators=100, max_depth=10, min_samples_split=5, random_state=42
             )
             self.model.fit(X, y)
             self.is_trained = True
 
             logger.info(f"Model trained on {len(rows)} samples")
             logger.info(f"Classes: {self.model.classes_}")
-            logger.info(f"Feature importance: {dict(zip(self.feature_names, self.model.feature_importances_))}")
+            logger.info(
+                f"Feature importance: {dict(zip(self.feature_names, self.model.feature_importances_))}"
+            )
 
             return True
 
@@ -420,7 +456,9 @@ class ConsolidationRouter:
         - Default → semantic
         """
         # Accept either WorkingMemoryItem or string
-        content = wm_item.content.lower() if isinstance(wm_item, WorkingMemoryItem) else wm_item.lower()
+        content = (
+            wm_item.content.lower() if isinstance(wm_item, WorkingMemoryItem) else wm_item.lower()
+        )
 
         # Check temporal markers (episodic)
         if self._has_temporal_markers(content):
@@ -442,10 +480,7 @@ class ConsolidationRouter:
     # ========================================================================
 
     def _consolidate_to_layer(
-        self,
-        wm_item: WorkingMemoryItem,
-        target_layer: TargetLayer,
-        project_id: int
+        self, wm_item: WorkingMemoryItem, target_layer: TargetLayer, project_id: int
     ) -> int:
         """
         Execute consolidation to target layer.
@@ -453,84 +488,90 @@ class ConsolidationRouter:
         Returns:
             ID in target layer
         """
+
         async def _insert_to_target_layer():
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cur:
                     if target_layer == TargetLayer.SEMANTIC:
                         # Insert into semantic_memory
-                        await cur.execute("""
+                        await cur.execute(
+                            """
                             INSERT INTO semantic_memory
                             (project_id, content, memory_type, metadata)
                             VALUES (%s, %s, 'fact', %s)
                             RETURNING id
-                        """, (
-                            project_id,
-                            wm_item.content,
-                            json.dumps({
-                                'source': 'working_memory',
-                                'wm_id': wm_item.id,
-                                'importance': wm_item.importance_score
-                            })
-                        ))
+                        """,
+                            (
+                                project_id,
+                                wm_item.content,
+                                json.dumps(
+                                    {
+                                        "source": "working_memory",
+                                        "wm_id": wm_item.id,
+                                        "importance": wm_item.importance_score,
+                                    }
+                                ),
+                            ),
+                        )
                         row = await cur.fetchone()
                         await conn.commit()
                         return row[0] if row else None
 
                     elif target_layer == TargetLayer.EPISODIC:
                         # Insert into episodic_events
-                        await cur.execute("""
+                        await cur.execute(
+                            """
                             INSERT INTO episodic_events
                             (project_id, event_type, content, metadata)
                             VALUES (%s, 'action', %s, %s)
                             RETURNING id
-                        """, (
-                            project_id,
-                            wm_item.content,
-                            json.dumps({
-                                'source': 'working_memory',
-                                'wm_id': wm_item.id
-                            })
-                        ))
+                        """,
+                            (
+                                project_id,
+                                wm_item.content,
+                                json.dumps({"source": "working_memory", "wm_id": wm_item.id}),
+                            ),
+                        )
                         row = await cur.fetchone()
                         await conn.commit()
                         return row[0] if row else None
 
                     elif target_layer == TargetLayer.PROCEDURAL:
                         # Insert into procedural_templates
-                        await cur.execute("""
+                        await cur.execute(
+                            """
                             INSERT INTO procedural_templates
                             (project_id, name, category, template, metadata)
                             VALUES (%s, %s, 'workflow', %s, %s)
                             RETURNING id
-                        """, (
-                            project_id,
-                            f"Procedure from WM #{wm_item.id}",
-                            wm_item.content,
-                            json.dumps({
-                                'source': 'working_memory',
-                                'wm_id': wm_item.id
-                            })
-                        ))
+                        """,
+                            (
+                                project_id,
+                                f"Procedure from WM #{wm_item.id}",
+                                wm_item.content,
+                                json.dumps({"source": "working_memory", "wm_id": wm_item.id}),
+                            ),
+                        )
                         row = await cur.fetchone()
                         await conn.commit()
                         return row[0] if row else None
 
                     elif target_layer == TargetLayer.PROSPECTIVE:
                         # Insert into prospective_tasks
-                        await cur.execute("""
+                        await cur.execute(
+                            """
                             INSERT INTO prospective_tasks
                             (project_id, content, active_form, priority, metadata)
                             VALUES (%s, %s, %s, 'medium', %s)
                             RETURNING id
-                        """, (
-                            project_id,
-                            wm_item.content,
-                            f"Working on: {wm_item.content[:50]}",
-                            json.dumps({
-                                'source': 'working_memory',
-                                'wm_id': wm_item.id
-                            })
-                        ))
+                        """,
+                            (
+                                project_id,
+                                wm_item.content,
+                                f"Working on: {wm_item.content[:50]}",
+                                json.dumps({"source": "working_memory", "wm_id": wm_item.id}),
+                            ),
+                        )
                         row = await cur.fetchone()
                         await conn.commit()
                         return row[0] if row else None
@@ -545,10 +586,7 @@ class ConsolidationRouter:
     # ========================================================================
 
     def provide_feedback(
-        self,
-        route_id: int,
-        was_correct: bool,
-        correct_layer: Optional[TargetLayer] = None
+        self, route_id: int, was_correct: bool, correct_layer: Optional[TargetLayer] = None
     ):
         """
         Provide feedback on routing decision for online learning.
@@ -558,34 +596,40 @@ class ConsolidationRouter:
             was_correct: Whether the route was correct
             correct_layer: Correct layer if route was wrong
         """
+
         async def _update_feedback():
             async with self.db.get_connection() as conn:
                 async with conn.cursor(row_factory=self._dict_row_factory) as cur:
                     # Update was_correct flag
-                    await cur.execute("""
+                    await cur.execute(
+                        """
                         UPDATE consolidation_routes
                         SET was_correct = %s
                         WHERE id = %s
-                    """, (was_correct, route_id))
+                    """,
+                        (was_correct, route_id),
+                    )
 
                     if not was_correct and correct_layer:
                         # Fetch the original route
-                        await cur.execute("""
+                        await cur.execute(
+                            """
                             SELECT * FROM consolidation_routes WHERE id = %s
-                        """, (route_id,))
+                        """,
+                            (route_id,),
+                        )
                         route = await cur.fetchone()
 
                         if route:
                             # Create corrected training example
-                            await cur.execute("""
+                            await cur.execute(
+                                """
                                 INSERT INTO consolidation_routes
                                 (wm_id, target_layer, confidence, was_correct, features)
                                 VALUES (%s, %s, 1.0, 1, %s)
-                            """, (
-                                route['wm_id'],
-                                correct_layer.value,
-                                route['features']
-                            ))
+                            """,
+                                (route["wm_id"], correct_layer.value, route["features"]),
+                            )
 
                     await conn.commit()
 
@@ -595,51 +639,71 @@ class ConsolidationRouter:
 
     def get_routing_statistics(self, project_id: int) -> Dict:
         """Get statistics on routing decisions."""
+
         async def _fetch_stats():
             async with self.db.get_connection() as conn:
                 async with conn.cursor(row_factory=self._dict_row_factory) as cur:
                     # Overall stats
-                    await cur.execute("""
+                    await cur.execute(
+                        """
                         SELECT COUNT(*) as count FROM consolidation_routes cr
                         JOIN working_memory wm ON cr.wm_id = wm.id
                         WHERE wm.project_id = %s
-                    """, (project_id,))
+                    """,
+                        (project_id,),
+                    )
                     total = await cur.fetchone()
 
                     # By layer
-                    await cur.execute("""
+                    await cur.execute(
+                        """
                         SELECT target_layer, COUNT(*) as count,
                                AVG(confidence) as avg_confidence
                         FROM consolidation_routes cr
                         JOIN working_memory wm ON cr.wm_id = wm.id
                         WHERE wm.project_id = %s
                         GROUP BY target_layer
-                    """, (project_id,))
+                    """,
+                        (project_id,),
+                    )
                     by_layer = await cur.fetchall()
 
                     # Accuracy (where feedback provided)
-                    await cur.execute("""
+                    await cur.execute(
+                        """
                         SELECT
                             COUNT(*) as total_feedback,
                             SUM(CASE WHEN was_correct = 1 THEN 1 ELSE 0 END) as correct
                         FROM consolidation_routes cr
                         JOIN working_memory wm ON cr.wm_id = wm.id
                         WHERE wm.project_id = %s AND was_correct IS NOT NULL
-                    """, (project_id,))
+                    """,
+                        (project_id,),
+                    )
                     accuracy = await cur.fetchone()
 
                     return {
-                        'total_routes': total['count'] if total else 0,
-                        'by_layer': {row['target_layer']: {
-                            'count': row['count'],
-                            'avg_confidence': float(row['avg_confidence']) if row['avg_confidence'] else 0
-                        } for row in by_layer} if by_layer else {},
-                        'accuracy': (
-                            accuracy['correct'] / accuracy['total_feedback']
-                            if accuracy and accuracy['total_feedback'] > 0 else None
+                        "total_routes": total["count"] if total else 0,
+                        "by_layer": (
+                            {
+                                row["target_layer"]: {
+                                    "count": row["count"],
+                                    "avg_confidence": (
+                                        float(row["avg_confidence"]) if row["avg_confidence"] else 0
+                                    ),
+                                }
+                                for row in by_layer
+                            }
+                            if by_layer
+                            else {}
                         ),
-                        'feedback_count': accuracy['total_feedback'] if accuracy else 0,
-                        'is_trained': self.is_trained
+                        "accuracy": (
+                            accuracy["correct"] / accuracy["total_feedback"]
+                            if accuracy and accuracy["total_feedback"] > 0
+                            else None
+                        ),
+                        "feedback_count": accuracy["total_feedback"] if accuracy else 0,
+                        "is_trained": self.is_trained,
                     }
 
         return run_async(_fetch_stats())
@@ -649,26 +713,21 @@ class ConsolidationRouter:
     # ========================================================================
 
     def _log_route_decision(
-        self,
-        wm_id: int,
-        target_layer: TargetLayer,
-        confidence: float,
-        features: np.ndarray
+        self, wm_id: int, target_layer: TargetLayer, confidence: float, features: np.ndarray
     ):
         """Log routing decision for training/analysis."""
+
         async def _insert_log():
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cur:
-                    await cur.execute("""
+                    await cur.execute(
+                        """
                         INSERT INTO consolidation_routes
                         (wm_id, target_layer, confidence, features)
                         VALUES (%s, %s, %s, %s)
-                    """, (
-                        wm_id,
-                        target_layer.value,
-                        confidence,
-                        json.dumps(features.tolist())
-                    ))
+                    """,
+                        (wm_id, target_layer.value, confidence, json.dumps(features.tolist())),
+                    )
                     await conn.commit()
 
         run_async(_insert_log())

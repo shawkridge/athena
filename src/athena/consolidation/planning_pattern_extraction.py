@@ -15,14 +15,13 @@ Based on memory-mcp's episodic→semantic consolidation, adapted for planning do
 
 import logging
 from datetime import datetime
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 from dataclasses import dataclass
 from collections import defaultdict
 import statistics
 
 from ..planning.models import (
     PlanningPattern,
-    DecompositionStrategy,
     ExecutionFeedback,
     PatternType,
 )
@@ -179,10 +178,14 @@ class PlanningPatternExtractor:
             List of ExtractedPlanningPattern objects
         """
         if not feedback_items or len(feedback_items) < 2:
-            logger.debug(f"Insufficient feedback for pattern extraction (got {len(feedback_items)})")
+            logger.debug(
+                f"Insufficient feedback for pattern extraction (got {len(feedback_items)})"
+            )
             return []
 
-        logger.info(f"Extracting patterns from {len(feedback_items)} feedback items (project {project_id})")
+        logger.info(
+            f"Extracting patterns from {len(feedback_items)} feedback items (project {project_id})"
+        )
 
         # Step 1: Cluster feedback
         clusters = self.clusterer.cluster_by_decomposition(feedback_items)
@@ -224,7 +227,7 @@ class PlanningPatternExtractor:
         # Calculate metrics
         def is_success(outcome) -> bool:
             """Check if outcome is success."""
-            if hasattr(outcome, 'value'):
+            if hasattr(outcome, "value"):
                 return outcome.value == "success"
             return str(outcome) == "success"
 
@@ -333,9 +336,7 @@ class PlanningPatternExtractor:
 
         # Weighted average
         confidence = (
-            0.5 * count_confidence +
-            0.3 * consistency_confidence +
-            0.2 * quality_confidence
+            0.5 * count_confidence + 0.3 * consistency_confidence + 0.2 * quality_confidence
         )
 
         return min(max(confidence, 0.0), 1.0)
@@ -349,7 +350,7 @@ class PlanningPatternExtractor:
         """Generate descriptive pattern name."""
         domain = domains[0] if domains else "general"
         task_type = task_types[0] if task_types else "task"
-        pattern_str = pattern_type.value if hasattr(pattern_type, 'value') else str(pattern_type)
+        pattern_str = pattern_type.value if hasattr(pattern_type, "value") else str(pattern_type)
 
         return f"{pattern_str}-{domain}-{task_type}".replace("_", "-")
 
@@ -361,7 +362,7 @@ class PlanningPatternExtractor:
         domains: List[str],
     ) -> str:
         """Generate pattern description."""
-        pattern_str = pattern_type.value if hasattr(pattern_type, 'value') else str(pattern_type)
+        pattern_str = pattern_type.value if hasattr(pattern_type, "value") else str(pattern_type)
         domain_str = ", ".join(domains) if domains else "general"
 
         return (
@@ -446,10 +447,7 @@ class ConsolidationRouter:
         )
 
         feedback_rows = cursor.fetchall()
-        feedback_items = [
-            self.store._row_to_execution_feedback(row)
-            for row in feedback_rows
-        ]
+        feedback_items = [self.store._row_to_execution_feedback(row) for row in feedback_rows]
         feedback_items = [f for f in feedback_items if f]
 
         if not feedback_items:
@@ -473,7 +471,11 @@ class ConsolidationRouter:
             # Check if pattern already exists
             existing = self.store.find_patterns_by_task_type(
                 project_id,
-                extracted.applicable_task_types[0] if extracted.applicable_task_types else "general",
+                (
+                    extracted.applicable_task_types[0]
+                    if extracted.applicable_task_types
+                    else "general"
+                ),
                 limit=1,
             )
 
@@ -517,6 +519,7 @@ class ConsolidationRouter:
 
 
 # Convenience functions
+
 
 def consolidate_project_patterns(
     planning_store: PlanningStore,

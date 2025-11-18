@@ -1,10 +1,9 @@
 """Conflict resolution for competing goals and resource allocation."""
 
 from datetime import datetime
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict
 from dataclasses import dataclass
 
-from .models import Goal, GoalStatus
 
 
 @dataclass
@@ -195,9 +194,7 @@ class ConflictResolver:
 
         return resolutions
 
-    async def allocate_working_memory_fair(
-        self, active_goal_ids: List[int]
-    ) -> Dict[int, float]:
+    async def allocate_working_memory_fair(self, active_goal_ids: List[int]) -> Dict[int, float]:
         """
         Allocate working memory slots fairly among active goals.
 

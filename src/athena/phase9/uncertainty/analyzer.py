@@ -1,15 +1,12 @@
 """Uncertainty analysis system for Phase 9.1."""
 
-from typing import Optional
 
 from athena.phase9.uncertainty.models import (
     ConfidenceCalibration,
     ConfidenceTrendAnalysis,
     PlanAlternative,
     UncertaintyBreakdown,
-    UncertaintyType,
 )
-from athena.phase9.uncertainty.scorer import ConfidenceScorer
 from athena.phase9.uncertainty.store import UncertaintyStore
 
 
@@ -79,7 +76,9 @@ class UncertaintyAnalyzer:
         if "insufficient_data" in uncertainty_sources:
             mitigations.append("Complete more similar tasks to build better estimates")
         if external_factors:
-            mitigations.append(f"Monitor and prepare for external factors: {', '.join(external_factors)}")
+            mitigations.append(
+                f"Monitor and prepare for external factors: {', '.join(external_factors)}"
+            )
 
         breakdown = UncertaintyBreakdown(
             task_id=task_id,
@@ -228,7 +227,9 @@ class UncertaintyAnalyzer:
             recent_accuracy = (
                 sum(1 for c in recent if c.actual_outcome) / len(recent) if recent else 0.5
             )
-            older_accuracy = sum(1 for c in older if c.actual_outcome) / len(older) if older else 0.5
+            older_accuracy = (
+                sum(1 for c in older if c.actual_outcome) / len(older) if older else 0.5
+            )
             trend_delta = recent_accuracy - older_accuracy
         else:
             trend_delta = 0
@@ -298,9 +299,7 @@ class UncertaintyAnalyzer:
 
         return self.store.record_calibration(calibration)
 
-    def compare_plan_alternatives(
-        self, plans: list[PlanAlternative]
-    ) -> dict:
+    def compare_plan_alternatives(self, plans: list[PlanAlternative]) -> dict:
         """Compare alternative plans."""
         if not plans:
             return {}
@@ -312,7 +311,9 @@ class UncertaintyAnalyzer:
         comparison = {
             "total_alternatives": len(plans),
             "best_confidence": best_confidence,
-            "best_confidence_plan": next(p for p in plans if p.confidence_score == best_confidence).plan_type,
+            "best_confidence_plan": next(
+                p for p in plans if p.confidence_score == best_confidence
+            ).plan_type,
             "fastest_plan": next(
                 p for p in plans if p.estimated_duration_minutes == fastest
             ).plan_type,

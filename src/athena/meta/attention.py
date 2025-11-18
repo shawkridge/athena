@@ -37,7 +37,8 @@ class AttentionManager(BaseStore):
     def _init_schema(self):
         """Create schema for attention tables (idempotent)."""
         # Attention items table
-        self.execute("""
+        self.execute(
+            """
             CREATE TABLE IF NOT EXISTS attention_items (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -58,10 +59,12 @@ class AttentionManager(BaseStore):
 
                 UNIQUE(project_id, item_type, item_id)
             )
-        """)
+        """
+        )
 
         # Working memory table
-        self.execute("""
+        self.execute(
+            """
             CREATE TABLE IF NOT EXISTS working_memory (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER UNIQUE NOT NULL,
@@ -86,10 +89,12 @@ class AttentionManager(BaseStore):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
 
         # Attention budget table
-        self.execute("""
+        self.execute(
+            """
             CREATE TABLE IF NOT EXISTS attention_budgets (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER UNIQUE NOT NULL,
@@ -115,7 +120,8 @@ class AttentionManager(BaseStore):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """)
+        """
+        )
 
         # Indices for performance
         self.execute(
@@ -166,9 +172,7 @@ class AttentionManager(BaseStore):
             return existing[0]
 
         # Compute initial salience (recency=1.0 for new items)
-        salience = self._compute_salience(
-            recency=1.0, importance=importance, relevance=relevance
-        )
+        salience = self._compute_salience(recency=1.0, importance=importance, relevance=relevance)
 
         cursor = self.db.execute(
             """
@@ -239,9 +243,7 @@ class AttentionManager(BaseStore):
         Returns:
             True if removed, False if not found
         """
-        cursor = self.db.execute(
-            "DELETE FROM attention_items WHERE id = %s", (item_id,)
-        )
+        cursor = self.db.execute("DELETE FROM attention_items WHERE id = %s", (item_id,))
         return cursor.rowcount > 0 if cursor else False
 
     def update_item_salience(
@@ -516,9 +518,7 @@ class AttentionManager(BaseStore):
             (amount, item_id),
         )
 
-    def _compute_salience(
-        self, recency: float, importance: float, relevance: float
-    ) -> float:
+    def _compute_salience(self, recency: float, importance: float, relevance: float) -> float:
         """Compute salience score from components.
 
         Args:
@@ -616,7 +616,6 @@ class AttentionManager(BaseStore):
             - items_with_zero_importance: Count of items reaching zero importance
             - timestamp: When decay was applied
         """
-        from datetime import datetime, timedelta
 
         # Calculate decay threshold
         threshold_date = datetime.now() - timedelta(days=days_threshold)

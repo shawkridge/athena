@@ -23,27 +23,30 @@ logger = logging.getLogger(__name__)
 
 class GateSeverity(Enum):
     """Severity levels for gate violations."""
-    INFO = "info"           # Informational, no action needed
-    WARNING = "warning"     # Minor issue, could be handled
-    ERROR = "error"         # Major issue, should be escalated
-    CRITICAL = "critical"   # Must be resolved before proceeding
+
+    INFO = "info"  # Informational, no action needed
+    WARNING = "warning"  # Minor issue, could be handled
+    ERROR = "error"  # Major issue, should be escalated
+    CRITICAL = "critical"  # Must be resolved before proceeding
 
 
 class GateType(Enum):
     """Types of verification gates."""
-    GROUNDING = "grounding"         # Is it grounded in source data?
-    CONFIDENCE = "confidence"       # Is confidence calibrated?
-    CONSISTENCY = "consistency"     # Is it consistent with memory?
-    SOUNDNESS = "soundness"         # Is reasoning valid?
-    MINIMALITY = "minimality"       # Is it minimal/non-redundant?
-    COMPLETENESS = "completeness"   # Does it cover all requirements?
-    COHERENCE = "coherence"         # Is it coherent with existing knowledge?
-    EFFICIENCY = "efficiency"       # Is it efficient/performant?
+
+    GROUNDING = "grounding"  # Is it grounded in source data?
+    CONFIDENCE = "confidence"  # Is confidence calibrated?
+    CONSISTENCY = "consistency"  # Is it consistent with memory?
+    SOUNDNESS = "soundness"  # Is reasoning valid?
+    MINIMALITY = "minimality"  # Is it minimal/non-redundant?
+    COMPLETENESS = "completeness"  # Does it cover all requirements?
+    COHERENCE = "coherence"  # Is it coherent with existing knowledge?
+    EFFICIENCY = "efficiency"  # Is it efficient/performant?
 
 
 @dataclass
 class GateViolation:
     """A single gate violation."""
+
     gate_type: GateType
     severity: GateSeverity
     message: str
@@ -54,9 +57,10 @@ class GateViolation:
 @dataclass
 class GateResult:
     """Result of gate verification."""
+
     operation_id: str
-    operation_type: str         # "recall", "remember", "consolidate", etc.
-    passed: bool                # All critical gates passed?
+    operation_type: str  # "recall", "remember", "consolidate", etc.
+    passed: bool  # All critical gates passed?
     violations: List[GateViolation] = field(default_factory=list)
     warnings: List[GateViolation] = field(default_factory=list)
     confidence_score: float = 0.0  # Overall confidence (0.0-1.0)
@@ -135,8 +139,8 @@ class GroundingGate(Gate):
                 remediation_hints=[
                     "Increase source event coverage",
                     "Validate pattern against more evidence",
-                    "Lower confidence estimate"
-                ]
+                    "Lower confidence estimate",
+                ],
             )
 
         return None
@@ -161,12 +165,16 @@ class ConfidenceGate(Gate):
                 gate_type=self.gate_type,
                 severity=GateSeverity.WARNING,
                 message=f"High confidence ({confidence:.1%}) with low samples ({sample_count})",
-                details={"confidence": confidence, "samples": sample_count, "min_samples": self.min_samples},
+                details={
+                    "confidence": confidence,
+                    "samples": sample_count,
+                    "min_samples": self.min_samples,
+                },
                 remediation_hints=[
                     "Gather more evidence before storing",
                     "Reduce confidence estimate",
-                    "Mark for future validation"
-                ]
+                    "Mark for future validation",
+                ],
             )
 
         # Unreasonably high confidence
@@ -178,8 +186,8 @@ class ConfidenceGate(Gate):
                 details={"confidence": confidence, "max_allowed": self.max_confidence},
                 remediation_hints=[
                     "Apply confidence penalty based on CoT brittleness",
-                    "Use extended thinking more cautiously"
-                ]
+                    "Use extended thinking more cautiously",
+                ],
             )
 
         return None
@@ -205,13 +213,13 @@ class ConsistencyGate(Gate):
                 details={
                     "consistency_score": consistency_score,
                     "threshold": self.consistency_threshold,
-                    "conflicts": len(existing_conflicts)
+                    "conflicts": len(existing_conflicts),
                 },
                 remediation_hints=[
                     "Review conflicting memories",
                     "Update or remove contradictory items",
-                    "Merge similar patterns"
-                ]
+                    "Merge similar patterns",
+                ],
             )
 
         return None
@@ -223,11 +231,11 @@ class SoundnessGate(Gate):
     def __init__(self, required_properties: Optional[List[str]] = None):
         super().__init__(GateType.SOUNDNESS)
         self.required_properties = required_properties or [
-            "optimality",      # Best solution found?
-            "completeness",    # All cases covered?
-            "consistency",     # No contradictions?
-            "soundness",       # Valid reasoning?
-            "minimality"       # Minimal complexity?
+            "optimality",  # Best solution found?
+            "completeness",  # All cases covered?
+            "consistency",  # No contradictions?
+            "soundness",  # Valid reasoning?
+            "minimality",  # Minimal complexity?
         ]
 
     def _check(self, operation_data: Dict[str, Any]) -> Optional[GateViolation]:
@@ -245,8 +253,8 @@ class SoundnessGate(Gate):
                 remediation_hints=[
                     "Run formal verification on plan",
                     "Use scenario simulator for stress testing",
-                    "Document why properties aren't verifiable"
-                ]
+                    "Document why properties aren't verifiable",
+                ],
             )
 
         return None
@@ -272,13 +280,13 @@ class MinimalityGate(Gate):
                 details={
                     "redundancy_ratio": redundancy_ratio,
                     "threshold": self.max_redundancy_ratio,
-                    "duplicates_found": duplicate_count
+                    "duplicates_found": duplicate_count,
                 },
                 remediation_hints=[
                     "Merge redundant patterns",
                     "Consolidate duplicate facts",
-                    "Improve pattern generalization"
-                ]
+                    "Improve pattern generalization",
+                ],
             )
 
         return None
@@ -304,8 +312,8 @@ class CoherenceGate(Gate):
                 remediation_hints=[
                     "Connect to related entities in knowledge graph",
                     "Add contextual relationships",
-                    "Improve semantic alignment"
-                ]
+                    "Improve semantic alignment",
+                ],
             )
 
         return None
@@ -327,12 +335,15 @@ class EfficiencyGate(Gate):
                 gate_type=self.gate_type,
                 severity=GateSeverity.INFO,
                 message=f"Slow operation: {execution_time_ms:.0f}ms > {self.max_execution_time_ms:.0f}ms",
-                details={"execution_time_ms": execution_time_ms, "threshold": self.max_execution_time_ms},
+                details={
+                    "execution_time_ms": execution_time_ms,
+                    "threshold": self.max_execution_time_ms,
+                },
                 remediation_hints=[
                     "Profile operation for bottlenecks",
                     "Cache intermediate results",
-                    "Consider async execution"
-                ]
+                    "Consider async execution",
+                ],
             )
 
         return None
@@ -364,7 +375,7 @@ class VerificationGateway:
         self,
         operation_type: str,
         operation_data: Dict[str, Any],
-        gate_types: Optional[List[GateType]] = None
+        gate_types: Optional[List[GateType]] = None,
     ) -> GateResult:
         """
         Run verification gates on operation data.
@@ -377,7 +388,9 @@ class VerificationGateway:
         Returns:
             GateResult with violations and pass/fail status
         """
-        operation_id = operation_data.get("operation_id", f"{operation_type}_{datetime.now().timestamp()}")
+        operation_id = operation_data.get(
+            "operation_id", f"{operation_type}_{datetime.now().timestamp()}"
+        )
         start_time = datetime.now()
 
         gates_to_run = gate_types or list(self.gates.keys())
@@ -393,7 +406,10 @@ class VerificationGateway:
             violation = gate.verify(operation_data)
 
             if violation:
-                if violation.severity == GateSeverity.CRITICAL or violation.severity == GateSeverity.ERROR:
+                if (
+                    violation.severity == GateSeverity.CRITICAL
+                    or violation.severity == GateSeverity.ERROR
+                ):
                     violations.append(violation)
                 else:
                     warnings.append(violation)
@@ -417,7 +433,7 @@ class VerificationGateway:
             violations=violations,
             warnings=warnings,
             confidence_score=confidence_score,
-            execution_time_ms=execution_time_ms
+            execution_time_ms=execution_time_ms,
         )
 
         self.decision_log.append(result)
@@ -430,7 +446,9 @@ class VerificationGateway:
 
         return result
 
-    def apply_remediation(self, result: GateResult, operation_data: Dict[str, Any]) -> Dict[str, Any]:
+    def apply_remediation(
+        self, result: GateResult, operation_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Apply remediation for gate violations.
 
@@ -447,7 +465,9 @@ class VerificationGateway:
             else:
                 # Auto-remediation: apply hints
                 if violation.remediation_hints:
-                    logger.info(f"Auto-remediation for {gate_type.value}: {violation.remediation_hints[0]}")
+                    logger.info(
+                        f"Auto-remediation for {gate_type.value}: {violation.remediation_hints[0]}"
+                    )
 
         return remediated_data
 
@@ -459,7 +479,7 @@ class VerificationGateway:
             health[gate_type.value] = {
                 "success_rate": gate.get_success_rate(),
                 "execution_count": gate.execution_count,
-                "last_executed": gate.last_executed.isoformat() if gate.last_executed else None
+                "last_executed": gate.last_executed.isoformat() if gate.last_executed else None,
             }
 
         return health
@@ -470,15 +490,17 @@ class VerificationGateway:
 
         insights = []
         for result in recent:
-            insights.append({
-                "operation_id": result.operation_id,
-                "operation_type": result.operation_type,
-                "passed": result.passed,
-                "confidence": result.confidence_score,
-                "violations": len(result.violations),
-                "warnings": len(result.warnings),
-                "execution_time_ms": result.execution_time_ms,
-                "timestamp": result.timestamp.isoformat()
-            })
+            insights.append(
+                {
+                    "operation_id": result.operation_id,
+                    "operation_type": result.operation_type,
+                    "passed": result.passed,
+                    "confidence": result.confidence_score,
+                    "violations": len(result.violations),
+                    "warnings": len(result.warnings),
+                    "execution_time_ms": result.execution_time_ms,
+                    "timestamp": result.timestamp.isoformat(),
+                }
+            )
 
         return insights

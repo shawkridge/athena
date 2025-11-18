@@ -21,55 +21,38 @@ class RustSymbolParser:
     """Parser for Rust source code using regex-based pattern matching."""
 
     # Regex patterns for Rust constructs
-    MODULE_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:pub\s+)?mod\s+(\w+)(?:\s*\{)?',
-        re.MULTILINE
-    )
+    MODULE_PATTERN = re.compile(r"(?:^|\n)\s*(?:pub\s+)?mod\s+(\w+)(?:\s*\{)?", re.MULTILINE)
 
-    USE_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:pub\s+)?use\s+(?:crate::)?([^;]+);',
-        re.MULTILINE
-    )
+    USE_PATTERN = re.compile(r"(?:^|\n)\s*(?:pub\s+)?use\s+(?:crate::)?([^;]+);", re.MULTILINE)
 
     STRUCT_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:pub\s+)?struct\s+(\w+)(?:<[^>]*>)?\s*(?:\{|;)',
-        re.MULTILINE
+        r"(?:^|\n)\s*(?:pub\s+)?struct\s+(\w+)(?:<[^>]*>)?\s*(?:\{|;)", re.MULTILINE
     )
 
-    ENUM_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:pub\s+)?enum\s+(\w+)(?:<[^>]*>)?\s*\{',
-        re.MULTILINE
-    )
+    ENUM_PATTERN = re.compile(r"(?:^|\n)\s*(?:pub\s+)?enum\s+(\w+)(?:<[^>]*>)?\s*\{", re.MULTILINE)
 
     TRAIT_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:pub\s+)?trait\s+(\w+)(?:<[^>]*>)?(?:\s*:\s*[^{]+)?\s*\{',
-        re.MULTILINE
+        r"(?:^|\n)\s*(?:pub\s+)?trait\s+(\w+)(?:<[^>]*>)?(?:\s*:\s*[^{]+)?\s*\{", re.MULTILINE
     )
 
     IMPL_PATTERN = re.compile(
-        r'(?:^|\n)\s*impl(?:<[^>]*>)?\s+(?:(\w+)\s+for\s+)?(\w+)(?:<[^>]*>)?\s*\{',
-        re.MULTILINE
+        r"(?:^|\n)\s*impl(?:<[^>]*>)?\s+(?:(\w+)\s+for\s+)?(\w+)(?:<[^>]*>)?\s*\{", re.MULTILINE
     )
 
     FUNCTION_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?(?:unsafe\s+)?fn\s+(\w+)\s*(?:<[^>]*>)?\s*\(([^)]*)\)(?:\s*->\s*[^{]+)?',
-        re.MULTILINE
+        r"(?:^|\n)\s*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?(?:unsafe\s+)?fn\s+(\w+)\s*(?:<[^>]*>)?\s*\(([^)]*)\)(?:\s*->\s*[^{]+)?",
+        re.MULTILINE,
     )
 
     CONST_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:pub\s+)?const\s+(\w+)(?:\s*:\s*[^=]+)?\s*=',
-        re.MULTILINE
+        r"(?:^|\n)\s*(?:pub\s+)?const\s+(\w+)(?:\s*:\s*[^=]+)?\s*=", re.MULTILINE
     )
 
     STATIC_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:pub\s+)?static\s+(?:mut\s+)?(\w+)(?:\s*:\s*[^=]+)?\s*=',
-        re.MULTILINE
+        r"(?:^|\n)\s*(?:pub\s+)?static\s+(?:mut\s+)?(\w+)(?:\s*:\s*[^=]+)?\s*=", re.MULTILINE
     )
 
-    TYPE_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:pub\s+)?type\s+(\w+)(?:<[^>]*>)?\s*=',
-        re.MULTILINE
-    )
+    TYPE_PATTERN = re.compile(r"(?:^|\n)\s*(?:pub\s+)?type\s+(\w+)(?:<[^>]*>)?\s*=", re.MULTILINE)
 
     def parse_file(self, file_path: str, code: Optional[str] = None) -> list[Symbol]:
         """Parse a Rust file and extract symbols.
@@ -83,7 +66,7 @@ class RustSymbolParser:
         """
         if code is None:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     code = f.read()
             except (IOError, UnicodeDecodeError):
                 return []
@@ -134,7 +117,7 @@ class RustSymbolParser:
 
         for match in self.MODULE_PATTERN.finditer(code):
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Determine visibility (pub or private)
             visibility = "public" if "pub" in match.group(0) else "private"
@@ -150,7 +133,7 @@ class RustSymbolParser:
                 code="",
                 docstring="",
                 language="rust",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -162,7 +145,7 @@ class RustSymbolParser:
 
         for match in self.USE_PATTERN.finditer(code):
             import_path = match.group(1).strip()
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Get the last component as the name
             name = import_path.split("::")[-1].split(" as ")[-1]
@@ -178,7 +161,7 @@ class RustSymbolParser:
                 code="",
                 docstring="",
                 language="rust",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -190,7 +173,7 @@ class RustSymbolParser:
 
         for match in self.STRUCT_PATTERN.finditer(code):
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Determine visibility
             visibility = "public" if "pub" in match.group(0) else "private"
@@ -202,11 +185,15 @@ class RustSymbolParser:
                 namespace="",
                 signature="",
                 line_start=line_num,
-                line_end=self._find_closing_brace_line(code, match.end()) if "{" in match.group(0) else line_num,
+                line_end=(
+                    self._find_closing_brace_line(code, match.end())
+                    if "{" in match.group(0)
+                    else line_num
+                ),
                 code="",
                 docstring="",
                 language="rust",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -220,12 +207,11 @@ class RustSymbolParser:
 
                     # Extract struct fields
                     field_pattern = re.compile(
-                        r'(?:^|\n)\s*(?:pub(?:\([^)]*\))?\s+)?(\w+)\s*:',
-                        re.MULTILINE
+                        r"(?:^|\n)\s*(?:pub(?:\([^)]*\))?\s+)?(\w+)\s*:", re.MULTILINE
                     )
                     for field_match in field_pattern.finditer(struct_body):
                         field_name = field_match.group(1)
-                        field_line = code[:struct_body_start + field_match.start()].count('\n') + 1
+                        field_line = code[: struct_body_start + field_match.start()].count("\n") + 1
                         field_visibility = "public" if "pub" in field_match.group(0) else "private"
 
                         field_symbol = create_symbol(
@@ -239,7 +225,7 @@ class RustSymbolParser:
                             code="",
                             docstring="",
                             language="rust",
-                            visibility=field_visibility
+                            visibility=field_visibility,
                         )
                         symbols.append(field_symbol)
 
@@ -251,7 +237,7 @@ class RustSymbolParser:
 
         for match in self.ENUM_PATTERN.finditer(code):
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Determine visibility
             visibility = "public" if "pub" in match.group(0) else "private"
@@ -267,7 +253,7 @@ class RustSymbolParser:
                 code="",
                 docstring="",
                 language="rust",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -279,7 +265,7 @@ class RustSymbolParser:
 
         for match in self.TRAIT_PATTERN.finditer(code):
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Determine visibility
             visibility = "public" if "pub" in match.group(0) else "private"
@@ -295,7 +281,7 @@ class RustSymbolParser:
                 code="",
                 docstring="",
                 language="rust",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -308,14 +294,13 @@ class RustSymbolParser:
 
                 # Extract trait methods
                 method_pattern = re.compile(
-                    r'(?:^|\n)\s*(?:fn\s+(\w+)\s*(?:<[^>]*>)?\s*\(([^)]*)\))',
-                    re.MULTILINE
+                    r"(?:^|\n)\s*(?:fn\s+(\w+)\s*(?:<[^>]*>)?\s*\(([^)]*)\))", re.MULTILINE
                 )
                 for method_match in method_pattern.finditer(trait_body):
                     method_name = method_match.group(1)
                     params = method_match.group(2) if method_match.group(2) else ""
 
-                    method_line = code[:trait_body_start + method_match.start()].count('\n') + 1
+                    method_line = code[: trait_body_start + method_match.start()].count("\n") + 1
                     signature = f"({params})"
 
                     method_symbol = create_symbol(
@@ -329,7 +314,7 @@ class RustSymbolParser:
                         code="",
                         docstring="",
                         language="rust",
-                        visibility="public"
+                        visibility="public",
                     )
                     symbols.append(method_symbol)
 
@@ -343,7 +328,7 @@ class RustSymbolParser:
             # match.group(1) is the trait name (if impl Trait for Type)
             # match.group(2) is the struct/type name
             struct_name = match.group(2)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             impl_body_start = match.end()
             impl_body_end = self._find_closing_brace(code, impl_body_start)
@@ -353,14 +338,14 @@ class RustSymbolParser:
 
                 # Extract methods from impl block
                 method_pattern = re.compile(
-                    r'(?:^|\n)\s*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?(?:unsafe\s+)?fn\s+(\w+)\s*(?:<[^>]*>)?\s*\(([^)]*)\)',
-                    re.MULTILINE
+                    r"(?:^|\n)\s*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?(?:unsafe\s+)?fn\s+(\w+)\s*(?:<[^>]*>)?\s*\(([^)]*)\)",
+                    re.MULTILINE,
                 )
                 for method_match in method_pattern.finditer(impl_body):
                     method_name = method_match.group(1)
                     params = method_match.group(2) if method_match.group(2) else ""
 
-                    method_line = code[:impl_body_start + method_match.start()].count('\n') + 1
+                    method_line = code[: impl_body_start + method_match.start()].count("\n") + 1
                     method_visibility = "public" if "pub" in method_match.group(0) else "private"
                     signature = f"({params})"
 
@@ -371,11 +356,13 @@ class RustSymbolParser:
                         namespace=struct_name,
                         signature=signature,
                         line_start=method_line,
-                        line_end=self._find_closing_brace_line(code, impl_body_start + method_match.end()),
+                        line_end=self._find_closing_brace_line(
+                            code, impl_body_start + method_match.end()
+                        ),
                         code="",
                         docstring="",
                         language="rust",
-                        visibility=method_visibility
+                        visibility=method_visibility,
                     )
                     symbols.append(method_symbol)
 
@@ -391,11 +378,11 @@ class RustSymbolParser:
 
             # Skip if this is inside an impl block (will be extracted as method)
             # Simple heuristic: check if preceded by 'impl'
-            preceding_text = code[max(0, match.start()-100):match.start()]
+            preceding_text = code[max(0, match.start() - 100) : match.start()]
             if "impl" in preceding_text and "{" in preceding_text:
                 continue
 
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Determine visibility
             visibility = "public" if "pub" in match.group(0) else "private"
@@ -413,7 +400,7 @@ class RustSymbolParser:
                 code="",
                 docstring="",
                 language="rust",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -425,7 +412,7 @@ class RustSymbolParser:
 
         for match in self.CONST_PATTERN.finditer(code):
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Determine visibility
             visibility = "public" if "pub" in match.group(0) else "private"
@@ -441,7 +428,7 @@ class RustSymbolParser:
                 code="",
                 docstring="",
                 language="rust",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -453,7 +440,7 @@ class RustSymbolParser:
 
         for match in self.STATIC_PATTERN.finditer(code):
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Determine visibility
             visibility = "public" if "pub" in match.group(0) else "private"
@@ -469,7 +456,7 @@ class RustSymbolParser:
                 code="",
                 docstring="",
                 language="rust",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -479,9 +466,9 @@ class RustSymbolParser:
         """Find the position of the closing brace matching the opening brace at start."""
         depth = 0
         for i in range(start, len(code)):
-            if code[i] == '{':
+            if code[i] == "{":
                 depth += 1
-            elif code[i] == '}':
+            elif code[i] == "}":
                 depth -= 1
                 if depth == 0:
                     return i
@@ -490,4 +477,4 @@ class RustSymbolParser:
     def _find_closing_brace_line(self, code: str, start: int) -> int:
         """Find the line number of the closing brace."""
         closing_pos = self._find_closing_brace(code, start)
-        return code[:closing_pos].count('\n') + 1
+        return code[:closing_pos].count("\n") + 1

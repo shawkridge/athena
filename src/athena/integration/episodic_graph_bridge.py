@@ -7,8 +7,7 @@ This closes the critical gap: episodic events → graph entities → causal chai
 """
 
 import logging
-from datetime import datetime
-from typing import List, Optional, Dict, Any, Set
+from typing import List, Optional, Dict, Any
 
 from ..core.database import Database
 from ..episodic.store import EpisodicStore
@@ -114,7 +113,8 @@ class EpisodicGraphBridge:
                 "causal_relations_created": relation_count,
                 "causal_link_confidence_avg": (
                     sum(link.confidence for link in causal_links) / len(causal_links)
-                    if causal_links else 0.0
+                    if causal_links
+                    else 0.0
                 ),
             }
 
@@ -168,7 +168,9 @@ class EpisodicGraphBridge:
                 except Exception as rollback_error:
                     logger.error(f"Error rolling back transaction: {rollback_error}")
 
-            logger.error(f"Unexpected error integrating events to graph (rolled back): {e}", exc_info=True)
+            logger.error(
+                f"Unexpected error integrating events to graph (rolled back): {e}", exc_info=True
+            )
             return {
                 "status": "error",
                 "error_type": "unexpected",
@@ -294,8 +296,16 @@ class EpisodicGraphBridge:
         return EventSignature(
             event_id=event.id,
             timestamp=int(event.timestamp.timestamp() * 1000),
-            event_type=event.event_type.value if hasattr(event.event_type, 'value') else str(event.event_type),
-            outcome=event.outcome.value if hasattr(event.outcome, 'value') else (str(event.outcome) if event.outcome else None),
+            event_type=(
+                event.event_type.value
+                if hasattr(event.event_type, "value")
+                else str(event.event_type)
+            ),
+            outcome=(
+                event.outcome.value
+                if hasattr(event.outcome, "value")
+                else (str(event.outcome) if event.outcome else None)
+            ),
             files=files,
             task=event.context.task if event.context else None,
             phase=event.context.phase if event.context else None,

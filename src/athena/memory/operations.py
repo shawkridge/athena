@@ -10,7 +10,7 @@ Usage:
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from ..core.database import Database
 from .store import MemoryStore
@@ -40,10 +40,7 @@ class SemanticOperations:
         confidence = max(0.0, min(1.0, confidence))
 
         result = await self.store.store(
-            content=content,
-            topics=topics or [],
-            confidence=confidence,
-            metadata={"source": source}
+            content=content, topics=topics or [], confidence=confidence, metadata={"source": source}
         )
         return result
 
@@ -59,10 +56,7 @@ class SemanticOperations:
             return []
 
         return await self.store.search(
-            query=query,
-            limit=limit,
-            min_confidence=min_confidence,
-            topics=topics
+            query=query, limit=limit, min_confidence=min_confidence, topics=topics
         )
 
 

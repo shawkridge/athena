@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Tuple
 from dataclasses import dataclass
 
-from .models import Goal, ProgressMilestone, GoalStatus
+from .models import ProgressMilestone
 
 
 @dataclass
@@ -221,9 +221,8 @@ class ProgressMonitor:
                     time_elapsed = datetime.now() - last_update
 
                     # Check for stale progress
-                    if (
-                        current_progress == previous_progress
-                        and time_elapsed > timedelta(minutes=self.BLOCKER_THRESHOLD_MINUTES)
+                    if current_progress == previous_progress and time_elapsed > timedelta(
+                        minutes=self.BLOCKER_THRESHOLD_MINUTES
                     ):
                         blocker = Blocker(
                             goal_id=goal_id,
@@ -319,7 +318,9 @@ class ProgressMonitor:
 
                 # Estimate remaining hours
                 remaining_progress = 1.0 - progress
-                estimated_remaining_hours = remaining_progress / velocity if velocity > 0 else float("inf")
+                estimated_remaining_hours = (
+                    remaining_progress / velocity if velocity > 0 else float("inf")
+                )
 
                 # Forecast completion
                 estimated_completion = datetime.now() + timedelta(hours=estimated_remaining_hours)
@@ -378,9 +379,11 @@ class ProgressMonitor:
                     "completed": is_completed,
                     "on_track": is_on_track,
                     "progress": milestone.actual_progress,
-                    "days_to_target": (milestone.target_date.date() - datetime.now().date()).days
-                    if milestone.target_date
-                    else None,
+                    "days_to_target": (
+                        (milestone.target_date.date() - datetime.now().date()).days
+                        if milestone.target_date
+                        else None
+                    ),
                 }
 
     # Private helper methods
@@ -433,7 +436,12 @@ class ProgressMonitor:
         percentage = int(progress * 100)
 
         if complexity <= 2:  # Simple goals
-            milestones = {25: "Initial setup", 50: "Core implementation", 75: "Testing", 100: "Complete"}
+            milestones = {
+                25: "Initial setup",
+                50: "Core implementation",
+                75: "Testing",
+                100: "Complete",
+            }
         elif complexity <= 3:  # Medium goals
             milestones = {
                 25: "Research & design",
@@ -454,7 +462,9 @@ class ProgressMonitor:
         closest_pct = min(milestones.keys(), key=lambda x: abs(x - percentage))
         return milestones[closest_pct]
 
-    def _determine_trend(self, goal_id: int, current_progress: float, expected_progress: float) -> str:
+    def _determine_trend(
+        self, goal_id: int, current_progress: float, expected_progress: float
+    ) -> str:
         """Determine progress trend."""
         if current_progress >= expected_progress:
             return "improving"

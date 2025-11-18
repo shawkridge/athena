@@ -53,6 +53,7 @@ def assess_workflow_risk(
     try:
         if db is None:
             from ..core.database import Database
+
             db = Database()
 
         from ..workflow.suggestions import PatternSuggestionEngine

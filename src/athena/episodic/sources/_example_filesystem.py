@@ -69,11 +69,11 @@ class FilesystemEventSource(BaseEventSource):
         self,
         source_id: str,
         root_dir: str,
-        branch: str = 'main',
+        branch: str = "main",
         max_commits: int = 100,
         cursor: Optional[Dict[str, Any]] = None,
         logger: Optional[logging.Logger] = None,
-        project_id: int = 1
+        project_id: int = 1,
     ):
         """Initialize filesystem source.
 
@@ -88,14 +88,10 @@ class FilesystemEventSource(BaseEventSource):
         """
         super().__init__(
             source_id=source_id,
-            source_type='filesystem',
-            source_name=f'Filesystem: {os.path.basename(root_dir)}',
-            config={
-                'root_dir': root_dir,
-                'branch': branch,
-                'max_commits': max_commits
-            },
-            logger=logger
+            source_type="filesystem",
+            source_name=f"Filesystem: {os.path.basename(root_dir)}",
+            config={"root_dir": root_dir, "branch": branch, "max_commits": max_commits},
+            logger=logger,
         )
 
         self.root_dir = root_dir
@@ -105,7 +101,7 @@ class FilesystemEventSource(BaseEventSource):
 
         # Cursor state for incremental sync
         self._cursor = cursor or {}
-        self._last_commit_sha: Optional[str] = self._cursor.get('last_commit_sha')
+        self._last_commit_sha: Optional[str] = self._cursor.get("last_commit_sha")
 
     # ========================================================================
     # Required Abstract Methods
@@ -113,9 +109,7 @@ class FilesystemEventSource(BaseEventSource):
 
     @classmethod
     async def create(
-        cls,
-        credentials: Dict[str, Any],
-        config: Dict[str, Any]
+        cls, credentials: Dict[str, Any], config: Dict[str, Any]
     ) -> "FilesystemEventSource":
         """Factory method to create filesystem source.
 
@@ -134,20 +128,20 @@ class FilesystemEventSource(BaseEventSource):
             ValueError: Invalid config (missing root_dir, not a git repo)
         """
         # Validate config
-        root_dir = config.get('root_dir')
+        root_dir = config.get("root_dir")
         if not root_dir:
             raise ValueError("Config must include 'root_dir'")
 
         if not os.path.isdir(root_dir):
             raise ValueError(f"root_dir not found: {root_dir}")
 
-        if not os.path.isdir(os.path.join(root_dir, '.git')):
+        if not os.path.isdir(os.path.join(root_dir, ".git")):
             raise ValueError(f"root_dir is not a git repository: {root_dir}")
 
         # Extract config
-        branch = config.get('branch', 'main')
-        max_commits = config.get('max_commits', 100)
-        cursor = config.get('cursor')
+        branch = config.get("branch", "main")
+        max_commits = config.get("max_commits", 100)
+        cursor = config.get("cursor")
 
         # Generate source_id from root_dir
         source_id = f"filesystem-{os.path.basename(root_dir)}"
@@ -158,7 +152,7 @@ class FilesystemEventSource(BaseEventSource):
             root_dir=root_dir,
             branch=branch,
             max_commits=max_commits,
-            cursor=cursor
+            cursor=cursor,
         )
 
     async def generate_events(self) -> AsyncGenerator[EpisodicEvent, None]:
@@ -187,15 +181,14 @@ class FilesystemEventSource(BaseEventSource):
                 self._log_event_generated(event)
 
                 # Update cursor
-                self._last_commit_sha = commit_data['sha']
+                self._last_commit_sha = commit_data["sha"]
 
                 yield event
             else:
                 self._events_failed += 1
 
         self._logger.info(
-            f"Generated {self._events_generated} events "
-            f"({self._events_failed} failed)"
+            f"Generated {self._events_generated} events " f"({self._events_failed} failed)"
         )
 
     async def validate(self) -> bool:
@@ -213,17 +206,17 @@ class FilesystemEventSource(BaseEventSource):
                 return False
 
             # Check is git repo
-            git_dir = os.path.join(self.root_dir, '.git')
+            git_dir = os.path.join(self.root_dir, ".git")
             if not os.path.isdir(git_dir):
                 self._logger.error(f"Not a git repository: {self.root_dir}")
                 return False
 
             # Check branch exists
             result = subprocess.run(
-                ['git', 'rev-parse', '--verify', self.branch],
+                ["git", "rev-parse", "--verify", self.branch],
                 cwd=self.root_dir,
                 capture_output=True,
-                text=True
+                text=True,
             )
 
             if result.returncode != 0:
@@ -248,16 +241,16 @@ class FilesystemEventSource(BaseEventSource):
         """Get current cursor (last processed commit SHA)."""
         if self._last_commit_sha:
             return {
-                'last_commit_sha': self._last_commit_sha,
-                'branch': self.branch,
-                'updated_at': datetime.now().isoformat()
+                "last_commit_sha": self._last_commit_sha,
+                "branch": self.branch,
+                "updated_at": datetime.now().isoformat(),
             }
         return None
 
     async def set_cursor(self, cursor: Dict[str, Any]) -> None:
         """Set cursor (for resuming from a previous sync)."""
         self._cursor = cursor
-        self._last_commit_sha = cursor.get('last_commit_sha')
+        self._last_commit_sha = cursor.get("last_commit_sha")
         self._logger.info(f"Cursor set to commit: {self._last_commit_sha}")
 
     # ========================================================================
@@ -278,24 +271,20 @@ class FilesystemEventSource(BaseEventSource):
         """
         # Build git log command
         cmd = [
-            'git', 'log',
-            f'--max-count={self.max_commits}',
-            '--format=%H|%an|%at|%s',  # SHA|author|timestamp|subject
-            '--numstat',  # File stats
-            self.branch
+            "git",
+            "log",
+            f"--max-count={self.max_commits}",
+            "--format=%H|%an|%at|%s",  # SHA|author|timestamp|subject
+            "--numstat",  # File stats
+            self.branch,
         ]
 
         # If cursor is set, only get commits after it
         if self._last_commit_sha:
-            cmd.append(f'{self._last_commit_sha}..{self.branch}')
+            cmd.append(f"{self._last_commit_sha}..{self.branch}")
 
         # Run git log
-        result = subprocess.run(
-            cmd,
-            cwd=self.root_dir,
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run(cmd, cwd=self.root_dir, capture_output=True, text=True)
 
         if result.returncode != 0:
             self._logger.error(f"Git log failed: {result.stderr}")
@@ -316,39 +305,39 @@ class FilesystemEventSource(BaseEventSource):
         commits = []
         current_commit = None
 
-        for line in output.strip().split('\n'):
+        for line in output.strip().split("\n"):
             if not line:
                 continue
 
             # Check if this is a commit header line
-            if '|' in line and len(line.split('|')) == 4:
+            if "|" in line and len(line.split("|")) == 4:
                 # Save previous commit
                 if current_commit:
                     commits.append(current_commit)
 
                 # Start new commit
-                sha, author, timestamp, message = line.split('|', 3)
+                sha, author, timestamp, message = line.split("|", 3)
                 current_commit = {
-                    'sha': sha,
-                    'author': author,
-                    'date': datetime.fromtimestamp(int(timestamp)),
-                    'message': message,
-                    'files': [],
-                    'insertions': 0,
-                    'deletions': 0
+                    "sha": sha,
+                    "author": author,
+                    "date": datetime.fromtimestamp(int(timestamp)),
+                    "message": message,
+                    "files": [],
+                    "insertions": 0,
+                    "deletions": 0,
                 }
-            elif current_commit and '\t' in line:
+            elif current_commit and "\t" in line:
                 # Parse file stats (insertions, deletions, filename)
-                parts = line.split('\t')
+                parts = line.split("\t")
                 if len(parts) == 3:
                     insertions, deletions, filename = parts
-                    current_commit['files'].append(filename)
+                    current_commit["files"].append(filename)
 
                     # Update stats (handle '-' for binary files)
-                    if insertions != '-':
-                        current_commit['insertions'] += int(insertions)
-                    if deletions != '-':
-                        current_commit['deletions'] += int(deletions)
+                    if insertions != "-":
+                        current_commit["insertions"] += int(insertions)
+                    if deletions != "-":
+                        current_commit["deletions"] += int(deletions)
 
         # Add last commit
         if current_commit:
@@ -369,26 +358,22 @@ class FilesystemEventSource(BaseEventSource):
         session_id = f"git-{commit_data['date'].strftime('%Y-%m-%d')}"
 
         # Create event context
-        context = EventContext(
-            cwd=self.root_dir,
-            files=commit_data['files'],
-            branch=self.branch
-        )
+        context = EventContext(cwd=self.root_dir, files=commit_data["files"], branch=self.branch)
 
         # Create event
         return EpisodicEvent(
             project_id=self.project_id,
             session_id=session_id,
-            timestamp=commit_data['date'],
+            timestamp=commit_data["date"],
             event_type=EventType.FILE_CHANGE,
             content=f"Commit: {commit_data['message']}",
             outcome=EventOutcome.SUCCESS,
             context=context,
-            files_changed=len(commit_data['files']),
-            lines_added=commit_data['insertions'],
-            lines_deleted=commit_data['deletions'],
-            git_commit=commit_data['sha'],
-            git_author=commit_data['author']
+            files_changed=len(commit_data["files"]),
+            lines_added=commit_data["insertions"],
+            lines_deleted=commit_data["deletions"],
+            git_commit=commit_data["sha"],
+            git_author=commit_data["author"],
         )
 
 

@@ -223,11 +223,14 @@ class QualityReweighter:
             },
         }
 
-        weights = layer_weights.get(layer, {
-            "usefulness": 0.25,
-            "confidence": 0.3,
-            "relevance": 0.2,
-        })
+        weights = layer_weights.get(
+            layer,
+            {
+                "usefulness": 0.25,
+                "confidence": 0.3,
+                "relevance": 0.2,
+            },
+        )
 
         # Compute boost factor with safe type conversion
         usefulness_score = float(quality.usefulness_score) if quality.usefulness_score else 0.0
@@ -250,9 +253,7 @@ class QualityReweighter:
 
         return adjusted_score
 
-    def _get_quality_cached(
-        self, memory_id: int, layer: str
-    ) -> Optional[MemoryQuality]:
+    def _get_quality_cached(self, memory_id: int, layer: str) -> Optional[MemoryQuality]:
         """Get quality metrics with caching.
 
         Args:

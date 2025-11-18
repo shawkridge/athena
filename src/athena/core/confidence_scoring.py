@@ -1,10 +1,9 @@
 """Confidence scoring engine for memory retrieval results."""
 
 import logging
-from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
-from .result_models import ConfidenceLevel, ConfidenceScores
+from .result_models import ConfidenceScores
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +66,7 @@ class ConfidenceScorer:
 
         return scores
 
-    def _compute_source_quality(
-        self, memory: Dict[str, Any], source_layer: str
-    ) -> float:
+    def _compute_source_quality(self, memory: Dict[str, Any], source_layer: str) -> float:
         """Compute quality score based on source layer and meta-metrics.
 
         Args:

@@ -61,6 +61,7 @@ def get_accuracy_stats(
     try:
         if db is None:
             from ..core.database import Database
+
             db = Database()
 
         from ..predictive.accuracy import EstimateAccuracyStore

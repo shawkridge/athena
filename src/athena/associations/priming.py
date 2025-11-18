@@ -80,15 +80,15 @@ class TemporalPriming:
                         expires_at = ?
                     WHERE id = ?
                     """,
-                    (expires_at.isoformat().replace('T', ' ').split('+')[0], existing["id"]),
+                    (expires_at.isoformat().replace("T", " ").split("+")[0], existing["id"]),
                 )
                 conn.commit()
                 return existing["id"]
 
             # Create new priming
             # Normalize timestamps to SQLite format (remove T and timezone)
-            now_iso = datetime.now(timezone.utc).isoformat().replace('T', ' ').split('+')[0]
-            expires_iso = expires_at.isoformat().replace('T', ' ').split('+')[0]
+            now_iso = datetime.now(timezone.utc).isoformat().replace("T", " ").split("+")[0]
+            expires_iso = expires_at.isoformat().replace("T", " ").split("+")[0]
 
             cursor = conn.execute(
                 """
@@ -103,9 +103,7 @@ class TemporalPriming:
             conn.commit()
             return cursor.lastrowid
 
-    def get_priming_boost(
-        self, memory_id: int, layer: str, project_id: int
-    ) -> float:
+    def get_priming_boost(self, memory_id: int, layer: str, project_id: int) -> float:
         """Get current priming boost multiplier for a memory.
 
         Boost depends on time since priming:
@@ -218,9 +216,7 @@ class TemporalPriming:
             conn.commit()
             return cursor.rowcount
 
-    def get_primed_memories(
-        self, project_id: int, min_boost: float = 1.2
-    ) -> List[PrimedMemory]:
+    def get_primed_memories(self, project_id: int, min_boost: float = 1.2) -> List[PrimedMemory]:
         """Get all currently primed memories with boost >= threshold.
 
         Args:

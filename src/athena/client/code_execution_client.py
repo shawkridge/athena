@@ -27,9 +27,7 @@ from typing import Any, Dict, List, Optional
 try:
     import requests
 except ImportError:
-    raise ImportError(
-        "requests is required. Install with: pip install requests"
-    )
+    raise ImportError("requests is required. Install with: pip install requests")
 
 logger = logging.getLogger(__name__)
 

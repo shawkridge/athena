@@ -208,9 +208,7 @@ class PatternSuggester:
         # commit handled by cursor context
         return cursor.rowcount > 0
 
-    def measure_suggestion_effectiveness(
-        self, pattern_id: int
-    ) -> dict[str, float | int]:
+    def measure_suggestion_effectiveness(self, pattern_id: int) -> dict[str, float | int]:
         """Measure effectiveness of pattern suggestions.
 
         Returns stats on how often suggestions were applied vs dismissed.
@@ -236,12 +234,8 @@ class PatternSuggester:
         total_suggestions = row[2] or 0
         avg_confidence = row[3] or 0.0
 
-        effectiveness_rate = (
-            applied_count / total_suggestions if total_suggestions > 0 else 0.0
-        )
-        dismissal_rate = (
-            dismissed_count / total_suggestions if total_suggestions > 0 else 0.0
-        )
+        effectiveness_rate = applied_count / total_suggestions if total_suggestions > 0 else 0.0
+        dismissal_rate = dismissed_count / total_suggestions if total_suggestions > 0 else 0.0
 
         return {
             "applied_count": applied_count,

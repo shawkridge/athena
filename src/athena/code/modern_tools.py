@@ -3,7 +3,6 @@
 import json
 import logging
 import subprocess
-from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
@@ -305,6 +304,7 @@ class TreeSitterParser:
         """Check if tree-sitter is available."""
         try:
             import tree_sitter  # noqa
+
             logger.info("tree-sitter available for precise AST parsing")
             return True
         except ImportError:
@@ -329,11 +329,13 @@ class TreeSitterParser:
         try:
             if self.parser is None:
                 from tree_sitter import Parser
+
                 self.parser = Parser()
 
             # Load language if not cached
             if language not in self.languages:
                 from tree_sitter_languages import get_language
+
                 self.languages[language] = get_language(language)
 
             lang = self.languages[language]

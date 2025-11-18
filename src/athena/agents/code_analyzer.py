@@ -12,8 +12,7 @@ The agent integrates with:
 
 import logging
 import re
-from typing import Optional, Dict, Any, List, Tuple
-from datetime import datetime
+from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, asdict
 
 # Import coordinator base class
@@ -22,8 +21,6 @@ from ..orchestration.adaptive_agent import AdaptiveAgent
 
 # Import core memory operations
 from ..episodic.operations import remember as remember_event
-from ..memory.operations import store as store_fact, search as search_facts
-from ..graph.operations import add_entity as add_graph_entity
 from ..core.database import Database
 
 logger = logging.getLogger(__name__)
@@ -32,6 +29,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CodeIssue:
     """Represents a detected code issue."""
+
     issue_type: str  # anti-pattern, optimization, style, complexity
     description: str
     line_number: Optional[int] = None
@@ -44,6 +42,7 @@ class CodeIssue:
 @dataclass
 class CodeMetrics:
     """Represents code metrics."""
+
     lines_of_code: int = 0
     cyclomatic_complexity: float = 0.0
     nesting_depth: int = 0
@@ -197,7 +196,9 @@ class CodeAnalyzerAgent(AgentCoordinator, AdaptiveAgent):
                     importance=0.7 if results["issues"] else 0.5,
                 )
 
-            logger.info(f"Analysis complete: {len(results['issues'])} issues, {len(results['optimizations'])} optimizations")
+            logger.info(
+                f"Analysis complete: {len(results['issues'])} issues, {len(results['optimizations'])} optimizations"
+            )
 
         except Exception as e:
             logger.error(f"Error analyzing code: {e}")
@@ -245,7 +246,9 @@ class CodeAnalyzerAgent(AgentCoordinator, AdaptiveAgent):
 
         return issues
 
-    async def suggest_optimizations(self, code: str, language: str = "python") -> List[Dict[str, Any]]:
+    async def suggest_optimizations(
+        self, code: str, language: str = "python"
+    ) -> List[Dict[str, Any]]:
         """Suggest code optimizations.
 
         Args:
@@ -273,13 +276,15 @@ class CodeAnalyzerAgent(AgentCoordinator, AdaptiveAgent):
             # Calculate complexity metrics
             complexity = self._calculate_complexity(code)
             if complexity > 10:
-                suggestions.append({
-                    "optimization": "reduce_complexity",
-                    "description": f"High cyclomatic complexity ({complexity})",
-                    "impact": "Maintainability",
-                    "suggestion": "Consider breaking this into smaller functions",
-                    "confidence": 0.9,
-                })
+                suggestions.append(
+                    {
+                        "optimization": "reduce_complexity",
+                        "description": f"High cyclomatic complexity ({complexity})",
+                        "impact": "Maintainability",
+                        "suggestion": "Consider breaking this into smaller functions",
+                        "confidence": 0.9,
+                    }
+                )
 
             logger.info(f"Generated {len(suggestions)} optimization suggestions")
 
@@ -331,7 +336,9 @@ class CodeAnalyzerAgent(AgentCoordinator, AdaptiveAgent):
             metrics.avg_function_length = self._calculate_avg_function_length(code)
             metrics.maintainability_index = self._calculate_maintainability_index(code)
 
-            logger.info(f"Calculated metrics: LOC={metrics.lines_of_code}, CC={metrics.cyclomatic_complexity}")
+            logger.info(
+                f"Calculated metrics: LOC={metrics.lines_of_code}, CC={metrics.cyclomatic_complexity}"
+            )
 
         except Exception as e:
             logger.error(f"Error calculating metrics: {e}")
@@ -503,6 +510,7 @@ class CodeAnalyzerAgent(AgentCoordinator, AdaptiveAgent):
 
         # Formula: 171 - 5.2*ln(effort) - 0.23*complexity - 16.2*ln(LOC) + 50*sqrt(2.46*comments)
         import math
+
         effort = complexity * max(lines, 1) / 100
 
         try:
@@ -529,8 +537,12 @@ class CodeAnalyzerAgent(AgentCoordinator, AdaptiveAgent):
             return "deep_analysis"  # Default if no learning
 
         # Check success rates for each strategy
-        deep_rate = self.tracker.get_success_rate(self.agent_name, "deep_analysis", time_window_hours=24)
-        quick_rate = self.tracker.get_success_rate(self.agent_name, "quick_analysis", time_window_hours=24)
+        deep_rate = self.tracker.get_success_rate(
+            self.agent_name, "deep_analysis", time_window_hours=24
+        )
+        quick_rate = self.tracker.get_success_rate(
+            self.agent_name, "quick_analysis", time_window_hours=24
+        )
 
         # If deep analysis has high success rate, use it
         if deep_rate > 0.8:
@@ -546,20 +558,20 @@ class CodeAnalyzerAgent(AgentCoordinator, AdaptiveAgent):
         """Execute analysis with chosen strategy."""
         if decision == "quick_analysis":
             # Only check critical issues
-            code = context.get('code', '')
-            language = context.get('language', 'python')
+            code = context.get("code", "")
+            language = context.get("language", "python")
             issues = await self.find_anti_patterns(code, language)
-            return {'issues': [i for i in issues if i.severity == 'critical']}
+            return {"issues": [i for i in issues if i.severity == "critical"]}
 
         elif decision == "style_check":
-            code = context.get('code', '')
+            code = context.get("code", "")
             style = await self.extract_coding_style(code)
-            return {'style': style}
+            return {"style": style}
 
         else:  # deep_analysis
             # Full analysis
-            code = context.get('code', '')
-            language = context.get('language', 'python')
+            code = context.get("code", "")
+            language = context.get("language", "python")
 
             issues = await self.find_anti_patterns(code, language)
             optimizations = await self.suggest_optimizations(code, language)
@@ -567,25 +579,27 @@ class CodeAnalyzerAgent(AgentCoordinator, AdaptiveAgent):
             metrics = await self.calculate_metrics(code)
 
             return {
-                'issues': issues,
-                'optimizations': optimizations,
-                'style': style,
-                'metrics': asdict(metrics)
+                "issues": issues,
+                "optimizations": optimizations,
+                "style": style,
+                "metrics": asdict(metrics),
             }
 
-    async def _evaluate_outcome(self, result: Any, decision: str, context: dict) -> tuple[float, str]:
+    async def _evaluate_outcome(
+        self, result: Any, decision: str, context: dict
+    ) -> tuple[float, str]:
         """Evaluate analysis result quality."""
         if not result:
-            return 0.0, 'failure'
+            return 0.0, "failure"
 
         # Success if we found substantive analysis
         if isinstance(result, dict):
-            issues_found = len(result.get('issues', []))
+            issues_found = len(result.get("issues", []))
             if issues_found > 0:
                 # Found real issues - high confidence
-                return 0.9, 'success'
-            elif result.get('style') or result.get('metrics'):
+                return 0.9, "success"
+            elif result.get("style") or result.get("metrics"):
                 # Found some analysis even if no issues
-                return 0.7, 'success'
+                return 0.7, "success"
 
-        return 0.5, 'partial'
+        return 0.5, "partial"

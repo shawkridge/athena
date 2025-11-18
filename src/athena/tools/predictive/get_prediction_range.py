@@ -62,14 +62,13 @@ def get_prediction_range(
     try:
         if db is None:
             from ..core.database import Database
+
             db = Database()
 
         from ..predictive.estimator import PredictiveEstimator
 
         estimator = PredictiveEstimator(db)
-        range_data = estimator.get_estimate_range(
-            project_id, task_type, base_estimate
-        )
+        range_data = estimator.get_estimate_range(project_id, task_type, base_estimate)
 
         if not range_data:
             return {

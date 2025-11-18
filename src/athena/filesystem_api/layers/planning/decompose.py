@@ -5,13 +5,13 @@ Decomposes complex tasks into subtasks locally.
 Returns task structure summary, not full task objects.
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
+
 try:
     import psycopg
     from psycopg import AsyncConnection
 except ImportError:
     raise ImportError("PostgreSQL required: pip install psycopg[binary]")
-from datetime import datetime
 
 
 async def decompose_task(
@@ -22,7 +22,7 @@ async def decompose_task(
     password: str,
     task_description: str,
     target_depth: int = 3,
-    max_subtasks: int = 10
+    max_subtasks: int = 10,
 ) -> Dict[str, Any]:
     """
     Decompose a task into subtasks.
@@ -48,17 +48,10 @@ async def decompose_task(
         # For this demo, return a simulated decomposition
         # In production, this would use actual task decomposition logic
 
-        decomposition = _simulate_decomposition(
-            task_description,
-            target_depth,
-            max_subtasks
-        )
+        decomposition = _simulate_decomposition(task_description, target_depth, max_subtasks)
 
         if not decomposition:
-            return {
-                "error": "Failed to decompose task",
-                "task": task_description
-            }
+            return {"error": "Failed to decompose task", "task": task_description}
 
         return {
             "task": task_description,
@@ -70,14 +63,13 @@ async def decompose_task(
             "effort_by_priority": _effort_by_priority(decomposition),
             "critical_path_length": _critical_path(decomposition),
             "dependencies_count": _count_dependencies(decomposition),
-            "top_level_tasks": min(max_subtasks, len([t for t in decomposition if t.get("depth", 0) == 0]))
+            "top_level_tasks": min(
+                max_subtasks, len([t for t in decomposition if t.get("depth", 0) == 0])
+            ),
         }
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "error_type": type(e).__name__
-        }
+        return {"error": str(e), "error_type": type(e).__name__}
 
 
 async def get_task_structure(
@@ -87,24 +79,22 @@ async def get_task_structure(
     user: str,
     password: str,
     task_id: str,
-    include_subtasks: bool = True
+    include_subtasks: bool = True,
 ) -> Dict[str, Any]:
     """Get task structure summary."""
     try:
-        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
+        conn = await AsyncConnection.connect(
+            host, port=port, dbname=dbname, user=user, password=password
+        )
         cursor = conn.cursor()
 
-        await cursor.execute(
-            "SELECT * FROM tasks WHERE id = %s",
-            (task_id,)
-        )
+        await cursor.execute("SELECT * FROM tasks WHERE id = %s", (task_id,))
 
         task = dict(await cursor.fetchone() or {})
 
         if include_subtasks:
             await cursor.execute(
-                "SELECT COUNT(*) as count FROM tasks WHERE parent_task_id = %s",
-                (task_id,)
+                "SELECT COUNT(*) as count FROM tasks WHERE parent_task_id = %s", (task_id,)
             )
             row = await cursor.fetchone()
             subtask_count = row[0] if row else 0
@@ -115,23 +105,17 @@ async def get_task_structure(
         return task if task else {"error": f"Task not found: {task_id}"}
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "error_type": type(e).__name__
-        }
+        return {"error": str(e), "error_type": type(e).__name__}
 
 
 async def get_dependency_graph(
-    host: str,
-    port: int,
-    dbname: str,
-    user: str,
-    password: str,
-    task_id: str
+    host: str, port: int, dbname: str, user: str, password: str, task_id: str
 ) -> Dict[str, Any]:
     """Get dependency graph summary."""
     try:
-        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
+        conn = await AsyncConnection.connect(
+            host, port=port, dbname=dbname, user=user, password=password
+        )
         cursor = conn.cursor()
 
         # Get dependencies
@@ -140,7 +124,7 @@ async def get_dependency_graph(
             SELECT COUNT(*) as count FROM task_dependencies
             WHERE task_id = %s OR depends_on = %s
             """,
-            (task_id, task_id)
+            (task_id, task_id),
         )
 
         dep_count = (await cursor.fetchone())[0]
@@ -151,7 +135,7 @@ async def get_dependency_graph(
             SELECT COUNT(*) as count FROM task_dependencies
             WHERE task_id = %s AND dependency_type = 'blocks'
             """,
-            (task_id,)
+            (task_id,),
         )
 
         blocking_count = (await cursor.fetchone())[0]
@@ -162,7 +146,7 @@ async def get_dependency_graph(
             SELECT COUNT(*) as count FROM task_dependencies
             WHERE depends_on = %s AND dependency_type = 'blocks'
             """,
-            (task_id,)
+            (task_id,),
         )
 
         blocked_by_count = (await cursor.fetchone())[0]
@@ -174,14 +158,11 @@ async def get_dependency_graph(
             "total_dependencies": dep_count,
             "blocking_count": blocking_count,
             "blocked_by_count": blocked_by_count,
-            "critical_path_includes": blocked_by_count > 0
+            "critical_path_includes": blocked_by_count > 0,
         }
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "error_type": type(e).__name__
-        }
+        return {"error": str(e), "error_type": type(e).__name__}
 
 
 def _simulate_decomposition(task_desc: str, depth: int, max_per_level: int) -> List[Dict]:
@@ -190,24 +171,28 @@ def _simulate_decomposition(task_desc: str, depth: int, max_per_level: int) -> L
     tasks = []
 
     # Level 0 - main task
-    tasks.append({
-        "id": f"task_0",
-        "title": task_desc,
-        "depth": 0,
-        "priority": "high",
-        "estimated_effort": 5.0
-    })
+    tasks.append(
+        {
+            "id": "task_0",
+            "title": task_desc,
+            "depth": 0,
+            "priority": "high",
+            "estimated_effort": 5.0,
+        }
+    )
 
     # Generate subtasks
     for level in range(1, min(depth, 3)):
         for i in range(min(max_per_level, 3)):
-            tasks.append({
-                "id": f"task_{level}_{i}",
-                "title": f"Subtask {level}.{i}",
-                "depth": level,
-                "priority": ["high", "medium", "low"][i % 3],
-                "estimated_effort": 2.0 - (level * 0.3)
-            })
+            tasks.append(
+                {
+                    "id": f"task_{level}_{i}",
+                    "title": f"Subtask {level}.{i}",
+                    "depth": level,
+                    "priority": ["high", "medium", "low"][i % 3],
+                    "estimated_effort": 2.0 - (level * 0.3),
+                }
+            )
 
     return tasks
 

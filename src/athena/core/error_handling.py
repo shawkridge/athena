@@ -13,15 +13,11 @@ from typing import Any, Callable, List, Optional, TypeVar
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def safe_execute(
-    func: Callable,
-    *args,
-    default: Any = None,
-    log_errors: bool = True,
-    **kwargs
+    func: Callable, *args, default: Any = None, log_errors: bool = True, **kwargs
 ) -> Any:
     """Safely execute function with error handling.
 
@@ -43,11 +39,7 @@ def safe_execute(
         return default
 
 
-def try_multiple(
-    handlers: List[Callable],
-    default: Any = None,
-    log_errors: bool = False
-) -> Any:
+def try_multiple(handlers: List[Callable], default: Any = None, log_errors: bool = False) -> Any:
     """Try multiple handlers in sequence until one succeeds.
 
     Args:
@@ -68,10 +60,7 @@ def try_multiple(
     return default
 
 
-def safe_json_loads(
-    data: str,
-    default: Optional[dict] = None
-) -> dict:
+def safe_json_loads(data: str, default: Optional[dict] = None) -> dict:
     """Safely parse JSON with fallback.
 
     Args:
@@ -89,10 +78,7 @@ def safe_json_loads(
         return default or {}
 
 
-def safe_json_dumps(
-    obj: Any,
-    default_str: str = '{}'
-) -> str:
+def safe_json_dumps(obj: Any, default_str: str = "{}") -> str:
     """Safely convert object to JSON string.
 
     Args:
@@ -111,10 +97,7 @@ def safe_json_dumps(
         return default_str
 
 
-def safe_float_parse(
-    value: Any,
-    default: float = 0.5
-) -> float:
+def safe_float_parse(value: Any, default: float = 0.5) -> float:
     """Safely parse value to float.
 
     Args:
@@ -129,17 +112,14 @@ def safe_float_parse(
             return value
         if isinstance(value, (int, str)):
             return float(value)
-        if hasattr(value, '__float__'):
+        if hasattr(value, "__float__"):
             return float(value)
         return default
     except (ValueError, TypeError, AttributeError):
         return default
 
 
-def safe_int_parse(
-    value: Any,
-    default: int = 0
-) -> int:
+def safe_int_parse(value: Any, default: int = 0) -> int:
     """Safely parse value to int.
 
     Args:
@@ -154,18 +134,14 @@ def safe_int_parse(
             return value
         if isinstance(value, (str, float)):
             return int(value)
-        if hasattr(value, '__int__'):
+        if hasattr(value, "__int__"):
             return int(value)
         return default
     except (ValueError, TypeError, AttributeError):
         return default
 
 
-def safe_getattr(
-    obj: Any,
-    attr: str,
-    default: Any = None
-) -> Any:
+def safe_getattr(obj: Any, attr: str, default: Any = None) -> Any:
     """Safely get attribute from object.
 
     Args:
@@ -182,11 +158,7 @@ def safe_getattr(
         return default
 
 
-def safe_dict_get(
-    dct: Optional[dict],
-    key: str,
-    default: Any = None
-) -> Any:
+def safe_dict_get(dct: Optional[dict], key: str, default: Any = None) -> Any:
     """Safely get value from dict.
 
     Args:
@@ -202,11 +174,7 @@ def safe_dict_get(
     return dct.get(key, default)
 
 
-def safe_list_access(
-    lst: Optional[list],
-    index: int,
-    default: Any = None
-) -> Any:
+def safe_list_access(lst: Optional[list], index: int, default: Any = None) -> Any:
     """Safely access list index.
 
     Args:
@@ -228,12 +196,7 @@ def safe_list_access(
 class ErrorContext:
     """Context manager for error handling with logging."""
 
-    def __init__(
-        self,
-        operation: str,
-        log_errors: bool = True,
-        re_raise: bool = False
-    ):
+    def __init__(self, operation: str, log_errors: bool = True, re_raise: bool = False):
         """Initialize error context.
 
         Args:
@@ -253,20 +216,14 @@ class ErrorContext:
         if exc_type is not None:
             self.error = exc_val
             if self.log_errors:
-                logger.error(
-                    f"{self.operation} failed: {exc_type.__name__}: {exc_val}"
-                )
+                logger.error(f"{self.operation} failed: {exc_type.__name__}: {exc_val}")
             if self.re_raise:
                 return False  # Re-raise exception
             return True  # Suppress exception
         return False
 
 
-def catch_exception(
-    exception_type: type,
-    handler: Optional[Callable] = None,
-    default: Any = None
-):
+def catch_exception(exception_type: type, handler: Optional[Callable] = None, default: Any = None):
     """Decorator to catch specific exceptions.
 
     Args:
@@ -277,6 +234,7 @@ def catch_exception(
     Returns:
         Decorated function
     """
+
     def decorator(func: Callable) -> Callable:
         def wrapper(*args, **kwargs):
             try:
@@ -285,5 +243,7 @@ def catch_exception(
                 if handler:
                     handler(e)
                 return default
+
         return wrapper
+
     return decorator

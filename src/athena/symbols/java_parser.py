@@ -21,46 +21,46 @@ class JavaSymbolParser:
 
     # Regex patterns for Java constructs
     CLASS_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:(?:public|private|protected|static|final|abstract)\s+)*'
-        r'class\s+(\w+)(?:\s*<[^>]+>)?\s*(?:extends\s+(\w+))?\s*(?:implements\s+([^{]+))?\s*\{',
-        re.MULTILINE
+        r"(?:^|\n)\s*(?:(?:public|private|protected|static|final|abstract)\s+)*"
+        r"class\s+(\w+)(?:\s*<[^>]+>)?\s*(?:extends\s+(\w+))?\s*(?:implements\s+([^{]+))?\s*\{",
+        re.MULTILINE,
     )
 
     INTERFACE_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:(?:public|private|protected|static|final)\s+)*'
-        r'interface\s+(\w+)(?:\s*<[^>]+>)?\s*(?:extends\s+([^{]+))?\s*\{',
-        re.MULTILINE
+        r"(?:^|\n)\s*(?:(?:public|private|protected|static|final)\s+)*"
+        r"interface\s+(\w+)(?:\s*<[^>]+>)?\s*(?:extends\s+([^{]+))?\s*\{",
+        re.MULTILINE,
     )
 
     ENUM_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:(?:public|private|protected|static|final)\s+)*'
-        r'enum\s+(\w+)\s*(?:implements\s+([^{]+))?\s*\{',
-        re.MULTILINE
+        r"(?:^|\n)\s*(?:(?:public|private|protected|static|final)\s+)*"
+        r"enum\s+(\w+)\s*(?:implements\s+([^{]+))?\s*\{",
+        re.MULTILINE,
     )
 
     METHOD_PATTERN = re.compile(
-        r'(?:^|\n|\s)(?:(?:public|private|protected|static|final|abstract|synchronized)\s+)*'
-        r'(?:[\w<>\[\]]+\s+)?(\w+)\s*\(([^)]*)\)\s*(?:throws\s+[^{]+)?\s*\{',
-        re.MULTILINE
+        r"(?:^|\n|\s)(?:(?:public|private|protected|static|final|abstract|synchronized)\s+)*"
+        r"(?:[\w<>\[\]]+\s+)?(\w+)\s*\(([^)]*)\)\s*(?:throws\s+[^{]+)?\s*\{",
+        re.MULTILINE,
     )
 
     CONSTRUCTOR_PATTERN = re.compile(
-        r'(?:^|\n|\s)(?:(?:public|private|protected)\s+)*'
-        r'(\w+)\s*\(([^)]*)\)\s*(?:throws\s+[^{]+)?\s*\{',
-        re.MULTILINE
+        r"(?:^|\n|\s)(?:(?:public|private|protected)\s+)*"
+        r"(\w+)\s*\(([^)]*)\)\s*(?:throws\s+[^{]+)?\s*\{",
+        re.MULTILINE,
     )
 
     FIELD_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:(?:public|private|protected|static|final|transient|volatile)\s+)*'
-        r'[\w<>\[\]]+\s+(\w+)\s*(?:=\s*[^;]+)?\s*;',
-        re.MULTILINE
+        r"(?:^|\n)\s*(?:(?:public|private|protected|static|final|transient|volatile)\s+)*"
+        r"[\w<>\[\]]+\s+(\w+)\s*(?:=\s*[^;]+)?\s*;",
+        re.MULTILINE,
     )
 
-    PACKAGE_PATTERN = re.compile(r'^\s*package\s+([\w.]+)\s*;', re.MULTILINE)
+    PACKAGE_PATTERN = re.compile(r"^\s*package\s+([\w.]+)\s*;", re.MULTILINE)
 
-    IMPORT_PATTERN = re.compile(r'^\s*import\s+(?:static\s+)?([\w.*]+)\s*;', re.MULTILINE)
+    IMPORT_PATTERN = re.compile(r"^\s*import\s+(?:static\s+)?([\w.*]+)\s*;", re.MULTILINE)
 
-    VISIBILITY_PATTERN = re.compile(r'(public|private|protected)\b')
+    VISIBILITY_PATTERN = re.compile(r"(public|private|protected)\b")
 
     def parse_file(self, file_path: str, code: Optional[str] = None) -> list[Symbol]:
         """Parse a Java file and extract symbols.
@@ -74,9 +74,9 @@ class JavaSymbolParser:
         """
         if code is None:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     code = f.read()
-            except (IOError, UnicodeDecodeError) as e:
+            except (IOError, UnicodeDecodeError):
                 return []
 
         symbols = []
@@ -105,12 +105,12 @@ class JavaSymbolParser:
         for match in self.IMPORT_PATTERN.finditer(code):
             import_path = match.group(1)
             # Get line number
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             symbol = create_symbol(
                 file_path=file_path,
                 symbol_type=SymbolType.IMPORT,
-                name=import_path.split('.')[-1],
+                name=import_path.split(".")[-1],
                 namespace="",
                 signature="",
                 line_start=line_num,
@@ -118,7 +118,7 @@ class JavaSymbolParser:
                 code="",
                 docstring="",
                 language="java",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -133,22 +133,22 @@ class JavaSymbolParser:
 
         # Find classes
         for match in self.CLASS_PATTERN.finditer(code):
-            positions.append((match, 'class'))
+            positions.append((match, "class"))
 
         # Find interfaces
         for match in self.INTERFACE_PATTERN.finditer(code):
-            positions.append((match, 'interface'))
+            positions.append((match, "interface"))
 
         # Find enums
         for match in self.ENUM_PATTERN.finditer(code):
-            positions.append((match, 'enum'))
+            positions.append((match, "enum"))
 
         # Sort by position
         positions.sort(key=lambda x: x[0].start())
 
         for match, kind in positions:
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Determine visibility
             visibility = self._get_visibility(code, match.start())
@@ -157,13 +157,13 @@ class JavaSymbolParser:
 
             # Extract parent class/interface
             parent = None
-            if kind == 'class' and match.group(2):
+            if kind == "class" and match.group(2):
                 parent = match.group(2).strip()
-            elif kind in ['interface', 'enum'] and match.group(2):
+            elif kind in ["interface", "enum"] and match.group(2):
                 parent = match.group(2).strip()
 
             # Create symbol for the class/interface/enum
-            symbol_type = SymbolType.CLASS if kind in ['class', 'enum'] else SymbolType.INTERFACE
+            symbol_type = SymbolType.CLASS if kind in ["class", "enum"] else SymbolType.INTERFACE
 
             symbol = create_symbol(
                 file_path=file_path,
@@ -176,7 +176,7 @@ class JavaSymbolParser:
                 code="",
                 docstring="",
                 language="java",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -191,15 +191,15 @@ class JavaSymbolParser:
                 methods = self._extract_methods(class_body, file_path, package, name)
                 for method in methods:
                     # Adjust line numbers to file coordinates
-                    method.line_start += code[:class_body_start].count('\n')
-                    method.line_end += code[:class_body_start].count('\n')
+                    method.line_start += code[:class_body_start].count("\n")
+                    method.line_end += code[:class_body_start].count("\n")
                 symbols.extend(methods)
 
                 # Extract fields
                 fields = self._extract_fields(class_body, file_path, package, name)
                 for field in fields:
-                    field.line_start += code[:class_body_start].count('\n')
-                    field.line_end += code[:class_body_start].count('\n')
+                    field.line_start += code[:class_body_start].count("\n")
+                    field.line_end += code[:class_body_start].count("\n")
                 symbols.extend(fields)
 
         return symbols
@@ -215,10 +215,10 @@ class JavaSymbolParser:
             params = match.group(2) if match.group(2) else ""
 
             # Skip if this looks like a control structure
-            if name.lower() in ['if', 'for', 'while', 'switch', 'catch', 'synchronized']:
+            if name.lower() in ["if", "for", "while", "switch", "catch", "synchronized"]:
                 continue
 
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
             visibility = self._get_visibility(code, match.start())
 
             # Extract signature
@@ -236,7 +236,7 @@ class JavaSymbolParser:
                 code="",
                 docstring="",
                 language="java",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -250,7 +250,7 @@ class JavaSymbolParser:
 
         for match in self.FIELD_PATTERN.finditer(code):
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
             visibility = self._get_visibility(code, match.start())
 
             # Create symbol
@@ -265,7 +265,7 @@ class JavaSymbolParser:
                 code="",
                 docstring="",
                 language="java",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -277,11 +277,11 @@ class JavaSymbolParser:
         search_start = max(0, position - 200)
         search_text = code[search_start:position]
 
-        if 'private' in search_text.split('\n')[-1]:
+        if "private" in search_text.split("\n")[-1]:
             return "private"
-        elif 'protected' in search_text.split('\n')[-1]:
+        elif "protected" in search_text.split("\n")[-1]:
             return "protected"
-        elif 'public' in search_text.split('\n')[-1]:
+        elif "public" in search_text.split("\n")[-1]:
             return "public"
         else:
             return "private"  # Default in Java
@@ -290,9 +290,9 @@ class JavaSymbolParser:
         """Find the position of the closing brace matching the opening brace at start."""
         depth = 0
         for i in range(start, len(code)):
-            if code[i] == '{':
+            if code[i] == "{":
                 depth += 1
-            elif code[i] == '}':
+            elif code[i] == "}":
                 depth -= 1
                 if depth == 0:
                     return i
@@ -301,4 +301,4 @@ class JavaSymbolParser:
     def _find_closing_brace_line(self, code: str, start: int) -> int:
         """Find the line number of the closing brace."""
         closing_pos = self._find_closing_brace(code, start)
-        return code[:closing_pos].count('\n') + 1
+        return code[:closing_pos].count("\n") + 1

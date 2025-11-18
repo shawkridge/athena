@@ -58,7 +58,7 @@ CREATE INDEX idx_consolidation_runs_created_at ON consolidation_runs(started_at)
 import logging
 import json
 from dataclasses import dataclass, asdict, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, Any, List, Optional
 from enum import Enum
 
@@ -67,6 +67,7 @@ logger = logging.getLogger(__name__)
 
 class ConsolidationStatus(Enum):
     """Status of a consolidation run."""
+
     PENDING = "pending"
     RUNNING = "running"
     SUCCESS = "success"
@@ -179,7 +180,8 @@ class ConsolidationRunHistory:
 
     def _init_schema(self) -> None:
         """Create schema if it doesn't exist (idempotent)."""
-        self.db.execute("""
+        self.db.execute(
+            """
             CREATE TABLE IF NOT EXISTS consolidation_runs (
                 run_id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -213,17 +215,22 @@ class ConsolidationRunHistory:
                 FOREIGN KEY (project_id) REFERENCES projects(project_id)
                     ON DELETE CASCADE
             );
-        """)
+        """
+        )
 
-        self.db.execute("""
+        self.db.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_consolidation_runs_project_id
             ON consolidation_runs(project_id);
-        """)
+        """
+        )
 
-        self.db.execute("""
+        self.db.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_consolidation_runs_started_at
             ON consolidation_runs(started_at DESC);
-        """)
+        """
+        )
 
         self.db.conn.commit()
 
@@ -239,19 +246,26 @@ class ConsolidationRunHistory:
         """
         config_json = json.dumps(config or {})
 
-        self.db.execute("""
+        self.db.execute(
+            """
             INSERT INTO consolidation_runs
             (project_id, status, config, started_at)
             VALUES (%s, %s, %s, NOW())
-        """, (project_id, ConsolidationStatus.RUNNING.value, config_json))
+        """,
+            (project_id, ConsolidationStatus.RUNNING.value, config_json),
+        )
 
         # Get the inserted ID
-        result = self.db.execute("""
+        result = self.db.execute(
+            """
             SELECT run_id FROM consolidation_runs
             WHERE project_id = %s
             ORDER BY started_at DESC
             LIMIT 1
-        """, (project_id,), fetch_one=True)
+        """,
+            (project_id,),
+            fetch_one=True,
+        )
 
         run_id = result[0] if result else None
         if run_id:
@@ -271,10 +285,13 @@ class ConsolidationRunHistory:
             True if successful, False otherwise
         """
         try:
-            error_messages_json = json.dumps(metrics.error_messages) if metrics.error_messages else None
+            error_messages_json = (
+                json.dumps(metrics.error_messages) if metrics.error_messages else None
+            )
             config_json = json.dumps(metrics.config) if metrics.config else None
 
-            self.db.execute("""
+            self.db.execute(
+                """
                 UPDATE consolidation_runs
                 SET
                     completed_at = %s,
@@ -293,24 +310,26 @@ class ConsolidationRunHistory:
                     config = %s,
                     notes = %s
                 WHERE run_id = %s
-            """, (
-                metrics.completed_at,
-                metrics.status.value,
-                metrics.events_processed,
-                metrics.events_consolidated,
-                metrics.patterns_extracted,
-                metrics.patterns_validated,
-                metrics.memories_created,
-                metrics.quality_before,
-                metrics.quality_after,
-                metrics.throughput_events_per_sec,
-                metrics.avg_pattern_confidence,
-                metrics.errors,
-                error_messages_json,
-                config_json,
-                metrics.notes,
-                run_id,
-            ))
+            """,
+                (
+                    metrics.completed_at,
+                    metrics.status.value,
+                    metrics.events_processed,
+                    metrics.events_consolidated,
+                    metrics.patterns_extracted,
+                    metrics.patterns_validated,
+                    metrics.memories_created,
+                    metrics.quality_before,
+                    metrics.quality_after,
+                    metrics.throughput_events_per_sec,
+                    metrics.avg_pattern_confidence,
+                    metrics.errors,
+                    error_messages_json,
+                    config_json,
+                    metrics.notes,
+                    run_id,
+                ),
+            )
 
             self.db.conn.commit()
             logger.debug(f"Updated consolidation run {run_id}")
@@ -330,7 +349,8 @@ class ConsolidationRunHistory:
             ConsolidationRunMetrics or None
         """
         try:
-            result = self.db.execute("""
+            result = self.db.execute(
+                """
                 SELECT
                     run_id, project_id, started_at, completed_at, status,
                     events_processed, events_consolidated,
@@ -340,7 +360,10 @@ class ConsolidationRunHistory:
                     errors, error_messages, config, notes
                 FROM consolidation_runs
                 WHERE run_id = %s
-            """, (run_id,), fetch_one=True)
+            """,
+                (run_id,),
+                fetch_one=True,
+            )
 
             if not result:
                 return None
@@ -368,7 +391,8 @@ class ConsolidationRunHistory:
             List of ConsolidationRunMetrics, sorted by date descending
         """
         try:
-            results = self.db.execute("""
+            results = self.db.execute(
+                """
                 SELECT
                     run_id, project_id, started_at, completed_at, status,
                     events_processed, events_consolidated,
@@ -381,7 +405,10 @@ class ConsolidationRunHistory:
                   AND started_at > NOW() - INTERVAL '%s days'
                 ORDER BY started_at DESC
                 LIMIT %s
-            """, (project_id, days, limit), fetch_all=True)
+            """,
+                (project_id, days, limit),
+                fetch_all=True,
+            )
 
             return [self._row_to_metrics(row) for row in results]
 
@@ -400,7 +427,8 @@ class ConsolidationRunHistory:
             Dictionary with aggregate stats
         """
         try:
-            result = self.db.execute("""
+            result = self.db.execute(
+                """
                 SELECT
                     COUNT(*) as total_runs,
                     SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) as successful_runs,
@@ -414,7 +442,10 @@ class ConsolidationRunHistory:
                 FROM consolidation_runs
                 WHERE project_id = %s
                   AND started_at > NOW() - INTERVAL '%s days'
-            """, (project_id, days), fetch_one=True)
+            """,
+                (project_id, days),
+                fetch_one=True,
+            )
 
             if not result:
                 return {}
@@ -439,12 +470,24 @@ class ConsolidationRunHistory:
     def _row_to_metrics(self, row: tuple) -> ConsolidationRunMetrics:
         """Convert database row to ConsolidationRunMetrics."""
         (
-            run_id, project_id, started_at, completed_at, status,
-            events_processed, events_consolidated,
-            patterns_extracted, patterns_validated, memories_created,
-            quality_before, quality_after,
-            throughput, confidence,
-            errors, error_messages_json, config_json, notes,
+            run_id,
+            project_id,
+            started_at,
+            completed_at,
+            status,
+            events_processed,
+            events_consolidated,
+            patterns_extracted,
+            patterns_validated,
+            memories_created,
+            quality_before,
+            quality_after,
+            throughput,
+            confidence,
+            errors,
+            error_messages_json,
+            config_json,
+            notes,
         ) = row
 
         error_messages = []

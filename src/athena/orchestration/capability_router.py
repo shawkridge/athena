@@ -6,9 +6,8 @@ Uses knowledge graph for capability discovery and meta-memory for quality scorin
 
 from typing import Optional, List, Dict, Tuple, Any
 
-from ..core.database import Database
 from .agent_registry import AgentRegistry
-from .models import Agent, RoutingDecision, Task
+from .models import Task
 
 
 class CapabilityRouter:
@@ -49,9 +48,7 @@ class CapabilityRouter:
         exclude_agents = exclude_agents or []
 
         # Find capable agents
-        candidates = self.registry.get_agents_by_capability(
-            task.requirements, exclude_agents
-        )
+        candidates = self.registry.get_agents_by_capability(task.requirements, exclude_agents)
 
         if not candidates:
             return None  # No capable agents

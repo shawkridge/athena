@@ -5,7 +5,6 @@ Tests the mapping layer and sync functionality between TodoWrite and Athena.
 
 import pytest
 from datetime import datetime
-from typing import Any, Dict
 
 # Import the integration module
 import sys
@@ -23,9 +22,6 @@ from athena.integration.todowrite_sync import (
     resolve_sync_conflict,
     get_sync_metadata,
     get_sync_statistics,
-    TodoWriteStatus,
-    AthenaTaskStatus,
-    PriorityLevel,
     _map_todowrite_to_athena_status,
     _map_athena_to_todowrite_status,
     _determine_phase_from_todo_status,
@@ -36,6 +32,7 @@ from athena.integration.todowrite_sync import (
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest.fixture
 def sample_todo():
@@ -114,6 +111,7 @@ def sample_plan_from_todo():
 # BASIC CONVERSION TESTS
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_convert_todo_to_plan_pending(sample_todo):
     """Test converting a pending todo to a plan."""
@@ -190,6 +188,7 @@ def test_convert_plan_to_todo_invalid_input():
 # BATCH CONVERSION TESTS
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_convert_todo_list_to_plans():
     """Test converting a list of todos to plans."""
@@ -226,6 +225,7 @@ def test_convert_plan_list_to_todos(sample_plan):
 # ============================================================================
 # STATUS MAPPING TESTS
 # ============================================================================
+
 
 def test_map_todowrite_to_athena_status():
     """Test TodoWrite to Athena status mapping."""
@@ -276,6 +276,7 @@ def test_status_mapping_round_trip():
 # PHASE DETERMINATION TESTS
 # ============================================================================
 
+
 def test_determine_phase_from_todo_status():
     """Test phase determination from TodoWrite status."""
     assert _determine_phase_from_todo_status("pending") == 1  # Planning
@@ -286,6 +287,7 @@ def test_determine_phase_from_todo_status():
 # ============================================================================
 # PRIORITY EXTRACTION TESTS
 # ============================================================================
+
 
 def test_extract_priority_from_content():
     """Test priority extraction from todo content."""
@@ -310,6 +312,7 @@ def test_extract_priority_from_content():
 # ============================================================================
 # SYNC CONFLICT DETECTION TESTS
 # ============================================================================
+
 
 def test_detect_sync_conflict_status_mismatch():
     """Test conflict detection when status differs."""
@@ -356,6 +359,7 @@ def test_detect_sync_conflict_with_mapping():
 # SYNC CONFLICT RESOLUTION TESTS
 # ============================================================================
 
+
 @pytest.mark.asyncio
 async def test_resolve_sync_conflict_todo_wins(sample_todo, sample_plan):
     """Test resolving conflict by preferring todo."""
@@ -378,6 +382,7 @@ async def test_resolve_sync_conflict_plan_wins(sample_todo, sample_plan):
 # ============================================================================
 # SYNC METADATA TESTS
 # ============================================================================
+
 
 def test_sync_metadata_mapping():
     """Test sync metadata tracking."""
@@ -419,6 +424,7 @@ async def test_get_sync_statistics():
 # ============================================================================
 # EDGE CASE TESTS
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_convert_todo_with_special_characters(sample_todo):
@@ -479,6 +485,7 @@ async def test_roundtrip_conversion():
 # ============================================================================
 # INTEGRATION TESTS
 # ============================================================================
+
 
 @pytest.mark.asyncio
 async def test_full_sync_workflow():

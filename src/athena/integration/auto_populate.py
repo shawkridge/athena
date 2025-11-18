@@ -7,8 +7,8 @@ This module provides integration between memory layers, automatically:
 """
 
 import logging
-from datetime import datetime, timedelta
-from typing import List, Optional
+from datetime import datetime
+from typing import Optional
 
 from ..core.database import Database
 from ..episodic.models import EpisodicEvent
@@ -21,9 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 def auto_populate_spatial(
-    event: EpisodicEvent,
-    spatial_store: SpatialStore,
-    project_id: int
+    event: EpisodicEvent, spatial_store: SpatialStore, project_id: int
 ) -> int:
     """
     Automatically build spatial hierarchy from event context.
@@ -83,10 +81,7 @@ def auto_populate_spatial(
 
 
 def auto_populate_temporal(
-    episodic_store: EpisodicStore,
-    project_id: int,
-    hours_lookback: int = 24,
-    min_events: int = 2
+    episodic_store: EpisodicStore, project_id: int, hours_lookback: int = 24, min_events: int = 2
 ) -> int:
     """
     Automatically create temporal relations from recent events.
@@ -105,9 +100,7 @@ def auto_populate_temporal(
     """
     # Get recent events
     recent_events = episodic_store.get_recent_events(
-        project_id=project_id,
-        hours=hours_lookback,
-        limit=1000
+        project_id=project_id, hours=hours_lookback, limit=1000
     )
 
     if len(recent_events) < min_events:
@@ -125,7 +118,7 @@ def auto_populate_temporal(
                 from_event_id=relation.from_event_id,
                 to_event_id=relation.to_event_id,
                 relation_type=relation.relation_type,
-                strength=relation.strength
+                strength=relation.strength,
             )
             relations_created += 1
         except Exception as e:
@@ -151,7 +144,7 @@ class IntegratedEpisodicStore:
         auto_spatial: bool = True,
         auto_temporal: bool = True,
         temporal_batch_size: int = 10,
-        spatial_batch_size: int = 50  # NEW: batch size for spatial processing
+        spatial_batch_size: int = 50,  # NEW: batch size for spatial processing
     ):
         """
         Initialize integrated episodic store.
@@ -210,13 +203,17 @@ class IntegratedEpisodicStore:
             # Batch store all nodes
             if all_nodes:
                 nodes_created = self.spatial_store.batch_store_nodes(project_id, all_nodes)
-                logger.debug(f"Batch-stored {nodes_created} spatial nodes from {len(self._batch_events)} events")
+                logger.debug(
+                    f"Batch-stored {nodes_created} spatial nodes from {len(self._batch_events)} events"
+                )
 
             # Extract and batch store relations
             if all_nodes:
                 relations = extract_spatial_relations(all_nodes)
                 if relations:
-                    relations_stored = self.spatial_store.batch_store_relations(project_id, relations)
+                    relations_stored = self.spatial_store.batch_store_relations(
+                        project_id, relations
+                    )
                     logger.debug(f"Batch-stored {relations_stored} spatial relations")
 
         except Exception as e:
@@ -257,16 +254,14 @@ class IntegratedEpisodicStore:
 
             # Trigger temporal update every N events or every hour
             should_update = (
-                self._event_count >= self.temporal_batch_size or
-                (datetime.now() - self._last_temporal_update).total_seconds() > 3600
+                self._event_count >= self.temporal_batch_size
+                or (datetime.now() - self._last_temporal_update).total_seconds() > 3600
             )
 
             if should_update:
                 try:
                     relations_created = auto_populate_temporal(
-                        episodic_store=self.episodic_store,
-                        project_id=proj_id,
-                        hours_lookback=24
+                        episodic_store=self.episodic_store, project_id=proj_id, hours_lookback=24
                     )
                     logger.debug(f"Auto-created {relations_created} temporal relations")
 

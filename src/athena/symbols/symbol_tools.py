@@ -9,9 +9,7 @@ Date: 2025-10-31
 """
 
 from typing import Dict, List, Any, Optional
-from pathlib import Path
 
-from athena.symbols.symbol_models import SymbolType, RelationType
 from athena.symbols.symbol_parser import SymbolParser
 from athena.symbols.symbol_store import SymbolStore
 from athena.symbols.symbol_analyzer import SymbolAnalyzer
@@ -44,10 +42,7 @@ class SymbolTools:
     # =========================================================================
 
     def analyze_symbols(
-        self,
-        file_path: str,
-        code: Optional[str] = None,
-        include_metrics: bool = True
+        self, file_path: str, code: Optional[str] = None, include_metrics: bool = True
     ) -> Dict[str, Any]:
         """Analyze a source file and extract symbols.
 
@@ -71,14 +66,14 @@ class SymbolTools:
             # Read file if code not provided
             if code is None:
                 try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
+                    with open(file_path, "r", encoding="utf-8") as f:
                         code = f.read()
                 except FileNotFoundError:
                     return {
                         "status": "error",
                         "error": f"File not found: {file_path}",
                         "symbols": [],
-                        "total_symbols": 0
+                        "total_symbols": 0,
                     }
 
             # Parse file
@@ -90,7 +85,7 @@ class SymbolTools:
                     "symbols": [],
                     "total_symbols": 0,
                     "language": result.language,
-                    "errors": result.parse_errors
+                    "errors": result.parse_errors,
                 }
 
             # Prepare symbol data
@@ -131,22 +126,13 @@ class SymbolTools:
             }
 
         except Exception as e:
-            return {
-                "status": "error",
-                "error": str(e),
-                "symbols": [],
-                "total_symbols": 0
-            }
+            return {"status": "error", "error": str(e), "symbols": [], "total_symbols": 0}
 
     # =========================================================================
     # Tool 2: get_symbol_info
     # =========================================================================
 
-    def get_symbol_info(
-        self,
-        symbol_name: str,
-        file_path: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def get_symbol_info(self, symbol_name: str, file_path: Optional[str] = None) -> Dict[str, Any]:
         """Get detailed information about a symbol.
 
         Retrieves full metadata, metrics, relationships, and dependencies
@@ -172,10 +158,7 @@ class SymbolTools:
                         break
 
             if not symbol:
-                return {
-                    "status": "not_found",
-                    "error": f"Symbol not found: {symbol_name}"
-                }
+                return {"status": "not_found", "error": f"Symbol not found: {symbol_name}"}
 
             # Gather comprehensive info
             analysis = self.analyzer.analyze_symbol(symbol)
@@ -202,7 +185,9 @@ class SymbolTools:
                     "cyclomatic_complexity": analysis.cyclomatic_complexity,
                     "cognitive_complexity": analysis.cognitive_complexity,
                     "maintainability_index": analysis.maintainability_index,
-                    "maintainability_rating": self._rate_maintainability(analysis.maintainability_index),
+                    "maintainability_rating": self._rate_maintainability(
+                        analysis.maintainability_index
+                    ),
                 },
                 "analysis": {
                     "branch_count": analysis.branch_count,
@@ -219,19 +204,14 @@ class SymbolTools:
             }
 
         except Exception as e:
-            return {
-                "status": "error",
-                "error": str(e)
-            }
+            return {"status": "error", "error": str(e)}
 
     # =========================================================================
     # Tool 3: find_symbol_dependencies
     # =========================================================================
 
     def find_symbol_dependencies(
-        self,
-        symbol_name: str,
-        relation_type: Optional[str] = None
+        self, symbol_name: str, relation_type: Optional[str] = None
     ) -> Dict[str, Any]:
         """Find symbols that a given symbol depends on.
 
@@ -252,7 +232,7 @@ class SymbolTools:
                 return {
                     "status": "not_found",
                     "error": f"Symbol not found: {symbol_name}",
-                    "dependencies": []
+                    "dependencies": [],
                 }
 
             # Get relationships
@@ -260,11 +240,13 @@ class SymbolTools:
 
             dependencies = []
             for rel in relationships:
-                dependencies.append({
-                    "target": rel["to_symbol_name"],
-                    "type": rel["relation_type"],
-                    "strength": rel["strength"],
-                })
+                dependencies.append(
+                    {
+                        "target": rel["to_symbol_name"],
+                        "type": rel["relation_type"],
+                        "strength": rel["strength"],
+                    }
+                )
 
             return {
                 "status": "success",
@@ -274,20 +256,13 @@ class SymbolTools:
             }
 
         except Exception as e:
-            return {
-                "status": "error",
-                "error": str(e),
-                "dependencies": []
-            }
+            return {"status": "error", "error": str(e), "dependencies": []}
 
     # =========================================================================
     # Tool 4: find_symbol_dependents
     # =========================================================================
 
-    def find_symbol_dependents(
-        self,
-        symbol_name: str
-    ) -> Dict[str, Any]:
+    def find_symbol_dependents(self, symbol_name: str) -> Dict[str, Any]:
         """Find symbols that depend on a given symbol (reverse lookup).
 
         Returns all symbols that call, import, or reference
@@ -306,7 +281,7 @@ class SymbolTools:
                 return {
                     "status": "not_found",
                     "error": f"Symbol not found: {symbol_name}",
-                    "dependents": []
+                    "dependents": [],
                 }
 
             # Get dependents (reverse lookup)
@@ -316,12 +291,14 @@ class SymbolTools:
             for dep_id in dependent_ids:
                 dep_symbol = self.store.get_symbol(dep_id)
                 if dep_symbol:
-                    dependents.append({
-                        "name": dep_symbol.name,
-                        "full_qualified_name": dep_symbol.full_qualified_name,
-                        "type": dep_symbol.symbol_type,
-                        "file_path": dep_symbol.file_path,
-                    })
+                    dependents.append(
+                        {
+                            "name": dep_symbol.name,
+                            "full_qualified_name": dep_symbol.full_qualified_name,
+                            "type": dep_symbol.symbol_type,
+                            "file_path": dep_symbol.file_path,
+                        }
+                    )
 
             return {
                 "status": "success",
@@ -331,20 +308,14 @@ class SymbolTools:
             }
 
         except Exception as e:
-            return {
-                "status": "error",
-                "error": str(e),
-                "dependents": []
-            }
+            return {"status": "error", "error": str(e), "dependents": []}
 
     # =========================================================================
     # Tool 5: suggest_symbol_refactorings
     # =========================================================================
 
     def suggest_symbol_refactorings(
-        self,
-        symbol_name: str,
-        pattern_type: Optional[str] = None
+        self, symbol_name: str, pattern_type: Optional[str] = None
     ) -> Dict[str, Any]:
         """Suggest refactorings for a symbol.
 
@@ -366,7 +337,7 @@ class SymbolTools:
                 return {
                     "status": "not_found",
                     "error": f"Symbol not found: {symbol_name}",
-                    "suggestions": []
+                    "suggestions": [],
                 }
 
             # Analyze symbol
@@ -384,64 +355,76 @@ class SymbolTools:
                     if sig.startswith("(") and sig.endswith(")"):
                         params_str = sig[1:-1].strip()
                         if params_str:
-                            param_count = len([p.strip() for p in params_str.split(",") if p.strip()])
+                            param_count = len(
+                                [p.strip() for p in params_str.split(",") if p.strip()]
+                            )
 
             suggestions = []
 
             # Suggestion 1: High complexity
             if analysis.cyclomatic_complexity > 10:
-                suggestions.append({
-                    "priority": "high",
-                    "category": "complexity",
-                    "title": "Reduce cyclomatic complexity",
-                    "description": f"Complexity is {analysis.cyclomatic_complexity}. Consider breaking into smaller functions.",
-                    "impact": "maintainability",
-                    "effort": "medium"
-                })
+                suggestions.append(
+                    {
+                        "priority": "high",
+                        "category": "complexity",
+                        "title": "Reduce cyclomatic complexity",
+                        "description": f"Complexity is {analysis.cyclomatic_complexity}. Consider breaking into smaller functions.",
+                        "impact": "maintainability",
+                        "effort": "medium",
+                    }
+                )
 
             # Suggestion 2: Large function
             if symbol.metrics and symbol.metrics.lines_of_code > 100:
-                suggestions.append({
-                    "priority": "medium",
-                    "category": "size",
-                    "title": "Extract method",
-                    "description": f"Function is {symbol.metrics.lines_of_code} LOC. Consider splitting into smaller functions.",
-                    "impact": "maintainability",
-                    "effort": "medium"
-                })
+                suggestions.append(
+                    {
+                        "priority": "medium",
+                        "category": "size",
+                        "title": "Extract method",
+                        "description": f"Function is {symbol.metrics.lines_of_code} LOC. Consider splitting into smaller functions.",
+                        "impact": "maintainability",
+                        "effort": "medium",
+                    }
+                )
 
             # Suggestion 3: Many parameters
             if param_count > 5:
-                suggestions.append({
-                    "priority": "medium",
-                    "category": "parameters",
-                    "title": "Reduce parameters",
-                    "description": f"Function has {param_count} parameters. Consider using a class or dict.",
-                    "impact": "usability",
-                    "effort": "small"
-                })
+                suggestions.append(
+                    {
+                        "priority": "medium",
+                        "category": "parameters",
+                        "title": "Reduce parameters",
+                        "description": f"Function has {param_count} parameters. Consider using a class or dict.",
+                        "impact": "usability",
+                        "effort": "small",
+                    }
+                )
 
             # Suggestion 4: Missing documentation
             if not symbol.docstring or len(symbol.docstring) < 20:
-                suggestions.append({
-                    "priority": "low",
-                    "category": "documentation",
-                    "title": "Add docstring",
-                    "description": "Add comprehensive docstring explaining purpose, parameters, and return value.",
-                    "impact": "maintainability",
-                    "effort": "small"
-                })
+                suggestions.append(
+                    {
+                        "priority": "low",
+                        "category": "documentation",
+                        "title": "Add docstring",
+                        "description": "Add comprehensive docstring explaining purpose, parameters, and return value.",
+                        "impact": "maintainability",
+                        "effort": "small",
+                    }
+                )
 
             # Suggestion 5: Deep nesting
             if symbol.metrics and symbol.metrics.nesting_depth > 4:
-                suggestions.append({
-                    "priority": "medium",
-                    "category": "nesting",
-                    "title": "Reduce nesting",
-                    "description": f"Nesting depth is {symbol.metrics.nesting_depth}. Use early returns or extract functions.",
-                    "impact": "readability",
-                    "effort": "medium"
-                })
+                suggestions.append(
+                    {
+                        "priority": "medium",
+                        "category": "nesting",
+                        "title": "Reduce nesting",
+                        "description": f"Nesting depth is {symbol.metrics.nesting_depth}. Use early returns or extract functions.",
+                        "impact": "readability",
+                        "effort": "medium",
+                    }
+                )
 
             # Sort by priority
             priority_order = {"high": 0, "medium": 1, "low": 2}
@@ -457,15 +440,11 @@ class SymbolTools:
                     "complexity": analysis.cyclomatic_complexity,
                     "maintainability": analysis.maintainability_index,
                     "quality_issues": len(analysis.quality_issues),
-                }
+                },
             }
 
         except Exception as e:
-            return {
-                "status": "error",
-                "error": str(e),
-                "suggestions": []
-            }
+            return {"status": "error", "error": str(e), "suggestions": []}
 
     # =========================================================================
     # Tool 6: get_symbol_quality_report
@@ -487,10 +466,7 @@ class SymbolTools:
             symbol = self.store.get_symbol_by_qname(symbol_name)
 
             if not symbol:
-                return {
-                    "status": "not_found",
-                    "error": f"Symbol not found: {symbol_name}"
-                }
+                return {"status": "not_found", "error": f"Symbol not found: {symbol_name}"}
 
             # Full analysis
             analysis = self.analyzer.analyze_symbol(symbol)
@@ -499,7 +475,7 @@ class SymbolTools:
             grade = self._compute_quality_grade(
                 analysis.maintainability_index,
                 analysis.cyclomatic_complexity,
-                len(analysis.quality_issues)
+                len(analysis.quality_issues),
             )
 
             return {
@@ -517,7 +493,7 @@ class SymbolTools:
                 },
                 "issues": {
                     "count": len(analysis.quality_issues),
-                    "issues": analysis.quality_issues
+                    "issues": analysis.quality_issues,
                 },
                 "coverage": {
                     "has_docstring": bool(symbol.docstring and len(symbol.docstring) > 10),
@@ -525,14 +501,11 @@ class SymbolTools:
                     "is_public": symbol.visibility == "public",
                 },
                 "recommendations": self._generate_recommendations(analysis, symbol),
-                "summary": self._generate_summary(analysis, symbol)
+                "summary": self._generate_summary(analysis, symbol),
             }
 
         except Exception as e:
-            return {
-                "status": "error",
-                "error": str(e)
-            }
+            return {"status": "error", "error": str(e)}
 
     # =========================================================================
     # Private Helper Methods
@@ -554,10 +527,7 @@ class SymbolTools:
             return "F"
 
     def _compute_quality_grade(
-        self,
-        maintainability: float,
-        complexity: int,
-        issue_count: int
+        self, maintainability: float, complexity: int, issue_count: int
     ) -> str:
         """Compute overall quality grade (A-F)."""
         score = 100.0

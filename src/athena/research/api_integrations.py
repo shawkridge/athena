@@ -30,12 +30,10 @@ summary = await llm.summarize(papers, max_tokens=1000)
 """
 
 import logging
-import asyncio
-import json
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -45,9 +43,11 @@ logger = logging.getLogger(__name__)
 # Data Models
 # ============================================================================
 
+
 @dataclass
 class SearchResult:
     """Result from a search query."""
+
     title: str
     url: str
     snippet: str
@@ -60,6 +60,7 @@ class SearchResult:
 @dataclass
 class AcademicPaper:
     """Academic paper metadata."""
+
     title: str
     authors: List[str]
     abstract: str
@@ -76,6 +77,7 @@ class AcademicPaper:
 @dataclass
 class LLMResponse:
     """Response from LLM synthesis."""
+
     text: str
     model: str
     tokens_used: int
@@ -84,6 +86,7 @@ class LLMResponse:
 
 class APIProvider(str, Enum):
     """Available API providers."""
+
     SERPAPI = "serpapi"
     GOOGLE_SEARCH = "google_search"
     ARXIV = "arxiv"
@@ -96,6 +99,7 @@ class APIProvider(str, Enum):
 # ============================================================================
 # Web Search Provider
 # ============================================================================
+
 
 class WebSearchProvider(ABC):
     """Abstract base for web search providers."""
@@ -179,16 +183,18 @@ class SerpAPISearchProvider(WebSearchProvider):
 
             results = []
             for result in data.get("organic_results", [])[:limit]:
-                results.append(SearchResult(
-                    title=result.get("title", ""),
-                    url=result.get("link", ""),
-                    snippet=result.get("snippet", ""),
-                    source="web",
-                    metadata={
-                        "position": result.get("position"),
-                        "date": result.get("date"),
-                    }
-                ))
+                results.append(
+                    SearchResult(
+                        title=result.get("title", ""),
+                        url=result.get("link", ""),
+                        snippet=result.get("snippet", ""),
+                        source="web",
+                        metadata={
+                            "position": result.get("position"),
+                            "date": result.get("date"),
+                        },
+                    )
+                )
 
             logger.info(f"SerpAPI search: {query} -> {len(results)} results")
             return results
@@ -241,15 +247,17 @@ class GoogleCustomSearchProvider(WebSearchProvider):
 
             results = []
             for item in data.get("items", [])[:limit]:
-                results.append(SearchResult(
-                    title=item.get("title", ""),
-                    url=item.get("link", ""),
-                    snippet=item.get("snippet", ""),
-                    source="web",
-                    metadata={
-                        "display_link": item.get("displayLink"),
-                    }
-                ))
+                results.append(
+                    SearchResult(
+                        title=item.get("title", ""),
+                        url=item.get("link", ""),
+                        snippet=item.get("snippet", ""),
+                        source="web",
+                        metadata={
+                            "display_link": item.get("displayLink"),
+                        },
+                    )
+                )
 
             logger.info(f"Google Search: {query} -> {len(results)} results")
             return results
@@ -262,6 +270,7 @@ class GoogleCustomSearchProvider(WebSearchProvider):
 # ============================================================================
 # Academic Search Provider
 # ============================================================================
+
 
 class AcademicProvider(ABC):
     """Abstract base for academic search providers."""
@@ -339,26 +348,31 @@ class ArxivProvider(AcademicProvider):
 
             # Parse XML response
             root = ET.fromstring(xml_text)
-            namespace = {'atom': 'http://www.w3.org/2005/Atom'}
+            namespace = {"atom": "http://www.w3.org/2005/Atom"}
 
             results = []
-            for entry in root.findall('atom:entry', namespace)[:limit]:
-                title = entry.findtext('atom:title', '', namespace)
-                summary = entry.findtext('atom:summary', '', namespace)
-                arxiv_id = entry.findtext('atom:id', '', namespace).split('/abs/')[-1]
-                published = entry.findtext('atom:published', '', namespace)
-                authors_elem = entry.findall('atom:author/atom:name', namespace)
+            for entry in root.findall("atom:entry", namespace)[:limit]:
+                title = entry.findtext("atom:title", "", namespace)
+                summary = entry.findtext("atom:summary", "", namespace)
+                arxiv_id = entry.findtext("atom:id", "", namespace).split("/abs/")[-1]
+                published = entry.findtext("atom:published", "", namespace)
+                authors_elem = entry.findall("atom:author/atom:name", namespace)
                 authors = [a.text for a in authors_elem]
 
-                results.append(AcademicPaper(
-                    title=title.strip(),
-                    abstract=summary.strip(),
-                    authors=authors,
-                    arxiv_id=arxiv_id,
-                    url=f"https://arxiv.org/abs/{arxiv_id}",
-                    published_date=datetime.fromisoformat(published.replace('Z', '+00:00'))
-                    if published else None,
-                ))
+                results.append(
+                    AcademicPaper(
+                        title=title.strip(),
+                        abstract=summary.strip(),
+                        authors=authors,
+                        arxiv_id=arxiv_id,
+                        url=f"https://arxiv.org/abs/{arxiv_id}",
+                        published_date=(
+                            datetime.fromisoformat(published.replace("Z", "+00:00"))
+                            if published
+                            else None
+                        ),
+                    )
+                )
 
             logger.info(f"arXiv search: {query} -> {len(results)} papers")
             return results
@@ -419,16 +433,18 @@ class SemanticScholarProvider(AcademicProvider):
             results = []
             for paper in data.get("data", [])[:limit]:
                 external_ids = paper.get("externalIds", {})
-                results.append(AcademicPaper(
-                    title=paper.get("title", ""),
-                    abstract=paper.get("abstract", ""),
-                    authors=[a.get("name", "") for a in paper.get("authors", [])],
-                    url=f"https://semanticscholar.org/paper/{paper.get('paperId')}",
-                    venue=paper.get("venue"),
-                    citations=paper.get("citationCount", 0),
-                    arxiv_id=external_ids.get("ArXiv"),
-                    doi=external_ids.get("DOI"),
-                ))
+                results.append(
+                    AcademicPaper(
+                        title=paper.get("title", ""),
+                        abstract=paper.get("abstract", ""),
+                        authors=[a.get("name", "") for a in paper.get("authors", [])],
+                        url=f"https://semanticscholar.org/paper/{paper.get('paperId')}",
+                        venue=paper.get("venue"),
+                        citations=paper.get("citationCount", 0),
+                        arxiv_id=external_ids.get("ArXiv"),
+                        doi=external_ids.get("DOI"),
+                    )
+                )
 
             logger.info(f"Semantic Scholar search: {query} -> {len(results)} papers")
             return results
@@ -441,6 +457,7 @@ class SemanticScholarProvider(AcademicProvider):
 # ============================================================================
 # LLM Provider
 # ============================================================================
+
 
 class LLMProvider(ABC):
     """Abstract base for LLM providers."""

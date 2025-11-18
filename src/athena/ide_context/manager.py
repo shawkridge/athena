@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Optional
 
 from athena.core.database import Database
-from athena.core.exceptions import ResourceError
 
 logger = logging.getLogger(__name__)
 
@@ -283,9 +282,7 @@ class IDEContextManager:
 
     # IDE context snapshots
 
-    def create_context_snapshot(
-        self, project_id: int, session_id: str
-    ) -> IDEContextSnapshot:
+    def create_context_snapshot(self, project_id: int, session_id: str) -> IDEContextSnapshot:
         """Create snapshot of current IDE state.
 
         Args:
@@ -403,12 +400,8 @@ class IDEContextManager:
             "open_file_list": [f.file_path for f in open_files],
             "dirty_files": len([f for f in open_files if f.is_dirty]),
             "changed_files": len(changed_files),
-            "uncommitted_changes": sum(
-                1 for f in changed_files if f.get("tracked", True)
-            ),
-            "untracked_files": sum(
-                1 for f in changed_files if not f.get("tracked", True)
-            ),
+            "uncommitted_changes": sum(1 for f in changed_files if f.get("tracked", True)),
+            "untracked_files": sum(1 for f in changed_files if not f.get("tracked", True)),
             "current_branch": self.git.get_current_branch(),
             "last_snapshot": latest_snapshot.captured_at if latest_snapshot else None,
         }

@@ -12,7 +12,7 @@ Pattern:
 Implements reinforcement learning for agent decision-making.
 """
 
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 import logging
 
@@ -27,10 +27,7 @@ class AgentFeedbackCollector:
         self._decision_history = {}  # agent -> [decisions]
 
     async def record_decision(
-        self,
-        agent_name: str,
-        strategy_used: str,
-        context: Optional[Dict[str, Any]] = None
+        self, agent_name: str, strategy_used: str, context: Optional[Dict[str, Any]] = None
     ) -> str:
         """Record a decision before execution.
 
@@ -49,13 +46,15 @@ class AgentFeedbackCollector:
         if agent_name not in self._decision_history:
             self._decision_history[agent_name] = []
 
-        self._decision_history[agent_name].append({
-            "id": decision_id,
-            "strategy": strategy_used,
-            "context": context,
-            "timestamp": datetime.now(),
-            "outcome": None  # Will be filled later
-        })
+        self._decision_history[agent_name].append(
+            {
+                "id": decision_id,
+                "strategy": strategy_used,
+                "context": context,
+                "timestamp": datetime.now(),
+                "outcome": None,  # Will be filled later
+            }
+        )
 
         return decision_id
 
@@ -64,7 +63,7 @@ class AgentFeedbackCollector:
         decision_id: str,
         outcome: str,
         success_score: float,
-        result_context: Optional[Dict[str, Any]] = None
+        result_context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Record outcome of a decision.
 
@@ -93,19 +92,17 @@ class AgentFeedbackCollector:
                         "strategy": decision["strategy"],
                         "outcome": outcome,
                         "success": success_score,
-                        "learning_recorded": True
+                        "learning_recorded": True,
                     }
 
         return {
             "status": "not_found",
             "decision_id": decision_id,
-            "error": "Decision not found in history"
+            "error": "Decision not found in history",
         }
 
     def get_strategy_effectiveness(
-        self,
-        agent_name: str,
-        time_window_hours: int = 24
+        self, agent_name: str, time_window_hours: int = 24
     ) -> Dict[str, Any]:
         """Get effectiveness of strategies used by agent.
 
@@ -117,24 +114,17 @@ class AgentFeedbackCollector:
             Strategy effectiveness statistics
         """
         if agent_name not in self._decision_history:
-            return {
-                "agent": agent_name,
-                "strategies": {},
-                "samples": 0
-            }
+            return {"agent": agent_name, "strategies": {}, "samples": 0}
 
         cutoff = datetime.now() - timedelta(hours=time_window_hours)
         decisions = [
-            d for d in self._decision_history[agent_name]
+            d
+            for d in self._decision_history[agent_name]
             if d["timestamp"] >= cutoff and d["outcome"]
         ]
 
         if not decisions:
-            return {
-                "agent": agent_name,
-                "strategies": {},
-                "samples": 0
-            }
+            return {"agent": agent_name, "strategies": {}, "samples": 0}
 
         # Group by strategy
         by_strategy = {}
@@ -153,21 +143,18 @@ class AgentFeedbackCollector:
             strategies[strategy] = {
                 "success_rate": avg_success,
                 "uses": len(decisions_list),
-                "last_used": decisions_list[-1]["outcome_timestamp"].isoformat()
+                "last_used": decisions_list[-1]["outcome_timestamp"].isoformat(),
             }
 
         return {
             "agent": agent_name,
             "strategies": strategies,
             "samples": len(decisions),
-            "time_window_hours": time_window_hours
+            "time_window_hours": time_window_hours,
         }
 
     def recommend_strategy(
-        self,
-        agent_name: str,
-        available_strategies: List[str],
-        time_window_hours: int = 24
+        self, agent_name: str, available_strategies: List[str], time_window_hours: int = 24
     ) -> Dict[str, Any]:
         """Recommend which strategy agent should use.
 
@@ -187,7 +174,7 @@ class AgentFeedbackCollector:
                 "status": "no_history",
                 "recommendation": "Try different strategies to build data",
                 "suggested_strategy": available_strategies[0] if available_strategies else None,
-                "confidence": 0.0
+                "confidence": 0.0,
             }
 
         # Score available strategies
@@ -206,7 +193,11 @@ class AgentFeedbackCollector:
             strategy_scores[strategy] = {
                 "score": score,
                 "uses": uses,
-                "base_rate": info.get("success_rate", 0.5) if strategy in effectiveness["strategies"] else None
+                "base_rate": (
+                    info.get("success_rate", 0.5)
+                    if strategy in effectiveness["strategies"]
+                    else None
+                ),
             }
 
         # Find best strategy
@@ -218,7 +209,7 @@ class AgentFeedbackCollector:
             "score": best_strategy[1]["score"],
             "confidence": min(1.0, best_strategy[1]["uses"] / 10.0),
             "reasoning": f"Based on {best_strategy[1]['uses']} uses in last {time_window_hours}h",
-            "all_scores": strategy_scores
+            "all_scores": strategy_scores,
         }
 
 
@@ -234,10 +225,7 @@ class LearningInsightProvider:
         self.collector = feedback_collector
 
     async def get_decision_guidance(
-        self,
-        agent_name: str,
-        decision_type: str,
-        context: Optional[Dict[str, Any]] = None
+        self, agent_name: str, decision_type: str, context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Get guidance for an upcoming decision.
 
@@ -259,7 +247,7 @@ class LearningInsightProvider:
                     "status": "learning",
                     "guidance": "Insufficient data - keep exploring",
                     "confidence": 0.0,
-                    "samples": 0
+                    "samples": 0,
                 }
 
             # Provide summary
@@ -276,23 +264,15 @@ class LearningInsightProvider:
                 "best_strategy": best_strategy,
                 "success_rate": best_rate,
                 "samples": effectiveness["samples"],
-                "confidence": min(1.0, effectiveness["samples"] / 10.0)
+                "confidence": min(1.0, effectiveness["samples"] / 10.0),
             }
 
         except Exception as e:
             logger.error(f"Failed to get decision guidance: {e}")
-            return {
-                "status": "error",
-                "error": str(e),
-                "guidance": "Guidance unavailable"
-            }
+            return {"status": "error", "error": str(e), "guidance": "Guidance unavailable"}
 
     def explain_outcome(
-        self,
-        agent_name: str,
-        strategy_used: str,
-        outcome: str,
-        success_score: float
+        self, agent_name: str, strategy_used: str, outcome: str, success_score: float
     ) -> Dict[str, Any]:
         """Explain why outcome occurred given strategy.
 
@@ -312,7 +292,7 @@ class LearningInsightProvider:
                 "status": "new_strategy",
                 "explanation": f"This is a new strategy for {agent_name}",
                 "is_improvement": False,
-                "guidance": "Track outcomes to measure effectiveness"
+                "guidance": "Track outcomes to measure effectiveness",
             }
 
         strategy_info = effectiveness["strategies"][strategy_used]
@@ -323,28 +303,25 @@ class LearningInsightProvider:
                 "status": "improvement",
                 "explanation": f"Better than usual ({success_score:.0%} vs {historical_rate:.0%})",
                 "is_improvement": True,
-                "guidance": "This is a good execution - try to repeat"
+                "guidance": "This is a good execution - try to repeat",
             }
         elif success_score < historical_rate * 0.8:
             return {
                 "status": "regression",
                 "explanation": f"Worse than usual ({success_score:.0%} vs {historical_rate:.0%})",
                 "is_improvement": False,
-                "guidance": "Something was different - investigate and adapt"
+                "guidance": "Something was different - investigate and adapt",
             }
         else:
             return {
                 "status": "normal",
-                "explanation": f"Consistent with typical performance",
+                "explanation": "Consistent with typical performance",
                 "is_improvement": False,
-                "guidance": "Continue with this strategy"
+                "guidance": "Continue with this strategy",
             }
 
     def suggest_exploration(
-        self,
-        agent_name: str,
-        available_strategies: List[str],
-        exploration_rate: float = 0.1
+        self, agent_name: str, available_strategies: List[str], exploration_rate: float = 0.1
     ) -> Optional[str]:
         """Suggest exploring a less-tested strategy.
 
@@ -368,8 +345,7 @@ class LearningInsightProvider:
         effectiveness = self.collector.get_strategy_effectiveness(agent_name)
 
         use_counts = {
-            s: effectiveness["strategies"].get(s, {}).get("uses", 0)
-            for s in available_strategies
+            s: effectiveness["strategies"].get(s, {}).get("uses", 0) for s in available_strategies
         }
 
         # Find strategy with fewest uses

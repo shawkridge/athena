@@ -29,9 +29,7 @@ class JavaParser:
         """
         self.language = language
 
-    def extract_functions(
-        self, code: str, file_path: str
-    ) -> List[CodeUnit]:
+    def extract_functions(self, code: str, file_path: str) -> List[CodeUnit]:
         """Extract methods from Java code.
 
         Handles:
@@ -56,7 +54,9 @@ class JavaParser:
         method_pattern = r"^\s*(?:public|private|protected|static|abstract|final|\s)*(?:<[^>]+>\s*)?(?:\w+(?:<[^>]+>)?(?:\[\])*\s+)?([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\("
 
         # Constructor pattern (no return type, same name as class)
-        constructor_pattern = r"^\s*(?:public|private|protected|final|\s)*([A-Z][a-zA-Z0-9_$]*)\s*\("
+        constructor_pattern = (
+            r"^\s*(?:public|private|protected|final|\s)*([A-Z][a-zA-Z0-9_$]*)\s*\("
+        )
 
         # Extract class name for constructor matching
         class_name = self._extract_class_name(code)
@@ -257,7 +257,9 @@ class JavaParser:
             Class name or empty string
         """
         # Look for public class first, then any class
-        public_match = re.search(r"public\s+(?:abstract\s+)?class\s+([a-zA-Z_$][a-zA-Z0-9_$]*)", code)
+        public_match = re.search(
+            r"public\s+(?:abstract\s+)?class\s+([a-zA-Z_$][a-zA-Z0-9_$]*)", code
+        )
         if public_match:
             return public_match.group(1)
 
@@ -400,15 +402,34 @@ class JavaParser:
 
         # Filter out keywords and the method itself
         keywords = {
-            "if", "while", "for", "switch", "catch", "try", "synchronized",
-            "return", "throw", "new", "instanceof", "super", "this",
-            "public", "private", "protected", "static", "final", "abstract",
-            "class", "interface", "enum", "extends", "implements",
+            "if",
+            "while",
+            "for",
+            "switch",
+            "catch",
+            "try",
+            "synchronized",
+            "return",
+            "throw",
+            "new",
+            "instanceof",
+            "super",
+            "this",
+            "public",
+            "private",
+            "protected",
+            "static",
+            "final",
+            "abstract",
+            "class",
+            "interface",
+            "enum",
+            "extends",
+            "implements",
         }
 
         dependencies = {
-            m for m in matches
-            if m not in keywords and m != method_name and not m[0].isupper()
+            m for m in matches if m not in keywords and m != method_name and not m[0].isupper()
         }
 
         return dependencies

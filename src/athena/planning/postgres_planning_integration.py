@@ -12,14 +12,12 @@ Features:
 """
 
 import logging
-from typing import List, Dict, Optional, Any, Set
+from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
-import json
 
 from ..core.database_postgres import PostgresDatabase
 from ..core.database import Database
-from .models import DecompositionStrategy, PlanningPattern, ValidationRule
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PlanningDecision:
     """Represents a planning decision stored in PostgreSQL."""
+
     id: int
     project_id: int
     decision_type: str
@@ -44,6 +43,7 @@ class PlanningDecision:
 @dataclass
 class PlanningScenario:
     """Represents a planning scenario for strategy evaluation."""
+
     id: int
     project_id: int
     scenario_type: str  # "best_case", "worst_case", "nominal", "edge_case"
@@ -430,9 +430,7 @@ class PostgresPlanningIntegration:
                     patterns["by_type"][decision_type]["valid"] += 1
 
             # Calculate success rate
-            valid_count = sum(
-                1 for d in decisions if d.validation_status == "valid"
-            )
+            valid_count = sum(1 for d in decisions if d.validation_status == "valid")
             if decisions:
                 patterns["validation_success_rate"] = valid_count / len(decisions)
 

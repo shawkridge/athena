@@ -113,8 +113,7 @@ class ExecutionMonitor:
         # positive = took longer than planned, negative = faster than planned
         if record.planned_duration.total_seconds() > 0:
             duration_ratio = (
-                actual_duration.total_seconds()
-                / record.planned_duration.total_seconds()
+                actual_duration.total_seconds() / record.planned_duration.total_seconds()
             )
             # Cap deviation at -1.0 to 1.0
             record.deviation = min(1.0, max(-1.0, duration_ratio - 1.0))
@@ -145,9 +144,7 @@ class ExecutionMonitor:
             PlanDeviation with current metrics
         """
         now = datetime.utcnow()
-        completed_tasks = sum(
-            1 for r in self.execution_records.values() if r.outcome is not None
-        )
+        completed_tasks = sum(1 for r in self.execution_records.values() if r.outcome is not None)
         total_tasks = self.total_planned_tasks
 
         # Calculate time deviation
@@ -176,12 +173,10 @@ class ExecutionMonitor:
 
         for resource in all_resources:
             planned_total = sum(
-                r.resources_planned.get(resource, 0)
-                for r in self.execution_records.values()
+                r.resources_planned.get(resource, 0) for r in self.execution_records.values()
             )
             used_total = sum(
-                r.resources_used.get(resource, 0)
-                for r in self.execution_records.values()
+                r.resources_used.get(resource, 0) for r in self.execution_records.values()
             )
             if planned_total > 0:
                 deviation = (used_total - planned_total) / planned_total
@@ -204,7 +199,9 @@ class ExecutionMonitor:
                 elapsed = actual_duration
                 avg_task_time = elapsed / completed_tasks
                 remaining_tasks = total_tasks - completed_tasks
-                estimated_remaining = timedelta(seconds=avg_task_time.total_seconds() * remaining_tasks)
+                estimated_remaining = timedelta(
+                    seconds=avg_task_time.total_seconds() * remaining_tasks
+                )
                 estimated_completion = now + estimated_remaining
             else:
                 estimated_completion = self.planned_completion_time or now

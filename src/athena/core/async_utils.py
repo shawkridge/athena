@@ -16,7 +16,6 @@ Usage:
 
 import asyncio
 import logging
-import threading
 from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
 from typing import Any, Callable, Optional, TypeVar
@@ -73,6 +72,7 @@ def run_async(coro: Any, timeout: Optional[float] = None) -> Any:
             # Create wrapper with timeout
             async def wrapped_coro():
                 return await asyncio.wait_for(coro, timeout=timeout)
+
             return asyncio.run(wrapped_coro())
         else:
             return asyncio.run(coro)
@@ -106,9 +106,7 @@ def run_async_in_thread(coro: Any, timeout: Optional[float] = None) -> Any:
         asyncio.set_event_loop(new_loop)
         try:
             if timeout:
-                return new_loop.run_until_complete(
-                    asyncio.wait_for(coro, timeout=timeout)
-                )
+                return new_loop.run_until_complete(asyncio.wait_for(coro, timeout=timeout))
             else:
                 return new_loop.run_until_complete(coro)
         finally:
@@ -169,8 +167,7 @@ def ensure_sync(func_name: str) -> Callable:
         # Copy docstring and update it
         if async_method.__doc__:
             sync_method.__doc__ = (
-                f"Synchronous wrapper for {func_name}.\n\n"
-                f"{async_method.__doc__}"
+                f"Synchronous wrapper for {func_name}.\n\n" f"{async_method.__doc__}"
             )
 
         # Add method to class

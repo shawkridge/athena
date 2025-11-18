@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class CitationType(str, Enum):
     """Type of citation."""
+
     DIRECT = "direct"  # Direct quote with source
     PARAPHRASE = "paraphrase"  # Paraphrased from source
     IMPLICIT = "implicit"  # Implied reference
@@ -26,6 +27,7 @@ class CitationType(str, Enum):
 
 class SourceCredibility(str, Enum):
     """Assessment of source credibility."""
+
     HIGH = "high"  # Peer-reviewed, official, authoritative
     MEDIUM = "medium"  # Well-known publications, educational
     LOW = "low"  # Unknown, potentially unreliable
@@ -35,6 +37,7 @@ class SourceCredibility(str, Enum):
 @dataclass
 class Citation:
     """Represents a single citation."""
+
     source: str
     claim_text: str
     citation_type: CitationType
@@ -48,6 +51,7 @@ class Citation:
 @dataclass
 class CitationValidation:
     """Result of citation validation."""
+
     claim_text: str
     has_citation: bool
     citation_quality: float = 0.0  # 0.0 (poor) to 1.0 (excellent)
@@ -74,14 +78,25 @@ class CitationValidator:
     # High-credibility sources
     TRUSTED_DOMAINS = {
         # Academic
-        '.edu', '.ac.uk', '.ac.kr', '.edu.au',
+        ".edu",
+        ".ac.uk",
+        ".ac.kr",
+        ".edu.au",
         # Government
-        '.gov', '.gov.uk', '.gouv.fr',
+        ".gov",
+        ".gov.uk",
+        ".gouv.fr",
         # Reputable publishers
-        'nature.com', 'science.org', 'ieee.org',
-        'springer.com', 'wiley.com', 'elsevier.com',
+        "nature.com",
+        "science.org",
+        "ieee.org",
+        "springer.com",
+        "wiley.com",
+        "elsevier.com",
         # News organizations
-        'bbc.com', 'reuters.com', 'apnews.com',
+        "bbc.com",
+        "reuters.com",
+        "apnews.com",
     }
 
     def __init__(self):
@@ -117,46 +132,54 @@ class CitationValidator:
         citations = []
 
         # Pattern 1: [number] style citations
-        for match in re.finditer(r'\[\d+\]', text):
+        for match in re.finditer(r"\[\d+\]", text):
             citation_text = match.group(0)
-            citations.append(Citation(
-                source=citation_text,
-                claim_text="",
-                citation_type=CitationType.DIRECT,
-                credibility=SourceCredibility.UNKNOWN
-            ))
+            citations.append(
+                Citation(
+                    source=citation_text,
+                    claim_text="",
+                    citation_type=CitationType.DIRECT,
+                    credibility=SourceCredibility.UNKNOWN,
+                )
+            )
 
         # Pattern 2: (Author Year) APA style
-        for match in re.finditer(r'\(([A-Z][a-z]+(?:\s+&\s+[A-Z][a-z]+)*),?\s+(\d{4})\)', text):
+        for match in re.finditer(r"\(([A-Z][a-z]+(?:\s+&\s+[A-Z][a-z]+)*),?\s+(\d{4})\)", text):
             author, year = match.groups()
-            citations.append(Citation(
-                source=f"{author} {year}",
-                claim_text="",
-                citation_type=CitationType.PARAPHRASE,
-                credibility=SourceCredibility.UNKNOWN
-            ))
+            citations.append(
+                Citation(
+                    source=f"{author} {year}",
+                    claim_text="",
+                    citation_type=CitationType.PARAPHRASE,
+                    credibility=SourceCredibility.UNKNOWN,
+                )
+            )
 
         # Pattern 3: URLs
-        for match in re.finditer(r'https?://[^\s\)]+', text):
+        for match in re.finditer(r"https?://[^\s\)]+", text):
             url = match.group(0)
             credibility = self._assess_url_credibility(url)
-            citations.append(Citation(
-                source=url,
-                claim_text="",
-                citation_type=CitationType.DIRECT,
-                credibility=credibility
-            ))
+            citations.append(
+                Citation(
+                    source=url,
+                    claim_text="",
+                    citation_type=CitationType.DIRECT,
+                    credibility=credibility,
+                )
+            )
 
         # Pattern 4: Direct quotes with attribution
         for match in re.finditer(r'"([^"]+)"\s*(?:—|–|-)\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)', text):
             quote, source = match.groups()
-            citations.append(Citation(
-                source=source,
-                claim_text="",
-                citation_type=CitationType.DIRECT,
-                credibility=SourceCredibility.MEDIUM,
-                direct_quote=quote
-            ))
+            citations.append(
+                Citation(
+                    source=source,
+                    claim_text="",
+                    citation_type=CitationType.DIRECT,
+                    credibility=SourceCredibility.MEDIUM,
+                    direct_quote=quote,
+                )
+            )
 
         return citations
 
@@ -177,7 +200,7 @@ class CitationValidator:
                 return SourceCredibility.HIGH
 
         # Known bad domains
-        if any(bad in url_lower for bad in ['blogspot', 'wordpress', 'random-site', 'unverified']):
+        if any(bad in url_lower for bad in ["blogspot", "wordpress", "random-site", "unverified"]):
             return SourceCredibility.LOW
 
         # Unknown domain
@@ -187,7 +210,7 @@ class CitationValidator:
         self,
         claim_text: str,
         citations_in_text: List[Citation],
-        claim_importance: str = "medium"  # low, medium, high
+        claim_importance: str = "medium",  # low, medium, high
     ) -> CitationValidation:
         """Validate that a claim is properly cited.
 
@@ -220,7 +243,7 @@ class CitationValidator:
             citation_quality=citation_quality,
             needs_citation=needs_citation,
             warnings=warnings,
-            suggestions=suggestions
+            suggestions=suggestions,
         )
 
     @staticmethod
@@ -239,11 +262,11 @@ class CitationValidator:
             return True
 
         # Claims with specific facts/figures should be cited
-        if re.search(r'\b\d+\s*(?:%|dollars?|percent|years?)\b', claim_text):
+        if re.search(r"\b\d+\s*(?:%|dollars?|percent|years?)\b", claim_text):
             return True
 
         # Named entities should be cited
-        if re.search(r'\b[A-Z][a-z]+\s+[A-Z][a-z]+\b', claim_text):
+        if re.search(r"\b[A-Z][a-z]+\s+[A-Z][a-z]+\b", claim_text):
             return True
 
         # Medium importance + anything specific
@@ -270,10 +293,12 @@ class CitationValidator:
             SourceCredibility.HIGH: 1.0,
             SourceCredibility.MEDIUM: 0.6,
             SourceCredibility.LOW: 0.2,
-            SourceCredibility.UNKNOWN: 0.4
+            SourceCredibility.UNKNOWN: 0.4,
         }
 
-        avg_score = sum(credibility_scores.get(c.credibility, 0.5) for c in citations) / len(citations)
+        avg_score = sum(credibility_scores.get(c.credibility, 0.5) for c in citations) / len(
+            citations
+        )
 
         # Multiple high-quality sources boost quality
         high_cred_count = sum(1 for c in citations if c.credibility == SourceCredibility.HIGH)
@@ -288,7 +313,7 @@ class CitationValidator:
         has_citation: bool,
         needs_citation: bool,
         citations: List[Citation],
-        citation_quality: float
+        citation_quality: float,
     ) -> Tuple[List[str], List[str]]:
         """Generate warnings and suggestions for citations.
 
@@ -338,7 +363,7 @@ class CitationValidator:
             Dictionary mapping claim text to CitationValidation
         """
         # Extract claims
-        claims = re.split(r'[.!?]+', text.strip())
+        claims = re.split(r"[.!?]+", text.strip())
         claims = [c.strip() for c in claims if len(c.strip()) > 10]
 
         # Extract all citations

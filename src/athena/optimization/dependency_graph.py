@@ -13,9 +13,8 @@ adaptive strategy selector to make increasingly accurate decisions.
 
 import logging
 from collections import defaultdict
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
-import hashlib
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
 import json
 
 from .performance_profiler import QueryMetrics, PerformanceProfiler
@@ -145,16 +144,13 @@ class DependencyGraph:
                         if parallel_time > 0:
                             speedup = sequential_time / parallel_time
                             dep.avg_parallel_speedup = (
-                                (dep.avg_parallel_speedup * (dep.co_occurrence_count - 1))
-                                + speedup
+                                (dep.avg_parallel_speedup * (dep.co_occurrence_count - 1)) + speedup
                             ) / dep.co_occurrence_count
 
                 # Calculate cache worthiness
                 # (Success Rate × Result Count × Frequency) / Query Cost
                 success_factor = 1.0 if metrics.success else 0.0
-                frequency_factor = min(
-                    dep.co_occurrence_count / 100.0, 1.0
-                )  # Cap at 1.0
+                frequency_factor = min(dep.co_occurrence_count / 100.0, 1.0)  # Cap at 1.0
                 result_factor = min(metrics.result_count / 100.0, 1.0)
                 cost_factor = max(metrics.latency_ms / 1000.0, 0.1)  # Avoid division by zero
 
@@ -191,8 +187,7 @@ class DependencyGraph:
         pattern = self.query_patterns[query_type]
         pattern.frequency += 1
         pattern.avg_latency_ms = (
-            (pattern.avg_latency_ms * (pattern.frequency - 1))
-            + metrics.latency_ms
+            (pattern.avg_latency_ms * (pattern.frequency - 1)) + metrics.latency_ms
         ) / pattern.frequency
 
         # Update success rate
@@ -218,9 +213,7 @@ class DependencyGraph:
             if overlap > 0.6:  # >60% overlap
                 pattern.typical_layers = list(new_set)
 
-    def get_layer_selection(
-        self, query_type: str, context: Optional[Dict] = None
-    ) -> List[str]:
+    def get_layer_selection(self, query_type: str, context: Optional[Dict] = None) -> List[str]:
         """Get recommended layers to query for this query type.
 
         Args:
@@ -405,13 +398,11 @@ class DependencyGraph:
             Dictionary with graph metrics
         """
         total_edges = len(self.dependencies)
-        avg_speedup = (
-            sum(d.avg_parallel_speedup for d in self.dependencies.values())
-            / max(total_edges, 1)
+        avg_speedup = sum(d.avg_parallel_speedup for d in self.dependencies.values()) / max(
+            total_edges, 1
         )
-        avg_cache_worthiness = (
-            sum(d.cache_worthiness for d in self.dependencies.values())
-            / max(total_edges, 1)
+        avg_cache_worthiness = sum(d.cache_worthiness for d in self.dependencies.values()) / max(
+            total_edges, 1
         )
 
         return {

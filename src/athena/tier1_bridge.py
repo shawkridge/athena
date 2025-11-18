@@ -18,14 +18,14 @@ Research backing:
 - Kumar et al. 2023: Saliency in memory prioritization
 """
 
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict
 from datetime import datetime
 import logging
 
 from .core.database import Database
 from .consolidation.system import ConsolidationSystem
 from .working_memory.central_executive import CentralExecutive
-from .working_memory.saliency import SaliencyCalculator, saliency_to_focus_type
+from .working_memory.saliency import SaliencyCalculator
 from .core.embeddings import EmbeddingModel
 
 
@@ -96,9 +96,7 @@ class Tier1OrchestrationPipeline:
 
             # Stage 2: Surprise Detection
             logger.info("Stage 2: Computing surprise boundaries...")
-            surprise_result = self._stage_surprise_detection(
-                project_id, consolidation_result
-            )
+            surprise_result = self._stage_surprise_detection(project_id, consolidation_result)
             results["stages"]["surprise_detection"] = surprise_result
 
             # Stage 3: Saliency Assessment
@@ -110,9 +108,7 @@ class Tier1OrchestrationPipeline:
 
             # Stage 4: Auto-Focus
             logger.info("Stage 4: Auto-focusing top memories...")
-            focus_result = self._stage_auto_focus(
-                project_id, saliency_result, current_goal
-            )
+            focus_result = self._stage_auto_focus(project_id, saliency_result, current_goal)
             results["stages"]["auto_focus"] = focus_result
 
             # Compute pipeline metrics
@@ -126,9 +122,7 @@ class Tier1OrchestrationPipeline:
 
         return results
 
-    def _stage_consolidation(
-        self, project_id: int, session_id: Optional[str] = None
-    ) -> Dict:
+    def _stage_consolidation(self, project_id: int, session_id: Optional[str] = None) -> Dict:
         """Stage 1: Consolidation - episodic→semantic pattern extraction.
 
         Args:
@@ -182,9 +176,7 @@ class Tier1OrchestrationPipeline:
             logger.error(f"Error in consolidation stage: {e}", exc_info=True)
             return {"error": str(e)}
 
-    def _stage_surprise_detection(
-        self, project_id: int, consolidation_result: Dict
-    ) -> Dict:
+    def _stage_surprise_detection(self, project_id: int, consolidation_result: Dict) -> Dict:
         """Stage 2: Bayesian Surprise - detect segmentation boundaries.
 
         Args:
@@ -254,8 +246,7 @@ class Tier1OrchestrationPipeline:
                 "surprise_boundaries": surprise_boundaries,
                 "surprise_count": surprise_count,
                 "avg_surprise": (
-                    sum(b["surprise"] for b in surprise_boundaries)
-                    / len(surprise_boundaries)
+                    sum(b["surprise"] for b in surprise_boundaries) / len(surprise_boundaries)
                     if surprise_boundaries
                     else 0.0
                 ),
@@ -322,9 +313,7 @@ class Tier1OrchestrationPipeline:
                 "assessed_memories": len(saliency_scores),
                 "high_salience": high_salience_count,
                 "avg_saliency": (
-                    sum(saliency_scores) / len(saliency_scores)
-                    if saliency_scores
-                    else 0.0
+                    sum(saliency_scores) / len(saliency_scores) if saliency_scores else 0.0
                 ),
                 "saliency_distribution": {
                     "primary": sum(1 for s in saliency_scores if s >= 0.7),
@@ -385,9 +374,7 @@ class Tier1OrchestrationPipeline:
         stages = results.get("stages", {})
 
         metrics = {
-            "total_events_processed": (
-                stages.get("consolidation", {}).get("event_count", 0)
-            ),
+            "total_events_processed": (stages.get("consolidation", {}).get("event_count", 0)),
             "total_patterns_extracted": (
                 stages.get("consolidation", {}).get("patterns_extracted", 0)
             ),
@@ -400,9 +387,7 @@ class Tier1OrchestrationPipeline:
             "high_salience_memories": (
                 stages.get("saliency_assessment", {}).get("high_salience", 0)
             ),
-            "memories_focused": (
-                stages.get("auto_focus", {}).get("focused_memories", 0)
-            ),
+            "memories_focused": (stages.get("auto_focus", {}).get("focused_memories", 0)),
             "pipeline_quality_score": 0.0,
         }
 
@@ -468,9 +453,7 @@ class Tier1Monitor:
 
         avg_quality = sum(quality_scores) / len(quality_scores)
         success_rate = sum(
-            1
-            for e in recent_executions
-            if e["result"].get("status") == "success"
+            1 for e in recent_executions if e["result"].get("status") == "success"
         ) / len(recent_executions)
 
         return {
@@ -478,9 +461,7 @@ class Tier1Monitor:
             "executions": len(self.execution_history),
             "avg_quality_score": avg_quality,
             "success_rate": success_rate,
-            "recommendations": self._generate_recommendations(
-                avg_quality, success_rate
-            ),
+            "recommendations": self._generate_recommendations(avg_quality, success_rate),
         }
 
     def _generate_recommendations(self, quality: float, success_rate: float) -> List[str]:
@@ -496,18 +477,12 @@ class Tier1Monitor:
         recommendations = []
 
         if quality < 0.5:
-            recommendations.append(
-                "Consolidation quality low - review episodic→semantic patterns"
-            )
+            recommendations.append("Consolidation quality low - review episodic→semantic patterns")
         elif quality < 0.65:
-            recommendations.append(
-                "Moderate quality - consider increasing consolidation frequency"
-            )
+            recommendations.append("Moderate quality - consider increasing consolidation frequency")
 
         if success_rate < 0.9:
-            recommendations.append(
-                f"Success rate {success_rate:.0%} - investigate stage failures"
-            )
+            recommendations.append(f"Success rate {success_rate:.0%} - investigate stage failures")
 
         if not recommendations:
             recommendations.append("Pipeline health excellent - continue as is")

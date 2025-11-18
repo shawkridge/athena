@@ -14,8 +14,8 @@ Research:
 
 import math
 import numpy as np
-from typing import Dict, List, Optional
-from datetime import datetime, timedelta
+from typing import List, Optional
+from datetime import datetime
 
 from ..core.database import Database
 
@@ -68,14 +68,10 @@ class SaliencyCalculator:
             scores = {}
 
             # Factor 1: Frequency (access count)
-            scores["frequency"] = self._compute_frequency_score(
-                memory_id, layer, project_id
-            )
+            scores["frequency"] = self._compute_frequency_score(memory_id, layer, project_id)
 
             # Factor 2: Recency (time decay)
-            scores["recency"] = self._compute_recency_score(
-                memory_id, layer, project_id
-            )
+            scores["recency"] = self._compute_recency_score(memory_id, layer, project_id)
 
             # Factor 3: Task Relevance (goal alignment)
             scores["relevance"] = self._compute_relevance_score(
@@ -88,10 +84,7 @@ class SaliencyCalculator:
             )
 
             # Weighted combination
-            saliency = sum(
-                scores[factor] * self.weights[factor]
-                for factor in self.weights.keys()
-            )
+            saliency = sum(scores[factor] * self.weights[factor] for factor in self.weights.keys())
 
             # Clamp to [0, 1]
             return max(0.0, min(1.0, saliency))
@@ -99,6 +92,7 @@ class SaliencyCalculator:
         except (AttributeError, KeyError, ValueError, TypeError) as e:
             # Log error but return neutral score
             import logging
+
             logging.warning(f"Error computing saliency for memory {memory_id}: {e}")
             return 0.5  # Neutral/unknown
 
@@ -363,9 +357,7 @@ class SaliencyCalculator:
                     event_result = cursor.fetchone()
 
                     if event_result and event_result[0]:
-                        event_embedding = self.db.embedding_model.embed(
-                            event_result[0]
-                        )
+                        event_embedding = self.db.embedding_model.embed(event_result[0])
 
                         # Cosine similarity
                         dot_product = np.dot(memory_embedding, event_embedding)

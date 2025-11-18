@@ -1,7 +1,5 @@
 """Knowledge graph storage and query operations."""
 
-import json
-import time
 from datetime import datetime
 from typing import Optional, Dict, Any
 
@@ -24,6 +22,7 @@ class GraphStore(BaseStore[Entity]):
         """
         super().__init__(db)
         # Schema is initialized centrally in database.py
+
     def _row_to_model(self, row: Dict[str, Any]) -> Entity:
         """Convert database row to Entity model.
 
@@ -47,15 +46,19 @@ class GraphStore(BaseStore[Entity]):
         """Ensure knowledge graph tables exist."""
 
         # For PostgreSQL async databases, skip sync schema initialization
-        if not hasattr(self.db, 'conn'):
+        if not hasattr(self.db, "conn"):
             import logging
+
             logger = logging.getLogger(__name__)
-            logger.debug(f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema().")
+            logger.debug(
+                f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema()."
+            )
             return
         cursor = self.db.get_cursor()
 
         # Entities table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS entities (
                 id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -67,10 +70,12 @@ class GraphStore(BaseStore[Entity]):
                 UNIQUE(name, entity_type, project_id),
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Relations table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS entity_relations (
                 id SERIAL PRIMARY KEY,
                 from_entity_id INTEGER NOT NULL,
@@ -85,10 +90,12 @@ class GraphStore(BaseStore[Entity]):
                 FOREIGN KEY (from_entity_id) REFERENCES entities(id) ON DELETE CASCADE,
                 FOREIGN KEY (to_entity_id) REFERENCES entities(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Observations table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS entity_observations (
                 id SERIAL PRIMARY KEY,
                 entity_id INTEGER NOT NULL,
@@ -101,10 +108,12 @@ class GraphStore(BaseStore[Entity]):
                 FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE,
                 FOREIGN KEY (superseded_by) REFERENCES entity_observations(id) ON DELETE SET NULL
             )
-        """)
+        """
+        )
 
         # Communities table (for Leiden clustering results)
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS communities (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -118,7 +127,8 @@ class GraphStore(BaseStore[Entity]):
                 updated_at INTEGER NOT NULL,
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Indices
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_entities_type ON entities(entity_type)")
@@ -138,9 +148,7 @@ class GraphStore(BaseStore[Entity]):
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_communities_project ON communities(project_id)"
         )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_communities_level ON communities(level)"
-        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_communities_level ON communities(level)")
 
         # commit handled by cursor context
 
@@ -215,7 +223,15 @@ class GraphStore(BaseStore[Entity]):
         if not row:
             return None
 
-        col_names = ["id", "name", "entity_type", "project_id", "created_at", "updated_at", "metadata"]
+        col_names = [
+            "id",
+            "name",
+            "entity_type",
+            "project_id",
+            "created_at",
+            "updated_at",
+            "metadata",
+        ]
         return self._row_to_model(dict(zip(col_names, row)))
 
     def find_entity(
@@ -243,7 +259,15 @@ class GraphStore(BaseStore[Entity]):
         if not row:
             return None
 
-        col_names = ["id", "name", "entity_type", "project_id", "created_at", "updated_at", "metadata"]
+        col_names = [
+            "id",
+            "name",
+            "entity_type",
+            "project_id",
+            "created_at",
+            "updated_at",
+            "metadata",
+        ]
         return self._row_to_model(dict(zip(col_names, row)))
 
     def delete_entity(self, entity_id: int) -> bool:
@@ -386,7 +410,7 @@ class GraphStore(BaseStore[Entity]):
         )
 
         observations = []
-        for row in (rows or []):
+        for row in rows or []:
             observations.append(
                 Observation(
                     id=row[0],
@@ -457,7 +481,7 @@ class GraphStore(BaseStore[Entity]):
         rows = self.execute(query, params, fetch_all=True)
 
         results = []
-        for row in (rows or []):
+        for row in rows or []:
             relation = Relation(
                 id=row[0],
                 from_entity_id=row[1],
@@ -508,10 +532,18 @@ class GraphStore(BaseStore[Entity]):
             params.append(project_id)
 
         rows = self.execute(sql, params, fetch_all=True)
-        col_names = ["id", "name", "entity_type", "project_id", "created_at", "updated_at", "metadata"]
+        col_names = [
+            "id",
+            "name",
+            "entity_type",
+            "project_id",
+            "created_at",
+            "updated_at",
+            "metadata",
+        ]
 
         entities = []
-        for row in (rows or []):
+        for row in rows or []:
             entities.append(self._row_to_model(dict(zip(col_names, row))))
 
         return entities
@@ -527,14 +559,24 @@ class GraphStore(BaseStore[Entity]):
         """
         # Get entities
         if project_id is not None:
-            rows = self.execute("SELECT * FROM entities WHERE project_id = %s", (project_id,), fetch_all=True)
+            rows = self.execute(
+                "SELECT * FROM entities WHERE project_id = %s", (project_id,), fetch_all=True
+            )
         else:
             rows = self.execute("SELECT * FROM entities", fetch_all=True)
 
         entities = []
         entity_ids = set()
-        col_names = ["id", "name", "entity_type", "project_id", "created_at", "updated_at", "metadata"]
-        for row in (rows or []):
+        col_names = [
+            "id",
+            "name",
+            "entity_type",
+            "project_id",
+            "created_at",
+            "updated_at",
+            "metadata",
+        ]
+        for row in rows or []:
             entity = self._row_to_model(dict(zip(col_names, row)))
             entities.append(entity)
             entity_ids.add(row[0])
@@ -552,7 +594,7 @@ class GraphStore(BaseStore[Entity]):
             )
 
             relations = []
-            for row in (rel_rows or []):
+            for row in rel_rows or []:
                 relations.append(
                     Relation(
                         id=row[0],
@@ -610,9 +652,7 @@ class GraphStore(BaseStore[Entity]):
             List of related entities
         """
         # Get relations for this entity
-        relations = self.get_entity_relations(
-            entity_id=entity_id, relation_type=None, limit=limit
-        )
+        relations = self.get_entity_relations(entity_id=entity_id, relation_type=None, limit=limit)
 
         # Filter by relation type if specified
         if relation_types:
@@ -720,7 +760,15 @@ class GraphStore(BaseStore[Entity]):
             return []
 
         entities = []
-        col_names = ["id", "name", "entity_type", "project_id", "created_at", "updated_at", "metadata"]
+        col_names = [
+            "id",
+            "name",
+            "entity_type",
+            "project_id",
+            "created_at",
+            "updated_at",
+            "metadata",
+        ]
         for row in rows:
             entity = self._row_to_model(dict(zip(col_names, row)))
             entities.append(entity)

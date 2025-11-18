@@ -4,12 +4,10 @@ Analyzes project structure, identifies patterns, extracts metadata, and
 stores findings in the memory system for improved context and decision-making.
 """
 
-import os
-import json
 import logging
 from pathlib import Path
-from typing import Optional, Dict, List, Any, Set
-from dataclasses import dataclass, asdict
+from typing import Dict, List
+from dataclasses import dataclass
 from collections import defaultdict
 
 logger = logging.getLogger(__name__)
@@ -18,6 +16,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class FileMetrics:
     """Metrics for a single file."""
+
     path: str
     size_bytes: int
     lines: int
@@ -31,6 +30,7 @@ class FileMetrics:
 @dataclass
 class ComponentInfo:
     """Information about a major component."""
+
     name: str
     description: str
     files: List[str]
@@ -43,6 +43,7 @@ class ComponentInfo:
 @dataclass
 class PatternFound:
     """A pattern identified in the codebase."""
+
     name: str
     description: str
     occurrences: int
@@ -53,6 +54,7 @@ class PatternFound:
 @dataclass
 class ProjectAnalysis:
     """Complete project analysis results."""
+
     project_name: str
     project_path: str
     analysis_timestamp: str
@@ -159,14 +161,26 @@ class ProjectAnalyzer:
 
         # Extensions to scan
         code_extensions = {
-            '.py', '.js', '.ts', '.tsx', '.jsx',
-            '.java', '.cpp', '.c', '.h', '.rs',
-            '.go', '.rb', '.php', '.cs', '.scala'
+            ".py",
+            ".js",
+            ".ts",
+            ".tsx",
+            ".jsx",
+            ".java",
+            ".cpp",
+            ".c",
+            ".h",
+            ".rs",
+            ".go",
+            ".rb",
+            ".php",
+            ".cs",
+            ".scala",
         }
 
-        for file_path in self.project_path.rglob('*'):
+        for file_path in self.project_path.rglob("*"):
             # Skip hidden and non-file paths
-            if file_path.is_dir() or file_path.name.startswith('.'):
+            if file_path.is_dir() or file_path.name.startswith("."):
                 continue
 
             # Only scan code files
@@ -174,8 +188,10 @@ class ProjectAnalyzer:
                 continue
 
             # Skip vendor/node_modules
-            if any(part in ['node_modules', 'vendor', '.venv', '__pycache__', 'dist', 'build']
-                   for part in file_path.parts):
+            if any(
+                part in ["node_modules", "vendor", ".venv", "__pycache__", "dist", "build"]
+                for part in file_path.parts
+            ):
                 continue
 
             try:
@@ -201,7 +217,7 @@ class ProjectAnalyzer:
 
         # Count lines
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                 lines = len(f.readlines())
         except (OSError, IOError, UnicodeDecodeError):
             lines = 0
@@ -216,8 +232,8 @@ class ProjectAnalyzer:
         dependencies = self._extract_dependencies(file_path)
 
         # Check if test file
-        is_test = 'test' in file_path.name.lower()
-        is_config = file_path.name in ['config.py', 'settings.py', 'package.json', 'pyproject.toml']
+        is_test = "test" in file_path.name.lower()
+        is_config = file_path.name in ["config.py", "settings.py", "package.json", "pyproject.toml"]
 
         return FileMetrics(
             path=str(file_path.relative_to(self.project_path)),
@@ -239,7 +255,7 @@ class ProjectAnalyzer:
         for path, metrics in self.files.items():
             # Get first directory level
             parts = Path(path).parts
-            if len(parts) > 1 and parts[0] != 'tests':
+            if len(parts) > 1 and parts[0] != "tests":
                 component = parts[0]
                 components_by_dir[component].append(path)
 
@@ -316,11 +332,11 @@ class ProjectAnalyzer:
         for path, metrics in self.files.items():
             for dep in metrics.dependencies:
                 # Simple heuristic: if starts with ./ or ../, it's internal
-                if dep.startswith(('./', '../')):
+                if dep.startswith(("./", "../")):
                     internal[path].add(dep)
                 else:
                     # Assume external
-                    external.add(dep.split('/')[0])
+                    external.add(dep.split("/")[0])
 
         return list(external), {k: list(v) for k, v in internal.items()}
 
@@ -393,15 +409,16 @@ class ProjectAnalyzer:
     def _count_pattern(self, pattern: str) -> int:
         """Count occurrences of pattern across all files."""
         import re
+
         count = 0
 
         for file_path, metrics in self.files.items():
-            if metrics.language != 'python':
+            if metrics.language != "python":
                 continue
 
             try:
                 full_path = self.project_path / file_path
-                with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
+                with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
                     content = f.read()
                     count += len(re.findall(pattern, content))
             except (OSError, IOError, UnicodeDecodeError):
@@ -414,18 +431,20 @@ class ProjectAnalyzer:
         dependencies = []
 
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
 
             # Python imports
-            if file_path.suffix == '.py':
+            if file_path.suffix == ".py":
                 import re
-                imports = re.findall(r'(?:from|import)\s+[\w.]+', content)
+
+                imports = re.findall(r"(?:from|import)\s+[\w.]+", content)
                 dependencies.extend(imports)
 
             # JavaScript imports
-            elif file_path.suffix in ['.js', '.ts', '.tsx', '.jsx']:
+            elif file_path.suffix in [".js", ".ts", ".tsx", ".jsx"]:
                 import re
+
                 imports = re.findall(r'(?:import|require)\s+["\']([^"\']+)["\']', content)
                 dependencies.extend(imports)
         except (OSError, IOError, UnicodeDecodeError):
@@ -440,16 +459,17 @@ class ProjectAnalyzer:
         for file_path in files:
             try:
                 full_path = self.project_path / file_path
-                with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
+                with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
                     content = f.read()
 
-                if file_path.endswith('.py'):
+                if file_path.endswith(".py"):
                     import re
+
                     # Find public functions and classes
-                    funcs = re.findall(r'def\s+([a-zA-Z_]\w*)\s*\(', content)
-                    classes = re.findall(r'class\s+([a-zA-Z_]\w*)', content)
+                    funcs = re.findall(r"def\s+([a-zA-Z_]\w*)\s*\(", content)
+                    classes = re.findall(r"class\s+([a-zA-Z_]\w*)", content)
                     # Filter public (not starting with _)
-                    public = [f for f in funcs + classes if not f.startswith('_')]
+                    public = [f for f in funcs + classes if not f.startswith("_")]
                     interfaces.extend(public)
             except (OSError, IOError, UnicodeDecodeError):
                 pass
@@ -459,23 +479,23 @@ class ProjectAnalyzer:
     def _get_language(self, file_path: Path) -> str:
         """Determine programming language from file extension."""
         ext_to_lang = {
-            '.py': 'python',
-            '.js': 'javascript',
-            '.ts': 'typescript',
-            '.tsx': 'typescript',
-            '.jsx': 'javascript',
-            '.java': 'java',
-            '.cpp': 'cpp',
-            '.c': 'c',
-            '.h': 'c',
-            '.rs': 'rust',
-            '.go': 'go',
-            '.rb': 'ruby',
-            '.php': 'php',
-            '.cs': 'csharp',
-            '.scala': 'scala',
+            ".py": "python",
+            ".js": "javascript",
+            ".ts": "typescript",
+            ".tsx": "typescript",
+            ".jsx": "javascript",
+            ".java": "java",
+            ".cpp": "cpp",
+            ".c": "c",
+            ".h": "c",
+            ".rs": "rust",
+            ".go": "go",
+            ".rb": "ruby",
+            ".php": "php",
+            ".cs": "csharp",
+            ".scala": "scala",
         }
-        return ext_to_lang.get(file_path.suffix, 'unknown')
+        return ext_to_lang.get(file_path.suffix, "unknown")
 
     def _estimate_complexity(self, file_path: Path, lines: int) -> float:
         """Estimate code complexity (0.0-1.0)."""
@@ -484,7 +504,7 @@ class ProjectAnalyzer:
 
         # Read file
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
         except (OSError, IOError, UnicodeDecodeError):
             return 0.5
@@ -493,9 +513,15 @@ class ProjectAnalyzer:
         import re
 
         complexity_keywords = [
-            r'\bif\b', r'\belse\b', r'\belif\b',
-            r'\bfor\b', r'\bwhile\b', r'\btry\b', r'\bexcept\b',
-            r'\bclass\b', r'\bdef\b'
+            r"\bif\b",
+            r"\belse\b",
+            r"\belif\b",
+            r"\bfor\b",
+            r"\bwhile\b",
+            r"\btry\b",
+            r"\bexcept\b",
+            r"\bclass\b",
+            r"\bdef\b",
         ]
 
         keyword_count = sum(len(re.findall(kw, content)) for kw in complexity_keywords)
@@ -536,4 +562,5 @@ class ProjectAnalyzer:
     def _get_timestamp(self) -> str:
         """Get current timestamp."""
         from datetime import datetime
+
         return datetime.utcnow().isoformat() + "Z"

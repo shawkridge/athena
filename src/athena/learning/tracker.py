@@ -17,7 +17,7 @@ class LearningOutcome:
 
     agent_name: str
     decision: str  # What decision was made
-    outcome: str   # What happened (success/failure/partial)
+    outcome: str  # What happened (success/failure/partial)
     success_rate: float  # 0.0 to 1.0
     execution_time_ms: float
     context: dict  # Context in which decision was made
@@ -57,7 +57,7 @@ class LearningTracker:
         """
         try:
             self.db.execute(sql)
-        except Exception as e:
+        except Exception:
             # Table might already exist or other constraint issue
             pass
 
@@ -69,7 +69,7 @@ class LearningTracker:
         success_rate: float,
         execution_time_ms: float = 0.0,
         context: Optional[dict] = None,
-        session_id: Optional[str] = None
+        session_id: Optional[str] = None,
     ) -> int:
         """Record a decision outcome.
 
@@ -88,7 +88,7 @@ class LearningTracker:
         Raises:
             ValueError: If outcome not in valid set or success_rate out of range
         """
-        if outcome not in ('success', 'failure', 'partial', 'error'):
+        if outcome not in ("success", "failure", "partial", "error"):
             raise ValueError(f"Invalid outcome: {outcome}")
 
         if not (0.0 <= success_rate <= 1.0):
@@ -110,7 +110,7 @@ class LearningTracker:
             success_rate,
             execution_time_ms,
             context,
-            session_id
+            session_id,
         )
 
         try:
@@ -123,10 +123,7 @@ class LearningTracker:
             raise RuntimeError(f"Failed to track outcome: {e}")
 
     def get_success_rate(
-        self,
-        agent_name: str,
-        decision: Optional[str] = None,
-        time_window_hours: int = 24
+        self, agent_name: str, decision: Optional[str] = None, time_window_hours: int = 24
     ) -> float:
         """Get success rate for an agent or specific decision.
 
@@ -166,10 +163,7 @@ class LearningTracker:
             raise RuntimeError(f"Failed to get success rate: {e}")
 
     def get_decision_history(
-        self,
-        agent_name: str,
-        decision: Optional[str] = None,
-        limit: int = 100
+        self, agent_name: str, decision: Optional[str] = None, limit: int = 100
     ) -> list[LearningOutcome]:
         """Retrieve decision history for an agent.
 
@@ -213,7 +207,7 @@ class LearningTracker:
                         execution_time_ms=float(row[5]),
                         context=row[6] or {},
                         timestamp=row[7],
-                        session_id=row[8]
+                        session_id=row[8],
                     )
                     outcomes.append(outcome)
 
@@ -249,34 +243,34 @@ class LearningTracker:
             results = self.db.execute(sql, (agent_name,))
 
             stats = {
-                'agent_name': agent_name,
-                'total_decisions': 0,
-                'success_rate': 0.0,
-                'min_success': 0.0,
-                'max_success': 0.0,
-                'avg_execution_time_ms': 0.0,
-                'outcome_breakdown': {},
-                'successes': 0,
-                'failures': 0
+                "agent_name": agent_name,
+                "total_decisions": 0,
+                "success_rate": 0.0,
+                "min_success": 0.0,
+                "max_success": 0.0,
+                "avg_execution_time_ms": 0.0,
+                "outcome_breakdown": {},
+                "successes": 0,
+                "failures": 0,
             }
 
             if results and len(results) > 0:
                 row = results[0]
                 total, avg_success, min_success, max_success, avg_time, successes, failures = row
 
-                stats['total_decisions'] = int(total) if total else 0
-                stats['success_rate'] = float(avg_success) if avg_success else 0.0
-                stats['min_success'] = float(min_success) if min_success else 0.0
-                stats['max_success'] = float(max_success) if max_success else 0.0
-                stats['avg_execution_time_ms'] = float(avg_time) if avg_time else 0.0
-                stats['successes'] = int(successes) if successes else 0
-                stats['failures'] = int(failures) if failures else 0
+                stats["total_decisions"] = int(total) if total else 0
+                stats["success_rate"] = float(avg_success) if avg_success else 0.0
+                stats["min_success"] = float(min_success) if min_success else 0.0
+                stats["max_success"] = float(max_success) if max_success else 0.0
+                stats["avg_execution_time_ms"] = float(avg_time) if avg_time else 0.0
+                stats["successes"] = int(successes) if successes else 0
+                stats["failures"] = int(failures) if failures else 0
 
                 # Calculate outcome breakdown
-                if stats['successes'] > 0:
-                    stats['outcome_breakdown']['success'] = stats['successes']
-                if stats['failures'] > 0:
-                    stats['outcome_breakdown']['failure'] = stats['failures']
+                if stats["successes"] > 0:
+                    stats["outcome_breakdown"]["success"] = stats["successes"]
+                if stats["failures"] > 0:
+                    stats["outcome_breakdown"]["failure"] = stats["failures"]
 
             return stats
         except Exception as e:

@@ -54,9 +54,7 @@ class ProjectDetector:
         # To add projects: use memory API to store in semantic layer
         return self.DEFAULT_PROJECTS
 
-    def detect_project_id(
-        self, cwd: Optional[str] = None
-    ) -> Optional[int]:
+    def detect_project_id(self, cwd: Optional[str] = None) -> Optional[int]:
         """Detect project ID from working directory.
 
         Args:
@@ -114,10 +112,7 @@ class ProjectDetector:
         Returns:
             Dictionary of project_id -> project_name
         """
-        return {
-            pid: config.get("name", f"Project {pid}")
-            for pid, config in self.projects.items()
-        }
+        return {pid: config.get("name", f"Project {pid}") for pid, config in self.projects.items()}
 
     def register_project(self, project_id: int, name: str, paths: list[str]):
         """Register a project in memory.

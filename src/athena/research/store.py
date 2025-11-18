@@ -29,6 +29,7 @@ class ResearchStore(BaseStore):
             db: Database instance
         """
         super().__init__(db)
+
     def _row_to_model(self, row) -> ResearchTask:
         """Convert database row to ResearchTask model.
 
@@ -39,25 +40,25 @@ class ResearchStore(BaseStore):
             ResearchTask instance
         """
         # Convert Row to dict if needed (psycopg Record is dict-like but needs explicit conversion)
-        row_dict = dict(row) if hasattr(row, 'keys') else row
+        row_dict = dict(row) if hasattr(row, "keys") else row
 
         agent_results = {}
-        agent_results_str = row_dict.get('agent_results')
+        agent_results_str = row_dict.get("agent_results")
         if agent_results_str:
             agent_results = json.loads(agent_results_str)
 
         return ResearchTask(
-            id=row_dict['id'],
-            topic=row_dict['topic'],
-            status=row_dict['status'],
-            project_id=row_dict['project_id'],
-            created_at=row_dict['created_at'],
-            started_at=row_dict['started_at'],
-            completed_at=row_dict['completed_at'],
-            findings_count=row_dict['findings_count'],
-            entities_created=row_dict['entities_created'],
-            relations_created=row_dict['relations_created'],
-            notes=row_dict.get('notes') or "",
+            id=row_dict["id"],
+            topic=row_dict["topic"],
+            status=row_dict["status"],
+            project_id=row_dict["project_id"],
+            created_at=row_dict["created_at"],
+            started_at=row_dict["started_at"],
+            completed_at=row_dict["completed_at"],
+            findings_count=row_dict["findings_count"],
+            entities_created=row_dict["entities_created"],
+            relations_created=row_dict["relations_created"],
+            notes=row_dict.get("notes") or "",
             agent_results=agent_results,
         )
 
@@ -66,7 +67,8 @@ class ResearchStore(BaseStore):
         cursor = self.db.get_cursor()
 
         # Research tasks table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS research_tasks (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER,
@@ -82,10 +84,12 @@ class ResearchStore(BaseStore):
                 agent_results TEXT,
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Research findings table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS research_findings (
                 id SERIAL PRIMARY KEY,
                 research_task_id INTEGER NOT NULL,
@@ -99,10 +103,12 @@ class ResearchStore(BaseStore):
                 memory_id INTEGER,
                 FOREIGN KEY (research_task_id) REFERENCES research_tasks(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Agent progress tracking
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS agent_progress (
                 id SERIAL PRIMARY KEY,
                 research_task_id INTEGER NOT NULL,
@@ -114,13 +120,22 @@ class ResearchStore(BaseStore):
                 error_message TEXT,
                 FOREIGN KEY (research_task_id) REFERENCES research_tasks(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Indices
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_research_tasks_project ON research_tasks(project_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_research_tasks_status ON research_tasks(status)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_research_findings_task ON research_findings(research_task_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_agent_progress_task ON agent_progress(research_task_id)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_research_tasks_project ON research_tasks(project_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_research_tasks_status ON research_tasks(status)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_research_findings_task ON research_findings(research_task_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_agent_progress_task ON agent_progress(research_task_id)"
+        )
 
         # commit handled by cursor context
 
@@ -136,8 +151,8 @@ class ResearchStore(BaseStore):
         """
         now = self.now_timestamp()
         return self.create(
-            columns=['topic', 'status', 'created_at', 'project_id'],
-            values=(topic, ResearchStatus.PENDING.value, now, project_id)
+            columns=["topic", "status", "created_at", "project_id"],
+            values=(topic, ResearchStatus.PENDING.value, now, project_id),
         )
 
     def get_task(self, task_id: int) -> Optional[ResearchTask]:
@@ -162,14 +177,14 @@ class ResearchStore(BaseStore):
             Success
         """
         now = self.now_timestamp()
-        updates = {'status': status.value}
+        updates = {"status": status.value}
 
         # If transitioning to running, set started_at
         if status == ResearchStatus.RUNNING:
-            updates['started_at'] = now
+            updates["started_at"] = now
         # If transitioning to completed/failed/cancelled, set completed_at
         elif status in [ResearchStatus.COMPLETED, ResearchStatus.FAILED, ResearchStatus.CANCELLED]:
-            updates['completed_at'] = now
+            updates["completed_at"] = now
 
         return self.update(task_id, updates)
 
@@ -183,8 +198,18 @@ class ResearchStore(BaseStore):
             Finding ID
         """
         return self.create(
-            table_name='research_findings',
-            columns=['research_task_id', 'source', 'title', 'summary', 'url', 'credibility_score', 'created_at', 'stored_to_memory', 'memory_id'],
+            table_name="research_findings",
+            columns=[
+                "research_task_id",
+                "source",
+                "title",
+                "summary",
+                "url",
+                "credibility_score",
+                "created_at",
+                "stored_to_memory",
+                "memory_id",
+            ],
             values=(
                 finding.research_task_id,
                 finding.source,
@@ -195,7 +220,7 @@ class ResearchStore(BaseStore):
                 finding.created_at,
                 finding.stored_to_memory,
                 finding.memory_id,
-            )
+            ),
         )
 
     def update_finding_memory_status(self, finding_id: int, memory_id: int) -> bool:
@@ -210,11 +235,13 @@ class ResearchStore(BaseStore):
         """
         return self.update(
             finding_id,
-            {'stored_to_memory': 1, 'memory_id': memory_id},
-            table_name='research_findings'
+            {"stored_to_memory": 1, "memory_id": memory_id},
+            table_name="research_findings",
         )
 
-    def increment_task_stats(self, task_id: int, findings: int = 0, entities: int = 0, relations: int = 0) -> bool:
+    def increment_task_stats(
+        self, task_id: int, findings: int = 0, entities: int = 0, relations: int = 0
+    ) -> bool:
         """Increment task statistics.
 
         Args:
@@ -250,8 +277,16 @@ class ResearchStore(BaseStore):
         status_str = progress.status if isinstance(progress.status, str) else progress.status.value
 
         return self.create(
-            table_name='agent_progress',
-            columns=['research_task_id', 'agent_name', 'status', 'findings_count', 'started_at', 'completed_at', 'error_message'],
+            table_name="agent_progress",
+            columns=[
+                "research_task_id",
+                "agent_name",
+                "status",
+                "findings_count",
+                "started_at",
+                "completed_at",
+                "error_message",
+            ],
             values=(
                 progress.research_task_id,
                 progress.agent_name,
@@ -260,10 +295,12 @@ class ResearchStore(BaseStore):
                 progress.started_at,
                 progress.completed_at,
                 progress.error_message,
-            )
+            ),
         )
 
-    def update_agent_progress(self, research_task_id: int, agent_name: str, status: AgentStatus, findings_count: int = 0) -> bool:
+    def update_agent_progress(
+        self, research_task_id: int, agent_name: str, status: AgentStatus, findings_count: int = 0
+    ) -> bool:
         """Update agent progress status.
 
         Args:
@@ -319,18 +356,20 @@ class ResearchStore(BaseStore):
 
         findings = []
         for row in rows:
-            findings.append(ResearchFinding(
-                id=row[0],
-                research_task_id=row[1],
-                source=row[2],
-                title=row[3],
-                summary=row[4],
-                url=row[5],
-                credibility_score=row[6],
-                created_at=row[7],
-                stored_to_memory=bool(row[8]),
-                memory_id=row[9],
-            ))
+            findings.append(
+                ResearchFinding(
+                    id=row[0],
+                    research_task_id=row[1],
+                    source=row[2],
+                    title=row[3],
+                    summary=row[4],
+                    url=row[5],
+                    credibility_score=row[6],
+                    created_at=row[7],
+                    stored_to_memory=bool(row[8]),
+                    memory_id=row[9],
+                )
+            )
 
         return findings
 
@@ -352,20 +391,24 @@ class ResearchStore(BaseStore):
 
         progress_list = []
         for row in rows:
-            progress_list.append(AgentProgress(
-                id=row[0],
-                research_task_id=row[1],
-                agent_name=row[2],
-                status=row[3],
-                findings_count=row[4],
-                started_at=row[5],
-                completed_at=row[6],
-                error_message=row[7],
-            ))
+            progress_list.append(
+                AgentProgress(
+                    id=row[0],
+                    research_task_id=row[1],
+                    agent_name=row[2],
+                    status=row[3],
+                    findings_count=row[4],
+                    started_at=row[5],
+                    completed_at=row[6],
+                    error_message=row[7],
+                )
+            )
 
         return progress_list
 
-    def list_tasks(self, status: Optional[ResearchStatus] = None, limit: int = 50) -> list[ResearchTask]:
+    def list_tasks(
+        self, status: Optional[ResearchStatus] = None, limit: int = 50
+    ) -> list[ResearchTask]:
         """List research tasks.
 
         Args:
@@ -397,20 +440,22 @@ class ResearchStore(BaseStore):
             if row[11]:
                 agent_results = json.loads(row[11])
 
-            tasks.append(ResearchTask(
-                id=row[0],
-                topic=row[1],
-                status=row[2],
-                project_id=row[3],
-                created_at=row[4],
-                started_at=row[5],
-                completed_at=row[6],
-                findings_count=row[7],
-                entities_created=row[8],
-                relations_created=row[9],
-                notes=row[10] or "",
-                agent_results=agent_results,
-            ))
+            tasks.append(
+                ResearchTask(
+                    id=row[0],
+                    topic=row[1],
+                    status=row[2],
+                    project_id=row[3],
+                    created_at=row[4],
+                    started_at=row[5],
+                    completed_at=row[6],
+                    findings_count=row[7],
+                    entities_created=row[8],
+                    relations_created=row[9],
+                    notes=row[10] or "",
+                    agent_results=agent_results,
+                )
+            )
 
         return tasks
 
@@ -434,7 +479,8 @@ class ResearchFeedbackStore(BaseStore):
         cursor = self.db.get_cursor()
 
         # Research feedback table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS research_feedback (
                 id SERIAL PRIMARY KEY,
                 research_task_id INTEGER NOT NULL,
@@ -448,27 +494,34 @@ class ResearchFeedbackStore(BaseStore):
                 FOREIGN KEY (research_task_id) REFERENCES research_tasks(id) ON DELETE CASCADE,
                 FOREIGN KEY (parent_feedback_id) REFERENCES research_feedback(id) ON DELETE SET NULL
             )
-        """)
+        """
+        )
 
         # Indices
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_feedback_task ON research_feedback(research_task_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_feedback_type ON research_feedback(feedback_type)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_feedback_agent ON research_feedback(agent_target)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_feedback_task ON research_feedback(research_task_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_feedback_type ON research_feedback(feedback_type)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_feedback_agent ON research_feedback(agent_target)"
+        )
 
     def _row_to_model(self, row) -> ResearchFeedback:
         """Convert database row to ResearchFeedback model."""
-        row_dict = dict(row) if hasattr(row, 'keys') else row
+        row_dict = dict(row) if hasattr(row, "keys") else row
 
         return ResearchFeedback(
-            id=row_dict['id'],
-            research_task_id=row_dict['research_task_id'],
-            feedback_type=row_dict['feedback_type'],
-            content=row_dict['content'],
-            agent_target=row_dict.get('agent_target'),
-            created_at=row_dict['created_at'],
-            parent_feedback_id=row_dict.get('parent_feedback_id'),
-            applied=bool(row_dict.get('applied', False)),
-            applied_at=row_dict.get('applied_at'),
+            id=row_dict["id"],
+            research_task_id=row_dict["research_task_id"],
+            feedback_type=row_dict["feedback_type"],
+            content=row_dict["content"],
+            agent_target=row_dict.get("agent_target"),
+            created_at=row_dict["created_at"],
+            parent_feedback_id=row_dict.get("parent_feedback_id"),
+            applied=bool(row_dict.get("applied", False)),
+            applied_at=row_dict.get("applied_at"),
         )
 
     def record_feedback(self, feedback: ResearchFeedback) -> int:
@@ -483,17 +536,25 @@ class ResearchFeedbackStore(BaseStore):
         now = self.now_timestamp()
         return self.create(
             columns=[
-                'research_task_id', 'feedback_type', 'content', 'agent_target',
-                'created_at', 'parent_feedback_id'
+                "research_task_id",
+                "feedback_type",
+                "content",
+                "agent_target",
+                "created_at",
+                "parent_feedback_id",
             ],
             values=(
                 feedback.research_task_id,
-                feedback.feedback_type if isinstance(feedback.feedback_type, str) else feedback.feedback_type.value,
+                (
+                    feedback.feedback_type
+                    if isinstance(feedback.feedback_type, str)
+                    else feedback.feedback_type.value
+                ),
                 feedback.content,
                 feedback.agent_target,
                 now,
                 feedback.parent_feedback_id,
-            )
+            ),
         )
 
     def get_task_feedback(self, task_id: int, limit: int = 100) -> list[ResearchFeedback]:
@@ -518,17 +579,19 @@ class ResearchFeedbackStore(BaseStore):
 
         feedback_list = []
         for row in rows:
-            feedback_list.append(ResearchFeedback(
-                id=row[0],
-                research_task_id=row[1],
-                feedback_type=row[2],
-                content=row[3],
-                agent_target=row[4],
-                created_at=row[5],
-                parent_feedback_id=row[6],
-                applied=bool(row[7]),
-                applied_at=row[8],
-            ))
+            feedback_list.append(
+                ResearchFeedback(
+                    id=row[0],
+                    research_task_id=row[1],
+                    feedback_type=row[2],
+                    content=row[3],
+                    agent_target=row[4],
+                    created_at=row[5],
+                    parent_feedback_id=row[6],
+                    applied=bool(row[7]),
+                    applied_at=row[8],
+                )
+            )
 
         return feedback_list
 
@@ -552,17 +615,19 @@ class ResearchFeedbackStore(BaseStore):
 
         feedback_list = []
         for row in rows:
-            feedback_list.append(ResearchFeedback(
-                id=row[0],
-                research_task_id=row[1],
-                feedback_type=row[2],
-                content=row[3],
-                agent_target=row[4],
-                created_at=row[5],
-                parent_feedback_id=row[6],
-                applied=bool(row[7]),
-                applied_at=row[8],
-            ))
+            feedback_list.append(
+                ResearchFeedback(
+                    id=row[0],
+                    research_task_id=row[1],
+                    feedback_type=row[2],
+                    content=row[3],
+                    agent_target=row[4],
+                    created_at=row[5],
+                    parent_feedback_id=row[6],
+                    applied=bool(row[7]),
+                    applied_at=row[8],
+                )
+            )
 
         return feedback_list
 
@@ -584,7 +649,9 @@ class ResearchFeedbackStore(BaseStore):
         self.db.execute_sync(query, (now, feedback_id))
         return True
 
-    def get_feedback_by_type(self, task_id: int, feedback_type: FeedbackType) -> list[ResearchFeedback]:
+    def get_feedback_by_type(
+        self, task_id: int, feedback_type: FeedbackType
+    ) -> list[ResearchFeedback]:
         """Get feedback of a specific type for a task.
 
         Args:
@@ -606,17 +673,19 @@ class ResearchFeedbackStore(BaseStore):
 
         feedback_list = []
         for row in rows:
-            feedback_list.append(ResearchFeedback(
-                id=row[0],
-                research_task_id=row[1],
-                feedback_type=row[2],
-                content=row[3],
-                agent_target=row[4],
-                created_at=row[5],
-                parent_feedback_id=row[6],
-                applied=bool(row[7]),
-                applied_at=row[8],
-            ))
+            feedback_list.append(
+                ResearchFeedback(
+                    id=row[0],
+                    research_task_id=row[1],
+                    feedback_type=row[2],
+                    content=row[3],
+                    agent_target=row[4],
+                    created_at=row[5],
+                    parent_feedback_id=row[6],
+                    applied=bool(row[7]),
+                    applied_at=row[8],
+                )
+            )
 
         return feedback_list
 
@@ -641,16 +710,18 @@ class ResearchFeedbackStore(BaseStore):
 
         feedback_list = []
         for row in rows:
-            feedback_list.append(ResearchFeedback(
-                id=row[0],
-                research_task_id=row[1],
-                feedback_type=row[2],
-                content=row[3],
-                agent_target=row[4],
-                created_at=row[5],
-                parent_feedback_id=row[6],
-                applied=bool(row[7]),
-                applied_at=row[8],
-            ))
+            feedback_list.append(
+                ResearchFeedback(
+                    id=row[0],
+                    research_task_id=row[1],
+                    feedback_type=row[2],
+                    content=row[3],
+                    agent_target=row[4],
+                    created_at=row[5],
+                    parent_feedback_id=row[6],
+                    applied=bool(row[7]),
+                    applied_at=row[8],
+                )
+            )
 
         return feedback_list

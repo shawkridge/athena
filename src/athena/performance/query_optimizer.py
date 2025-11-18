@@ -51,27 +51,50 @@ class QueryOptimizer:
     # Recommended indexes for memory-mcp tables
     RECOMMENDED_INDEXES = [
         # CodeArtifact indexes
-        IndexDefinition("idx_code_entities_project_file", "code_entities", ["project_id", "file_path"]),
+        IndexDefinition(
+            "idx_code_entities_project_file", "code_entities", ["project_id", "file_path"]
+        ),
         IndexDefinition("idx_code_entities_type", "code_entities", ["entity_type"]),
         IndexDefinition("idx_complexity_metrics_level", "complexity_metrics", ["cyclomatic_level"]),
         IndexDefinition("idx_code_diffs_entity", "code_diffs", ["entity_id", "created_at"]),
-        IndexDefinition("idx_dependencies_from_to", "dependencies", ["from_entity_id", "to_entity_id"]),
-
+        IndexDefinition(
+            "idx_dependencies_from_to", "dependencies", ["from_entity_id", "to_entity_id"]
+        ),
         # IDEContext indexes
         IndexDefinition("idx_ide_files_open_status", "ide_files", ["project_id", "is_open"]),
-        IndexDefinition("idx_cursor_positions_timestamp", "cursor_positions", ["file_id", "timestamp"]),
+        IndexDefinition(
+            "idx_cursor_positions_timestamp", "cursor_positions", ["file_id", "timestamp"]
+        ),
         IndexDefinition("idx_git_status_staged", "git_status", ["project_id", "is_staged"]),
-        IndexDefinition("idx_git_diffs_file", "git_diffs", ["project_id", "file_path", "captured_at"]),
-        IndexDefinition("idx_snapshots_project_time", "ide_context_snapshots", ["project_id", "captured_at"]),
-        IndexDefinition("idx_activity_file_time", "ide_activity", ["project_id", "file_path", "timestamp"]),
-
+        IndexDefinition(
+            "idx_git_diffs_file", "git_diffs", ["project_id", "file_path", "captured_at"]
+        ),
+        IndexDefinition(
+            "idx_snapshots_project_time", "ide_context_snapshots", ["project_id", "captured_at"]
+        ),
+        IndexDefinition(
+            "idx_activity_file_time", "ide_activity", ["project_id", "file_path", "timestamp"]
+        ),
         # Episodic memory indexes (if available)
-        IndexDefinition("idx_episodic_session_type", "episodic_events", ["session_id", "event_type"], partial_where="session_id IS NOT NULL"),
-        IndexDefinition("idx_episodic_timestamp_range", "episodic_events", ["timestamp"], partial_where="timestamp > datetime('now', '-7 days')"),
-
+        IndexDefinition(
+            "idx_episodic_session_type",
+            "episodic_events",
+            ["session_id", "event_type"],
+            partial_where="session_id IS NOT NULL",
+        ),
+        IndexDefinition(
+            "idx_episodic_timestamp_range",
+            "episodic_events",
+            ["timestamp"],
+            partial_where="timestamp > datetime('now', '-7 days')",
+        ),
         # Semantic memory indexes (if available)
-        IndexDefinition("idx_semantic_usefulness", "semantic_memories", ["usefulness"], partial_where="usefulness > 0.3"),
-
+        IndexDefinition(
+            "idx_semantic_usefulness",
+            "semantic_memories",
+            ["usefulness"],
+            partial_where="usefulness > 0.3",
+        ),
         # Safety indexes (if available)
         IndexDefinition("idx_approval_status", "approval_requests", ["status", "created_at"]),
         IndexDefinition("idx_audit_risk_level", "audit_entries", ["risk_level", "success"]),
@@ -199,12 +222,14 @@ class QueryOptimizer:
 
             plan = []
             for row in results:
-                plan.append({
-                    "id": row[0],
-                    "parent": row[1],
-                    "notused": row[2],
-                    "detail": row[3],
-                })
+                plan.append(
+                    {
+                        "id": row[0],
+                        "parent": row[1],
+                        "notused": row[2],
+                        "detail": row[3],
+                    }
+                )
 
             return plan
         except Exception as e:
@@ -242,7 +267,9 @@ class QueryOptimizer:
             "is_optimized": len(suggestions) == 0,
         }
 
-    def get_slow_queries(self, execution_times: dict[str, float], threshold_ms: float = 100.0) -> list[str]:
+    def get_slow_queries(
+        self, execution_times: dict[str, float], threshold_ms: float = 100.0
+    ) -> list[str]:
         """Identify slow queries.
 
         Args:
@@ -252,10 +279,7 @@ class QueryOptimizer:
         Returns:
             List of slow queries
         """
-        return [
-            query for query, time_ms in execution_times.items()
-            if time_ms > threshold_ms
-        ]
+        return [query for query, time_ms in execution_times.items() if time_ms > threshold_ms]
 
     def suggest_indexes_for_query(self, query: str) -> list[dict]:
         """Suggest indexes that might help query.
@@ -279,18 +303,22 @@ class QueryOptimizer:
 
             for col in common_columns:
                 if col.upper() in where_clause and f"INDEX ON {col}" not in query:
-                    suggestions.append({
-                        "column": col,
-                        "reason": f"Used in WHERE clause of query",
-                        "type": "single-column",
-                    })
+                    suggestions.append(
+                        {
+                            "column": col,
+                            "reason": "Used in WHERE clause of query",
+                            "type": "single-column",
+                        }
+                    )
 
         # Suggest composite indexes for JOINs
         if "JOIN" in query.upper():
-            suggestions.append({
-                "reason": "Query uses JOIN - consider composite index on join keys",
-                "type": "multi-column",
-            })
+            suggestions.append(
+                {
+                    "reason": "Query uses JOIN - consider composite index on join keys",
+                    "type": "multi-column",
+                }
+            )
 
         return suggestions
 

@@ -9,17 +9,18 @@ Provides:
 - Clone classification (Type 1, 2, 3)
 """
 
-from typing import Dict, List, Optional, Tuple, Set
+from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
 import difflib
 import hashlib
 
-from .symbol_models import Symbol, SymbolType
+from .symbol_models import Symbol
 
 
 class CloneType(str, Enum):
     """Types of code clones."""
+
     EXACT = "exact"  # Identical code
     SIMILAR = "similar"  # Very similar with minor differences
     LOOSE = "loose"  # Same logic, different structure
@@ -28,6 +29,7 @@ class CloneType(str, Enum):
 @dataclass
 class CodeBlock:
     """A block of code from a symbol."""
+
     symbol: Symbol
     content: str
     hash_value: str
@@ -37,6 +39,7 @@ class CodeBlock:
 @dataclass
 class DuplicationPair:
     """A pair of duplicated code blocks."""
+
     symbol1: Symbol
     symbol2: Symbol
     clone_type: CloneType
@@ -49,6 +52,7 @@ class DuplicationPair:
 @dataclass
 class DuplicationMetrics:
     """Duplication metrics for a codebase."""
+
     total_symbols: int
     symbols_with_duplication: int
     duplication_pairs: int
@@ -82,14 +86,9 @@ class DuplicationAnalyzer:
         # Normalize code for hashing
         normalized = self._normalize_code(code)
         hash_value = self._hash_code(normalized)
-        line_count = len(code.split('\n'))
+        line_count = len(code.split("\n"))
 
-        block = CodeBlock(
-            symbol=symbol,
-            content=code,
-            hash_value=hash_value,
-            line_count=line_count
-        )
+        block = CodeBlock(symbol=symbol, content=code, hash_value=hash_value, line_count=line_count)
 
         key = symbol.full_qualified_name or symbol.name
         self.code_blocks[key] = block
@@ -125,13 +124,13 @@ class DuplicationAnalyzer:
 
         Removes comments, extra whitespace, and normalizes indentation.
         """
-        lines = code.split('\n')
+        lines = code.split("\n")
         normalized = []
 
         for line in lines:
             # Remove comments
-            if '#' in line:
-                line = line[:line.index('#')]
+            if "#" in line:
+                line = line[: line.index("#")]
 
             # Strip whitespace
             line = line.strip()
@@ -140,13 +139,15 @@ class DuplicationAnalyzer:
             if line:
                 normalized.append(line)
 
-        return '\n'.join(normalized)
+        return "\n".join(normalized)
 
     def _hash_code(self, code: str) -> str:
         """Generate hash of normalized code."""
         return hashlib.md5(code.encode()).hexdigest()
 
-    def _compare_blocks(self, block1: CodeBlock, block2: CodeBlock, threshold: float) -> Optional[DuplicationPair]:
+    def _compare_blocks(
+        self, block1: CodeBlock, block2: CodeBlock, threshold: float
+    ) -> Optional[DuplicationPair]:
         """Compare two code blocks for duplication.
 
         Args:
@@ -169,7 +170,7 @@ class DuplicationAnalyzer:
                 similarity_score=1.0,
                 lines_duplicated=lines_dup,
                 lines_total=lines_total,
-                recommendation=f"Extract {lines_dup} duplicated lines into a shared function."
+                recommendation=f"Extract {lines_dup} duplicated lines into a shared function.",
             )
 
         # Fuzzy similarity matching
@@ -190,7 +191,7 @@ class DuplicationAnalyzer:
                 similarity_score=similarity,
                 lines_duplicated=lines_dup,
                 lines_total=lines_total,
-                recommendation=self._generate_recommendation(clone_type, similarity, lines_dup)
+                recommendation=self._generate_recommendation(clone_type, similarity, lines_dup),
             )
 
         return None
@@ -217,8 +218,8 @@ class DuplicationAnalyzer:
 
     def _count_matching_lines(self, code1: str, code2: str) -> int:
         """Count approximately matching lines between two code blocks."""
-        lines1 = code1.split('\n')
-        lines2 = code2.split('\n')
+        lines1 = code1.split("\n")
+        lines2 = code2.split("\n")
 
         matcher = difflib.SequenceMatcher(None, lines1, lines2)
         matching_blocks = matcher.get_matching_blocks()
@@ -250,7 +251,7 @@ class DuplicationAnalyzer:
                 loose_duplicates=0,
                 total_duplicated_lines=0,
                 total_lines=0,
-                duplication_percentage=0.0
+                duplication_percentage=0.0,
             )
             return
 
@@ -262,7 +263,9 @@ class DuplicationAnalyzer:
 
         # Count by clone type
         exact_count = len([p for p in self.duplication_pairs if p.clone_type == CloneType.EXACT])
-        similar_count = len([p for p in self.duplication_pairs if p.clone_type == CloneType.SIMILAR])
+        similar_count = len(
+            [p for p in self.duplication_pairs if p.clone_type == CloneType.SIMILAR]
+        )
         loose_count = len([p for p in self.duplication_pairs if p.clone_type == CloneType.LOOSE])
 
         # Total duplicated lines
@@ -282,7 +285,7 @@ class DuplicationAnalyzer:
             loose_duplicates=loose_count,
             total_duplicated_lines=total_dup_lines,
             total_lines=total_lines,
-            duplication_percentage=dup_percentage
+            duplication_percentage=dup_percentage,
         )
 
     def get_exact_duplicates(self) -> List[DuplicationPair]:
@@ -319,7 +322,8 @@ class DuplicationAnalyzer:
             List of duplication pairs
         """
         return [
-            p for p in self.duplication_pairs
+            p
+            for p in self.duplication_pairs
             if p.symbol1.name == symbol.name or p.symbol2.name == symbol.name
         ]
 
@@ -373,7 +377,9 @@ class DuplicationAnalyzer:
             opportunities.append((pair, reason))
 
         # Sort by impact
-        return sorted(opportunities, key=lambda x: x[0].lines_duplicated * x[0].similarity_score, reverse=True)
+        return sorted(
+            opportunities, key=lambda x: x[0].lines_duplicated * x[0].similarity_score, reverse=True
+        )
 
     def get_metrics(self) -> Optional[DuplicationMetrics]:
         """Get overall duplication metrics.

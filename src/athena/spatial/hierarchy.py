@@ -3,7 +3,7 @@
 Converts flat file paths to hierarchical spatial knowledge graphs.
 """
 
-from typing import List, Optional, Set, Tuple
+from typing import List, Optional, Tuple
 
 from .models import SpatialNode, SpatialRelation
 
@@ -32,11 +32,11 @@ def build_spatial_hierarchy(file_path: str) -> List[SpatialNode]:
 
     # Normalize path
     file_path = file_path.strip()
-    if not file_path.startswith('/'):
-        file_path = '/' + file_path
+    if not file_path.startswith("/"):
+        file_path = "/" + file_path
 
     # Split into components
-    parts = [p for p in file_path.split('/') if p]
+    parts = [p for p in file_path.split("/") if p]
 
     if not parts:
         return []
@@ -49,15 +49,11 @@ def build_spatial_hierarchy(file_path: str) -> List[SpatialNode]:
         current_path = current_path + "/" + part
 
         # Determine node type (file vs directory)
-        is_file = i == len(parts) - 1 and '.' in part
+        is_file = i == len(parts) - 1 and "." in part
         node_type = "file" if is_file else "directory"
 
         node = SpatialNode(
-            name=part,
-            full_path=current_path,
-            depth=i,
-            parent_path=parent_path,
-            node_type=node_type
+            name=part, full_path=current_path, depth=i, parent_path=parent_path, node_type=node_type
         )
 
         nodes.append(node)
@@ -81,15 +77,17 @@ def extract_spatial_relations(nodes: List[SpatialNode]) -> List[SpatialRelation]
     # Build parent-child relations
     for node in nodes:
         if node.parent_path:
-            relation_key = (node.parent_path, node.full_path, 'contains')
+            relation_key = (node.parent_path, node.full_path, "contains")
 
             if relation_key not in seen_relations:
-                relations.append(SpatialRelation(
-                    from_path=node.parent_path,
-                    to_path=node.full_path,
-                    relation_type='contains',
-                    strength=1.0
-                ))
+                relations.append(
+                    SpatialRelation(
+                        from_path=node.parent_path,
+                        to_path=node.full_path,
+                        relation_type="contains",
+                        strength=1.0,
+                    )
+                )
                 seen_relations.add(relation_key)
 
     # Build sibling relations (nodes with same parent)
@@ -104,16 +102,18 @@ def extract_spatial_relations(nodes: List[SpatialNode]) -> List[SpatialRelation]
         if len(siblings) > 1:
             # Create sibling relations
             for i, node1 in enumerate(siblings):
-                for node2 in siblings[i+1:]:
-                    relation_key = (node1.full_path, node2.full_path, 'sibling')
+                for node2 in siblings[i + 1 :]:
+                    relation_key = (node1.full_path, node2.full_path, "sibling")
 
                     if relation_key not in seen_relations:
-                        relations.append(SpatialRelation(
-                            from_path=node1.full_path,
-                            to_path=node2.full_path,
-                            relation_type='sibling',
-                            strength=0.8  # Sibling relations slightly weaker
-                        ))
+                        relations.append(
+                            SpatialRelation(
+                                from_path=node1.full_path,
+                                to_path=node2.full_path,
+                                relation_type="sibling",
+                                strength=0.8,  # Sibling relations slightly weaker
+                            )
+                        )
                         seen_relations.add(relation_key)
 
     return relations
@@ -135,8 +135,8 @@ def calculate_spatial_distance(path1: str, path2: str) -> int:
     Returns:
         Number of hops between paths
     """
-    parts1 = [p for p in path1.split('/') if p]
-    parts2 = [p for p in path2.split('/') if p]
+    parts1 = [p for p in path1.split("/") if p]
+    parts2 = [p for p in path2.split("/") if p]
 
     # Find common prefix
     common_depth = 0
@@ -153,9 +153,7 @@ def calculate_spatial_distance(path1: str, path2: str) -> int:
 
 
 def get_spatial_neighbors(
-    center_path: str,
-    all_paths: List[str],
-    max_distance: int = 2
+    center_path: str, all_paths: List[str], max_distance: int = 2
 ) -> List[Tuple[str, int]]:
     """
     Get all paths within max_distance hops of center_path.
@@ -186,19 +184,19 @@ def get_spatial_neighbors(
 
 def get_parent_path(path: str) -> Optional[str]:
     """Get parent path of a file path."""
-    parts = [p for p in path.split('/') if p]
+    parts = [p for p in path.split("/") if p]
     if len(parts) <= 1:
         return None
-    return '/' + '/'.join(parts[:-1])
+    return "/" + "/".join(parts[:-1])
 
 
 def get_ancestors(path: str) -> List[str]:
     """Get all ancestor paths from root to parent."""
-    parts = [p for p in path.split('/') if p]
+    parts = [p for p in path.split("/") if p]
     ancestors = []
 
     for i in range(len(parts)):
-        ancestor = '/' + '/'.join(parts[:i+1])
+        ancestor = "/" + "/".join(parts[: i + 1])
         if ancestor != path:
             ancestors.append(ancestor)
 

@@ -170,27 +170,28 @@ class ExecutableProcedure(BaseModel):
 
     model_config = ConfigDict(use_enum_values=True)
 
-    @validator('code_generation_confidence')
+    @validator("code_generation_confidence")
     def validate_confidence(cls, v):
         """Validate confidence score is between 0 and 1."""
         if not 0.0 <= v <= 1.0:
-            raise ValueError('Confidence must be between 0.0 and 1.0')
+            raise ValueError("Confidence must be between 0.0 and 1.0")
         return v
 
-    @validator('current_version')
+    @validator("current_version")
     def validate_version(cls, v):
         """Validate semantic version format."""
-        parts = v.split('.')
+        parts = v.split(".")
         if len(parts) != 3:
-            raise ValueError('Version must be in semantic format: X.Y.Z')
+            raise ValueError("Version must be in semantic format: X.Y.Z")
         try:
             [int(p) for p in parts]
         except ValueError:
-            raise ValueError('Version components must be integers')
+            raise ValueError("Version components must be integers")
         return v
 
-    def add_version(self, new_code: str, git_hash: str, commit_message: str,
-                    author: str = "system") -> "ExecutableProcedure":
+    def add_version(
+        self, new_code: str, git_hash: str, commit_message: str, author: str = "system"
+    ) -> "ExecutableProcedure":
         """Create a new version of this procedure.
 
         Args:
@@ -203,9 +204,9 @@ class ExecutableProcedure(BaseModel):
             Updated ExecutableProcedure with new version
         """
         # Calculate version bump
-        parts = [int(p) for p in self.current_version.split('.')]
+        parts = [int(p) for p in self.current_version.split(".")]
         parts[2] += 1  # Patch version
-        new_version = '.'.join(str(p) for p in parts)
+        new_version = ".".join(str(p) for p in parts)
 
         # Create version entry
         version_entry = ProcedureVersion(

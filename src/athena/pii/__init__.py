@@ -25,10 +25,10 @@ from .policies import SanitizationStrategy, FieldPolicy
 from .config import PIIConfig
 
 __all__ = [
-    'PIIDetection',
-    'PIIDetector',
-    'PIITokenizer',
-    'SanitizationStrategy',
-    'FieldPolicy',
-    'PIIConfig',
+    "PIIDetection",
+    "PIIDetector",
+    "PIITokenizer",
+    "SanitizationStrategy",
+    "FieldPolicy",
+    "PIIConfig",
 ]

@@ -9,7 +9,6 @@ from datetime import datetime
 import asyncio
 
 from .models import ResearchFinding
-from .aggregation import AggregatedFinding
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +65,7 @@ class StreamingUpdate:
 
     def to_markdown(self) -> str:
         """Export for Claude consumption."""
-        lines = [f"## Research Progress Update\n"]
+        lines = ["## Research Progress Update\n"]
         lines.append(f"**Found so far**: {self.total_findings} findings")
         lines.append(f"**Status**: {'Complete' if self.is_complete else 'In progress'}\n")
 
@@ -74,9 +73,7 @@ class StreamingUpdate:
             lines.append("### New Findings")
             for finding in self.new_findings:
                 f = finding.finding
-                lines.append(
-                    f"- **{f.title}** ({finding.agent_name}, {f.credibility_score:.0%})"
-                )
+                lines.append(f"- **{f.title}** ({finding.agent_name}, {f.credibility_score:.0%})")
                 if f.url:
                     lines.append(f"  {f.url}")
 

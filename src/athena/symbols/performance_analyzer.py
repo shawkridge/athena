@@ -11,7 +11,7 @@ Provides:
 - Performance anti-pattern reporting
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
 import re
@@ -21,6 +21,7 @@ from .symbol_models import Symbol, SymbolType
 
 class PerformanceIssueType(str, Enum):
     """Types of performance issues."""
+
     N_PLUS_ONE = "n_plus_one"  # Database N+1 queries
     INEFFICIENT_LOOP = "inefficient_loop"  # Nested loops or repeated work
     MEMORY_LEAK = "memory_leak"  # Potential memory leak patterns
@@ -33,6 +34,7 @@ class PerformanceIssueType(str, Enum):
 
 class PerformanceSeverity(str, Enum):
     """Severity levels for performance issues."""
+
     INFO = "info"  # Informational
     LOW = "low"  # Minor performance impact
     MEDIUM = "medium"  # Moderate performance impact
@@ -43,6 +45,7 @@ class PerformanceSeverity(str, Enum):
 @dataclass
 class PerformanceIssue:
     """A detected performance issue."""
+
     symbol: Symbol
     issue_type: PerformanceIssueType
     severity: PerformanceSeverity
@@ -56,6 +59,7 @@ class PerformanceIssue:
 @dataclass
 class PerformanceMetrics:
     """Performance metrics for analyzed code."""
+
     total_symbols: int
     symbols_with_issues: int
     total_issues: int
@@ -88,10 +92,14 @@ class PerformanceAnalyzer:
         issues = []
 
         # Skip non-function/method symbols
-        if symbol.symbol_type not in [SymbolType.FUNCTION, SymbolType.METHOD, SymbolType.ASYNC_FUNCTION]:
+        if symbol.symbol_type not in [
+            SymbolType.FUNCTION,
+            SymbolType.METHOD,
+            SymbolType.ASYNC_FUNCTION,
+        ]:
             return issues
 
-        lines = code.split('\n')
+        lines = code.split("\n")
 
         for line_num, line in enumerate(lines, 1):
             # N+1 query patterns
@@ -134,208 +142,238 @@ class PerformanceAnalyzer:
         issues = []
 
         patterns = [
-            (r'for\s+\w+\s+in\s+\w+.*:\s*.*query\(', 'Loop with query inside - potential N+1'),
-            (r'\.query\(\).*for\s+\w+', 'Query in loop detected - N+1 pattern'),
-            (r'for.*\bselect\b.*\bfrom\b', 'SQL query in loop - N+1 pattern'),
+            (r"for\s+\w+\s+in\s+\w+.*:\s*.*query\(", "Loop with query inside - potential N+1"),
+            (r"\.query\(\).*for\s+\w+", "Query in loop detected - N+1 pattern"),
+            (r"for.*\bselect\b.*\bfrom\b", "SQL query in loop - N+1 pattern"),
         ]
 
         for pattern, msg in patterns:
             if re.search(pattern, line, re.IGNORECASE):
-                issues.append(PerformanceIssue(
-                    symbol=symbol,
-                    issue_type=PerformanceIssueType.N_PLUS_ONE,
-                    severity=PerformanceSeverity.HIGH,
-                    line_number=line_num,
-                    code_snippet=line.strip(),
-                    message=msg,
-                    recommendation="Use batch queries or eager loading instead of querying in loops. Consider using JOIN or fetch strategies.",
-                    estimated_impact=0.8
-                ))
+                issues.append(
+                    PerformanceIssue(
+                        symbol=symbol,
+                        issue_type=PerformanceIssueType.N_PLUS_ONE,
+                        severity=PerformanceSeverity.HIGH,
+                        line_number=line_num,
+                        code_snippet=line.strip(),
+                        message=msg,
+                        recommendation="Use batch queries or eager loading instead of querying in loops. Consider using JOIN or fetch strategies.",
+                        estimated_impact=0.8,
+                    )
+                )
 
         return issues
 
-    def _check_inefficient_loops(self, symbol: Symbol, line: str, line_num: int) -> List[PerformanceIssue]:
+    def _check_inefficient_loops(
+        self, symbol: Symbol, line: str, line_num: int
+    ) -> List[PerformanceIssue]:
         """Check for inefficient loop patterns."""
         issues = []
 
         patterns = [
-            (r'for\s+\w+\s+in\s+\w+.*:\s*for\s+\w+\s+in', 'Nested loops detected'),
-            (r'for.*:\s*.*\+=.*\.append\(', 'String concatenation in loop'),
-            (r'while\s+True:', 'Infinite loop pattern'),
-            (r'for\s+\w+\s+in\s+range\(.*range', 'Multiple nested range loops'),
+            (r"for\s+\w+\s+in\s+\w+.*:\s*for\s+\w+\s+in", "Nested loops detected"),
+            (r"for.*:\s*.*\+=.*\.append\(", "String concatenation in loop"),
+            (r"while\s+True:", "Infinite loop pattern"),
+            (r"for\s+\w+\s+in\s+range\(.*range", "Multiple nested range loops"),
         ]
 
         for pattern, msg in patterns:
             if re.search(pattern, line, re.IGNORECASE):
-                issues.append(PerformanceIssue(
-                    symbol=symbol,
-                    issue_type=PerformanceIssueType.INEFFICIENT_LOOP,
-                    severity=PerformanceSeverity.MEDIUM,
-                    line_number=line_num,
-                    code_snippet=line.strip(),
-                    message=msg,
-                    recommendation="Optimize loop structure. Consider using set operations, list comprehensions, or algorithmic improvements.",
-                    estimated_impact=0.6
-                ))
+                issues.append(
+                    PerformanceIssue(
+                        symbol=symbol,
+                        issue_type=PerformanceIssueType.INEFFICIENT_LOOP,
+                        severity=PerformanceSeverity.MEDIUM,
+                        line_number=line_num,
+                        code_snippet=line.strip(),
+                        message=msg,
+                        recommendation="Optimize loop structure. Consider using set operations, list comprehensions, or algorithmic improvements.",
+                        estimated_impact=0.6,
+                    )
+                )
 
         return issues
 
-    def _check_memory_leaks(self, symbol: Symbol, line: str, line_num: int) -> List[PerformanceIssue]:
+    def _check_memory_leaks(
+        self, symbol: Symbol, line: str, line_num: int
+    ) -> List[PerformanceIssue]:
         """Check for memory leak patterns."""
         issues = []
 
         patterns = [
-            (r'while.*True.*:\s*.*append\(', 'Unbounded list growth in loop'),
-            (r'def\s+\w+.*:\s*.*global\s+\w+', 'Global mutable state - memory leak risk'),
-            (r'self\.\w+\s*=\s*\[\].*while', 'Growing list without bounds'),
-            (r'cache\s*=\s*\{.*\}.*while\s+True', 'Unbounded cache growth'),
+            (r"while.*True.*:\s*.*append\(", "Unbounded list growth in loop"),
+            (r"def\s+\w+.*:\s*.*global\s+\w+", "Global mutable state - memory leak risk"),
+            (r"self\.\w+\s*=\s*\[\].*while", "Growing list without bounds"),
+            (r"cache\s*=\s*\{.*\}.*while\s+True", "Unbounded cache growth"),
         ]
 
         for pattern, msg in patterns:
             if re.search(pattern, line, re.IGNORECASE):
-                issues.append(PerformanceIssue(
-                    symbol=symbol,
-                    issue_type=PerformanceIssueType.MEMORY_LEAK,
-                    severity=PerformanceSeverity.HIGH,
-                    line_number=line_num,
-                    code_snippet=line.strip(),
-                    message=msg,
-                    recommendation="Add size limits or cleanup mechanisms. Use weak references for caches or implement LRU eviction.",
-                    estimated_impact=0.7
-                ))
+                issues.append(
+                    PerformanceIssue(
+                        symbol=symbol,
+                        issue_type=PerformanceIssueType.MEMORY_LEAK,
+                        severity=PerformanceSeverity.HIGH,
+                        line_number=line_num,
+                        code_snippet=line.strip(),
+                        message=msg,
+                        recommendation="Add size limits or cleanup mechanisms. Use weak references for caches or implement LRU eviction.",
+                        estimated_impact=0.7,
+                    )
+                )
 
         return issues
 
-    def _check_blocking_operations(self, symbol: Symbol, line: str, line_num: int) -> List[PerformanceIssue]:
+    def _check_blocking_operations(
+        self, symbol: Symbol, line: str, line_num: int
+    ) -> List[PerformanceIssue]:
         """Check for blocking operations in async code."""
         issues = []
 
-        if 'async def' not in symbol.signature:
+        if "async def" not in symbol.signature:
             return issues
 
         patterns = [
-            (r'time\.sleep\(', 'Blocking sleep in async function'),
-            (r'requests\.\w+\(', 'Blocking HTTP request in async'),
-            (r'\.read\(\)', 'Blocking file read in async'),
-            (r'\.write\(\)', 'Blocking file write in async'),
+            (r"time\.sleep\(", "Blocking sleep in async function"),
+            (r"requests\.\w+\(", "Blocking HTTP request in async"),
+            (r"\.read\(\)", "Blocking file read in async"),
+            (r"\.write\(\)", "Blocking file write in async"),
         ]
 
         for pattern, msg in patterns:
             if re.search(pattern, line):
-                issues.append(PerformanceIssue(
-                    symbol=symbol,
-                    issue_type=PerformanceIssueType.BLOCKING_OPERATION,
-                    severity=PerformanceSeverity.HIGH,
-                    line_number=line_num,
-                    code_snippet=line.strip(),
-                    message=msg,
-                    recommendation="Use async alternatives: asyncio.sleep(), aiohttp, aiofiles instead of blocking calls.",
-                    estimated_impact=0.8
-                ))
+                issues.append(
+                    PerformanceIssue(
+                        symbol=symbol,
+                        issue_type=PerformanceIssueType.BLOCKING_OPERATION,
+                        severity=PerformanceSeverity.HIGH,
+                        line_number=line_num,
+                        code_snippet=line.strip(),
+                        message=msg,
+                        recommendation="Use async alternatives: asyncio.sleep(), aiohttp, aiofiles instead of blocking calls.",
+                        estimated_impact=0.8,
+                    )
+                )
 
         return issues
 
-    def _check_missing_cache(self, symbol: Symbol, line: str, line_num: int) -> List[PerformanceIssue]:
+    def _check_missing_cache(
+        self, symbol: Symbol, line: str, line_num: int
+    ) -> List[PerformanceIssue]:
         """Check for missing cache opportunities."""
         issues = []
 
         patterns = [
-            (r'expensive_function\(\)', 'Expensive function called without caching'),
-            (r'def\s+\w+.*:\s*return\s+.*\.join\(', 'String joining without memoization'),
-            (r'fibonacci\(', 'Recursive algorithm without memoization'),
-            (r'factorial\(', 'Factorial calculation without caching'),
+            (r"expensive_function\(\)", "Expensive function called without caching"),
+            (r"def\s+\w+.*:\s*return\s+.*\.join\(", "String joining without memoization"),
+            (r"fibonacci\(", "Recursive algorithm without memoization"),
+            (r"factorial\(", "Factorial calculation without caching"),
         ]
 
         for pattern, msg in patterns:
             if re.search(pattern, line, re.IGNORECASE):
-                issues.append(PerformanceIssue(
-                    symbol=symbol,
-                    issue_type=PerformanceIssueType.MISSING_CACHE,
-                    severity=PerformanceSeverity.MEDIUM,
-                    line_number=line_num,
-                    code_snippet=line.strip(),
-                    message=msg,
-                    recommendation="Use @lru_cache, @cache decorators or memoization pattern for expensive repeated computations.",
-                    estimated_impact=0.5
-                ))
+                issues.append(
+                    PerformanceIssue(
+                        symbol=symbol,
+                        issue_type=PerformanceIssueType.MISSING_CACHE,
+                        severity=PerformanceSeverity.MEDIUM,
+                        line_number=line_num,
+                        code_snippet=line.strip(),
+                        message=msg,
+                        recommendation="Use @lru_cache, @cache decorators or memoization pattern for expensive repeated computations.",
+                        estimated_impact=0.5,
+                    )
+                )
 
         return issues
 
-    def _check_inefficient_algorithms(self, symbol: Symbol, line: str, line_num: int) -> List[PerformanceIssue]:
+    def _check_inefficient_algorithms(
+        self, symbol: Symbol, line: str, line_num: int
+    ) -> List[PerformanceIssue]:
         """Check for inefficient algorithm patterns."""
         issues = []
 
         patterns = [
-            (r'\.sort\(\).*\.sort\(\)', 'Multiple sorts of same data'),
-            (r'in\s+\w+.*in\s+\w+', 'Multiple linear searches in list'),
-            (r'list\(set\(', 'Converting to set and back to list'),
-            (r'\[.*for.*in.*for.*in.*\]', 'Complex list comprehension - consider clarity'),
+            (r"\.sort\(\).*\.sort\(\)", "Multiple sorts of same data"),
+            (r"in\s+\w+.*in\s+\w+", "Multiple linear searches in list"),
+            (r"list\(set\(", "Converting to set and back to list"),
+            (r"\[.*for.*in.*for.*in.*\]", "Complex list comprehension - consider clarity"),
         ]
 
         for pattern, msg in patterns:
             if re.search(pattern, line):
-                issues.append(PerformanceIssue(
-                    symbol=symbol,
-                    issue_type=PerformanceIssueType.INEFFICIENT_ALGORITHM,
-                    severity=PerformanceSeverity.MEDIUM,
-                    line_number=line_num,
-                    code_snippet=line.strip(),
-                    message=msg,
-                    recommendation="Review algorithm complexity. Use appropriate data structures (set for O(1) lookup, heap for priority, etc).",
-                    estimated_impact=0.5
-                ))
+                issues.append(
+                    PerformanceIssue(
+                        symbol=symbol,
+                        issue_type=PerformanceIssueType.INEFFICIENT_ALGORITHM,
+                        severity=PerformanceSeverity.MEDIUM,
+                        line_number=line_num,
+                        code_snippet=line.strip(),
+                        message=msg,
+                        recommendation="Review algorithm complexity. Use appropriate data structures (set for O(1) lookup, heap for priority, etc).",
+                        estimated_impact=0.5,
+                    )
+                )
 
         return issues
 
-    def _check_resource_leaks(self, symbol: Symbol, line: str, line_num: int) -> List[PerformanceIssue]:
+    def _check_resource_leaks(
+        self, symbol: Symbol, line: str, line_num: int
+    ) -> List[PerformanceIssue]:
         """Check for resource leak patterns."""
         issues = []
 
         patterns = [
-            (r'open\(["\'].*["\'](?!.*with)', 'File opened without context manager'),
-            (r'socket\.socket\(\)(?!.*with)', 'Socket created without context manager'),
-            (r'\.connect\(\)(?!.*finally)', 'Connection without finally clause'),
-            (r'lock\s*=.*acquire\(\)(?!.*release)', 'Lock acquired but not released'),
+            (r'open\(["\'].*["\'](?!.*with)', "File opened without context manager"),
+            (r"socket\.socket\(\)(?!.*with)", "Socket created without context manager"),
+            (r"\.connect\(\)(?!.*finally)", "Connection without finally clause"),
+            (r"lock\s*=.*acquire\(\)(?!.*release)", "Lock acquired but not released"),
         ]
 
         for pattern, msg in patterns:
             if re.search(pattern, line):
-                issues.append(PerformanceIssue(
-                    symbol=symbol,
-                    issue_type=PerformanceIssueType.RESOURCE_LEAK,
-                    severity=PerformanceSeverity.HIGH,
-                    line_number=line_num,
-                    code_snippet=line.strip(),
-                    message=msg,
-                    recommendation="Use context managers (with statement) or try/finally blocks to ensure resources are properly released.",
-                    estimated_impact=0.7
-                ))
+                issues.append(
+                    PerformanceIssue(
+                        symbol=symbol,
+                        issue_type=PerformanceIssueType.RESOURCE_LEAK,
+                        severity=PerformanceSeverity.HIGH,
+                        line_number=line_num,
+                        code_snippet=line.strip(),
+                        message=msg,
+                        recommendation="Use context managers (with statement) or try/finally blocks to ensure resources are properly released.",
+                        estimated_impact=0.7,
+                    )
+                )
 
         return issues
 
-    def _check_excessive_allocation(self, symbol: Symbol, line: str, line_num: int) -> List[PerformanceIssue]:
+    def _check_excessive_allocation(
+        self, symbol: Symbol, line: str, line_num: int
+    ) -> List[PerformanceIssue]:
         """Check for excessive memory allocation."""
         issues = []
 
         patterns = [
-            (r'\[\s*\w+\s*for.*\]', 'Large list comprehension - verify necessity'),
-            (r'\{.*:.*for.*\}', 'Large dict comprehension - verify necessity'),
-            (r'bytearray\([0-9]{7,}', 'Very large bytearray allocation'),
-            (r'\*\s*[0-9]{6,}', 'Large array/list multiplication'),
+            (r"\[\s*\w+\s*for.*\]", "Large list comprehension - verify necessity"),
+            (r"\{.*:.*for.*\}", "Large dict comprehension - verify necessity"),
+            (r"bytearray\([0-9]{7,}", "Very large bytearray allocation"),
+            (r"\*\s*[0-9]{6,}", "Large array/list multiplication"),
         ]
 
         for pattern, msg in patterns:
             if re.search(pattern, line):
-                issues.append(PerformanceIssue(
-                    symbol=symbol,
-                    issue_type=PerformanceIssueType.EXCESSIVE_ALLOCATION,
-                    severity=PerformanceSeverity.LOW,
-                    line_number=line_num,
-                    code_snippet=line.strip(),
-                    message=msg,
-                    recommendation="Consider streaming/iterating instead of allocating entire structures. Use generators for large datasets.",
-                    estimated_impact=0.3
-                ))
+                issues.append(
+                    PerformanceIssue(
+                        symbol=symbol,
+                        issue_type=PerformanceIssueType.EXCESSIVE_ALLOCATION,
+                        severity=PerformanceSeverity.LOW,
+                        line_number=line_num,
+                        code_snippet=line.strip(),
+                        message=msg,
+                        recommendation="Consider streaming/iterating instead of allocating entire structures. Use generators for large datasets.",
+                        estimated_impact=0.3,
+                    )
+                )
 
         return issues
 
@@ -393,7 +431,7 @@ class PerformanceAnalyzer:
             medium_count=medium_count,
             low_count=low_count,
             info_count=info_count,
-            average_impact=average_impact
+            average_impact=average_impact,
         )
 
     def get_issues(self, severity: Optional[PerformanceSeverity] = None) -> List[PerformanceIssue]:
@@ -502,7 +540,9 @@ class PerformanceAnalyzer:
             report += "HIGHEST IMPACT ISSUES:\n"
             report += "─" * 70 + "\n"
             for issue in highest:
-                report += f"{issue.symbol.name}: {issue.message} (Impact: {issue.estimated_impact:.1%})\n"
+                report += (
+                    f"{issue.symbol.name}: {issue.message} (Impact: {issue.estimated_impact:.1%})\n"
+                )
 
         return report
 

@@ -6,7 +6,6 @@ Agents that inherit from AdaptiveAgent can:
 - Adapt strategy selection based on learning
 """
 
-import asyncio
 from abc import ABC, abstractmethod
 from typing import Optional, Any
 
@@ -120,24 +119,24 @@ class AdaptiveAgent(ABC):
                 outcome=outcome,
                 success_rate=success_rate,
                 context=context,
-                session_id=session_id
+                session_id=session_id,
             )
 
             return {
-                'decision': decision,
-                'result': result,
-                'success_rate': success_rate,
-                'outcome': outcome
+                "decision": decision,
+                "result": result,
+                "success_rate": success_rate,
+                "outcome": outcome,
             }
 
-        except Exception as e:
+        except Exception:
             # Track failures too
             await self.learn_from_outcome(
-                decision=getattr(self, '_last_decision', 'unknown'),
-                outcome='error',
+                decision=getattr(self, "_last_decision", "unknown"),
+                outcome="error",
                 success_rate=0.0,
                 context=context,
-                session_id=session_id
+                session_id=session_id,
             )
             raise
 
@@ -147,7 +146,7 @@ class AdaptiveAgent(ABC):
         outcome: str,
         success_rate: float,
         context: dict,
-        session_id: Optional[str] = None
+        session_id: Optional[str] = None,
     ):
         """Learn from decision outcome.
 
@@ -167,14 +166,11 @@ class AdaptiveAgent(ABC):
             outcome=outcome,
             success_rate=success_rate,
             context=context,
-            session_id=session_id
+            session_id=session_id,
         )
 
     async def _evaluate_outcome(
-        self,
-        result: Any,
-        decision: str,
-        context: dict
+        self, result: Any, decision: str, context: dict
     ) -> tuple[float, str]:
         """Evaluate result to determine success rate and outcome type.
 
@@ -190,20 +186,20 @@ class AdaptiveAgent(ABC):
             Tuple of (success_rate: 0.0-1.0, outcome: 'success'|'failure'|'partial'|'error')
         """
         if result is None or (isinstance(result, (list, dict)) and not result):
-            return 0.0, 'failure'
+            return 0.0, "failure"
 
         if isinstance(result, dict):
             # Check for explicit success indicator
-            if result.get('success') is True:
-                return result.get('confidence', 0.9), 'success'
-            if result.get('success') is False:
-                return 0.0, 'failure'
+            if result.get("success") is True:
+                return result.get("confidence", 0.9), "success"
+            if result.get("success") is False:
+                return 0.0, "failure"
             # Partial success
-            if result.get('partial'):
-                return 0.5, 'partial'
+            if result.get("partial"):
+                return 0.5, "partial"
 
         # Default: success
-        return 0.8, 'success'
+        return 0.8, "success"
 
     def get_recent_decisions(self, limit: int = 10) -> list[str]:
         """Get recent decisions made by this agent.
@@ -224,9 +220,9 @@ class AdaptiveAgent(ABC):
         """
         stats = self.tracker.get_statistics(self.agent_name)  # get_statistics is synchronous
         return {
-            'agent_name': self.agent_name,
-            'total_decisions': stats['total_decisions'],
-            'success_rate': stats['success_rate'],
-            'avg_execution_time_ms': stats['avg_execution_time_ms'],
-            'recent_decisions': self.get_recent_decisions(10)
+            "agent_name": self.agent_name,
+            "total_decisions": stats["total_decisions"],
+            "success_rate": stats["success_rate"],
+            "avg_execution_time_ms": stats["avg_execution_time_ms"],
+            "recent_decisions": self.get_recent_decisions(10),
         }

@@ -15,9 +15,8 @@ from datetime import datetime
 from enum import Enum
 
 from src.athena.code_search.symbol_extractor import Symbol, SymbolIndex
-from src.athena.code_search.code_chunker import Chunk
 from src.athena.code_search.code_embeddings import CodeEmbeddingManager
-from src.athena.code_search.code_graph_integration import CodeGraphBuilder, CodeEntity
+from src.athena.code_search.code_graph_integration import CodeGraphBuilder
 from src.athena.code_search.code_temporal_analysis import CodeChangeTracker
 
 logger = logging.getLogger(__name__)
@@ -25,25 +24,27 @@ logger = logging.getLogger(__name__)
 
 class SearchStrategy(Enum):
     """Search strategies for retrieval."""
-    SEMANTIC = "semantic"           # Pure embedding similarity
-    STRUCTURAL = "structural"       # Code structure matching
-    TEMPORAL = "temporal"           # Recent changes + quality
-    HYBRID = "hybrid"              # Combine all signals
-    CUSTOM = "custom"              # User-defined weights
+
+    SEMANTIC = "semantic"  # Pure embedding similarity
+    STRUCTURAL = "structural"  # Code structure matching
+    TEMPORAL = "temporal"  # Recent changes + quality
+    HYBRID = "hybrid"  # Combine all signals
+    CUSTOM = "custom"  # User-defined weights
 
 
 @dataclass
 class SearchResult:
     """Represents a search result."""
+
     entity_name: str
     entity_type: str
     file_path: str
     line_number: int
-    semantic_score: float = 0.0    # Embedding similarity (0-1)
+    semantic_score: float = 0.0  # Embedding similarity (0-1)
     structural_score: float = 0.0  # Pattern matching (0-1)
-    temporal_score: float = 0.0    # Recency + quality (0-1)
+    temporal_score: float = 0.0  # Recency + quality (0-1)
     centrality_score: float = 0.0  # Network importance (0-1)
-    combined_score: float = 0.0    # Final ranking score
+    combined_score: float = 0.0  # Final ranking score
     content_preview: Optional[str] = None
     context: Dict[str, Any] = field(default_factory=dict)
 
@@ -67,6 +68,7 @@ class SearchResult:
 @dataclass
 class SearchQuery:
     """Represents a semantic search query."""
+
     query_text: str
     query_type: str = "general"  # general, function, class, pattern, etc.
     strategy: SearchStrategy = SearchStrategy.HYBRID
@@ -80,13 +82,33 @@ class SearchQuery:
         """Initialize default weights."""
         if not self.weights:
             if self.strategy == SearchStrategy.SEMANTIC:
-                self.weights = {"semantic": 1.0, "structural": 0.0, "temporal": 0.0, "centrality": 0.0}
+                self.weights = {
+                    "semantic": 1.0,
+                    "structural": 0.0,
+                    "temporal": 0.0,
+                    "centrality": 0.0,
+                }
             elif self.strategy == SearchStrategy.STRUCTURAL:
-                self.weights = {"semantic": 0.0, "structural": 1.0, "temporal": 0.0, "centrality": 0.0}
+                self.weights = {
+                    "semantic": 0.0,
+                    "structural": 1.0,
+                    "temporal": 0.0,
+                    "centrality": 0.0,
+                }
             elif self.strategy == SearchStrategy.TEMPORAL:
-                self.weights = {"semantic": 0.2, "structural": 0.2, "temporal": 0.6, "centrality": 0.0}
+                self.weights = {
+                    "semantic": 0.2,
+                    "structural": 0.2,
+                    "temporal": 0.6,
+                    "centrality": 0.0,
+                }
             else:  # HYBRID
-                self.weights = {"semantic": 0.4, "structural": 0.3, "temporal": 0.2, "centrality": 0.1}
+                self.weights = {
+                    "semantic": 0.4,
+                    "structural": 0.3,
+                    "temporal": 0.2,
+                    "centrality": 0.1,
+                }
 
 
 class CodeRAGRetriever:
@@ -144,10 +166,7 @@ class CodeRAGRetriever:
     ) -> List[SearchResult]:
         """Search for functions with specific complexity range."""
         symbols = self.symbol_index.get_all()
-        candidates = [
-            s for s in symbols
-            if min_complexity <= s.complexity <= max_complexity
-        ]
+        candidates = [s for s in symbols if min_complexity <= s.complexity <= max_complexity]
 
         results = []
         for symbol in candidates[:top_k]:
@@ -252,9 +271,7 @@ class CodeRAGRetriever:
             },
         )
 
-    def _calculate_semantic_score(
-        self, candidate: Symbol, query_embedding: List[float]
-    ) -> float:
+    def _calculate_semantic_score(self, candidate: Symbol, query_embedding: List[float]) -> float:
         """Calculate semantic similarity score."""
         # Get or generate candidate embedding
         cache_key = f"{candidate.name}:{candidate.file_path}"
@@ -351,7 +368,9 @@ class CodeRAGPipeline:
         self.retriever = retriever
         self.search_history: List[Tuple[SearchQuery, List[SearchResult]]] = []
 
-    def execute_query(self, query_text: str, strategy: SearchStrategy = SearchStrategy.HYBRID) -> List[SearchResult]:
+    def execute_query(
+        self, query_text: str, strategy: SearchStrategy = SearchStrategy.HYBRID
+    ) -> List[SearchResult]:
         """Execute a search query."""
         query = SearchQuery(
             query_text=query_text,
@@ -406,7 +425,8 @@ class CodeRAGPipeline:
             "avg_top_score": sum(
                 max((r.combined_score for r in results), default=0)
                 for _, results in self.search_history
-            ) / len(self.search_history),
+            )
+            / len(self.search_history),
         }
 
     def generate_rag_report(self) -> str:

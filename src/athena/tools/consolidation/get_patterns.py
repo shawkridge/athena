@@ -18,7 +18,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from athena.manager import UnifiedMemoryManager
 
 
-def get_patterns(limit: int = 10, domain: Optional[str] = None, min_confidence: float = 0.5) -> List:
+def get_patterns(
+    limit: int = 10, domain: Optional[str] = None, min_confidence: float = 0.5
+) -> List:
     """
     Retrieve learned patterns from consolidation
 
@@ -51,4 +53,3 @@ def get_patterns(limit: int = 10, domain: Optional[str] = None, min_confidence: 
         return patterns
     except Exception as e:
         raise RuntimeError(f"Pattern retrieval failed: {str(e)}") from e
-

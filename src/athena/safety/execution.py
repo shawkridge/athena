@@ -190,7 +190,11 @@ class ExecutionCallback:
         pass
 
     async def on_metric(
-        self, metric_name: str, metric_value: float, metric_unit: str, threshold: Optional[float] = None
+        self,
+        metric_name: str,
+        metric_value: float,
+        metric_unit: str,
+        threshold: Optional[float] = None,
     ) -> None:
         """Called when a metric is recorded.
 
@@ -304,7 +308,11 @@ class ExecutionMonitor:
                 await callback.on_error(
                     event.error_type or "unknown",
                     event.error_message,
-                    ErrorSeverity(event.error_severity) if event.error_severity else ErrorSeverity.ERROR,
+                    (
+                        ErrorSeverity(event.error_severity)
+                        if event.error_severity
+                        else ErrorSeverity.ERROR
+                    ),
                     event.stack_trace,
                     event.file_path,
                     event.line_number,

@@ -66,21 +66,19 @@ class LLMReranker:
             llm_weight = llm_weight / total
             vector_weight = vector_weight / total
 
-        logger.info(f"Reranking {len(candidates)} candidates (weights: LLM={llm_weight:.2f}, vector={vector_weight:.2f})")
+        logger.info(
+            f"Reranking {len(candidates)} candidates (weights: LLM={llm_weight:.2f}, vector={vector_weight:.2f})"
+        )
 
         # Score each candidate with LLM
         reranked = []
         for i, result in enumerate(candidates):
             try:
                 # Get LLM relevance score
-                llm_score = self.llm.score_relevance(
-                    query=query, document=result.memory.content
-                )
+                llm_score = self.llm.score_relevance(query=query, document=result.memory.content)
 
                 # Combine with vector similarity
-                final_score = (
-                    llm_weight * llm_score + vector_weight * result.similarity
-                )
+                final_score = llm_weight * llm_score + vector_weight * result.similarity
 
                 # Store scores for debugging
                 reranked.append((result, final_score, llm_score))
@@ -106,14 +104,16 @@ class LLMReranker:
             if not hasattr(result, "metadata") or result.metadata is None:
                 result.metadata = {}
 
-            result.metadata.update({
-                "reranking_applied": True,
-                "llm_score": llm_score,
-                "vector_similarity": result.similarity,
-                "final_score": final_score,
-                "llm_weight": llm_weight,
-                "vector_weight": vector_weight,
-            })
+            result.metadata.update(
+                {
+                    "reranking_applied": True,
+                    "llm_score": llm_score,
+                    "vector_similarity": result.similarity,
+                    "final_score": final_score,
+                    "llm_weight": llm_weight,
+                    "vector_weight": vector_weight,
+                }
+            )
 
             # Update similarity to final score for consistency
             result.similarity = final_score
@@ -249,8 +249,6 @@ def analyze_reranking_impact(
         "top_3_overlap": top_3_overlap,
         "score_improvements": score_improvements,
         "avg_score_improvement": (
-            sum(score_improvements) / len(score_improvements)
-            if score_improvements
-            else None
+            sum(score_improvements) / len(score_improvements) if score_improvements else None
         ),
     }

@@ -54,9 +54,7 @@ class SessionResumptionManager:
         input_lower = user_input.lower()
         return any(keyword in input_lower for keyword in resumption_keywords)
 
-    def get_resumption_brief(
-        self, session_id: Optional[str] = None, hours_back: int = 24
-    ) -> dict:
+    def get_resumption_brief(self, session_id: Optional[str] = None, hours_back: int = 24) -> dict:
         """Get brief of previous session context for resumption.
 
         Args:

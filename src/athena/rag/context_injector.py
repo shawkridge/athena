@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ContextMemory:
     """Single memory to inject into context."""
+
     content: str
     source_layer: str  # semantic, episodic, procedural, graph, etc.
     usefulness: float  # 0.0-1.0
@@ -28,6 +29,7 @@ class ContextMemory:
 @dataclass
 class ContextInjection:
     """Complete context injection for a prompt."""
+
     memories: List[ContextMemory]
     total_tokens: int
     formatted_context: str
@@ -114,14 +116,11 @@ class ContextInjector:
 
             injection_confidence = min(
                 1.0,
-                sum(m.relevance for m in selected) / len(selected)
-                if selected
-                else 0.0,
+                sum(m.relevance for m in selected) / len(selected) if selected else 0.0,
             )
 
             logger.info(
-                f"Injected {len(selected)} memories "
-                f"(confidence={injection_confidence:.2f})"
+                f"Injected {len(selected)} memories " f"(confidence={injection_confidence:.2f})"
             )
 
             return ContextInjection(
@@ -161,10 +160,7 @@ class ContextInjector:
         """
         try:
             # Build augmented query from conversation history
-            augmented_query = self._augment_query_with_history(
-                user_prompt,
-                conversation_history
-            )
+            augmented_query = self._augment_query_with_history(user_prompt, conversation_history)
 
             # Use RAG manager's smart retrieve with conversation context
             results = self.rag_manager.retrieve(
@@ -181,16 +177,14 @@ class ContextInjector:
             memories = []
             for result in results:
                 # result is a MemorySearchResult with .memory, .similarity, .rank, .metadata
-                mem_obj = result.memory if hasattr(result, 'memory') else result
+                mem_obj = result.memory if hasattr(result, "memory") else result
 
                 memory = ContextMemory(
-                    content=getattr(mem_obj, 'content', ''),
-                    source_layer=getattr(mem_obj, 'layer', 'semantic'),
-                    usefulness=float(getattr(mem_obj, 'usefulness', 0.5)),
-                    relevance=float(result.similarity) if hasattr(result, 'similarity') else 0.5,
-                    recency=self._calculate_recency(
-                        getattr(mem_obj, 'timestamp', None)
-                    ),
+                    content=getattr(mem_obj, "content", ""),
+                    source_layer=getattr(mem_obj, "layer", "semantic"),
+                    usefulness=float(getattr(mem_obj, "usefulness", 0.5)),
+                    relevance=float(result.similarity) if hasattr(result, "similarity") else 0.5,
+                    recency=self._calculate_recency(getattr(mem_obj, "timestamp", None)),
                 )
                 memories.append(memory)
 
@@ -231,10 +225,7 @@ class ContextInjector:
                     prev_context = msg.get("content", "")
                     # Limit to first 200 chars to avoid bloat
                     if prev_context:
-                        augmented = (
-                            f"{prev_context[:200]}\n\n"
-                            f"User follow-up: {user_prompt}"
-                        )
+                        augmented = f"{prev_context[:200]}\n\n" f"User follow-up: {user_prompt}"
                         return augmented
 
         return user_prompt
@@ -282,10 +273,10 @@ class ContextInjector:
 
             # Composite score with attention
             score = (
-                0.35 * mem.usefulness +
-                0.35 * mem.relevance +
-                0.15 * mem.recency +
-                0.15 * attention_boost
+                0.35 * mem.usefulness
+                + 0.35 * mem.relevance
+                + 0.15 * mem.recency
+                + 0.15 * attention_boost
             )
             scored.append((score, mem))
 
@@ -314,12 +305,14 @@ class ContextInjector:
             cursor = self.db.get_cursor()
 
             # Get focused memories (high salience)
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT memory_id, layer, focus_type FROM attention_focus
                 WHERE active = 1
                 ORDER BY created_at DESC
                 LIMIT 10
-            """)
+            """
+            )
             focus_results = cursor.fetchall()
 
             scores = {
@@ -335,11 +328,13 @@ class ContextInjector:
                     scores["secondary_focus"].append(key)
 
             # Get inhibited memories (suppressed)
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT memory_id, layer FROM attention_inhibition
                 WHERE active = 1 AND inhibition_end > datetime('now')
                 LIMIT 20
-            """)
+            """
+            )
             inhibit_results = cursor.fetchall()
 
             for mem_id, layer in inhibit_results:
@@ -367,7 +362,7 @@ class ContextInjector:
         selected = []
         token_count = 0
 
-        for memory in ranked_memories[:self.max_memories]:
+        for memory in ranked_memories[: self.max_memories]:
             mem_tokens = self._estimate_tokens(memory.content)
 
             if token_count + mem_tokens > self.token_budget:
@@ -412,8 +407,7 @@ class ContextInjector:
 
                 lines.append(f"  • {content}")
                 lines.append(
-                    f"    (relevance={mem.relevance:.0%}, "
-                    f"usefulness={mem.usefulness:.0%})"
+                    f"    (relevance={mem.relevance:.0%}, " f"usefulness={mem.usefulness:.0%})"
                 )
 
             lines.append("")

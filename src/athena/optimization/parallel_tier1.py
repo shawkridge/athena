@@ -15,11 +15,9 @@ Key features:
 
 import asyncio
 import logging
-import time
-from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
-from .parallel_executor import ExecutionResult, ParallelLayerExecutor, QueryTask
+from .parallel_executor import ParallelLayerExecutor, QueryTask
 
 logger = logging.getLogger(__name__)
 
@@ -89,9 +87,7 @@ class ParallelTier1Executor:
         self.tier1_executions = 0
         self.layers_executed_in_parallel = 0
 
-    def select_layers_for_query(
-        self, query: str, context: Optional[Dict] = None
-    ) -> List[str]:
+    def select_layers_for_query(self, query: str, context: Optional[Dict] = None) -> List[str]:
         """Select which layers to query based on keywords and context.
 
         Smart selection avoids unnecessary queries and improves performance.
@@ -130,9 +126,7 @@ class ParallelTier1Executor:
 
         return sorted(selected_layers)
 
-    def _wrap_sync_method_for_async(
-        self, sync_fn: Callable, args: tuple, kwargs: dict
-    ) -> Callable:
+    def _wrap_sync_method_for_async(self, sync_fn: Callable, args: tuple, kwargs: dict) -> Callable:
         """Wrap a synchronous method for async execution.
 
         Args:
@@ -147,9 +141,7 @@ class ParallelTier1Executor:
         async def async_wrapper() -> Any:
             # Run sync function in thread pool to avoid blocking
             loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(
-                None, lambda: sync_fn(*args, **kwargs)
-            )
+            return await loop.run_in_executor(None, lambda: sync_fn(*args, **kwargs))
 
         return async_wrapper
 
@@ -192,9 +184,7 @@ class ParallelTier1Executor:
             query_fn = self.query_methods[layer]
 
             # Create async wrapper for sync function
-            async_fn = self._wrap_sync_method_for_async(
-                query_fn, (query, context, k), {}
-            )
+            async_fn = self._wrap_sync_method_for_async(query_fn, (query, context, k), {})
 
             # Create task
             task = QueryTask(
@@ -217,9 +207,7 @@ class ParallelTier1Executor:
             if exec_result.success and exec_result.result is not None:
                 tier_1_results[layer_name] = exec_result.result
             else:
-                logger.warning(
-                    f"Layer '{layer_name}' failed: {exec_result.error}"
-                )
+                logger.warning(f"Layer '{layer_name}' failed: {exec_result.error}")
                 # Store error for debugging but don't fail entire recall
                 tier_1_results[layer_name] = []
 
@@ -255,9 +243,7 @@ class ParallelTier1Executor:
                 loop = asyncio.get_event_loop()
 
                 # Execute sync function in thread pool
-                result = await loop.run_in_executor(
-                    None, lambda fn=query_fn: fn(query, context, k)
-                )
+                result = await loop.run_in_executor(None, lambda fn=query_fn: fn(query, context, k))
                 tier_1_results[layer] = result
             except Exception as e:
                 logger.error(f"Error querying layer '{layer}': {e}")
@@ -278,10 +264,12 @@ class ParallelTier1Executor:
 
         # Include underlying executor stats
         if self.executor:
-            stats.update({
-                "total_parallel_queries": self.executor.total_parallel_queries,
-                "total_sequential_queries": self.executor.total_sequential_queries,
-                "failed_tasks": self.executor.failed_tasks,
-            })
+            stats.update(
+                {
+                    "total_parallel_queries": self.executor.total_parallel_queries,
+                    "total_sequential_queries": self.executor.total_sequential_queries,
+                    "failed_tasks": self.executor.failed_tasks,
+                }
+            )
 
         return stats

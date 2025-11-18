@@ -31,7 +31,7 @@ class MetadataStore(BaseStore):
 
     def _ensure_schema(self):
         """Ensure metadata columns exist on prospective_tasks."""
-        if not hasattr(self.db, 'get_cursor'):
+        if not hasattr(self.db, "get_cursor"):
             # Async database, schema handled elsewhere
             logger.debug("Async database detected, skipping sync schema")
             return
@@ -60,7 +60,9 @@ class MetadataStore(BaseStore):
         self.db.commit()
 
     def set_metadata(
-        self, project_id: int, task_id: int,
+        self,
+        project_id: int,
+        task_id: int,
         effort_estimate: Optional[int] = None,
         complexity_score: Optional[int] = None,
         priority_score: Optional[int] = None,
@@ -129,9 +131,7 @@ class MetadataStore(BaseStore):
             logger.error(f"Failed to set metadata: {e}")
             return False
 
-    def record_actual_effort(
-        self, project_id: int, task_id: int, actual_minutes: int
-    ) -> bool:
+    def record_actual_effort(self, project_id: int, task_id: int, actual_minutes: int) -> bool:
         """Record actual effort spent on a task.
 
         Args:
@@ -177,9 +177,7 @@ class MetadataStore(BaseStore):
             logger.error(f"Failed to record effort: {e}")
             return False
 
-    def calculate_accuracy(
-        self, project_id: int, task_id: int
-    ) -> Optional[Dict[str, Any]]:
+    def calculate_accuracy(self, project_id: int, task_id: int) -> Optional[Dict[str, Any]]:
         """Calculate estimate accuracy for a task.
 
         Args:
@@ -226,9 +224,7 @@ class MetadataStore(BaseStore):
             logger.error(f"Failed to calculate accuracy: {e}")
             return None
 
-    def get_task_metadata(
-        self, project_id: int, task_id: int
-    ) -> Optional[Dict[str, Any]]:
+    def get_task_metadata(self, project_id: int, task_id: int) -> Optional[Dict[str, Any]]:
         """Get all metadata for a task.
 
         Args:
@@ -358,9 +354,7 @@ class MetadataStore(BaseStore):
             logger.error(f"Failed to get project analytics: {e}")
             return {"error": str(e)}
 
-    def add_tags(
-        self, project_id: int, task_id: int, tags: List[str]
-    ) -> bool:
+    def add_tags(self, project_id: int, task_id: int, tags: List[str]) -> bool:
         """Add tags to a task (non-destructive).
 
         Args:
@@ -409,9 +403,7 @@ class MetadataStore(BaseStore):
             logger.error(f"Failed to add tags: {e}")
             return False
 
-    def set_completed_timestamp(
-        self, project_id: int, task_id: int
-    ) -> bool:
+    def set_completed_timestamp(self, project_id: int, task_id: int) -> bool:
         """Set completed_at timestamp.
 
         Args:

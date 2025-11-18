@@ -8,14 +8,12 @@ Wires uncertainty analysis to planning system to provide:
 """
 
 import logging
-import math
 from dataclasses import dataclass, field
-from typing import Optional, List, Tuple, Dict
+from typing import List, Tuple, Dict
 
 from ..core.database import Database
-from ..prospective.models import ProspectiveTask, Plan
+from ..prospective.models import Plan
 from ..phase9.uncertainty.analyzer import UncertaintyAnalyzer
-from ..phase9.uncertainty.models import ConfidenceScore
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ConfidentStep:
     """A plan step with confidence information."""
+
     content: str
     substeps: List[str] = field(default_factory=list)
     estimated_duration: int = 0
@@ -40,7 +39,7 @@ class ConfidentStep:
             "confidence_score": round(self.confidence_score, 3),
             "confidence_interval": (
                 round(self.confidence_interval[0], 1),
-                round(self.confidence_interval[1], 1)
+                round(self.confidence_interval[1], 1),
             ),
             "risk_level": self.risk_level,
             "uncertainty_factors": self.uncertainty_factors,
@@ -50,6 +49,7 @@ class ConfidentStep:
 @dataclass
 class ConfidentPlan:
     """A plan with confidence scoring across all steps."""
+
     plan_id: int
     task_id: int
     steps: List[ConfidentStep] = field(default_factory=list)
@@ -68,8 +68,7 @@ class ConfidentPlan:
             "overall_risk": self.overall_risk,
             "recommendation": self.recommendation,
             "confidence_intervals": {
-                k: (round(v[0], 1), round(v[1], 1))
-                for k, v in self.confidence_intervals.items()
+                k: (round(v[0], 1), round(v[1], 1)) for k, v in self.confidence_intervals.items()
             },
         }
 
@@ -203,9 +202,7 @@ class ConfidencePlanner:
 
         return factors
 
-    def _compute_step_confidence(
-        self, step: str, uncertainty_factors: List[str]
-    ) -> float:
+    def _compute_step_confidence(self, step: str, uncertainty_factors: List[str]) -> float:
         """Compute confidence score for a step.
 
         Base confidence is reduced by uncertainty factors.
@@ -289,7 +286,7 @@ class ConfidencePlanner:
         confidences = [s.confidence_score for s in steps]
 
         # Weight lower scores more heavily (risk-averse)
-        weighted_sum = sum(c ** 1.2 for c in confidences)  # Exponent > 1 favors lower values
+        weighted_sum = sum(c**1.2 for c in confidences)  # Exponent > 1 favors lower values
         return weighted_sum / len(confidences)
 
     def _generate_recommendation(self, confidence: float) -> str:

@@ -325,8 +325,7 @@ class MultiTurnBenchmarkEvaluator:
             Complete evaluation result
         """
         logger.info(
-            f"Evaluating conversation '{conversation.name}' "
-            f"({len(conversation.turns)} turns)"
+            f"Evaluating conversation '{conversation.name}' " f"({len(conversation.turns)} turns)"
         )
 
         # Store conversation turns as memories
@@ -355,9 +354,7 @@ class MultiTurnBenchmarkEvaluator:
                 ConversationTurn.INFERENCE,
                 ConversationTurn.RECALL,
             ):
-                result = self._evaluate_turn(
-                    turn, stored_memories, project_id
-                )
+                result = self._evaluate_turn(turn, stored_memories, project_id)
                 turn_results.append(result)
 
         # Compute aggregate metrics
@@ -378,9 +375,7 @@ class MultiTurnBenchmarkEvaluator:
             accuracy=accuracy,
             precision=precision,
             success_rate=success_rate,
-            average_recall_latency=self._compute_recall_latency(
-                turn_results, conversation.turns
-            ),
+            average_recall_latency=self._compute_recall_latency(turn_results, conversation.turns),
         )
 
         # Break down by recall type and difficulty
@@ -416,9 +411,7 @@ class MultiTurnBenchmarkEvaluator:
 
         # In real implementation, would query memory_store
         # For now, compute recall based on stored memories
-        recalled_items = self._extract_recalled_items(
-            turn.content, stored_memories
-        )
+        recalled_items = self._extract_recalled_items(turn.content, stored_memories)
 
         # Compute accuracy and precision
         if expected_items:
@@ -498,9 +491,7 @@ class MultiTurnBenchmarkEvaluator:
 
         return sum(latencies) / len(latencies) if latencies else 0.0
 
-    def _breakdown_by_recall_type(
-        self, turn_results: list[TurnEvaluation]
-    ) -> dict[str, dict]:
+    def _breakdown_by_recall_type(self, turn_results: list[TurnEvaluation]) -> dict[str, dict]:
         """Breakdown results by recall type.
 
         Args:
@@ -534,14 +525,10 @@ class MultiTurnBenchmarkEvaluator:
         for conv_id in self.suite.list_conversations():
             conversation = self.suite.get_conversation(conv_id)
             if conversation:
-                results[conv_id] = self.evaluate_conversation(
-                    conversation, project_id
-                )
+                results[conv_id] = self.evaluate_conversation(conversation, project_id)
         return results
 
-    def summarize_results(
-        self, results: dict[str, ConversationEvaluation]
-    ) -> dict:
+    def summarize_results(self, results: dict[str, ConversationEvaluation]) -> dict:
         """Summarize evaluation results.
 
         Args:
@@ -562,8 +549,5 @@ class MultiTurnBenchmarkEvaluator:
             "average_accuracy": sum(all_accuracy) / len(all_accuracy),
             "average_precision": sum(all_precision) / len(all_precision),
             "average_success_rate": sum(all_success_rates) / len(all_success_rates),
-            "conversations": {
-                conv_id: result.to_dict()
-                for conv_id, result in results.items()
-            },
+            "conversations": {conv_id: result.to_dict() for conv_id, result in results.items()},
         }

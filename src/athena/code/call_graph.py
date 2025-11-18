@@ -16,7 +16,7 @@ Features:
 import ast
 import logging
 from dataclasses import dataclass, field
-from typing import Dict, List, Set, Tuple, Optional, Any
+from typing import Dict, List, Set, Optional, Any
 from collections import defaultdict, deque
 
 logger = logging.getLogger(__name__)
@@ -64,7 +64,9 @@ class CallGraphConfig:
 class CallGraphBuilder(ast.NodeVisitor):
     """Builds call graph from Python source code using AST parsing."""
 
-    def __init__(self, source: str, module_name: str = "__main__", config: Optional[CallGraphConfig] = None):
+    def __init__(
+        self, source: str, module_name: str = "__main__", config: Optional[CallGraphConfig] = None
+    ):
         """Initialize call graph builder.
 
         Args:
@@ -202,8 +204,23 @@ class CallGraphBuilder(ast.NodeVisitor):
     def _is_builtin(self, name: str) -> bool:
         """Check if function is builtin."""
         builtins = {
-            "print", "len", "range", "str", "int", "float", "list", "dict",
-            "set", "tuple", "bool", "type", "open", "input", "sum", "min", "max",
+            "print",
+            "len",
+            "range",
+            "str",
+            "int",
+            "float",
+            "list",
+            "dict",
+            "set",
+            "tuple",
+            "bool",
+            "type",
+            "open",
+            "input",
+            "sum",
+            "min",
+            "max",
         }
         return name in builtins
 

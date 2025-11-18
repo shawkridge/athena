@@ -3,7 +3,6 @@
 import ast
 import logging
 from typing import List, Optional
-from pathlib import Path
 
 from .models import CodeUnit
 
@@ -46,16 +45,19 @@ class CodeParser:
     def _init_javascript_parser(self, language: str) -> None:
         """Initialize JavaScript/TypeScript parser."""
         from .javascript_parser import JavaScriptParser
+
         self.parser = JavaScriptParser(language)
 
     def _init_java_parser(self) -> None:
         """Initialize Java parser."""
         from .java_parser import JavaParser
+
         self.parser = JavaParser()
 
     def _init_go_parser(self) -> None:
         """Initialize Go parser."""
         from .go_parser import GoParser
+
         self.parser = GoParser()
 
     def extract_functions(self, code: str, file_path: str) -> List[CodeUnit]:
@@ -219,7 +221,9 @@ class PythonASTParser:
             dependencies=list(dependencies),
         )
 
-    def _node_to_class_unit(self, node: ast.ClassDef, code: str, file_path: str) -> Optional[CodeUnit]:
+    def _node_to_class_unit(
+        self, node: ast.ClassDef, code: str, file_path: str
+    ) -> Optional[CodeUnit]:
         """Convert class AST node to CodeUnit."""
         if not isinstance(node, ast.ClassDef):
             return None

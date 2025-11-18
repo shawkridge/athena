@@ -17,6 +17,7 @@ from .symbol_models import Symbol
 
 class RuleSeverity(str, Enum):
     """Rule violation severity."""
+
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -25,6 +26,7 @@ class RuleSeverity(str, Enum):
 
 class RuleAction(str, Enum):
     """Action to take on violation."""
+
     WARN = "warn"
     BLOCK = "block"
     SUGGEST_FIX = "suggest_fix"
@@ -34,6 +36,7 @@ class RuleAction(str, Enum):
 @dataclass
 class Rule:
     """Code quality rule."""
+
     id: str
     name: str
     description: str
@@ -50,6 +53,7 @@ class Rule:
 @dataclass
 class RuleViolation:
     """Rule violation instance."""
+
     rule_id: str
     rule_name: str
     symbol_name: str
@@ -63,6 +67,7 @@ class RuleViolation:
 @dataclass
 class RuleCheckResult:
     """Result of rule checking."""
+
     rule_id: str
     passed: bool
     violations: List[RuleViolation] = field(default_factory=list)
@@ -72,6 +77,7 @@ class RuleCheckResult:
 @dataclass
 class RuleEnforcementReport:
     """Report of rule enforcement."""
+
     total_symbols: int
     total_rules: int
     violations: List[RuleViolation] = field(default_factory=list)
@@ -164,9 +170,7 @@ class RulesEngine:
                 # Check if rule condition is met (violation)
                 if rule.condition(symbol, context):
                     message = rule.message_template.format(
-                        symbol=symbol.name,
-                        type=symbol.symbol_type.value,
-                        file=symbol.file_path
+                        symbol=symbol.name, type=symbol.symbol_type.value, file=symbol.file_path
                     )
 
                     violation = RuleViolation(
@@ -177,11 +181,13 @@ class RulesEngine:
                         message=message,
                         line_number=symbol.line_start,
                         suggestion=rule.fix_suggestion,
-                        auto_fix_code=self._generate_auto_fix(rule, symbol) if rule.auto_fix_fn else None,
+                        auto_fix_code=(
+                            self._generate_auto_fix(rule, symbol) if rule.auto_fix_fn else None
+                        ),
                     )
                     violations.append(violation)
                     self.violations.append(violation)
-            except Exception as e:
+            except Exception:
                 # Rule evaluation error
                 pass
 

@@ -45,7 +45,7 @@ class AttentionInhibition:
         strength: float = 0.5,
         inhibition_type: InhibitionType = InhibitionType.SELECTIVE,
         reason: Optional[str] = None,
-        duration_seconds: Optional[int] = None
+        duration_seconds: Optional[int] = None,
     ) -> int:
         """Inhibit a memory from retrieval.
 
@@ -68,23 +68,23 @@ class AttentionInhibition:
             expires_at = datetime.now() + timedelta(seconds=duration_seconds)
 
         cursor = self.db.conn.execute(
-                """
+            """
                 INSERT INTO attention_inhibition
                 (project_id, memory_id, memory_layer, inhibition_strength,
                  inhibition_type, reason, inhibited_at, expires_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (
-                    project_id,
-                    memory_id,
-                    memory_layer,
-                    strength,
-                    inhibition_type.value,
-                    reason,
-                    datetime.now(),
-                    expires_at,
-                ),
-            )
+            (
+                project_id,
+                memory_id,
+                memory_layer,
+                strength,
+                inhibition_type.value,
+                reason,
+                datetime.now(),
+                expires_at,
+            ),
+        )
         # commit handled by cursor context
         return cursor.lastrowid
 
@@ -98,18 +98,12 @@ class AttentionInhibition:
             True if inhibition was removed, False if not found
         """
         cursor = self.db.conn.execute(
-            "DELETE FROM attention_inhibition WHERE id = ?",
-            (inhibition_id,)
+            "DELETE FROM attention_inhibition WHERE id = ?", (inhibition_id,)
         )
         # commit handled by cursor context
         return cursor.rowcount > 0
 
-    def release_memory(
-        self,
-        project_id: int,
-        memory_id: int,
-        memory_layer: str
-    ) -> int:
+    def release_memory(self, project_id: int, memory_id: int, memory_layer: str) -> int:
         """Release all inhibitions for a specific memory.
 
         Args:
@@ -125,17 +119,13 @@ class AttentionInhibition:
             DELETE FROM attention_inhibition
             WHERE project_id = ? AND memory_id = ? AND memory_layer = ?
             """,
-            (project_id, memory_id, memory_layer)
+            (project_id, memory_id, memory_layer),
         )
         # commit handled by cursor context
         return cursor.rowcount
 
     def is_inhibited(
-        self,
-        memory_id: int,
-        memory_layer: str,
-        project_id: int,
-        threshold: float = 0.3
+        self, memory_id: int, memory_layer: str, project_id: int, threshold: float = 0.3
     ) -> bool:
         """Check if a memory is currently inhibited.
 
@@ -153,12 +143,7 @@ class AttentionInhibition:
         strength = self.get_inhibition_strength(memory_id, memory_layer, project_id)
         return strength >= threshold
 
-    def get_inhibition_strength(
-        self,
-        memory_id: int,
-        memory_layer: str,
-        project_id: int
-    ) -> float:
+    def get_inhibition_strength(self, memory_id: int, memory_layer: str, project_id: int) -> float:
         """Get effective inhibition strength for a memory.
 
         Applies exponential decay based on time since inhibition.
@@ -207,11 +192,7 @@ class AttentionInhibition:
 
         return min(1.0, total_strength)  # Cap at 1.0
 
-    def decay_inhibitions(
-        self,
-        project_id: int,
-        min_strength: float = 0.01
-    ) -> int:
+    def decay_inhibitions(self, project_id: int, min_strength: float = 0.01) -> int:
         """Remove inhibitions that have decayed below threshold.
 
         Args:
@@ -258,19 +239,14 @@ class AttentionInhibition:
 
         # Remove decayed inhibitions
         for inhibition_id in to_remove:
-            self.db.conn.execute(
-                "DELETE FROM attention_inhibition WHERE id = ?",
-                (inhibition_id,)
-            )
+            self.db.conn.execute("DELETE FROM attention_inhibition WHERE id = ?", (inhibition_id,))
             removed_count += 1
 
         # commit handled by cursor context
         return removed_count
 
     def get_inhibited_memories(
-        self,
-        project_id: int,
-        min_strength: float = 0.3
+        self, project_id: int, min_strength: float = 0.3
     ) -> List[InhibitionRecord]:
         """Get all currently inhibited memories above threshold.
 

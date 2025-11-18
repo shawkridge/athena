@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class RelevanceLevel(Enum):
     """Relevance levels for retrieved documents."""
+
     HIGHLY_RELEVANT = "highly_relevant"
     RELEVANT = "relevant"
     PARTIALLY_RELEVANT = "partially_relevant"
@@ -26,6 +27,7 @@ class RelevanceLevel(Enum):
 
 class ConfidenceLevel(Enum):
     """Confidence levels for self-evaluation."""
+
     VERY_HIGH = "very_high"
     HIGH = "high"
     MEDIUM = "medium"
@@ -36,6 +38,7 @@ class ConfidenceLevel(Enum):
 @dataclass
 class RetrievedDocument:
     """A retrieved code unit with metadata."""
+
     result: SearchResult
     relevance: RelevanceLevel
     confidence: float  # 0.0 to 1.0
@@ -44,6 +47,7 @@ class RetrievedDocument:
 @dataclass
 class RetrievalDecision:
     """Decision about whether to retrieve documents."""
+
     should_retrieve: bool
     confidence: float
     reason: str
@@ -90,9 +94,7 @@ class SelfRAG:
         is_long = len(query) > 15  # Lowered from > 20
 
         # Check for code-like terms (function names, patterns)
-        has_code_pattern = any(
-            char in query for char in ["(", ")", "_", "-", "/"]
-        ) or any(
+        has_code_pattern = any(char in query for char in ["(", ")", "_", "-", "/"]) or any(
             term in query.lower()
             for term in ["authenticate", "validate", "process", "handle", "find", "get", "set"]
         )
@@ -154,9 +156,7 @@ class SelfRAG:
 
         return relevance, confidence
 
-    def retrieve_and_evaluate(
-        self, query: str, limit: int = 10
-    ) -> List[RetrievedDocument]:
+    def retrieve_and_evaluate(self, query: str, limit: int = 10) -> List[RetrievedDocument]:
         """Retrieve documents and evaluate their relevance.
 
         Args:
@@ -181,21 +181,11 @@ class SelfRAG:
             # Only keep relevant documents
             if relevance != RelevanceLevel.NOT_RELEVANT:
                 retrieved.append(
-                    RetrievedDocument(
-                        result=result,
-                        relevance=relevance,
-                        confidence=confidence
-                    )
+                    RetrievedDocument(result=result, relevance=relevance, confidence=confidence)
                 )
 
         # Sort by relevance
-        retrieved.sort(
-            key=lambda x: (
-                x.relevance.value,
-                x.confidence
-            ),
-            reverse=True
-        )
+        retrieved.sort(key=lambda x: (x.relevance.value, x.confidence), reverse=True)
 
         return retrieved[:limit]
 
@@ -293,18 +283,13 @@ class CorrectiveRAG:
 
                 if relevance != RelevanceLevel.NOT_RELEVANT:
                     all_retrieved.append(
-                        RetrievedDocument(
-                            result=result,
-                            relevance=relevance,
-                            confidence=confidence
-                        )
+                        RetrievedDocument(result=result, relevance=relevance, confidence=confidence)
                     )
                     seen_units.add(result.unit.id)
 
             # Check if we have enough relevant results
             highly_relevant = sum(
-                1 for r in all_retrieved
-                if r.relevance == RelevanceLevel.HIGHLY_RELEVANT
+                1 for r in all_retrieved if r.relevance == RelevanceLevel.HIGHLY_RELEVANT
             )
 
             if highly_relevant >= (limit // 2):
@@ -319,10 +304,7 @@ class CorrectiveRAG:
                     logger.debug(f"Trying alternative query: {current_query}")
 
         # Sort by relevance and confidence
-        all_retrieved.sort(
-            key=lambda x: (x.relevance.value, x.confidence),
-            reverse=True
-        )
+        all_retrieved.sort(key=lambda x: (x.relevance.value, x.confidence), reverse=True)
 
         return all_retrieved[:limit]
 

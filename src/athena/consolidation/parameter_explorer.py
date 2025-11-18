@@ -6,10 +6,8 @@ external API overhead. Handles timeouts, flags, conditional parameters, etc.
 """
 
 from typing import List, Optional, Dict, Tuple
-from dataclasses import dataclass
 import re
 import logging
-import random
 
 from .constraint_relaxer import DreamProcedure
 
@@ -28,20 +26,16 @@ class ParameterExplorer:
 
     def __init__(self):
         self.parameter_patterns = [
-            (r'timeout\s*=\s*(\d+)', 'timeout'),
-            (r'max_retries\s*=\s*(\d+)', 'max_retries'),
-            (r'delay\s*=\s*([\d.]+)', 'delay'),
-            (r'threshold\s*=\s*([\d.]+)', 'threshold'),
-            (r'sleep\(([^)]+)\)', 'sleep_duration'),
-            (r'wait[^=]*=\s*(\d+)', 'wait_time'),
+            (r"timeout\s*=\s*(\d+)", "timeout"),
+            (r"max_retries\s*=\s*(\d+)", "max_retries"),
+            (r"delay\s*=\s*([\d.]+)", "delay"),
+            (r"threshold\s*=\s*([\d.]+)", "threshold"),
+            (r"sleep\(([^)]+)\)", "sleep_duration"),
+            (r"wait[^=]*=\s*(\d+)", "wait_time"),
         ]
 
     async def generate_parameter_variants(
-        self,
-        procedure_id: int,
-        procedure_name: str,
-        procedure_code: str,
-        max_variants: int = 20
+        self, procedure_id: int, procedure_name: str, procedure_code: str, max_variants: int = 20
     ) -> List[DreamProcedure]:
         """
         Generate parameter exploration variants.
@@ -67,9 +61,7 @@ class ParameterExplorer:
         # Generate variations for each parameter type
         for param_name, param_values in parameters.items():
             param_variants = self._generate_parameter_variations(
-                param_name,
-                param_values,
-                max_variants=min(5, max_variants // len(parameters))
+                param_name, param_values, max_variants=min(5, max_variants // len(parameters))
             )
 
             for multiplier, variation_name in param_variants:
@@ -80,7 +72,7 @@ class ParameterExplorer:
                     parameters,
                     param_name,
                     multiplier,
-                    variation_name
+                    variation_name,
                 )
 
                 if variant:
@@ -101,7 +93,7 @@ class ParameterExplorer:
         """
         parameters: Dict[str, List[Tuple[float, int]]] = {}
 
-        lines = code.split('\n')
+        lines = code.split("\n")
 
         for pattern_str, param_type in self.parameter_patterns:
             for line_num, line in enumerate(lines):
@@ -118,10 +110,7 @@ class ParameterExplorer:
         return parameters
 
     def _generate_parameter_variations(
-        self,
-        param_type: str,
-        param_values: List[Tuple[float, int]],
-        max_variants: int = 5
+        self, param_type: str, param_values: List[Tuple[float, int]], max_variants: int = 5
     ) -> List[Tuple[float, str]]:
         """
         Generate multipliers for parameter variations.
@@ -164,7 +153,7 @@ class ParameterExplorer:
         all_parameters: Dict[str, List[Tuple[float, int]]],
         target_param: str,
         multiplier: float,
-        variation_name: str
+        variation_name: str,
     ) -> Optional[DreamProcedure]:
         """Create a single parameter variant."""
         modified_code = base_code
@@ -181,16 +170,14 @@ class ParameterExplorer:
                     new_value_str = f"{new_value:.2f}"
 
                 # Replace in code (simple text replacement)
-                pattern = rf'{re.escape(str(value))}(?![0-9.])'
+                pattern = rf"{re.escape(str(value))}(?![0-9.])"
                 modified_code = re.sub(pattern, new_value_str, modified_code, count=1)
 
         # Validate modified code
         try:
-            compile(modified_code, '<string>', 'exec')
+            compile(modified_code, "<string>", "exec")
         except SyntaxError:
-            logger.warning(
-                f"Syntax error in parameter variant for {procedure_name}, skipping"
-            )
+            logger.warning(f"Syntax error in parameter variant for {procedure_name}, skipping")
             return None
 
         return DreamProcedure(
@@ -201,7 +188,7 @@ class ParameterExplorer:
             code=modified_code,
             model_used="local/qwen3-vl-4b",
             reasoning=f"Explored {target_param} with {multiplier:.1f}x multiplier",
-            generated_description=f"Parameter variation: {variation_name}"
+            generated_description=f"Parameter variation: {variation_name}",
         )
 
 
@@ -214,11 +201,7 @@ class ConditionalVariantGenerator:
     """
 
     def generate_conditional_variants(
-        self,
-        procedure_id: int,
-        procedure_name: str,
-        procedure_code: str,
-        max_variants: int = 10
+        self, procedure_id: int, procedure_name: str, procedure_code: str, max_variants: int = 10
     ) -> List[DreamProcedure]:
         """
         Generate variants with conditional logic.
@@ -236,49 +219,39 @@ class ConditionalVariantGenerator:
 
         # Strategy 1: Make first step conditional
         variant = self._make_step_conditional(
-            procedure_id,
-            procedure_name,
-            procedure_code,
-            "skip_initialization"
+            procedure_id, procedure_name, procedure_code, "skip_initialization"
         )
         if variant:
             variants.append(variant)
 
         # Strategy 2: Make validation conditional
-        variant = self._make_validation_optional(
-            procedure_id,
-            procedure_name,
-            procedure_code
-        )
+        variant = self._make_validation_optional(procedure_id, procedure_name, procedure_code)
         if variant:
             variants.append(variant)
 
         # Strategy 3: Add fallback path
-        variant = self._add_fallback_path(
-            procedure_id,
-            procedure_name,
-            procedure_code
-        )
+        variant = self._add_fallback_path(procedure_id, procedure_name, procedure_code)
         if variant:
             variants.append(variant)
 
         return variants
 
     def _make_step_conditional(
-        self,
-        procedure_id: int,
-        procedure_name: str,
-        base_code: str,
-        condition_name: str
+        self, procedure_id: int, procedure_name: str, base_code: str, condition_name: str
     ) -> Optional[DreamProcedure]:
         """Make first major operation conditional."""
         # Simple heuristic: wrap first non-import statement
-        lines = base_code.split('\n')
+        lines = base_code.split("\n")
         modified_lines = []
         wrapped = False
 
         for i, line in enumerate(lines):
-            if not wrapped and line.strip() and not line.startswith('import') and not line.startswith('from'):
+            if (
+                not wrapped
+                and line.strip()
+                and not line.startswith("import")
+                and not line.startswith("from")
+            ):
                 # Wrap this line and subsequent in condition
                 modified_lines.append(f"if context.get('{condition_name}', True):")
                 modified_lines.append(f"    {line}")
@@ -296,10 +269,10 @@ class ConditionalVariantGenerator:
             else:
                 modified_lines.append(line)
 
-        modified_code = '\n'.join(modified_lines)
+        modified_code = "\n".join(modified_lines)
 
         try:
-            compile(modified_code, '<string>', 'exec')
+            compile(modified_code, "<string>", "exec")
         except SyntaxError:
             return None
 
@@ -311,29 +284,23 @@ class ConditionalVariantGenerator:
             code=modified_code,
             model_used="local/qwen3-vl-4b",
             reasoning=f"Made operation conditional on {condition_name}",
-            generated_description=f"Optional execution variant"
+            generated_description="Optional execution variant",
         )
 
     def _make_validation_optional(
-        self,
-        procedure_id: int,
-        procedure_name: str,
-        base_code: str
+        self, procedure_id: int, procedure_name: str, base_code: str
     ) -> Optional[DreamProcedure]:
         """Make validation/error checking optional."""
         # Look for try/except and make it optional
-        if 'try:' not in base_code:
+        if "try:" not in base_code:
             return None
 
-        modified_code = base_code.replace(
-            'try:',
-            "if context.get('validate', True):\n    try:"
-        )
+        modified_code = base_code.replace("try:", "if context.get('validate', True):\n    try:")
 
         # Indent try block
-        lines = modified_code.split('\n')
+        lines = modified_code.split("\n")
         try:
-            compile(modified_code, '<string>', 'exec')
+            compile(modified_code, "<string>", "exec")
         except SyntaxError:
             return None
 
@@ -345,14 +312,11 @@ class ConditionalVariantGenerator:
             code=modified_code,
             model_used="local/qwen3-vl-4b",
             reasoning="Made validation optional for performance",
-            generated_description="Fast path variant (skip validation)"
+            generated_description="Fast path variant (skip validation)",
         )
 
     def _add_fallback_path(
-        self,
-        procedure_id: int,
-        procedure_name: str,
-        base_code: str
+        self, procedure_id: int, procedure_name: str, base_code: str
     ) -> Optional[DreamProcedure]:
         """Add fallback/retry logic."""
         # Wrap main logic in retry loop
@@ -370,7 +334,7 @@ for attempt in range(max_attempts):
 """
 
         try:
-            compile(modified_code, '<string>', 'exec')
+            compile(modified_code, "<string>", "exec")
         except SyntaxError:
             return None
 
@@ -382,5 +346,5 @@ for attempt in range(max_attempts):
             code=modified_code,
             model_used="local/qwen3-vl-4b",
             reasoning="Added retry logic with exponential backoff",
-            generated_description="Resilient variant with retries"
+            generated_description="Resilient variant with retries",
         )

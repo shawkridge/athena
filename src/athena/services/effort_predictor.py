@@ -6,11 +6,9 @@ Provides estimates with adjustment factors and confidence levels.
 
 import logging
 from typing import Dict, Any, Optional
-from datetime import datetime
 
 from ..core.database import Database
 from ..predictive.estimator import PredictiveEstimator
-from ..predictive.accuracy import EstimateAccuracyStore
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +38,7 @@ class EffortPredictorService:
         project_id: int,
         task_description: str,
         task_type: str,
-        base_estimate: Optional[int] = None
+        base_estimate: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Predict effort for a new task based on historical patterns.
 
@@ -77,9 +75,7 @@ class EffortPredictorService:
         # If no estimate provided, use reasonable defaults by task type
         if not base_estimate:
             base_estimate = self._default_estimate_for_type(task_type)
-            logger.info(
-                f"No estimate provided, using default for '{task_type}': {base_estimate}m"
-            )
+            logger.info(f"No estimate provided, using default for '{task_type}': {base_estimate}m")
 
         # Get prediction from estimator
         if not self.estimator:
@@ -93,9 +89,7 @@ class EffortPredictorService:
                 return self._basic_prediction(base_estimate)
 
         prediction = self.estimator.predict_effort(
-            project_id=project_id,
-            task_type=task_type,
-            base_estimate=base_estimate
+            project_id=project_id, task_type=task_type, base_estimate=base_estimate
         )
 
         # Ensure all required fields are present
@@ -105,7 +99,7 @@ class EffortPredictorService:
                 "base_estimate": base_estimate,
                 "bias_factor": 1.0,
                 "confidence": "low",
-                "explanation": f"Error getting prediction, using base estimate.",
+                "explanation": "Error getting prediction, using base estimate.",
                 "range": {
                     "optimistic": int(base_estimate * 0.9),
                     "expected": base_estimate,
@@ -118,13 +112,16 @@ class EffortPredictorService:
             "effort": prediction.get("predicted_effort", base_estimate),
             "confidence": prediction.get("confidence", "low"),
             "bias_factor": round(prediction.get("bias_factor", 1.0), 2),
-            "range": prediction.get("range", {
-                "optimistic": int(base_estimate * 0.9),
-                "expected": base_estimate,
-                "pessimistic": int(base_estimate * 1.2),
-            }),
+            "range": prediction.get(
+                "range",
+                {
+                    "optimistic": int(base_estimate * 0.9),
+                    "expected": base_estimate,
+                    "pessimistic": int(base_estimate * 1.2),
+                },
+            ),
             "explanation": prediction.get("explanation", "No explanation available"),
-            "sample_count": prediction.get("sample_count", 0)
+            "sample_count": prediction.get("sample_count", 0),
         }
 
     def _basic_prediction(self, base_estimate: int) -> Dict[str, Any]:
@@ -146,7 +143,7 @@ class EffortPredictorService:
                 "pessimistic": int(base_estimate * 1.25),
             },
             "explanation": "Basic prediction (database not available). Adjust as needed.",
-            "sample_count": 0
+            "sample_count": 0,
         }
 
     def _default_estimate_for_type(self, task_type: str) -> int:
@@ -159,16 +156,16 @@ class EffortPredictorService:
             Default estimate in minutes
         """
         defaults = {
-            "bugfix": 30,          # ~30 minutes for bug fixes
-            "doc": 45,             # ~45 minutes for documentation
-            "refactor": 120,       # ~2 hours for refactoring
-            "feature": 180,        # ~3 hours for features
-            "enhancement": 120,    # ~2 hours for enhancements
-            "research": 120,       # ~2 hours for research
-            "testing": 90,         # ~1.5 hours for testing
-            "review": 45,          # ~45 minutes for code review
-            "chore": 60,           # ~1 hour for chores
-            "general": 120,        # ~2 hours default
+            "bugfix": 30,  # ~30 minutes for bug fixes
+            "doc": 45,  # ~45 minutes for documentation
+            "refactor": 120,  # ~2 hours for refactoring
+            "feature": 180,  # ~3 hours for features
+            "enhancement": 120,  # ~2 hours for enhancements
+            "research": 120,  # ~2 hours for research
+            "testing": 90,  # ~1.5 hours for testing
+            "review": 45,  # ~45 minutes for code review
+            "chore": 60,  # ~1 hour for chores
+            "general": 120,  # ~2 hours default
         }
         task_type_lower = task_type.lower() if task_type else "general"
         return defaults.get(task_type_lower, defaults["general"])

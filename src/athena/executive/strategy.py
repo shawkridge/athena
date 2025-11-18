@@ -1,11 +1,10 @@
 """Strategy selection with ML-based recommendations and outcome tracking."""
 
 from datetime import datetime
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict
 from dataclasses import dataclass
-from enum import Enum
 
-from .models import StrategyType, Goal
+from .models import StrategyType
 
 
 @dataclass
@@ -157,9 +156,9 @@ class StrategySelector:
 
                 # Sort by confidence and return top-K
                 recommendations = []
-                for strategy, confidence in sorted(scores.items(), key=lambda x: x[1], reverse=True)[
-                    :top_k
-                ]:
+                for strategy, confidence in sorted(
+                    scores.items(), key=lambda x: x[1], reverse=True
+                )[:top_k]:
                     reasoning = self._generate_reasoning(strategy, features)
                     rec = StrategyRecommendation(
                         strategy_type=strategy, confidence=confidence, reasoning=reasoning
@@ -181,7 +180,11 @@ class StrategySelector:
         return recommendations
 
     async def record_outcome(
-        self, recommendation_id: int, outcome: str, hours_actual: float, feedback: Optional[str] = None
+        self,
+        recommendation_id: int,
+        outcome: str,
+        hours_actual: float,
+        feedback: Optional[str] = None,
     ) -> bool:
         """Record outcome of a strategy recommendation."""
         async with AsyncConnection.connect(self.postgres_url) as conn:
@@ -199,7 +202,9 @@ class StrategySelector:
 
                 return cursor.rowcount > 0
 
-    async def get_strategy_success_rate(self, strategy_name: str, project_id: Optional[int] = None) -> float:
+    async def get_strategy_success_rate(
+        self, strategy_name: str, project_id: Optional[int] = None
+    ) -> float:
         """Get success rate for a strategy."""
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
@@ -242,6 +247,7 @@ class StrategySelector:
         """
         async with AsyncConnection.connect(self.postgres_url) as conn:
             async with conn.cursor() as cursor:
+
                 async def get_stats(strategy_name):
                     await cursor.execute(
                         """
@@ -274,7 +280,11 @@ class StrategySelector:
                 else:
                     diff = abs(stats_a["success_rate"] - stats_b["success_rate"])
                     confidence = min(1.0, diff * 2)  # Higher difference = higher confidence
-                    winner = strategy_a if stats_a["success_rate"] > stats_b["success_rate"] else strategy_b
+                    winner = (
+                        strategy_a
+                        if stats_a["success_rate"] > stats_b["success_rate"]
+                        else strategy_b
+                    )
 
                 return {
                     "strategy_a": stats_a,
@@ -332,7 +342,9 @@ class StrategySelector:
             deadline = datetime.fromisoformat(goal_data["deadline"])
             deadline_days_remaining = (deadline.date() - now.date()).days
 
-        urgency = min(1.0, 1.0 / max(1, deadline_days_remaining) if deadline_days_remaining else 0.0)
+        urgency = min(
+            1.0, 1.0 / max(1, deadline_days_remaining) if deadline_days_remaining else 0.0
+        )
 
         # Feature 5: days_since_start
         days_since_start = (now - created_at).days

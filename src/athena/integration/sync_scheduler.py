@@ -21,10 +21,8 @@ from enum import Enum
 
 from ..core.database import Database
 from .sync_operations import (
-    get_active_plans,
     get_sync_summary,
     detect_database_conflicts,
-    sync_todo_status_change,
 )
 from .conflict_resolver import get_resolver, get_resolution_store
 
@@ -33,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 class SyncTriggerType(str, Enum):
     """Types of sync triggers."""
+
     PERIODIC = "periodic"
     ON_STATUS_CHANGE = "on_status_change"
     ON_PRIORITY_CHANGE = "on_priority_change"
@@ -211,7 +210,9 @@ class SyncScheduler:
                         )
 
                 except Exception as e:
-                    logger.warning(f"Failed to resolve conflict for plan {plan.get('plan_id')}: {e}")
+                    logger.warning(
+                        f"Failed to resolve conflict for plan {plan.get('plan_id')}: {e}"
+                    )
 
             logger.info(f"Resolved {resolved_count}/{len(conflicts)} conflicts")
             return resolved_count > 0
@@ -283,26 +284,35 @@ class SyncNotifier:
 
     async def notify_conflict_detected(self, plan_id: str, reason: str) -> None:
         """Notify of detected conflict."""
-        await self.notify("conflict_detected", {
-            "plan_id": plan_id,
-            "reason": reason,
-            "timestamp": datetime.now().isoformat(),
-        })
+        await self.notify(
+            "conflict_detected",
+            {
+                "plan_id": plan_id,
+                "reason": reason,
+                "timestamp": datetime.now().isoformat(),
+            },
+        )
 
     async def notify_conflict_resolved(self, plan_id: str, preference: str) -> None:
         """Notify of resolved conflict."""
-        await self.notify("conflict_resolved", {
-            "plan_id": plan_id,
-            "preference": preference,
-            "timestamp": datetime.now().isoformat(),
-        })
+        await self.notify(
+            "conflict_resolved",
+            {
+                "plan_id": plan_id,
+                "preference": preference,
+                "timestamp": datetime.now().isoformat(),
+            },
+        )
 
     async def notify_sync_completed(self, summary: Dict[str, Any]) -> None:
         """Notify of completed sync."""
-        await self.notify("sync_completed", {
-            **summary,
-            "timestamp": datetime.now().isoformat(),
-        })
+        await self.notify(
+            "sync_completed",
+            {
+                **summary,
+                "timestamp": datetime.now().isoformat(),
+            },
+        )
 
 
 # Global instances
@@ -317,19 +327,23 @@ def initialize(db: Database) -> None:
     _notifier = SyncNotifier()
 
     # Register default jobs
-    _scheduler.register_job(SyncJob(
-        "periodic_sync",
-        "Periodic Sync (every 5 minutes)",
-        SyncTriggerType.PERIODIC,
-        interval_seconds=300,
-    ))
+    _scheduler.register_job(
+        SyncJob(
+            "periodic_sync",
+            "Periodic Sync (every 5 minutes)",
+            SyncTriggerType.PERIODIC,
+            interval_seconds=300,
+        )
+    )
 
-    _scheduler.register_job(SyncJob(
-        "conflict_resolution",
-        "Conflict Resolution (every 10 minutes)",
-        SyncTriggerType.ON_CONFLICT,
-        interval_seconds=600,
-    ))
+    _scheduler.register_job(
+        SyncJob(
+            "conflict_resolution",
+            "Conflict Resolution (every 10 minutes)",
+            SyncTriggerType.ON_CONFLICT,
+            interval_seconds=600,
+        )
+    )
 
     logger.info("Sync scheduler initialized with default jobs")
 

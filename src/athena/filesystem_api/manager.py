@@ -5,10 +5,8 @@ Manages the filesystem-based API structure that enables code execution paradigm.
 Handles directory listings, file reading, and progressive disclosure.
 """
 
-import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-from dataclasses import asdict
+from typing import Any, Dict, Optional
 
 
 class FilesystemAPIManager:
@@ -57,16 +55,10 @@ class FilesystemAPIManager:
         full_path = self.root_path / rel_path
 
         if not full_path.exists():
-            return {
-                "error": f"Directory not found: {path}",
-                "path": path
-            }
+            return {"error": f"Directory not found: {path}", "path": path}
 
         if not full_path.is_dir():
-            return {
-                "error": f"Not a directory: {path}",
-                "path": path
-            }
+            return {"error": f"Not a directory: {path}", "path": path}
 
         contents = []
         for item in sorted(full_path.iterdir()):
@@ -74,24 +66,24 @@ class FilesystemAPIManager:
                 continue
 
             if item.is_dir():
-                contents.append({
-                    "name": item.name,
-                    "type": "directory",
-                    "path": f"/athena/{rel_path}/{item.name}".lstrip("/").replace("//", "/")
-                })
+                contents.append(
+                    {
+                        "name": item.name,
+                        "type": "directory",
+                        "path": f"/athena/{rel_path}/{item.name}".lstrip("/").replace("//", "/"),
+                    }
+                )
             elif item.is_file() and item.suffix == ".py":
-                contents.append({
-                    "name": item.name,
-                    "type": "file",
-                    "path": f"/athena/{rel_path}/{item.name}".lstrip("/").replace("//", "/"),
-                    "size_bytes": item.stat().st_size
-                })
+                contents.append(
+                    {
+                        "name": item.name,
+                        "type": "file",
+                        "path": f"/athena/{rel_path}/{item.name}".lstrip("/").replace("//", "/"),
+                        "size_bytes": item.stat().st_size,
+                    }
+                )
 
-        return {
-            "path": path,
-            "type": "directory",
-            "contents": contents
-        }
+        return {"path": path, "type": "directory", "contents": contents}
 
     def read_file(self, path: str) -> Dict[str, Any]:
         """
@@ -116,16 +108,10 @@ class FilesystemAPIManager:
         full_path = self.root_path / rel_path
 
         if not full_path.exists():
-            return {
-                "error": f"File not found: {path}",
-                "path": path
-            }
+            return {"error": f"File not found: {path}", "path": path}
 
         if not full_path.is_file():
-            return {
-                "error": f"Not a file: {path}",
-                "path": path
-            }
+            return {"error": f"Not a file: {path}", "path": path}
 
         try:
             with open(full_path, "r") as f:
@@ -136,13 +122,10 @@ class FilesystemAPIManager:
                 "type": "file",
                 "content": content,
                 "size_bytes": full_path.stat().st_size,
-                "language": "python"
+                "language": "python",
             }
         except Exception as e:
-            return {
-                "error": f"Failed to read file: {str(e)}",
-                "path": path
-            }
+            return {"error": f"Failed to read file: {str(e)}", "path": path}
 
     def get_api_schema(self) -> Dict[str, Any]:
         """
@@ -167,12 +150,7 @@ class FilesystemAPIManager:
         from ..execution.code_executor import CodeExecutor
 
         executor = CodeExecutor(self.root_path)
-        schema = {
-            "version": "1.0",
-            "paradigm": "code_execution",
-            "root": "/athena",
-            "layers": {}
-        }
+        schema = {"version": "1.0", "paradigm": "code_execution", "root": "/athena", "layers": {}}
 
         layers_path = self.root_path / "layers"
         if not layers_path.exists():
@@ -202,6 +180,7 @@ class FilesystemAPIManager:
 
                     # Try to extract main function name and docstring
                     import re
+
                     func_match = re.search(r'def (\w+)\([^)]*\):\s*"""([^"]*?)"""', content)
 
                     docstring = ""
@@ -210,20 +189,20 @@ class FilesystemAPIManager:
                         function_name = func_match.group(1)
                         docstring = func_match.group(2).strip()
 
-                    operations.append({
-                        "name": operation_name,
-                        "function": function_name,
-                        "path": path,
-                        "docstring": docstring,
-                        "size_bytes": op_file.stat().st_size
-                    })
+                    operations.append(
+                        {
+                            "name": operation_name,
+                            "function": function_name,
+                            "path": path,
+                            "docstring": docstring,
+                            "size_bytes": op_file.stat().st_size,
+                        }
+                    )
                 except (OSError, IOError, PermissionError):
                     pass
 
             if operations:
-                schema["layers"][layer_name] = {
-                    "operations": operations
-                }
+                schema["layers"][layer_name] = {"operations": operations}
 
         return schema
 
@@ -259,6 +238,7 @@ class FilesystemAPIManager:
 
             # Extract main function name and docstring
             import re
+
             func_match = re.search(r'def (\w+)\([^)]*\):\s*"""([^"]*?)"""', content, re.DOTALL)
 
             if func_match:
@@ -266,7 +246,7 @@ class FilesystemAPIManager:
                 docstring = func_match.group(2).strip()
             else:
                 # Try without docstring
-                func_match = re.search(r'def (\w+)\(', content)
+                func_match = re.search(r"def (\w+)\(", content)
                 function_name = func_match.group(1) if func_match else operation
                 docstring = ""
 
@@ -280,11 +260,11 @@ class FilesystemAPIManager:
                 "function": function_name,
                 "docstring": docstring,
                 "signature": sig,
-                "size_bytes": full_path.stat().st_size
+                "size_bytes": full_path.stat().st_size,
             }
         except Exception as e:
             return {
                 "error": f"Failed to get operation info: {str(e)}",
                 "layer": layer,
-                "operation": operation
+                "operation": operation,
             }

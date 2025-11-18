@@ -23,59 +23,53 @@ class CSharpSymbolParser:
     """Parser for C# source code using regex-based pattern matching."""
 
     # Regex patterns for C# constructs
-    NAMESPACE_PATTERN = re.compile(
-        r'(?:^|\n)\s*namespace\s+([\w.]+)\s*[{;]',
-        re.MULTILINE
-    )
+    NAMESPACE_PATTERN = re.compile(r"(?:^|\n)\s*namespace\s+([\w.]+)\s*[{;]", re.MULTILINE)
 
-    USING_PATTERN = re.compile(
-        r'(?:^|\n)\s*using\s+(?:static\s+)?([^;]+);',
-        re.MULTILINE
-    )
+    USING_PATTERN = re.compile(r"(?:^|\n)\s*using\s+(?:static\s+)?([^;]+);", re.MULTILINE)
 
     CLASS_PATTERN = re.compile(
         r'(?:^|\n)\s*(?:\[[\w\s,()="]+\]\s*)*(?:(?:public|private|protected|internal|abstract|sealed|static)\s+)*class\s+(\w+)(?:<[^>]+>)?(?:\s*:\s*([^{]+))?\s*\{',
-        re.MULTILINE
+        re.MULTILINE,
     )
 
     STRUCT_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:(?:public|private|protected|internal)\s+)*struct\s+(\w+)(?:<[^>]+>)?(?:\s*:\s*([^{]+))?\s*\{',
-        re.MULTILINE
+        r"(?:^|\n)\s*(?:(?:public|private|protected|internal)\s+)*struct\s+(\w+)(?:<[^>]+>)?(?:\s*:\s*([^{]+))?\s*\{",
+        re.MULTILINE,
     )
 
     INTERFACE_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:(?:public|private|protected|internal)\s+)*interface\s+(\w+)(?:<[^>]+>)?(?:\s*:\s*([^{]+))?\s*\{',
-        re.MULTILINE
+        r"(?:^|\n)\s*(?:(?:public|private|protected|internal)\s+)*interface\s+(\w+)(?:<[^>]+>)?(?:\s*:\s*([^{]+))?\s*\{",
+        re.MULTILINE,
     )
 
     ENUM_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:(?:public|private|protected|internal)\s+)*enum\s+(\w+)\s*(?::\s*\w+)?\s*\{',
-        re.MULTILINE
+        r"(?:^|\n)\s*(?:(?:public|private|protected|internal)\s+)*enum\s+(\w+)\s*(?::\s*\w+)?\s*\{",
+        re.MULTILINE,
     )
 
     METHOD_PATTERN = re.compile(
         r'(?:^|\n)\s*(?:\[[\w\s,()="]+\]\s*)*(?:(?:public|private|protected|internal|static|async|virtual|abstract|override)\s+)*(?:[\w<>[\]\s.]+\s+)?(\w+)\s*\(([^)]*)\)(?:\s*[{;])',
-        re.MULTILINE
+        re.MULTILINE,
     )
 
     PROPERTY_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:(?:public|private|protected|internal)\s+)+(?:[\w<>[\]\s.]+?)\s+([A-Z]\w*)\s*\{\s*(?:get|set)',
-        re.MULTILINE
+        r"(?:^|\n)\s*(?:(?:public|private|protected|internal)\s+)+(?:[\w<>[\]\s.]+?)\s+([A-Z]\w*)\s*\{\s*(?:get|set)",
+        re.MULTILINE,
     )
 
     FIELD_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:(?:public|private|protected|internal|static|readonly|const)\s+)*(?:[\w<>[\]\s.]+)\s+(\w+)\s*(?:=|;)',
-        re.MULTILINE
+        r"(?:^|\n)\s*(?:(?:public|private|protected|internal|static|readonly|const)\s+)*(?:[\w<>[\]\s.]+)\s+(\w+)\s*(?:=|;)",
+        re.MULTILINE,
     )
 
     EVENT_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:(?:public|private|protected|internal)\s+)*event\s+(?:[\w<>[\]\s.]+)\s+(\w+)',
-        re.MULTILINE
+        r"(?:^|\n)\s*(?:(?:public|private|protected|internal)\s+)*event\s+(?:[\w<>[\]\s.]+)\s+(\w+)",
+        re.MULTILINE,
     )
 
     DELEGATE_PATTERN = re.compile(
-        r'(?:^|\n)\s*(?:(?:public|private|protected|internal)\s+)*delegate\s+(?:[\w<>[\]\s.]+)\s+(\w+)\s*\(',
-        re.MULTILINE
+        r"(?:^|\n)\s*(?:(?:public|private|protected|internal)\s+)*delegate\s+(?:[\w<>[\]\s.]+)\s+(\w+)\s*\(",
+        re.MULTILINE,
     )
 
     def parse_file(self, file_path: str, code: Optional[str] = None) -> list[Symbol]:
@@ -90,7 +84,7 @@ class CSharpSymbolParser:
         """
         if code is None:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     code = f.read()
             except (IOError, UnicodeDecodeError):
                 return []
@@ -133,10 +127,10 @@ class CSharpSymbolParser:
 
         for match in self.USING_PATTERN.finditer(code):
             import_path = match.group(1).strip()
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Get the last component as the name
-            name = import_path.split('.')[-1]
+            name = import_path.split(".")[-1]
 
             symbol = create_symbol(
                 file_path=file_path,
@@ -149,7 +143,7 @@ class CSharpSymbolParser:
                 code="",
                 docstring="",
                 language="csharp",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -162,7 +156,7 @@ class CSharpSymbolParser:
         # Extract classes
         for match in self.CLASS_PATTERN.finditer(code):
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             visibility = self._get_visibility(code, match.start())
 
@@ -177,7 +171,7 @@ class CSharpSymbolParser:
                 code="",
                 docstring="",
                 language="csharp",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -193,35 +187,35 @@ class CSharpSymbolParser:
                 # Extract methods
                 methods = self._extract_methods(class_body, file_path, namespace, name)
                 for method in methods:
-                    method.line_start += code[:class_body_start].count('\n')
-                    method.line_end += code[:class_body_start].count('\n')
+                    method.line_start += code[:class_body_start].count("\n")
+                    method.line_end += code[:class_body_start].count("\n")
                 symbols.extend(methods)
 
                 # Extract properties
                 properties = self._extract_properties(class_body, file_path, namespace, name)
                 for prop in properties:
-                    prop.line_start += code[:class_body_start].count('\n')
-                    prop.line_end += code[:class_body_start].count('\n')
+                    prop.line_start += code[:class_body_start].count("\n")
+                    prop.line_end += code[:class_body_start].count("\n")
                 symbols.extend(properties)
 
                 # Extract fields
                 fields = self._extract_fields(class_body, file_path, namespace, name)
                 for field in fields:
-                    field.line_start += code[:class_body_start].count('\n')
-                    field.line_end += code[:class_body_start].count('\n')
+                    field.line_start += code[:class_body_start].count("\n")
+                    field.line_end += code[:class_body_start].count("\n")
                 symbols.extend(fields)
 
                 # Extract events
                 events = self._extract_events(class_body, file_path, namespace, name)
                 for event in events:
-                    event.line_start += code[:class_body_start].count('\n')
-                    event.line_end += code[:class_body_start].count('\n')
+                    event.line_start += code[:class_body_start].count("\n")
+                    event.line_end += code[:class_body_start].count("\n")
                 symbols.extend(events)
 
         # Extract structs
         for match in self.STRUCT_PATTERN.finditer(code):
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             visibility = self._get_visibility(code, match.start())
 
@@ -236,7 +230,7 @@ class CSharpSymbolParser:
                 code="",
                 docstring="",
                 language="csharp",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -248,7 +242,7 @@ class CSharpSymbolParser:
 
         for match in self.INTERFACE_PATTERN.finditer(code):
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             visibility = self._get_visibility(code, match.start())
 
@@ -263,7 +257,7 @@ class CSharpSymbolParser:
                 code="",
                 docstring="",
                 language="csharp",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -277,8 +271,8 @@ class CSharpSymbolParser:
                 # Extract interface methods
                 methods = self._extract_methods(interface_body, file_path, namespace, name)
                 for method in methods:
-                    method.line_start += code[:interface_body_start].count('\n')
-                    method.line_end += code[:interface_body_start].count('\n')
+                    method.line_start += code[:interface_body_start].count("\n")
+                    method.line_end += code[:interface_body_start].count("\n")
                 symbols.extend(methods)
 
         return symbols
@@ -289,7 +283,7 @@ class CSharpSymbolParser:
 
         for match in self.ENUM_PATTERN.finditer(code):
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             visibility = self._get_visibility(code, match.start())
 
@@ -304,7 +298,7 @@ class CSharpSymbolParser:
                 code="",
                 docstring="",
                 language="csharp",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -321,10 +315,10 @@ class CSharpSymbolParser:
             params = match.group(2) if match.group(2) else ""
 
             # Skip if this looks like a control structure
-            if name.lower() in ['if', 'for', 'while', 'switch', 'catch', 'using', 'lock']:
+            if name.lower() in ["if", "for", "while", "switch", "catch", "using", "lock"]:
                 continue
 
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
             visibility = self._get_visibility(code, match.start())
 
             # Check if async
@@ -339,12 +333,16 @@ class CSharpSymbolParser:
                 namespace=class_name,
                 signature=signature,
                 line_start=line_num,
-                line_end=self._find_closing_brace_line(code, match.end()) if "{" in match.group(0) else line_num,
+                line_end=(
+                    self._find_closing_brace_line(code, match.end())
+                    if "{" in match.group(0)
+                    else line_num
+                ),
                 code="",
                 docstring="",
                 language="csharp",
                 visibility=visibility,
-                is_async=is_async
+                is_async=is_async,
             )
             symbols.append(symbol)
 
@@ -361,13 +359,13 @@ class CSharpSymbolParser:
             name = match.group(1)
 
             # Skip C# keywords and already seen properties
-            if name.lower() in ['get', 'set', 'add', 'remove']:
+            if name.lower() in ["get", "set", "add", "remove"]:
                 continue
             if name in seen_names:
                 continue
 
             seen_names.add(name)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
             visibility = self._get_visibility(code, match.start())
 
             symbol = create_symbol(
@@ -381,7 +379,7 @@ class CSharpSymbolParser:
                 code="",
                 docstring="",
                 language="csharp",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -398,13 +396,13 @@ class CSharpSymbolParser:
             name = match.group(1)
 
             # Skip C# keywords and already seen fields
-            if name.lower() in ['get', 'set', 'add', 'remove']:
+            if name.lower() in ["get", "set", "add", "remove"]:
                 continue
             if name in seen_names:
                 continue
 
             seen_names.add(name)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
             visibility = self._get_visibility(code, match.start())
 
             symbol = create_symbol(
@@ -418,7 +416,7 @@ class CSharpSymbolParser:
                 code="",
                 docstring="",
                 language="csharp",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -432,7 +430,7 @@ class CSharpSymbolParser:
 
         for match in self.EVENT_PATTERN.finditer(code):
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
             visibility = self._get_visibility(code, match.start())
 
             symbol = create_symbol(
@@ -446,7 +444,7 @@ class CSharpSymbolParser:
                 code="",
                 docstring="",
                 language="csharp",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -458,7 +456,7 @@ class CSharpSymbolParser:
 
         for match in self.DELEGATE_PATTERN.finditer(code):
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
             visibility = self._get_visibility(code, match.start())
 
             symbol = create_symbol(
@@ -472,7 +470,7 @@ class CSharpSymbolParser:
                 code="",
                 docstring="",
                 language="csharp",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -490,13 +488,13 @@ class CSharpSymbolParser:
         """
         search_start = max(0, position - 200)
         search_text = code[search_start:position]
-        last_line = search_text.split('\n')[-1]
+        last_line = search_text.split("\n")[-1]
 
-        if 'private' in last_line:
+        if "private" in last_line:
             return "private"
-        elif 'protected' in last_line:
+        elif "protected" in last_line:
             return "protected"
-        elif 'public' in last_line:
+        elif "public" in last_line:
             return "public"
         else:
             return "private"  # Default: internal and unknown map to private
@@ -505,9 +503,9 @@ class CSharpSymbolParser:
         """Find the position of the closing brace matching the opening brace at start."""
         depth = 0
         for i in range(start, len(code)):
-            if code[i] == '{':
+            if code[i] == "{":
                 depth += 1
-            elif code[i] == '}':
+            elif code[i] == "}":
                 depth -= 1
                 if depth == 0:
                     return i
@@ -516,4 +514,4 @@ class CSharpSymbolParser:
     def _find_closing_brace_line(self, code: str, start: int) -> int:
         """Find the line number of the closing brace."""
         closing_pos = self._find_closing_brace(code, start)
-        return code[:closing_pos].count('\n') + 1
+        return code[:closing_pos].count("\n") + 1

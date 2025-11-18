@@ -9,13 +9,10 @@ Provides:
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 
 from ..core.database import Database
-from ..prospective.models import ProspectiveTask, TaskPhase, TaskStatus
+from ..prospective.models import TaskPhase, TaskStatus
 from ..prospective.store import ProspectiveStore
-from .estimation_analyzer import EstimationAnalyzer
-from .pattern_discovery import PatternDiscovery
 
 logger = logging.getLogger(__name__)
 
@@ -188,9 +185,7 @@ class TaskAnalytics:
             if task.phase_metrics:
                 for metric in task.phase_metrics:
                     phase_name = (
-                        metric.phase.value
-                        if hasattr(metric.phase, "value")
-                        else str(metric.phase)
+                        metric.phase.value if hasattr(metric.phase, "value") else str(metric.phase)
                     )
                     duration = metric.duration_minutes or 0
 
@@ -299,7 +294,9 @@ class TaskAnalytics:
             )
             priority_counts[priority_name] = priority_counts.get(priority_name, 0) + 1
 
-        most_common = max(priority_counts, key=priority_counts.get) if priority_counts else "unknown"
+        most_common = (
+            max(priority_counts, key=priority_counts.get) if priority_counts else "unknown"
+        )
 
         # Completion rate
         all_tasks = self.prospective_store.get_tasks_by_project(project_id)

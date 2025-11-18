@@ -69,22 +69,19 @@ class PlanningPattern(BaseModel):
 
     # Domain and applicability
     applicable_domains: list[str] = Field(
-        default_factory=list,
-        description="e.g., ['robotics', 'web', 'project-mgmt', 'coding']"
+        default_factory=list, description="e.g., ['robotics', 'web', 'project-mgmt', 'coding']"
     )
     applicable_task_types: list[str] = Field(
-        default_factory=list,
-        description="e.g., ['refactoring', 'feature', 'bug-fix']"
+        default_factory=list, description="e.g., ['refactoring', 'feature', 'bug-fix']"
     )
     complexity_range: tuple[int, int] = Field(
-        default=(1, 10),
-        description="Min-max complexity (1-10 scale)"
+        default=(1, 10), description="Min-max complexity (1-10 scale)"
     )
 
     # When to use
     conditions: dict = Field(
         default_factory=dict,
-        description="Conditions for applying this pattern (e.g., {'team_size': '>3'})"
+        description="Conditions for applying this pattern (e.g., {'team_size': '>3'})",
     )
 
     # Source and learning
@@ -124,14 +121,12 @@ class DecompositionStrategy(BaseModel):
 
     # Validation gates
     validation_gates: list[str] = Field(
-        default_factory=list,
-        description="e.g., ['pre_execution', 'post_phase', 'milestone']"
+        default_factory=list, description="e.g., ['pre_execution', 'post_phase', 'milestone']"
     )
 
     # Applicability
     applicable_task_types: list[str] = Field(
-        default_factory=list,
-        description="Task types this works well for"
+        default_factory=list, description="Task types this works well for"
     )
 
     # Metrics
@@ -162,13 +157,15 @@ class OrchestratorPattern(BaseModel):
 
     id: Optional[int] = None
     project_id: int
-    pattern_name: str = Field(..., description="e.g., 'orchestrator-worker', 'parallel-specialists'")
+    pattern_name: str = Field(
+        ..., description="e.g., 'orchestrator-worker', 'parallel-specialists'"
+    )
     description: str = Field(..., description="How agents are coordinated")
 
     # Agent configuration
     agent_roles: list[str] = Field(
         default_factory=list,
-        description="e.g., ['orchestrator', 'frontend-specialist', 'backend-specialist']"
+        description="e.g., ['orchestrator', 'frontend-specialist', 'backend-specialist']",
     )
     coordination_type: CoordinationType
     num_agents: int = Field(default=1, ge=1, le=100)
@@ -181,12 +178,10 @@ class OrchestratorPattern(BaseModel):
 
     # Applicability
     applicable_domains: list[str] = Field(
-        default_factory=list,
-        description="e.g., ['robotics', 'web', 'backend']"
+        default_factory=list, description="e.g., ['robotics', 'web', 'backend']"
     )
     applicable_task_types: list[str] = Field(
-        default_factory=list,
-        description="Task types this pattern works for"
+        default_factory=list, description="Task types this pattern works for"
     )
 
     # Metadata
@@ -220,24 +215,21 @@ class ValidationRule(BaseModel):
     check_function: str = Field(..., description="Python function name or formal check")
     parameters: dict = Field(
         default_factory=dict,
-        description="Rule-specific parameters (e.g., {'max_duration_hours': 8})"
+        description="Rule-specific parameters (e.g., {'max_duration_hours': 8})",
     )
 
     # Applicability
     applicable_to_task_types: list[str] = Field(
-        default_factory=list,
-        description="Task types this rule applies to"
+        default_factory=list, description="Task types this rule applies to"
     )
     applies_to_phases: list[str] = Field(
-        default_factory=list,
-        description="Phases this rule checks (empty = all)"
+        default_factory=list, description="Phases this rule checks (empty = all)"
     )
 
     # Risk assessment
     risk_level: str = Field(default="medium")  # low|medium|high|critical
     dependencies: list[str] = Field(
-        default_factory=list,
-        description="Other rules that must pass first"
+        default_factory=list, description="Other rules that must pass first"
     )
 
     # Effectiveness metrics
@@ -284,29 +276,24 @@ class ExecutionFeedback(BaseModel):
 
     # Execution details
     blockers_encountered: list[str] = Field(
-        default_factory=list,
-        description="What went wrong or was unexpected"
+        default_factory=list, description="What went wrong or was unexpected"
     )
     adjustments_made: list[str] = Field(
-        default_factory=list,
-        description="Changes to plan during execution"
+        default_factory=list, description="Changes to plan during execution"
     )
     assumption_violations: list[str] = Field(
-        default_factory=list,
-        description="Plan assumptions that didn't hold"
+        default_factory=list, description="Plan assumptions that didn't hold"
     )
 
     # Learning
     learning_extracted: Optional[str] = Field(
-        default=None,
-        description="Key insights from this execution"
+        default=None, description="Key insights from this execution"
     )
     confidence_in_learning: float = Field(default=0.0, ge=0.0, le=1.0)
 
     # Metrics
     quality_metrics: dict = Field(
-        default_factory=dict,
-        description="Custom quality metrics (e.g., {'code_coverage': 0.85})"
+        default_factory=dict, description="Custom quality metrics (e.g., {'code_coverage': 0.85})"
     )
 
     # Metadata
@@ -329,8 +316,9 @@ class ExecutionFeedback(BaseModel):
         """Calculate duration variance if both planned and actual are set."""
         if self.planned_duration_minutes and self.actual_duration_minutes:
             self.duration_variance_pct = (
-                (self.actual_duration_minutes - self.planned_duration_minutes) /
-                self.planned_duration_minutes * 100
+                (self.actual_duration_minutes - self.planned_duration_minutes)
+                / self.planned_duration_minutes
+                * 100
             )
 
 
@@ -341,6 +329,7 @@ class ExecutionFeedback(BaseModel):
 
 class GoalDecompositionStatus(str, Enum):
     """Status of a goal decomposition."""
+
     PENDING = "pending"
     DECOMPOSING = "decomposing"
     COMPLETED = "completed"
@@ -350,6 +339,7 @@ class GoalDecompositionStatus(str, Enum):
 
 class TaskNodeStatus(str, Enum):
     """Status of a task node in decomposition."""
+
     PENDING = "pending"
     READY = "ready"
     IN_PROGRESS = "in_progress"

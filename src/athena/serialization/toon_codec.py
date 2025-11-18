@@ -123,7 +123,7 @@ import('{'/usr/lib/node_modules/@toon-format/toon/dist/index.js'}').then(m => {{
 
         except subprocess.TimeoutExpired as e:
             logger.error(f"TOON encoding timeout after {timeout}s")
-            raise TOONEncodeError(f"TOON encoding timeout") from e
+            raise TOONEncodeError("TOON encoding timeout") from e
         except (FileNotFoundError, OSError) as e:
             logger.error(f"Node.js or TOON not found: {e}")
             raise TOONEncodeError("Node.js or @toon-format/toon not available") from e
@@ -204,9 +204,7 @@ import('{'/usr/lib/node_modules/@toon-format/toon/dist/index.js'}').then(m => {{
             raise TOONDecodeError(f"Unexpected decoding error: {e}") from e
 
     @classmethod
-    def safe_encode(
-        cls, data: Dict[str, Any], fallback_to_json: bool = True
-    ) -> str:
+    def safe_encode(cls, data: Dict[str, Any], fallback_to_json: bool = True) -> str:
         """Safely encode to TOON with JSON fallback.
 
         Args:
@@ -235,9 +233,7 @@ import('{'/usr/lib/node_modules/@toon-format/toon/dist/index.js'}').then(m => {{
             raise
 
     @classmethod
-    def safe_decode(
-        cls, data_str: str, fallback_to_json: bool = True
-    ) -> Dict[str, Any]:
+    def safe_decode(cls, data_str: str, fallback_to_json: bool = True) -> Dict[str, Any]:
         """Safely decode from TOON or JSON.
 
         Attempts TOON decoding first; if that fails, tries JSON parsing.

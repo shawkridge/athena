@@ -14,11 +14,15 @@ class SpatialNode:
     """A node in the spatial hierarchy (file path component or code symbol)."""
 
     name: str  # e.g., "src", "auth", "middleware" or "authenticate", "validate"
-    full_path: str  # e.g., "/project/src/auth/middleware" or "/project/src/auth/middleware:authenticate"
+    full_path: (
+        str  # e.g., "/project/src/auth/middleware" or "/project/src/auth/middleware:authenticate"
+    )
     depth: int  # Distance from root (0 = root)
     parent_path: Optional[str] = None  # Parent node's full_path
     node_type: str = "directory"  # "directory", "file", "module", "class", "function", "method"
-    language: Optional[str] = None  # Programming language (python, typescript, etc) for code symbols
+    language: Optional[str] = (
+        None  # Programming language (python, typescript, etc) for code symbols
+    )
     symbol_kind: Optional[str] = None  # "function", "class", "method", "interface", "type" for code
 
     def __post_init__(self):
@@ -26,14 +30,23 @@ class SpatialNode:
         if self.depth < 0:
             raise ValueError(f"Depth must be >= 0, got {self.depth}")
         if self.depth > 0 and not self.parent_path:
-            raise ValueError(f"Non-root node must have parent_path")
+            raise ValueError("Non-root node must have parent_path")
 
         # Symbol nodes require language
         if self.node_type in ["function", "class", "method"] and not self.language:
             raise ValueError(f"{self.node_type} node requires language field")
 
         # Validate node_type
-        valid_types = {"directory", "file", "module", "class", "function", "method", "interface", "type"}
+        valid_types = {
+            "directory",
+            "file",
+            "module",
+            "class",
+            "function",
+            "method",
+            "interface",
+            "type",
+        }
         if self.node_type not in valid_types:
             raise ValueError(f"Invalid node_type: {self.node_type}. Must be one of {valid_types}")
 
@@ -49,7 +62,7 @@ class SpatialRelation:
 
     def __post_init__(self):
         """Validate relation."""
-        if self.relation_type not in ['contains', 'sibling', 'ancestor_of']:
+        if self.relation_type not in ["contains", "sibling", "ancestor_of"]:
             raise ValueError(f"Invalid relation_type: {self.relation_type}")
         if not (0.0 <= self.strength <= 1.0):
             raise ValueError(f"Strength must be in [0.0, 1.0], got {self.strength}")
@@ -75,7 +88,9 @@ class SymbolNode:
         if self.line_number < 1:
             raise ValueError(f"Line number must be >= 1, got {self.line_number}")
         if self.complexity_score is not None and not (0.0 <= self.complexity_score <= 100.0):
-            raise ValueError(f"Complexity score must be in [0.0, 100.0], got {self.complexity_score}")
+            raise ValueError(
+                f"Complexity score must be in [0.0, 100.0], got {self.complexity_score}"
+            )
         valid_kinds = {"function", "class", "method", "interface", "type", "enum", "struct"}
         if self.symbol_kind not in valid_kinds:
             raise ValueError(f"Invalid symbol_kind: {self.symbol_kind}")
@@ -98,7 +113,13 @@ class SpatialQuery:
             raise ValueError("max_spatial_depth must be >= 0")
         if self.semantic_k < 1:
             raise ValueError("semantic_k must be >= 1")
-        if self.symbol_filter and self.symbol_filter not in {"function", "class", "method", "interface", "type"}:
+        if self.symbol_filter and self.symbol_filter not in {
+            "function",
+            "class",
+            "method",
+            "interface",
+            "type",
+        }:
             raise ValueError(f"Invalid symbol_filter: {self.symbol_filter}")
 
 

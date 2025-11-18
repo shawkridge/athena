@@ -11,12 +11,9 @@ Features:
 - Connection pooling for production use
 """
 
-import json
 import logging
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime
-from pathlib import Path
 from typing import Optional, List, Dict, Any, AsyncGenerator, TYPE_CHECKING
 
 logger = logging.getLogger(__name__)
@@ -26,6 +23,7 @@ try:
     from psycopg_pool import AsyncConnectionPool
     from psycopg import sql
     from psycopg.rows import dict_row
+
     PSYCOPG_AVAILABLE = True
 except ImportError:
     PSYCOPG_AVAILABLE = False
@@ -39,7 +37,8 @@ else:
     class AsyncConnection:  # type: ignore
         pass
 
-from .models import Memory, MemoryType, Project
+
+from .models import Project
 from . import config
 
 
@@ -101,6 +100,7 @@ class SyncCursor:
         Keeping for backward compatibility.
         """
         from .async_utils import run_async
+
         return run_async(coro)
 
     async def _get_conn_async(self):
@@ -115,6 +115,7 @@ class SyncCursor:
         Query must use PostgreSQL syntax with %s placeholders (not SQLite ?).
         Returns dict-like rows for SELECT queries and queries with RETURNING.
         """
+
         async def _exec():
             # Query should be in PostgreSQL format
             pg_query = query.strip()
@@ -123,8 +124,8 @@ class SyncCursor:
             # Determine if query can return results
             # SELECT, INSERT/UPDATE/DELETE with RETURNING, and some other queries can return rows
             returns_rows = (
-                query_upper.startswith("SELECT") or
-                "RETURNING" in query_upper  # Handle INSERT/UPDATE/DELETE with RETURNING
+                query_upper.startswith("SELECT")
+                or "RETURNING" in query_upper  # Handle INSERT/UPDATE/DELETE with RETURNING
             )
 
             # Use context manager to properly handle connection lifecycle
@@ -149,8 +150,8 @@ class SyncCursor:
 
                 self._row_index = 0
                 # Store row count for lastrowid compatibility
-                self._lastrowid = cursor.lastrowid if hasattr(cursor, 'lastrowid') else None
-                self._rowcount = cursor.rowcount if hasattr(cursor, 'rowcount') else 0
+                self._lastrowid = cursor.lastrowid if hasattr(cursor, "lastrowid") else None
+                self._rowcount = cursor.rowcount if hasattr(cursor, "rowcount") else 0
                 return self._results
 
         return self._run_async(_exec())
@@ -190,7 +191,7 @@ class SyncCursor:
         """
         if self._results is None:
             return []
-        result = self._results[self._row_index:]
+        result = self._results[self._row_index :]
         self._row_index = len(self._results)
         return result
 
@@ -217,12 +218,12 @@ class SyncCursor:
     @property
     def lastrowid(self):
         """Get last inserted row ID."""
-        return self._lastrowid if hasattr(self, '_lastrowid') else None
+        return self._lastrowid if hasattr(self, "_lastrowid") else None
 
     @property
     def rowcount(self):
         """Get number of rows affected."""
-        return self._rowcount if hasattr(self, '_rowcount') else 0
+        return self._rowcount if hasattr(self, "_rowcount") else 0
 
 
 class PostgresDatabase:
@@ -314,7 +315,7 @@ class PostgresDatabase:
             min_size=self.min_size,
             max_size=self.max_size,
             timeout=self.pool_timeout,  # Timeout for acquiring connection
-            max_idle=self.max_idle,     # Recycle idle connections after 5 min
+            max_idle=self.max_idle,  # Recycle idle connections after 5 min
             max_lifetime=self.max_lifetime,  # Recycle all connections after 1 hour
             check=AsyncConnectionPool.check_connection,  # Health check before use
         )
@@ -415,11 +416,12 @@ class PostgresDatabase:
         """Create all 10 core tables."""
 
         # Get embedding dimension from config
-        from . import config
+
         embedding_dim = config.LLAMACPP_EMBEDDING_DIM
 
         # 1. Projects table
-        await conn.execute(f"""
+        await conn.execute(
+            f"""
             CREATE TABLE IF NOT EXISTS projects (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) UNIQUE NOT NULL,
@@ -436,10 +438,12 @@ class PostgresDatabase:
                 embedding_dim INT DEFAULT {embedding_dim},
                 consolidation_interval INT DEFAULT 3600
             )
-        """)
+        """
+        )
 
         # 2. Memory vectors table (unified)
-        await conn.execute(f"""
+        await conn.execute(
+            f"""
             CREATE TABLE IF NOT EXISTS memory_vectors (
                 id BIGSERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -469,10 +473,12 @@ class PostgresDatabase:
                 code_language VARCHAR(50),
                 code_hash VARCHAR(64)
             )
-        """)
+        """
+        )
 
         # 3. Memory relationships
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS memory_relationships (
                 id SERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -483,10 +489,12 @@ class PostgresDatabase:
                 created_at TIMESTAMP DEFAULT NOW(),
                 UNIQUE(from_memory_id, to_memory_id, relationship_type)
             )
-        """)
+        """
+        )
 
         # 4. Episodic events
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS episodic_events (
                 id BIGSERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -515,10 +523,12 @@ class PostgresDatabase:
                 consolidated_at TIMESTAMP,
                 embedding vector(768)
             )
-        """)
+        """
+        )
 
         # 5. Prospective goals
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS prospective_goals (
                 id BIGSERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -533,10 +543,12 @@ class PostgresDatabase:
                 created_at TIMESTAMP DEFAULT NOW(),
                 completed_at TIMESTAMP
             )
-        """)
+        """
+        )
 
         # 6. Prospective tasks
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS prospective_tasks (
                 id BIGSERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -558,10 +570,12 @@ class PostgresDatabase:
                 started_at TIMESTAMP,
                 completed_at TIMESTAMP
             )
-        """)
+        """
+        )
 
         # 7. Code metadata
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS code_metadata (
                 id BIGSERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -583,10 +597,12 @@ class PostgresDatabase:
                 last_analyzed_at TIMESTAMP,
                 UNIQUE(project_id, file_path, entity_name)
             )
-        """)
+        """
+        )
 
         # 8. Code dependencies
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS code_dependencies (
                 id SERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -597,10 +613,12 @@ class PostgresDatabase:
                 created_at TIMESTAMP DEFAULT NOW(),
                 UNIQUE(from_code_id, to_code_id, dependency_type)
             )
-        """)
+        """
+        )
 
         # 9. Planning decisions
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS planning_decisions (
                 id BIGSERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -615,10 +633,12 @@ class PostgresDatabase:
                 validated_at TIMESTAMP,
                 superseded_by BIGINT REFERENCES planning_decisions(id) ON DELETE SET NULL
             )
-        """)
+        """
+        )
 
         # 10. Planning scenarios
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS planning_scenarios (
                 id BIGSERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -634,10 +654,12 @@ class PostgresDatabase:
                 testing_status VARCHAR(50) DEFAULT 'not_tested',
                 created_at TIMESTAMP DEFAULT NOW()
             )
-        """)
+        """
+        )
 
         # 10a. Knowledge graph entities
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS entities (
                 id SERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -649,10 +671,12 @@ class PostgresDatabase:
                 updated_at TIMESTAMP DEFAULT NOW(),
                 UNIQUE(project_id, entity_type, entity_name)
             )
-        """)
+        """
+        )
 
         # 10b. Research tasks (for research domain)
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS research_tasks (
                 id BIGSERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -670,10 +694,12 @@ class PostgresDatabase:
                 error_message TEXT,
                 created_at TIMESTAMP DEFAULT NOW()
             )
-        """)
+        """
+        )
 
         # 11. Procedures (learned workflows)
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS procedures (
                 id BIGSERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -692,10 +718,12 @@ class PostgresDatabase:
                 updated_at TIMESTAMP DEFAULT NOW(),
                 UNIQUE(project_id, name)
             )
-        """)
+        """
+        )
 
         # 12. Research patterns (Phase 3.3)
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS research_patterns (
                 id BIGSERIAL PRIMARY KEY,
                 task_id BIGINT NOT NULL REFERENCES research_tasks(id) ON DELETE CASCADE,
@@ -707,10 +735,12 @@ class PostgresDatabase:
                 finding_count INT DEFAULT 0,
                 created_at TIMESTAMP DEFAULT NOW()
             )
-        """)
+        """
+        )
 
         # 13. Agent domain expertise (Phase 3.3)
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS agent_domain_expertise (
                 id BIGSERIAL PRIMARY KEY,
                 agent_name VARCHAR(255) NOT NULL,
@@ -722,10 +752,12 @@ class PostgresDatabase:
                 last_updated TIMESTAMP DEFAULT NOW(),
                 UNIQUE(agent_name, domain)
             )
-        """)
+        """
+        )
 
         # 14. Source domain credibility (Phase 3.3)
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS source_domain_credibility (
                 id BIGSERIAL PRIMARY KEY,
                 source VARCHAR(255) NOT NULL,
@@ -738,10 +770,12 @@ class PostgresDatabase:
                 last_updated TIMESTAMP DEFAULT NOW(),
                 UNIQUE(source, domain)
             )
-        """)
+        """
+        )
 
         # 15. Quality thresholds (Phase 3.3)
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS quality_thresholds (
                 id BIGSERIAL PRIMARY KEY,
                 domain VARCHAR(255) NOT NULL UNIQUE,
@@ -752,10 +786,12 @@ class PostgresDatabase:
                 retention_rate_optimal FLOAT,
                 last_updated TIMESTAMP DEFAULT NOW()
             )
-        """)
+        """
+        )
 
         # 16. Search strategies (Phase 3.3)
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS search_strategies (
                 id BIGSERIAL PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
@@ -773,10 +809,12 @@ class PostgresDatabase:
                 last_updated TIMESTAMP DEFAULT NOW(),
                 UNIQUE(domain, name)
             )
-        """)
+        """
+        )
 
         # 17. Research graph entities (Phase 3.3)
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS research_graph_entities (
                 id BIGSERIAL PRIMARY KEY,
                 task_id BIGINT NOT NULL REFERENCES research_tasks(id) ON DELETE CASCADE,
@@ -787,10 +825,12 @@ class PostgresDatabase:
                 confidence FLOAT DEFAULT 0.8,
                 created_at TIMESTAMP DEFAULT NOW()
             )
-        """)
+        """
+        )
 
         # 18. Research graph relations (Phase 3.3)
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS research_graph_relations (
                 id BIGSERIAL PRIMARY KEY,
                 task_id BIGINT NOT NULL REFERENCES research_tasks(id) ON DELETE CASCADE,
@@ -802,10 +842,12 @@ class PostgresDatabase:
                 confidence FLOAT DEFAULT 0.8,
                 created_at TIMESTAMP DEFAULT NOW()
             )
-        """)
+        """
+        )
 
         # 19. Research consolidation runs (Phase 3.3)
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS research_consolidation_runs (
                 id BIGSERIAL PRIMARY KEY,
                 task_id BIGINT NOT NULL UNIQUE REFERENCES research_tasks(id) ON DELETE CASCADE,
@@ -820,276 +862,372 @@ class PostgresDatabase:
                 strategy_improvements INT DEFAULT 0,
                 error_message TEXT
             )
-        """)
+        """
+        )
 
     async def _create_indices(self, conn: AsyncConnection):
         """Create all indices for performance."""
 
         # Memory vector indices
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_memory_project
             ON memory_vectors(project_id)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_memory_type
             ON memory_vectors(memory_type)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_memory_consolidation
             ON memory_vectors(consolidation_state)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_memory_quality
             ON memory_vectors(quality_score DESC)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_memory_accessed
             ON memory_vectors(last_accessed DESC)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_memory_session
             ON memory_vectors(session_id)
-        """)
+        """
+        )
 
         # Vector search index (IVFFlat with cosine distance)
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_memory_embedding_ivfflat
             ON memory_vectors USING ivfflat (embedding vector_cosine_ops)
             WITH (lists = 100)
-        """)
+        """
+        )
 
         # Full-text search index
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_memory_content_fts
             ON memory_vectors USING GIN (content_tsvector)
-        """)
+        """
+        )
 
         # Composite indices for filtering
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_memory_project_type
             ON memory_vectors(project_id, memory_type)
             WHERE consolidation_state = 'consolidated'
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_memory_project_domain
             ON memory_vectors(project_id, domain, consolidation_state)
-        """)
+        """
+        )
 
         # Episodic event indices
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_episodic_project
             ON episodic_events(project_id)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_episodic_session
             ON episodic_events(session_id)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_episodic_timestamp
             ON episodic_events(project_id, timestamp DESC)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_episodic_event_type
             ON episodic_events(event_type)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_episodic_consolidation
             ON episodic_events(consolidation_status)
-        """)
+        """
+        )
 
         # Task and goal indices
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_tasks_project
             ON prospective_tasks(project_id)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_tasks_status
             ON prospective_tasks(status)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_tasks_due_date
             ON prospective_tasks(due_date)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_goals_project
             ON prospective_goals(project_id)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_goals_status
             ON prospective_goals(status)
-        """)
+        """
+        )
 
         # Code indices
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_code_project
             ON code_metadata(project_id)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_code_file
             ON code_metadata(file_path)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_code_entity_type
             ON code_metadata(entity_type)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_code_dep_from
             ON code_dependencies(from_code_id)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_code_dep_to
             ON code_dependencies(to_code_id)
-        """)
+        """
+        )
 
         # Planning indices
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_decision_project
             ON planning_decisions(project_id)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_decision_status
             ON planning_decisions(validation_status)
-        """)
+        """
+        )
 
         # Entity indices
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_entities_project
             ON entities(project_id)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_entities_type
             ON entities(entity_type)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_entities_project_type
             ON entities(project_id, entity_type)
-        """)
+        """
+        )
 
         # Research task indices
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_research_tasks_project
             ON research_tasks(project_id)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_research_tasks_status
             ON research_tasks(status)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_research_tasks_domain
             ON research_tasks(research_domain)
-        """)
+        """
+        )
 
         # Research consolidation indices (Phase 3.3)
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_research_patterns_task
             ON research_patterns(task_id)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_research_patterns_type
             ON research_patterns(pattern_type)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_agent_expertise
             ON agent_domain_expertise(agent_name, domain)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_source_credibility
             ON source_domain_credibility(source, domain)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_quality_thresholds
             ON quality_thresholds(domain)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_search_strategies
             ON search_strategies(domain)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_research_entities
             ON research_graph_entities(task_id, entity_type)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_research_relations
             ON research_graph_relations(task_id)
-        """)
+        """
+        )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_consolidation_runs
             ON research_consolidation_runs(task_id, status)
-        """)
+        """
+        )
 
         # =====================================================================
         # COMPOSITE INDICES FOR PERFORMANCE OPTIMIZATION (P0 BLOCKERS)
         # =====================================================================
 
         # Temporal queries: episodic_events(project_id, timestamp DESC)
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_episodic_temporal
             ON episodic_events(project_id, timestamp DESC)
-        """)
+        """
+        )
 
         # Consolidation pipeline: episodic_events(consolidation_status, confidence)
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_episodic_consolidation
             ON episodic_events(consolidation_status, confidence)
-        """)
+        """
+        )
 
         # Knowledge graph traversal: entity_relations(from_entity_id, relation_type)
         # NOTE: This index assumes an entity_relations table exists in the schema
         try:
-            await conn.execute("""
+            await conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_entity_relations_from
                 ON entity_relations(from_entity_id, relation_type)
-            """)
+            """
+            )
         except Exception:
             # Table may not exist yet; this is optional if knowledge graph is not used
             pass
 
         # Task filtering: prospective_tasks(status, priority, due_date)
-        await conn.execute("""
+        await conn.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_prospective_active
             ON prospective_tasks(status, priority, due_date)
-        """)
+        """
+        )
 
         # Create IVFFlat index for fast semantic search with pgvector
         try:
-            await conn.execute("""
+            await conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS episodic_events_embedding_ivfflat
                 ON episodic_events USING ivfflat (embedding vector_cosine_ops)
                 WITH (lists = 100)
-            """)
+            """
+            )
         except Exception as e:
             import logging
+
             logging.warning(f"Failed to create embedding index (semantic search may be slow): {e}")
             # Don't fail init - embeddings column is optional, semantic search has fallback
             # But log so it's visible if pgvector isn't properly set up
@@ -1381,18 +1519,22 @@ class PostgresDatabase:
 
             # Build SELECT clause parameters (these come first in the SQL)
             select_params = [
-                query_text,          # Line 16: plainto_tsquery(%s) for keyword_rank
-                semantic_weight,     # Line 17: %s * (semantic component)
-                keyword_weight,      # Line 18: %s * COALESCE (keyword component)
-                query_text,          # Line 18: plainto_tsquery(%s) in hybrid score
+                query_text,  # Line 16: plainto_tsquery(%s) for keyword_rank
+                semantic_weight,  # Line 17: %s * (semantic component)
+                keyword_weight,  # Line 18: %s * COALESCE (keyword component)
+                query_text,  # Line 18: plainto_tsquery(%s) in hybrid score
             ]
 
             # Combine parameters in the order they appear in SQL:
             # SELECT clause params first, then WHERE clause params, then remaining
-            params = select_params + where_params + [
-                query_text,          # Line 25: plainto_tsquery(%s) in threshold check
-                limit,               # Line 29: LIMIT %s
-            ]
+            params = (
+                select_params
+                + where_params
+                + [
+                    query_text,  # Line 25: plainto_tsquery(%s) in threshold check
+                    limit,  # Line 29: LIMIT %s
+                ]
+            )
 
             # Build SQL query - embedding is pre-converted to string, not a placeholder
             # This avoids type casting issues with psycopg
@@ -1431,21 +1573,23 @@ class PostgresDatabase:
 
             results = []
             async for row_data in cursor:
-                results.append({
-                    "id": row_data[0],
-                    "project_id": row_data[1],
-                    "content": row_data[2],
-                    "memory_type": row_data[3],
-                    "domain": row_data[4],
-                    "tags": row_data[5],
-                    "quality_score": row_data[6],
-                    "consolidation_state": row_data[7],
-                    "created_at": int(row_data[8].timestamp()),
-                    "access_count": row_data[9],
-                    "semantic_similarity": float(row_data[10]),
-                    "keyword_rank": float(row_data[11] or 0),
-                    "hybrid_score": float(row_data[12]),
-                })
+                results.append(
+                    {
+                        "id": row_data[0],
+                        "project_id": row_data[1],
+                        "content": row_data[2],
+                        "memory_type": row_data[3],
+                        "domain": row_data[4],
+                        "tags": row_data[5],
+                        "quality_score": row_data[6],
+                        "consolidation_state": row_data[7],
+                        "created_at": int(row_data[8].timestamp()),
+                        "access_count": row_data[9],
+                        "semantic_similarity": float(row_data[10]),
+                        "keyword_rank": float(row_data[11] or 0),
+                        "hybrid_score": float(row_data[12]),
+                    }
+                )
 
             return results
 
@@ -1487,13 +1631,15 @@ class PostgresDatabase:
 
             results = []
             async for row_data in await row:
-                results.append({
-                    "id": row_data[0],
-                    "content": row_data[1],
-                    "memory_type": row_data[2],
-                    "quality_score": row_data[3],
-                    "semantic_similarity": float(row_data[4]),
-                })
+                results.append(
+                    {
+                        "id": row_data[0],
+                        "content": row_data[1],
+                        "memory_type": row_data[2],
+                        "quality_score": row_data[3],
+                        "semantic_similarity": float(row_data[4]),
+                    }
+                )
 
             return results
 
@@ -1536,14 +1682,16 @@ class PostgresDatabase:
 
             results = []
             async for row_data in await row:
-                results.append({
-                    "id": row_data[0],
-                    "content": row_data[1],
-                    "memory_type": row_data[2],
-                    "quality_score": row_data[3],
-                    "last_retrieved": int(row_data[4].timestamp()),
-                    "seconds_since_retrieval": int(row_data[5]),
-                })
+                results.append(
+                    {
+                        "id": row_data[0],
+                        "content": row_data[1],
+                        "memory_type": row_data[2],
+                        "quality_score": row_data[3],
+                        "last_retrieved": int(row_data[4].timestamp()),
+                        "seconds_since_retrieval": int(row_data[5]),
+                    }
+                )
 
             return results
 
@@ -1799,18 +1947,20 @@ class PostgresDatabase:
 
         # Convert to list of dicts for compatibility with MemoryStore
         result = []
-        for row in (rows or []):
-            result.append({
-                "id": row[0],
-                "project_id": row[1],
-                "content": row[2],
-                "memory_type": row[3],
-                "created_at": row[4],
-                "updated_at": row[5],
-                "last_accessed": row[6],
-                "usefulness_score": row[7],
-                "access_count": row[8],
-            })
+        for row in rows or []:
+            result.append(
+                {
+                    "id": row[0],
+                    "project_id": row[1],
+                    "content": row[2],
+                    "memory_type": row[3],
+                    "created_at": row[4],
+                    "updated_at": row[5],
+                    "last_accessed": row[6],
+                    "usefulness_score": row[7],
+                    "access_count": row[8],
+                }
+            )
 
         return result
 
@@ -1925,7 +2075,8 @@ class PostgresDatabase:
             - efficiency: Fetch ratio (tuples_fetched / tuples_read)
         """
         async with self.get_connection() as conn:
-            row = await conn.execute("""
+            row = await conn.execute(
+                """
                 SELECT
                     schemaname,
                     tablename,
@@ -1941,19 +2092,22 @@ class PostgresDatabase:
                 FROM pg_stat_user_indexes
                 WHERE schemaname = 'public'
                 ORDER BY idx_scan DESC
-            """)
+            """
+            )
 
             results = []
             async for row_data in row:
-                results.append({
-                    "schema": row_data[0],
-                    "table": row_data[1],
-                    "index": row_data[2],
-                    "scans": int(row_data[3] or 0),
-                    "tuples_read": int(row_data[4] or 0),
-                    "tuples_fetched": int(row_data[5] or 0),
-                    "efficiency": float(row_data[6] or 0),
-                })
+                results.append(
+                    {
+                        "schema": row_data[0],
+                        "table": row_data[1],
+                        "index": row_data[2],
+                        "scans": int(row_data[3] or 0),
+                        "tuples_read": int(row_data[4] or 0),
+                        "tuples_fetched": int(row_data[5] or 0),
+                        "efficiency": float(row_data[6] or 0),
+                    }
+                )
 
             return results
 
@@ -1971,7 +2125,8 @@ class PostgresDatabase:
             - oldest_query_seconds: Age of oldest running query
         """
         async with self.get_connection() as conn:
-            row = await conn.execute("""
+            row = await conn.execute(
+                """
                 SELECT
                     COUNT(*) as total,
                     COUNT(*) FILTER (WHERE state = 'active') as active,
@@ -1981,7 +2136,8 @@ class PostgresDatabase:
                 FROM pg_stat_activity
                 WHERE datname = current_database()
                     AND pid != pg_backend_pid()
-            """)
+            """
+            )
 
             result = await row.fetchone()
 

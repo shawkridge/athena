@@ -8,7 +8,6 @@ Consolidates episodic memory into knowledge graph entities through:
 4. Relationship inference
 """
 
-import json
 import logging
 from typing import Dict, Any, List, Set
 from datetime import datetime, timedelta
@@ -37,10 +36,7 @@ class EpisodicGraphExtractor:
         self.uncertainty_threshold = 0.6  # If uncertainty > this, use LLM validation
 
     def extract_and_populate(
-        self,
-        project_id: int,
-        hours_back: int = 24,
-        min_events: int = 3
+        self, project_id: int, hours_back: int = 24, min_events: int = 3
     ) -> Dict[str, Any]:
         """Extract entities from episodic events and populate graph.
 
@@ -54,7 +50,7 @@ class EpisodicGraphExtractor:
         """
         try:
             from ..graph.store import GraphStore
-            from ..graph.models import Entity, EntityType, Relation, RelationType, Observation
+            from ..graph.models import Entity, EntityType
 
             # Get recent episodic events
             cutoff_time = int((datetime.now() - timedelta(hours=hours_back)).timestamp())
@@ -67,7 +63,7 @@ class EpisodicGraphExtractor:
                 ORDER BY timestamp DESC
                 LIMIT 100
                 """,
-                (project_id, cutoff_time)
+                (project_id, cutoff_time),
             )
 
             if len(events) < min_events:
@@ -78,7 +74,7 @@ class EpisodicGraphExtractor:
                     "entities_updated": 0,
                     "observations_added": 0,
                     "events_processed": len(events),
-                    "reason": "Not enough events"
+                    "reason": "Not enough events",
                 }
 
             # System 1: Extract concepts from event content using heuristics
@@ -89,10 +85,14 @@ class EpisodicGraphExtractor:
 
             # System 2: If uncertainty is high, validate with LLM
             if uncertainty > self.uncertainty_threshold:
-                logger.debug(f"Extraction uncertainty {uncertainty:.2f} > threshold, using LLM validation")
+                logger.debug(
+                    f"Extraction uncertainty {uncertainty:.2f} > threshold, using LLM validation"
+                )
                 concepts = self._validate_concepts_with_llm(concepts, events)
             else:
-                logger.debug(f"Extraction uncertainty {uncertainty:.2f} is low, using System 1 results")
+                logger.debug(
+                    f"Extraction uncertainty {uncertainty:.2f} is low, using System 1 results"
+                )
 
             # Create entities for unique concepts
             graph_store = GraphStore(self.db)
@@ -103,7 +103,9 @@ class EpisodicGraphExtractor:
                 for concept_name in concept_names:
                     try:
                         # Try to find existing entity
-                        existing = graph_store.find_entity(name=concept_name, entity_type=concept_type)
+                        existing = graph_store.find_entity(
+                            name=concept_name, entity_type=concept_type
+                        )
 
                         if existing:
                             # Entity exists, add observations from new events
@@ -117,8 +119,8 @@ class EpisodicGraphExtractor:
                                 metadata={
                                     "consolidated_from_events": True,
                                     "created_at": datetime.now().isoformat(),
-                                    "event_count": len(events)
-                                }
+                                    "event_count": len(events),
+                                },
                             )
                             entity_id = graph_store.create_entity(entity)
                             entities_created += 1
@@ -126,22 +128,14 @@ class EpisodicGraphExtractor:
                         # Add observations from events
                         if entity_id:
                             for event in events:
-                                obs_added = self._add_observation(
-                                    graph_store,
-                                    entity_id,
-                                    event
-                                )
+                                obs_added = self._add_observation(graph_store, entity_id, event)
                                 observations_added += obs_added
 
                     except Exception as e:
                         logger.warning(f"Error processing concept {concept_name}: {e}")
 
             # Create relationships between entities
-            self._create_entity_relationships(
-                graph_store,
-                project_id,
-                events
-            )
+            self._create_entity_relationships(graph_store, project_id, events)
 
             return {
                 "success": True,
@@ -154,6 +148,7 @@ class EpisodicGraphExtractor:
         except Exception as e:
             logger.error(f"Error extracting episodic entities: {e}")
             import traceback
+
             traceback.print_exc()
             return {
                 "success": False,
@@ -248,7 +243,9 @@ class EpisodicGraphExtractor:
         # Remove duplicates and empty sets
         return {k: v for k, v in concepts.items() if v}
 
-    def _calculate_extraction_uncertainty(self, concepts: Dict[str, Set[str]], events: List[Dict[str, Any]]) -> float:
+    def _calculate_extraction_uncertainty(
+        self, concepts: Dict[str, Set[str]], events: List[Dict[str, Any]]
+    ) -> float:
         """Calculate uncertainty in concept extraction (System 1 confidence).
 
         Uses frequency and dispersion metrics:
@@ -275,13 +272,19 @@ class EpisodicGraphExtractor:
         concept_diversity_score = len(concepts) / 4.0  # All 4 types
 
         # Combine into confidence (0-1), then invert to uncertainty
-        confidence = (concept_frequency_score * 0.5 + event_coverage_score * 0.3 + concept_diversity_score * 0.2)
+        confidence = (
+            concept_frequency_score * 0.5
+            + event_coverage_score * 0.3
+            + concept_diversity_score * 0.2
+        )
         confidence = min(confidence, 1.0)
         uncertainty = 1.0 - confidence
 
         return uncertainty
 
-    def _validate_concepts_with_llm(self, concepts: Dict[str, Set[str]], events: List[Dict[str, Any]]) -> Dict[str, Set[str]]:
+    def _validate_concepts_with_llm(
+        self, concepts: Dict[str, Set[str]], events: List[Dict[str, Any]]
+    ) -> Dict[str, Set[str]]:
         """Validate extracted concepts using LLM (System 2 validation).
 
         Called when uncertainty is high. Uses LLM to:
@@ -302,15 +305,20 @@ class EpisodicGraphExtractor:
 
         try:
             # Build prompt for LLM validation
-            event_summaries = "\n".join([
-                f"[{e.get('event_type', 'unknown')}] {e.get('content', '')[:200]}"
-                for e in events[:5]  # Use first 5 events
-            ])
+            event_summaries = "\n".join(
+                [
+                    f"[{e.get('event_type', 'unknown')}] {e.get('content', '')[:200]}"
+                    for e in events[:5]  # Use first 5 events
+                ]
+            )
 
-            extracted_str = "\n".join([
-                f"- {ctype}: {', '.join(sorted(names))}"
-                for ctype, names in concepts.items() if names
-            ])
+            extracted_str = "\n".join(
+                [
+                    f"- {ctype}: {', '.join(sorted(names))}"
+                    for ctype, names in concepts.items()
+                    if names
+                ]
+            )
 
             prompt = f"""You are analyzing episodic events from a knowledge consolidation system.
 
@@ -338,6 +346,7 @@ Respond with ONLY valid JSON (no markdown, no extra text):
 
             # Parse JSON from LLM response
             import json
+
             try:
                 # Try to extract JSON from response (handle markdown formatting)
                 json_str = response
@@ -368,19 +377,16 @@ Respond with ONLY valid JSON (no markdown, no extra text):
             # Clean up empty sets
             validated_concepts = {k: v for k, v in validated_concepts.items() if v}
 
-            logger.info(f"LLM validation complete: removed {len(to_remove)}, added {sum(len(v) for v in validation.get('add', {}).values())}")
+            logger.info(
+                f"LLM validation complete: removed {len(to_remove)}, added {sum(len(v) for v in validation.get('add', {}).values())}"
+            )
             return validated_concepts
 
         except Exception as e:
             logger.warning(f"LLM validation failed: {e}, using System 1 results")
             return concepts
 
-    def _add_observation(
-        self,
-        graph_store,
-        entity_id: int,
-        event: Dict[str, Any]
-    ) -> int:
+    def _add_observation(self, graph_store, entity_id: int, event: Dict[str, Any]) -> int:
         """Add observation from event to entity.
 
         Args:
@@ -400,7 +406,7 @@ Respond with ONLY valid JSON (no markdown, no extra text):
                     content=event["content"][:500],  # Truncate long content
                     observation_type="extracted_from_episodic_event",
                     source="episodic_consolidation",
-                    timestamp=event.get("timestamp", int(datetime.now().timestamp()))
+                    timestamp=event.get("timestamp", int(datetime.now().timestamp())),
                 )
                 graph_store.add_observation(obs)
                 return 1
@@ -410,10 +416,7 @@ Respond with ONLY valid JSON (no markdown, no extra text):
         return 0
 
     def _create_entity_relationships(
-        self,
-        graph_store,
-        project_id: int,
-        events: List[Dict[str, Any]]
+        self, graph_store, project_id: int, events: List[Dict[str, Any]]
     ):
         """Infer and create relationships between extracted entities.
 
@@ -435,18 +438,23 @@ Respond with ONLY valid JSON (no markdown, no extra text):
             # Create simple co-occurrence based relationships
             # Entities that appear in same events are related
             for i, entity1 in enumerate(entities):
-                entity1_name = entity1.get("name", "") if isinstance(entity1, dict) else entity1.name
+                entity1_name = (
+                    entity1.get("name", "") if isinstance(entity1, dict) else entity1.name
+                )
                 entity1_id = entity1.get("id", None) if isinstance(entity1, dict) else entity1.id
 
-                for entity2 in entities[i+1:]:
-                    entity2_name = entity2.get("name", "") if isinstance(entity2, dict) else entity2.name
-                    entity2_id = entity2.get("id", None) if isinstance(entity2, dict) else entity2.id
+                for entity2 in entities[i + 1 :]:
+                    entity2_name = (
+                        entity2.get("name", "") if isinstance(entity2, dict) else entity2.name
+                    )
+                    entity2_id = (
+                        entity2.get("id", None) if isinstance(entity2, dict) else entity2.id
+                    )
 
                     # Check if both appear in same event
                     for event in events:
                         content = event.get("content", "").lower()
-                        if (entity1_name.lower() in content and
-                            entity2_name.lower() in content):
+                        if entity1_name.lower() in content and entity2_name.lower() in content:
                             try:
                                 rel = Relation(
                                     from_entity_id=entity1_id,
@@ -456,8 +464,8 @@ Respond with ONLY valid JSON (no markdown, no extra text):
                                     confidence=0.7,
                                     metadata={
                                         "co_occurrence": True,
-                                        "source": "episodic_consolidation"
-                                    }
+                                        "source": "episodic_consolidation",
+                                    },
                                 )
                                 graph_store.create_relation(rel)
                                 break

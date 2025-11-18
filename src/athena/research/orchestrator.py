@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ResearchQuery:
     """A research query with decomposition."""
+
     original_query: str
     sub_queries: List[str] = field(default_factory=list)
     keywords: List[str] = field(default_factory=list)
@@ -38,6 +39,7 @@ class ResearchQuery:
 @dataclass
 class ResearchResult:
     """Aggregated research result."""
+
     query: str
     web_results: List[SearchResult] = field(default_factory=list)
     academic_papers: List[AcademicPaper] = field(default_factory=list)
@@ -172,8 +174,8 @@ class ResearchOrchestrator:
         # Create result
         result = ResearchResult(
             query=query,
-            web_results=web_results[:max_results // 2],
-            academic_papers=academic_papers[:max_results // 2],
+            web_results=web_results[: max_results // 2],
+            academic_papers=academic_papers[: max_results // 2],
             synthesis=synthesis,
             key_findings=key_findings,
             quality_score=self._calculate_quality_score(
@@ -192,8 +194,7 @@ class ResearchOrchestrator:
         self._result_cache[cache_key] = result
 
         logger.info(
-            f"Research complete: {len(web_results)} web + "
-            f"{len(academic_papers)} papers"
+            f"Research complete: {len(web_results)} web + " f"{len(academic_papers)} papers"
         )
 
         return result
@@ -222,8 +223,7 @@ Provide sub-queries, one per line (without numbering):"""
                 )
                 if response.text:
                     parsed.sub_queries = [
-                        line.strip() for line in response.text.strip().split("\n")
-                        if line.strip()
+                        line.strip() for line in response.text.strip().split("\n") if line.strip()
                     ]
             except Exception as e:
                 logger.debug(f"Query decomposition failed: {e}")

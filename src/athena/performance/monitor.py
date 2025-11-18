@@ -2,7 +2,7 @@
 
 import time
 from collections import defaultdict, deque
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 import psutil
@@ -185,10 +185,7 @@ class PerformanceMonitor:
         Returns:
             Dictionary of operation statistics
         """
-        return {
-            name: metric.get_stats()
-            for name, metric in self.metrics.items()
-        }
+        return {name: metric.get_stats() for name, metric in self.metrics.items()}
 
     def get_summary(self) -> dict:
         """Get summary of all operations.
@@ -201,20 +198,18 @@ class PerformanceMonitor:
         total_errors = sum(self.error_counts.values())
 
         # Calculate total time spent
-        total_time_ms = sum(
-            metric.total for metric in self.metrics.values()
-        )
+        total_time_ms = sum(metric.total for metric in self.metrics.values())
 
         return {
             "uptime": uptime.total_seconds(),
             "total_operations": total_operations,
             "total_errors": total_errors,
             "total_time_ms": total_time_ms,
-            "average_operation_time_ms": total_time_ms / total_operations if total_operations > 0 else 0,
+            "average_operation_time_ms": (
+                total_time_ms / total_operations if total_operations > 0 else 0
+            ),
             "operations_per_second": (
-                total_operations / (uptime.total_seconds())
-                if uptime.total_seconds() > 0
-                else 0
+                total_operations / (uptime.total_seconds()) if uptime.total_seconds() > 0 else 0
             ),
             "error_rate": total_errors / total_operations if total_operations > 0 else 0,
         }
@@ -228,10 +223,7 @@ class PerformanceMonitor:
         Returns:
             List of slowest operation stats
         """
-        operations = [
-            (name, metric.get_max() or 0)
-            for name, metric in self.metrics.items()
-        ]
+        operations = [(name, metric.get_max() or 0) for name, metric in self.metrics.items()]
 
         operations.sort(key=lambda x: x[1], reverse=True)
 
@@ -294,7 +286,9 @@ class PerformanceMonitor:
         if system:
             print("\nSYSTEM RESOURCES:")
             print(f"  CPU: {system.get('cpu_percent', 0):.1f}%")
-            print(f"  Memory: {system.get('memory_mb', 0):.1f}MB ({system.get('memory_percent', 0):.1f}%)")
+            print(
+                f"  Memory: {system.get('memory_mb', 0):.1f}MB ({system.get('memory_percent', 0):.1f}%)"
+            )
             print(f"  Threads: {system.get('threads', 0)}")
 
         print("=" * 60 + "\n")

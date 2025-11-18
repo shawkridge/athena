@@ -2,9 +2,7 @@
 
 import logging
 from typing import Optional, List
-from datetime import datetime
 
-from athena.core.database import Database
 from athena.memory import MemoryStore
 from athena.graph.store import GraphStore
 from athena.episodic.store import EpisodicStore
@@ -66,11 +64,13 @@ class ResearchMemoryIntegrator:
 
             # Create tags
             all_tags = tags or []
-            all_tags.extend([
-                f"research-{task_id}",
-                f"source:{finding.primary_source}",
-                "research-finding",
-            ])
+            all_tags.extend(
+                [
+                    f"research-{task_id}",
+                    f"source:{finding.primary_source}",
+                    "research-finding",
+                ]
+            )
 
             # Add source tags
             if finding.secondary_sources:
@@ -120,9 +120,7 @@ class ResearchMemoryIntegrator:
             logger.error(f"Error creating source entity: {e}")
             return None
 
-    def extract_entities(
-        self, finding: AggregatedFinding
-    ) -> List[tuple[str, str]]:
+    def extract_entities(self, finding: AggregatedFinding) -> List[tuple[str, str]]:
         """Extract potential entities from a finding.
 
         Args:
@@ -225,24 +223,18 @@ class ResearchMemoryIntegrator:
             # Secondary sources
             for secondary_source in finding.secondary_sources:
                 if secondary_source not in source_entities:
-                    source_id = self.create_source_entity(
-                        secondary_source, 0.8, project_id
-                    )
+                    source_id = self.create_source_entity(secondary_source, 0.8, project_id)
                     if source_id:
                         source_entities[secondary_source] = source_id
 
-            logger.info(
-                f"Built knowledge graph for finding: {finding.title[:50]}..."
-            )
+            logger.info(f"Built knowledge graph for finding: {finding.title[:50]}...")
             return True
 
         except Exception as e:
             logger.error(f"Error building finding graph: {e}")
             return False
 
-    def query_research_findings(
-        self, query: str, limit: int = 10
-    ) -> List[dict]:
+    def query_research_findings(self, query: str, limit: int = 10) -> List[dict]:
         """Query research findings from semantic memory.
 
         Args:
@@ -265,12 +257,8 @@ class ResearchMemoryIntegrator:
                     "id": r.id,
                     "title": r.content[:100],  # Use first 100 chars as title
                     "content": r.content,
-                    "credibility": r.metadata.get("credibility", 0.5)
-                    if r.metadata
-                    else 0.5,
-                    "sources": r.metadata.get("sources", [])
-                    if r.metadata
-                    else [],
+                    "credibility": r.metadata.get("credibility", 0.5) if r.metadata else 0.5,
+                    "sources": r.metadata.get("sources", []) if r.metadata else [],
                 }
                 for r in results
             ]
@@ -309,9 +297,9 @@ class ResearchMemoryIntegrator:
                 "task_id": task_id,
                 "indexed_findings": len(findings),
                 "average_relevance": sum(
-                    f.metadata.get("relevance", 0.5) if f.metadata else 0.5
-                    for f in findings
-                ) / len(findings),
+                    f.metadata.get("relevance", 0.5) if f.metadata else 0.5 for f in findings
+                )
+                / len(findings),
                 "sources_represented": set(
                     f.metadata.get("sources", []) if f.metadata else [] for f in findings
                 ),

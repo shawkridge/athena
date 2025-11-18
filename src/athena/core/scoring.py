@@ -90,68 +90,56 @@ class CompositeScorer:
                 weighted_value = weight * component_value
                 total += weighted_value
                 breakdown[key] = {
-                    'weight': weight,
-                    'value': component_value,
-                    'weighted': weighted_value
+                    "weight": weight,
+                    "value": component_value,
+                    "weighted": weighted_value,
                 }
 
         return {
-            'score': max(0.0, min(1.0, total)),
-            'components': breakdown,
-            'total_before_clamp': total
+            "score": max(0.0, min(1.0, total)),
+            "components": breakdown,
+            "total_before_clamp": total,
         }
 
 
 # Predefined scorers for common use cases
 
-EFFICIENCY_SCORER = CompositeScorer({
-    'duration_variance': 0.4,
-    'completion_rate': 0.3,
-    'resource_utilization': 0.2,
-    'quality_score': 0.1
-})
+EFFICIENCY_SCORER = CompositeScorer(
+    {
+        "duration_variance": 0.4,
+        "completion_rate": 0.3,
+        "resource_utilization": 0.2,
+        "quality_score": 0.1,
+    }
+)
 
-MEMORY_QUALITY_SCORER = CompositeScorer({
-    'accuracy': 0.4,
-    'completeness': 0.3,
-    'recency': 0.2,
-    'relevance': 0.1
-})
+MEMORY_QUALITY_SCORER = CompositeScorer(
+    {"accuracy": 0.4, "completeness": 0.3, "recency": 0.2, "relevance": 0.1}
+)
 
-STRATEGY_EFFECTIVENESS_SCORER = CompositeScorer({
-    'success_rate': 0.4,
-    'efficiency': 0.3,
-    'learning_gain': 0.2,
-    'adaptability': 0.1
-})
+STRATEGY_EFFECTIVENESS_SCORER = CompositeScorer(
+    {"success_rate": 0.4, "efficiency": 0.3, "learning_gain": 0.2, "adaptability": 0.1}
+)
 
-TASK_HEALTH_SCORER = CompositeScorer({
-    'progress': 0.5,
-    'quality': 0.25,
-    'blockers': -0.2,  # Negative weight for risk factors
-    'error_rate': -0.05  # Negative weight for error rate
-})
+TASK_HEALTH_SCORER = CompositeScorer(
+    {
+        "progress": 0.5,
+        "quality": 0.25,
+        "blockers": -0.2,  # Negative weight for risk factors
+        "error_rate": -0.05,  # Negative weight for error rate
+    }
+)
 
-SALIENCY_SCORER = CompositeScorer({
-    'novelty': 0.4,
-    'surprise': 0.3,
-    'contradiction': 0.3
-})
+SALIENCY_SCORER = CompositeScorer({"novelty": 0.4, "surprise": 0.3, "contradiction": 0.3})
 
-CONSOLIDATION_QUALITY_SCORER = CompositeScorer({
-    'compression_ratio': 0.25,
-    'recall': 0.25,
-    'consistency': 0.25,
-    'information_density': 0.25
-})
+CONSOLIDATION_QUALITY_SCORER = CompositeScorer(
+    {"compression_ratio": 0.25, "recall": 0.25, "consistency": 0.25, "information_density": 0.25}
+)
 
 # Negative-weight scorers (for risk/penalty calculation)
-RISK_SCORER = CompositeScorer({
-    'complexity': 0.4,
-    'uncertainty': 0.3,
-    'dependencies': 0.2,
-    'unknowns': 0.1
-})
+RISK_SCORER = CompositeScorer(
+    {"complexity": 0.4, "uncertainty": 0.3, "dependencies": 0.2, "unknowns": 0.1}
+)
 
 
 def create_scorer(weights: Dict[str, float], name: Optional[str] = None) -> CompositeScorer:

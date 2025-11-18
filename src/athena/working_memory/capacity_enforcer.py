@@ -13,24 +13,27 @@ from datetime import datetime
 from dataclasses import dataclass
 
 from athena.core.database import Database
-from athena.working_memory.models import WorkingMemoryItem, ContentType, Component
+from athena.working_memory.models import ContentType, Component
 
 logger = logging.getLogger(__name__)
 
 
 class CapacityExceededError(Exception):
     """Raised when working memory capacity is exceeded."""
+
     pass
 
 
 class SoftLimitWarning(Warning):
     """Warning issued when soft limit (6/7) is approached."""
+
     pass
 
 
 @dataclass
 class CapacityStatus:
     """Working memory capacity status report."""
+
     active_count: int
     soft_limit: int
     hard_limit: int
@@ -51,8 +54,8 @@ class WorkingMemoryCapacityEnforcer:
     """
 
     # Baddeley capacity constants
-    SOFT_LIMIT = 6      # Warning threshold (6/7)
-    HARD_LIMIT = 7      # Absolute maximum (7/7)
+    SOFT_LIMIT = 6  # Warning threshold (6/7)
+    HARD_LIMIT = 7  # Absolute maximum (7/7)
     DECAY_HALF_LIFE = 30  # seconds (empirically typical for verbal items)
 
     def __init__(self, db: Database):
@@ -63,11 +66,13 @@ class WorkingMemoryCapacityEnforcer:
         """
         self.db = db
         self.logger = logging.getLogger(__name__)
+
     def _ensure_schema(self) -> None:
         """Create working_memory table if it doesn't exist."""
         try:
             cursor = self.db.get_cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS working_memory (
                     id SERIAL PRIMARY KEY,
                     project_id INTEGER NOT NULL,
@@ -82,17 +87,22 @@ class WorkingMemoryCapacityEnforcer:
                     embedding BLOB,
                     metadata TEXT
                 )
-            """)
+            """
+            )
 
             # Create indexes for performance
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_working_memory_project
                 ON working_memory(project_id)
-            """)
-            cursor.execute("""
+            """
+            )
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_working_memory_activation
                 ON working_memory(project_id, activation_level)
-            """)
+            """
+            )
 
             # commit handled by cursor context
             self.logger.debug("Ensured working_memory schema exists")
@@ -103,10 +113,7 @@ class WorkingMemoryCapacityEnforcer:
 
     @staticmethod
     def calculate_activation(
-        activation_level: float,
-        importance_score: float,
-        decay_rate: float,
-        seconds_elapsed: float
+        activation_level: float, importance_score: float, decay_rate: float, seconds_elapsed: float
     ) -> float:
         """Calculate current activation with exponential decay.
 
@@ -164,13 +171,16 @@ class WorkingMemoryCapacityEnforcer:
             cursor = self.db.get_cursor()
 
             # Query all WM items (activation will be calculated in Python)
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, activation_level, importance_score, decay_rate,
                        last_accessed, content_type
                 FROM working_memory
                 WHERE project_id = ?
                 ORDER BY last_accessed DESC
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
 
             rows = cursor.fetchall()
 
@@ -180,29 +190,31 @@ class WorkingMemoryCapacityEnforcer:
             for row in rows:
                 # Calculate current activation with decay
                 try:
-                    last_accessed = datetime.fromisoformat(row['last_accessed'])
+                    last_accessed = datetime.fromisoformat(row["last_accessed"])
                 except (ValueError, TypeError):
                     last_accessed = datetime.now()
 
                 time_elapsed = (datetime.now() - last_accessed).total_seconds()
 
                 current_activation = self.calculate_activation(
-                    activation_level=row['activation_level'],
-                    importance_score=row['importance_score'],
-                    decay_rate=row['decay_rate'],
-                    seconds_elapsed=time_elapsed
+                    activation_level=row["activation_level"],
+                    importance_score=row["importance_score"],
+                    decay_rate=row["decay_rate"],
+                    seconds_elapsed=time_elapsed,
                 )
 
                 # Include items with activation > 0.1 threshold
                 if current_activation > 0.1:
                     active_count += 1
-                    items.append({
-                        'id': row['id'],
-                        'activation': round(current_activation, 3),
-                        'importance': row['importance_score'],
-                        'content_type': row['content_type'],
-                        'time_since_access_seconds': round(time_elapsed, 1)
-                    })
+                    items.append(
+                        {
+                            "id": row["id"],
+                            "activation": round(current_activation, 3),
+                            "importance": row["importance_score"],
+                            "content_type": row["content_type"],
+                            "time_since_access_seconds": round(time_elapsed, 1),
+                        }
+                    )
 
             utilization_percent = (active_count / self.HARD_LIMIT) * 100
 
@@ -214,7 +226,7 @@ class WorkingMemoryCapacityEnforcer:
                 at_hard_limit=active_count >= self.HARD_LIMIT,
                 items=items,
                 utilization_percent=round(utilization_percent, 1),
-                estimated_consolidation_needed=active_count >= self.SOFT_LIMIT
+                estimated_consolidation_needed=active_count >= self.SOFT_LIMIT,
             )
 
         except Exception as e:
@@ -228,7 +240,7 @@ class WorkingMemoryCapacityEnforcer:
         content_type: ContentType = ContentType.VERBAL,
         component: Component = Component.PHONOLOGICAL,
         importance: float = 0.5,
-        consolidation_callback: Optional[Callable[[int], None]] = None
+        consolidation_callback: Optional[Callable[[int], None]] = None,
     ) -> int:
         """Add item with hard capacity enforcement.
 
@@ -292,7 +304,7 @@ class WorkingMemoryCapacityEnforcer:
                 content=content,
                 content_type=content_type,
                 component=component,
-                importance=importance
+                importance=importance,
             )
 
             self.logger.debug(
@@ -311,7 +323,7 @@ class WorkingMemoryCapacityEnforcer:
         content: str,
         content_type: ContentType,
         component: Component,
-        importance: float
+        importance: float,
     ) -> int:
         """Insert item into working memory database.
 
@@ -329,22 +341,25 @@ class WorkingMemoryCapacityEnforcer:
             cursor = self.db.get_cursor()
             now = datetime.now().isoformat()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO working_memory
                 (project_id, content, content_type, component, activation_level,
                  created_at, last_accessed, decay_rate, importance_score)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                project_id,
-                content,
-                content_type.value,
-                component.value,
-                1.0,  # Start with full activation
-                now,
-                now,
-                0.1 / 30,  # decay_rate: 0.1 / 30 seconds = 30-second half-life
-                importance
-            ))
+            """,
+                (
+                    project_id,
+                    content,
+                    content_type.value,
+                    component.value,
+                    1.0,  # Start with full activation
+                    now,
+                    now,
+                    0.1 / 30,  # decay_rate: 0.1 / 30 seconds = 30-second half-life
+                    importance,
+                ),
+            )
 
             # commit handled by cursor context
             return cursor.lastrowid
@@ -369,11 +384,14 @@ class WorkingMemoryCapacityEnforcer:
             cursor = self.db.get_cursor()
             now = datetime.now().isoformat()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE working_memory
                 SET activation_level = 1.0, last_accessed = ?
                 WHERE id = ? AND project_id = ?
-            """, (now, item_id, project_id))
+            """,
+                (now, item_id, project_id),
+            )
 
             # commit handled by cursor context
 
@@ -389,9 +407,7 @@ class WorkingMemoryCapacityEnforcer:
             raise
 
     def get_items_above_threshold(
-        self,
-        project_id: int,
-        threshold: float = 0.1
+        self, project_id: int, threshold: float = 0.1
     ) -> List[Dict[str, Any]]:
         """Get all items with activation above threshold.
 
@@ -404,39 +420,44 @@ class WorkingMemoryCapacityEnforcer:
         """
         try:
             cursor = self.db.get_cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, content, activation_level, importance_score,
                        content_type, last_accessed
                 FROM working_memory
                 WHERE project_id = ?
                 ORDER BY activation_level DESC
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
 
             rows = cursor.fetchall()
             items = []
 
             for row in rows:
                 try:
-                    last_accessed = datetime.fromisoformat(row['last_accessed'])
+                    last_accessed = datetime.fromisoformat(row["last_accessed"])
                 except (ValueError, TypeError):
                     last_accessed = datetime.now()
 
                 time_elapsed = (datetime.now() - last_accessed).total_seconds()
                 current_activation = self.calculate_activation(
-                    activation_level=row['activation_level'],
-                    importance_score=row['importance_score'],
+                    activation_level=row["activation_level"],
+                    importance_score=row["importance_score"],
                     decay_rate=0.1 / 30,  # Standard decay rate
-                    seconds_elapsed=time_elapsed
+                    seconds_elapsed=time_elapsed,
                 )
 
                 if current_activation > threshold:
-                    items.append({
-                        'id': row['id'],
-                        'content': row['content'][:100],  # Truncate for display
-                        'activation': round(current_activation, 3),
-                        'importance': row['importance_score'],
-                        'content_type': row['content_type']
-                    })
+                    items.append(
+                        {
+                            "id": row["id"],
+                            "content": row["content"][:100],  # Truncate for display
+                            "activation": round(current_activation, 3),
+                            "importance": row["importance_score"],
+                            "content_type": row["content_type"],
+                        }
+                    )
 
             return items
 
@@ -461,42 +482,50 @@ class WorkingMemoryCapacityEnforcer:
             cursor = self.db.get_cursor()
 
             # Get all items
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, activation_level, importance_score, last_accessed
                 FROM working_memory
                 WHERE project_id = ?
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
 
             rows = cursor.fetchall()
             ids_to_remove = []
 
             for row in rows:
                 try:
-                    last_accessed = datetime.fromisoformat(row['last_accessed'])
+                    last_accessed = datetime.fromisoformat(row["last_accessed"])
                 except (ValueError, TypeError):
                     last_accessed = datetime.now()
 
                 time_elapsed = (datetime.now() - last_accessed).total_seconds()
                 current_activation = self.calculate_activation(
-                    activation_level=row['activation_level'],
-                    importance_score=row['importance_score'],
+                    activation_level=row["activation_level"],
+                    importance_score=row["importance_score"],
                     decay_rate=0.1 / 30,
-                    seconds_elapsed=time_elapsed
+                    seconds_elapsed=time_elapsed,
                 )
 
                 if current_activation < threshold:
-                    ids_to_remove.append(row['id'])
+                    ids_to_remove.append(row["id"])
 
             # Remove items
             if ids_to_remove:
-                placeholders = ','.join(['?' for _ in ids_to_remove])
-                cursor.execute(f"""
+                placeholders = ",".join(["?" for _ in ids_to_remove])
+                cursor.execute(
+                    f"""
                     DELETE FROM working_memory
                     WHERE project_id = ? AND id IN ({placeholders})
-                """, [project_id] + ids_to_remove)
+                """,
+                    [project_id] + ids_to_remove,
+                )
 
                 # commit handled by cursor context
-                self.logger.info(f"Removed {len(ids_to_remove)} decayed items from project {project_id}")
+                self.logger.info(
+                    f"Removed {len(ids_to_remove)} decayed items from project {project_id}"
+                )
 
             return len(ids_to_remove)
 

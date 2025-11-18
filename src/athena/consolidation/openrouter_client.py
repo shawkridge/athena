@@ -54,11 +54,13 @@ class OpenRouterConfig:
 
 class RateLimitError(Exception):
     """Raised when OpenRouter rate limit is hit."""
+
     pass
 
 
 class ModelUnavailableError(Exception):
     """Raised when a model is unavailable."""
+
     pass
 
 
@@ -83,8 +85,8 @@ class OpenRouterClient:
             headers={
                 "Authorization": f"Bearer {config.api_key}",
                 "HTTP-Referer": "https://athena-memory.local",
-                "X-Title": "Athena Dream System"
-            }
+                "X-Title": "Athena Dream System",
+            },
         )
 
     @classmethod
@@ -133,7 +135,7 @@ class OpenRouterClient:
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,
-            top_p=top_p
+            top_p=top_p,
         )
 
     async def _call_with_retries(
@@ -142,7 +144,7 @@ class OpenRouterClient:
         messages: List[Dict[str, str]],
         max_tokens: int,
         temperature: float,
-        top_p: float
+        top_p: float,
     ) -> Dict[str, Any]:
         """Make API call with automatic retry logic."""
         last_error = None
@@ -154,14 +156,14 @@ class OpenRouterClient:
                     messages=messages,
                     max_tokens=max_tokens,
                     temperature=temperature,
-                    top_p=top_p
+                    top_p=top_p,
                 )
                 return response
 
             except RateLimitError as e:
                 last_error = e
                 if attempt < self.config.max_retries - 1:
-                    wait_time = self.config.retry_delay_seconds * (2 ** attempt)
+                    wait_time = self.config.retry_delay_seconds * (2**attempt)
                     logger.warning(
                         f"Rate limited on attempt {attempt + 1}. "
                         f"Waiting {wait_time}s before retry..."
@@ -191,7 +193,7 @@ class OpenRouterClient:
         messages: List[Dict[str, str]],
         max_tokens: int,
         temperature: float,
-        top_p: float
+        top_p: float,
     ) -> Dict[str, Any]:
         """Make single API call to OpenRouter."""
         payload = {
@@ -199,7 +201,7 @@ class OpenRouterClient:
             "messages": messages,
             "max_tokens": max_tokens,
             "temperature": temperature,
-            "top_p": top_p
+            "top_p": top_p,
         }
 
         try:
@@ -231,7 +233,7 @@ class OpenRouterClient:
                 "model": model.value,
                 "usage": data.get("usage", {}),
                 "stop_reason": choice.get("finish_reason"),
-                "raw_response": data
+                "raw_response": data,
             }
 
         except httpx.HTTPError as e:
@@ -239,11 +241,7 @@ class OpenRouterClient:
             raise
 
     async def generate_batch(
-        self,
-        model: OpenRouterModel,
-        prompts: List[str],
-        system: Optional[str] = None,
-        **kwargs
+        self, model: OpenRouterModel, prompts: List[str], system: Optional[str] = None, **kwargs
     ) -> List[Dict[str, Any]]:
         """
         Generate responses for multiple prompts in parallel.
@@ -258,13 +256,7 @@ class OpenRouterClient:
             List of responses in same order as prompts
         """
         tasks = [
-            self.generate(
-                model=model,
-                prompt=prompt,
-                system=system,
-                **kwargs
-            )
-            for prompt in prompts
+            self.generate(model=model, prompt=prompt, system=system, **kwargs) for prompt in prompts
         ]
 
         return await asyncio.gather(*tasks)
@@ -289,20 +281,20 @@ DREAM_MODELS_CONFIG = {
         "fallback": OpenRouterModel.MISTRAL_SMALL_3_2,
         "temperature": 0.8,
         "top_p": 0.9,
-        "max_tokens": 2000
+        "max_tokens": 2000,
     },
     "cross_project_synthesis": {
         "primary": OpenRouterModel.QWEN_2_5_CODER_32B,
         "fallback": OpenRouterModel.DEEPSEEK_V3_1,
         "temperature": 0.7,
         "top_p": 0.95,
-        "max_tokens": 3000
+        "max_tokens": 3000,
     },
     "semantic_matching": {
         "primary": OpenRouterModel.DEEPSEEK_V3_1,
         "fallback": OpenRouterModel.MISTRAL_SMALL_3_2,
         "temperature": 0.5,
         "top_p": 0.9,
-        "max_tokens": 1000
-    }
+        "max_tokens": 1000,
+    },
 }

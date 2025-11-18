@@ -42,8 +42,7 @@ import logging
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Set
-from collections import Counter
+from typing import Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -51,35 +50,35 @@ logger = logging.getLogger(__name__)
 class QueryType(Enum):
     """Detected query types."""
 
-    FACTUAL = "factual"           # What/Where/Who questions
-    TEMPORAL = "temporal"         # When/How long questions
-    RELATIONAL = "relational"     # How/Why relationship questions
-    EXPLORATORY = "exploratory"   # Tell me about/Explain
-    COMPARATIVE = "comparative"   # Compare/Contrast
-    PROCEDURAL = "procedural"     # How to/Instructions
-    REASONING = "reasoning"       # Why/Causal questions
-    UNKNOWN = "unknown"           # Unclear type
+    FACTUAL = "factual"  # What/Where/Who questions
+    TEMPORAL = "temporal"  # When/How long questions
+    RELATIONAL = "relational"  # How/Why relationship questions
+    EXPLORATORY = "exploratory"  # Tell me about/Explain
+    COMPARATIVE = "comparative"  # Compare/Contrast
+    PROCEDURAL = "procedural"  # How to/Instructions
+    REASONING = "reasoning"  # Why/Causal questions
+    UNKNOWN = "unknown"  # Unclear type
 
 
 class RAGStrategy(Enum):
     """RAG strategies to apply."""
 
-    BASIC = "basic"               # Simple vector search
-    HYDE = "hyde"                 # Hypothetical documents
-    RERANKING = "reranking"       # LLM-based reranking
-    REFLECTIVE = "reflective"     # Iterative refinement
-    PLANNING = "planning"         # Planning-aware RAG
-    HYBRID = "hybrid"             # Combine multiple strategies
-    AUTO = "auto"                 # Automatic selection
+    BASIC = "basic"  # Simple vector search
+    HYDE = "hyde"  # Hypothetical documents
+    RERANKING = "reranking"  # LLM-based reranking
+    REFLECTIVE = "reflective"  # Iterative refinement
+    PLANNING = "planning"  # Planning-aware RAG
+    HYBRID = "hybrid"  # Combine multiple strategies
+    AUTO = "auto"  # Automatic selection
 
 
 class ComplexityLevel(Enum):
     """Query complexity assessment."""
 
-    SIMPLE = "simple"             # Single-hop, direct answer
-    MODERATE = "moderate"         # Some context needed
-    COMPLEX = "complex"           # Multi-hop, reasoning required
-    VERY_COMPLEX = "very_complex" # Deep reasoning, synthesis
+    SIMPLE = "simple"  # Single-hop, direct answer
+    MODERATE = "moderate"  # Some context needed
+    COMPLEX = "complex"  # Multi-hop, reasoning required
+    VERY_COMPLEX = "very_complex"  # Deep reasoning, synthesis
 
 
 @dataclass
@@ -90,13 +89,13 @@ class QueryAnalysis:
     primary_strategy: RAGStrategy
     secondary_strategies: List[RAGStrategy]
     complexity: ComplexityLevel
-    confidence_score: float        # 0-1, higher = more confident
-    reasoning: str                 # Explanation of routing decision
-    indicators: Dict[str, float]   # Component scores
+    confidence_score: float  # 0-1, higher = more confident
+    reasoning: str  # Explanation of routing decision
+    indicators: Dict[str, float]  # Component scores
     requires_planning: bool = False
     requires_temporal: bool = False
     requires_reasoning: bool = False
-    estimated_hops: int = 1        # Estimated reasoning hops
+    estimated_hops: int = 1  # Estimated reasoning hops
 
 
 class QueryTypeDetector:
@@ -104,73 +103,73 @@ class QueryTypeDetector:
 
     # Query patterns for each type
     FACTUAL_PATTERNS = [
-        r'\bwhat\s+is\b',
-        r'\bwhere\s+is\b',
-        r'\bwho\s+is\b',
-        r'\bdefine\b',
-        r'\bwhat\s+does\b',
-        r'\bhow\s+much\b',
-        r'\bhow\s+many\b',
+        r"\bwhat\s+is\b",
+        r"\bwhere\s+is\b",
+        r"\bwho\s+is\b",
+        r"\bdefine\b",
+        r"\bwhat\s+does\b",
+        r"\bhow\s+much\b",
+        r"\bhow\s+many\b",
     ]
 
     TEMPORAL_PATTERNS = [
-        r'\bwhen\b',
-        r'\bhow\s+long\b',
-        r'\btimeline\b',
-        r'\bhistory\s+of\b',
-        r'\byear\b',
-        r'\bdate\b',
-        r'\brecent\b',
-        r'\bpast\b',
-        r'\bfuture\b',
+        r"\bwhen\b",
+        r"\bhow\s+long\b",
+        r"\btimeline\b",
+        r"\bhistory\s+of\b",
+        r"\byear\b",
+        r"\bdate\b",
+        r"\brecent\b",
+        r"\bpast\b",
+        r"\bfuture\b",
     ]
 
     RELATIONAL_PATTERNS = [
-        r'\bhow\s+is.*related\b',
-        r'\bconnect\b',
-        r'\brelationship\b',
-        r'\bimpact\b',
-        r'\binfluence\b',
-        r'\bcause\b',
-        r'\beffect\b',
+        r"\bhow\s+is.*related\b",
+        r"\bconnect\b",
+        r"\brelationship\b",
+        r"\bimpact\b",
+        r"\binfluence\b",
+        r"\bcause\b",
+        r"\beffect\b",
     ]
 
     EXPLORATORY_PATTERNS = [
-        r'\btell\s+me\s+about\b',
-        r'\bexplain\b',
-        r'\bdescribe\b',
-        r'\bsummarize\b',
-        r'\boverview\b',
-        r'\bbackground\b',
-        r'\bcontext\b',
+        r"\btell\s+me\s+about\b",
+        r"\bexplain\b",
+        r"\bdescribe\b",
+        r"\bsummarize\b",
+        r"\boverview\b",
+        r"\bbackground\b",
+        r"\bcontext\b",
     ]
 
     COMPARATIVE_PATTERNS = [
-        r'\bcompare\b',
-        r'\bcontrast\b',
-        r'\bdifference\s+between\b',
-        r'\bsimilarities\b',
-        r'\bvs\.|versus\b',
-        r'\bbetter\s+than\b',
-        r'\bworse\s+than\b',
+        r"\bcompare\b",
+        r"\bcontrast\b",
+        r"\bdifference\s+between\b",
+        r"\bsimilarities\b",
+        r"\bvs\.|versus\b",
+        r"\bbetter\s+than\b",
+        r"\bworse\s+than\b",
     ]
 
     PROCEDURAL_PATTERNS = [
-        r'\bhow\s+to\b',
-        r'\bsteps?\s+to\b',
-        r'\binstructions?\b',
-        r'\bprocess\b',
-        r'\bmethod\b',
-        r'\bprocedure\b',
+        r"\bhow\s+to\b",
+        r"\bsteps?\s+to\b",
+        r"\binstructions?\b",
+        r"\bprocess\b",
+        r"\bmethod\b",
+        r"\bprocedure\b",
     ]
 
     REASONING_PATTERNS = [
-        r'\bwhy\b',
-        r'\breason\b',
-        r'\bcause\b',
-        r'\bexplain\s+why\b',
-        r'\binterpret\b',
-        r'\banalyze\b',
+        r"\bwhy\b",
+        r"\breason\b",
+        r"\bcause\b",
+        r"\bexplain\s+why\b",
+        r"\binterpret\b",
+        r"\banalyze\b",
     ]
 
     def __init__(self):
@@ -184,8 +183,12 @@ class QueryTypeDetector:
             QueryType.FACTUAL: [re.compile(p, re.IGNORECASE) for p in self.FACTUAL_PATTERNS],
             QueryType.TEMPORAL: [re.compile(p, re.IGNORECASE) for p in self.TEMPORAL_PATTERNS],
             QueryType.RELATIONAL: [re.compile(p, re.IGNORECASE) for p in self.RELATIONAL_PATTERNS],
-            QueryType.EXPLORATORY: [re.compile(p, re.IGNORECASE) for p in self.EXPLORATORY_PATTERNS],
-            QueryType.COMPARATIVE: [re.compile(p, re.IGNORECASE) for p in self.COMPARATIVE_PATTERNS],
+            QueryType.EXPLORATORY: [
+                re.compile(p, re.IGNORECASE) for p in self.EXPLORATORY_PATTERNS
+            ],
+            QueryType.COMPARATIVE: [
+                re.compile(p, re.IGNORECASE) for p in self.COMPARATIVE_PATTERNS
+            ],
             QueryType.PROCEDURAL: [re.compile(p, re.IGNORECASE) for p in self.PROCEDURAL_PATTERNS],
             QueryType.REASONING: [re.compile(p, re.IGNORECASE) for p in self.REASONING_PATTERNS],
         }
@@ -254,9 +257,11 @@ class ComplexityAnalyzer:
 
         # Calculate complexity factors
         length = len(query.split())
-        conjunctions = len(re.findall(r'\band\b|\bor\b|\bbut\b', query, re.IGNORECASE))
-        subordinations = len(re.findall(r'\bif\b|\bbecause\b|\bwhile\b|\balthough\b', query, re.IGNORECASE))
-        multi_questions = query.count('?')
+        conjunctions = len(re.findall(r"\band\b|\bor\b|\bbut\b", query, re.IGNORECASE))
+        subordinations = len(
+            re.findall(r"\bif\b|\bbecause\b|\bwhile\b|\balthough\b", query, re.IGNORECASE)
+        )
+        multi_questions = query.count("?")
 
         # Score components
         length_score = min(1.0, length / 20)  # Longer queries tend to be complex
@@ -266,10 +271,10 @@ class ComplexityAnalyzer:
 
         # Weighted combination
         complexity_score = (
-            0.3 * length_score +
-            0.2 * conjunction_score +
-            0.25 * subordination_score +
-            0.25 * question_score
+            0.3 * length_score
+            + 0.2 * conjunction_score
+            + 0.25 * subordination_score
+            + 0.25 * question_score
         )
 
         # Classify
@@ -349,10 +354,7 @@ class StrategySelector:
         }
 
     def select(
-        self,
-        query_type: QueryType,
-        complexity: ComplexityLevel,
-        confidence_score: float
+        self, query_type: QueryType, complexity: ComplexityLevel, confidence_score: float
     ) -> Tuple[RAGStrategy, List[RAGStrategy]]:
         """Select primary and secondary strategies.
 
@@ -505,8 +507,17 @@ class QueryRouter:
     def _detect_planning_requirement(self, query: str) -> bool:
         """Detect if query requires planning-aware retrieval."""
         planning_keywords = [
-            'goal', 'task', 'objective', 'plan', 'strategy', 'steps',
-            'process', 'workflow', 'sequence', 'order', 'procedure'
+            "goal",
+            "task",
+            "objective",
+            "plan",
+            "strategy",
+            "steps",
+            "process",
+            "workflow",
+            "sequence",
+            "order",
+            "procedure",
         ]
         query_lower = query.lower()
         return any(kw in query_lower for kw in planning_keywords)
@@ -514,9 +525,23 @@ class QueryRouter:
     def _detect_temporal_requirement(self, query: str) -> bool:
         """Detect if query has temporal aspects."""
         temporal_keywords = [
-            'when', 'time', 'date', 'year', 'month', 'week', 'day',
-            'before', 'after', 'during', 'since', 'until', 'recent',
-            'history', 'timeline', 'evolution', 'progress'
+            "when",
+            "time",
+            "date",
+            "year",
+            "month",
+            "week",
+            "day",
+            "before",
+            "after",
+            "during",
+            "since",
+            "until",
+            "recent",
+            "history",
+            "timeline",
+            "evolution",
+            "progress",
         ]
         query_lower = query.lower()
         return any(kw in query_lower for kw in temporal_keywords)
@@ -524,8 +549,17 @@ class QueryRouter:
     def _detect_reasoning_requirement(self, query: str) -> bool:
         """Detect if query requires multi-hop reasoning."""
         reasoning_keywords = [
-            'why', 'because', 'reason', 'explain', 'cause', 'effect',
-            'impact', 'consequence', 'result', 'implication', 'analyze'
+            "why",
+            "because",
+            "reason",
+            "explain",
+            "cause",
+            "effect",
+            "impact",
+            "consequence",
+            "result",
+            "implication",
+            "analyze",
         ]
         query_lower = query.lower()
         return any(kw in query_lower for kw in reasoning_keywords)
@@ -533,8 +567,8 @@ class QueryRouter:
     def _estimate_reasoning_hops(self, query: str) -> int:
         """Estimate number of reasoning hops needed."""
         # Count compound structures
-        conjunctions = len(re.findall(r'\band\b|\bor\b|\bbut\b', query, re.IGNORECASE))
-        subordinations = len(re.findall(r'\bif\b|\bbecause\b|\bwhile\b', query, re.IGNORECASE))
+        conjunctions = len(re.findall(r"\band\b|\bor\b|\bbut\b", query, re.IGNORECASE))
+        subordinations = len(re.findall(r"\bif\b|\bbecause\b|\bwhile\b", query, re.IGNORECASE))
 
         base_hops = 1
         hops = base_hops + conjunctions + subordinations

@@ -15,7 +15,6 @@ from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from athena.core.database import Database
-    from athena.episodic.store import EpisodicStore
 
 
 class ConsolidationTriggerType(str, Enum):
@@ -61,12 +60,14 @@ class ConsolidationTrigger:
             db: Database connection
         """
         self.db = db
+
     def _ensure_schema(self):
         """Create consolidation trigger tables."""
         cursor = self.db.get_cursor()
 
         # Table: Consolidation trigger log
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS consolidation_triggers (
                 id INTEGER PRIMARY KEY,
                 session_id TEXT NOT NULL,
@@ -82,10 +83,12 @@ class ConsolidationTrigger:
                 procedures_created INTEGER,
                 metadata TEXT                -- JSON with trigger details
             )
-        """)
+        """
+        )
 
         # Table: Pattern sources (links patterns back to original events)
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS pattern_sources (
                 id INTEGER PRIMARY KEY,
                 pattern_id INTEGER NOT NULL,
@@ -95,10 +98,12 @@ class ConsolidationTrigger:
                 created_at INTEGER NOT NULL,
                 FOREIGN KEY (source_event_id) REFERENCES episodic_events(id)
             )
-        """)
+        """
+        )
 
         # Table: Consolidation metrics
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS consolidation_metrics (
                 id INTEGER PRIMARY KEY,
                 session_id TEXT NOT NULL,
@@ -107,23 +112,30 @@ class ConsolidationTrigger:
                 unit TEXT,
                 recorded_at INTEGER NOT NULL
             )
-        """)
+        """
+        )
 
         # Indexes
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_consolidation_triggers_session
             ON consolidation_triggers(session_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_consolidation_triggers_status
             ON consolidation_triggers(status)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_pattern_sources_pattern
             ON pattern_sources(pattern_id)
-        """)
+        """
+        )
 
         # commit handled by cursor context
 
@@ -139,19 +151,25 @@ class ConsolidationTrigger:
         cursor = self.db.get_cursor()
 
         # Count events in session
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT COUNT(*) FROM episodic_events
             WHERE session_id = ?
-        """, (session_id,))
+        """,
+            (session_id,),
+        )
 
         event_count = cursor.fetchone()[0]
 
         # Check if session has recent consolidation
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT status FROM consolidation_triggers
             WHERE session_id = ? AND status IN ('running', 'success', 'partial')
             ORDER BY triggered_at DESC LIMIT 1
-        """, (session_id,))
+        """,
+            (session_id,),
+        )
 
         recent_consolidation = cursor.fetchone()
 
@@ -177,7 +195,7 @@ class ConsolidationTrigger:
         self,
         session_id: str,
         trigger_type: ConsolidationTriggerType,
-        metadata: Optional[dict] = None
+        metadata: Optional[dict] = None,
     ) -> int:
         """Trigger consolidation for a session.
 
@@ -194,25 +212,31 @@ class ConsolidationTrigger:
         metadata_json = json.dumps(metadata) if metadata else None
 
         # Count events to be consolidated
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT COUNT(*) FROM episodic_events
             WHERE session_id = ?
-        """, (session_id,))
+        """,
+            (session_id,),
+        )
 
         event_count = cursor.fetchone()[0]
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO consolidation_triggers
             (session_id, trigger_type, event_count, triggered_at, status, metadata)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            session_id,
-            trigger_type.value,
-            event_count,
-            now,
-            ConsolidationStatus.PENDING.value,
-            metadata_json
-        ))
+        """,
+            (
+                session_id,
+                trigger_type.value,
+                event_count,
+                now,
+                ConsolidationStatus.PENDING.value,
+                metadata_json,
+            ),
+        )
 
         trigger_id = cursor.lastrowid
         # commit handled by cursor context
@@ -230,11 +254,14 @@ class ConsolidationTrigger:
         cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE consolidation_triggers
             SET status = ?, started_at = ?
             WHERE id = ?
-        """, (ConsolidationStatus.RUNNING.value, now, trigger_id))
+        """,
+            (ConsolidationStatus.RUNNING.value, now, trigger_id),
+        )
 
         # commit handled by cursor context
         return cursor.rowcount > 0
@@ -246,7 +273,7 @@ class ConsolidationTrigger:
         consolidated_events: int,
         patterns_extracted: int,
         procedures_created: int = 0,
-        error_message: Optional[str] = None
+        error_message: Optional[str] = None,
     ) -> bool:
         """Mark consolidation as completed.
 
@@ -264,30 +291,30 @@ class ConsolidationTrigger:
         cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE consolidation_triggers
             SET status = ?, completed_at = ?,
                 consolidated_events = ?, patterns_extracted = ?,
                 procedures_created = ?, error_message = ?
             WHERE id = ?
-        """, (
-            status.value,
-            now,
-            consolidated_events,
-            patterns_extracted,
-            procedures_created,
-            error_message,
-            trigger_id
-        ))
+        """,
+            (
+                status.value,
+                now,
+                consolidated_events,
+                patterns_extracted,
+                procedures_created,
+                error_message,
+                trigger_id,
+            ),
+        )
 
         # commit handled by cursor context
         return cursor.rowcount > 0
 
     def link_pattern_to_source_events(
-        self,
-        pattern_id: int,
-        source_event_ids: list[int],
-        strength: float = 0.8
+        self, pattern_id: int, source_event_ids: list[int], strength: float = 0.8
     ) -> int:
         """Link consolidated pattern back to source events.
 
@@ -304,17 +331,14 @@ class ConsolidationTrigger:
         link_count = 0
 
         for event_id in source_event_ids:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO pattern_sources
                 (pattern_id, source_event_id, source_type, strength, created_at)
                 VALUES (?, ?, ?, ?, ?)
-            """, (
-                pattern_id,
-                event_id,
-                "episodic",
-                min(strength, 1.0),
-                now
-            ))
+            """,
+                (pattern_id, event_id, "episodic", min(strength, 1.0), now),
+            )
             link_count += 1
 
         # commit handled by cursor context
@@ -331,14 +355,17 @@ class ConsolidationTrigger:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT session_id, trigger_type, status, event_count,
                    triggered_at, started_at, completed_at,
                    consolidated_events, patterns_extracted, procedures_created,
                    error_message
             FROM consolidation_triggers
             WHERE id = ?
-        """, (trigger_id,))
+        """,
+            (trigger_id,),
+        )
 
         row = cursor.fetchone()
         if not row:
@@ -370,27 +397,32 @@ class ConsolidationTrigger:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT id, trigger_type, status, event_count,
                    triggered_at, completed_at,
                    consolidated_events, patterns_extracted
             FROM consolidation_triggers
             WHERE session_id = ?
             ORDER BY triggered_at DESC
-        """, (session_id,))
+        """,
+            (session_id,),
+        )
 
         consolidations = []
         for row in cursor.fetchall():
-            consolidations.append({
-                "id": row[0],
-                "trigger_type": row[1],
-                "status": row[2],
-                "event_count": row[3],
-                "triggered_at": row[4],
-                "completed_at": row[5],
-                "consolidated_events": row[6],
-                "patterns_extracted": row[7],
-            })
+            consolidations.append(
+                {
+                    "id": row[0],
+                    "trigger_type": row[1],
+                    "status": row[2],
+                    "event_count": row[3],
+                    "triggered_at": row[4],
+                    "completed_at": row[5],
+                    "consolidated_events": row[6],
+                    "patterns_extracted": row[7],
+                }
+            )
 
         return consolidations
 
@@ -406,11 +438,14 @@ class ConsolidationTrigger:
         cursor = self.db.get_cursor()
 
         # Total consolidations
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT COUNT(*), AVG(patterns_extracted), SUM(procedures_created)
             FROM consolidation_triggers
             WHERE session_id = ? AND status = 'success'
-        """, (session_id,))
+        """,
+            (session_id,),
+        )
 
         row = cursor.fetchone()
         consolidation_count = row[0] or 0
@@ -418,11 +453,14 @@ class ConsolidationTrigger:
         total_procedures = row[2] or 0
 
         # Success rate
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT COUNT(*)
             FROM consolidation_triggers
             WHERE session_id = ?
-        """, (session_id,))
+        """,
+            (session_id,),
+        )
 
         total_triggers = cursor.fetchone()[0] or 1
 

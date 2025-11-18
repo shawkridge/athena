@@ -9,7 +9,7 @@ Based on: Zep arXiv:2501.13956 "Temporal Knowledge Graphs for Infinite Context L
 import json
 import time
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional
 
 import numpy as np
 
@@ -99,7 +99,9 @@ class TemporalKGSynthesis:
         return KGSynthesisResult(
             entities_count=len(set(r.from_entity for r in temporal_relations)) + 1,
             relations_count=len(temporal_relations),
-            temporal_relations_count=len([r for r in temporal_relations if r.causality > self.causality_threshold]),
+            temporal_relations_count=len(
+                [r for r in temporal_relations if r.causality > self.causality_threshold]
+            ),
             latency_ms=latency_ms,
             quality_score=quality_score,
         )
@@ -133,8 +135,10 @@ class TemporalKGSynthesis:
                 causality = self._calculate_causality(event_a, event_b)
 
                 # Calculate recency weight (exponential decay, clamped to [0, 1])
-                time_diff_seconds = (event_b.timestamp.timestamp() - event_a.timestamp.timestamp())
-                recency_weight = np.clip(np.exp(-time_diff_seconds / self.recency_decay_seconds), 0.0, 1.0)
+                time_diff_seconds = event_b.timestamp.timestamp() - event_a.timestamp.timestamp()
+                recency_weight = np.clip(
+                    np.exp(-time_diff_seconds / self.recency_decay_seconds), 0.0, 1.0
+                )
 
                 # Detect dependency (heuristic)
                 dependency = self._detect_dependency(event_a, event_b)
@@ -143,7 +147,9 @@ class TemporalKGSynthesis:
                 frequency = self._calculate_frequency(event_a, event_b)
 
                 # Combined temporal score
-                temporal_score = 0.5 * causality + 0.3 * recency_weight + 0.2 * (1.0 if dependency else 0.0)
+                temporal_score = (
+                    0.5 * causality + 0.3 * recency_weight + 0.2 * (1.0 if dependency else 0.0)
+                )
 
                 # Create relation
                 relation = TemporalKGRelation(
@@ -173,17 +179,11 @@ class TemporalKGSynthesis:
         - shared_files: mild causality (0.4)
         """
         # Error → Success pattern
-        if (
-            event_a.event_type == EventType.ERROR
-            and event_b.outcome == EventOutcome.SUCCESS
-        ):
+        if event_a.event_type == EventType.ERROR and event_b.outcome == EventOutcome.SUCCESS:
             return 1.0
 
         # Decision → Action pattern
-        if (
-            event_a.event_type == EventType.DECISION
-            and event_b.event_type == EventType.ACTION
-        ):
+        if event_a.event_type == EventType.DECISION and event_b.event_type == EventType.ACTION:
             return 0.8
 
         # Test failure → Test success
@@ -286,7 +286,7 @@ class TemporalKGSynthesis:
                     -(now.timestamp() - event.timestamp.timestamp()) / self.recency_decay_seconds
                 ),
                 0.0,
-                1.0
+                1.0,
             )
 
             # Find related temporal relations
@@ -325,16 +325,16 @@ class TemporalKGSynthesis:
             if entities:
                 entity = entities[0]
                 metadata_dict = {
-                    'last_access': metadata.last_access.isoformat(),
-                    'recency_weight': float(metadata.recency_weight),
-                    'is_critical': metadata.is_critical,
-                    'causality_score': float(metadata.causality_score),
-                    'related_entities': metadata.related_entities,
+                    "last_access": metadata.last_access.isoformat(),
+                    "recency_weight": float(metadata.recency_weight),
+                    "is_critical": metadata.is_critical,
+                    "causality_score": float(metadata.causality_score),
+                    "related_entities": metadata.related_entities,
                 }
                 obs = Observation(
                     entity_id=entity.id,
                     content=f"temporal_metadata: {json.dumps(metadata_dict)}",
-                    created_at=datetime.now()
+                    created_at=datetime.now(),
                 )
                 self.graph_store.add_observation(obs)
 

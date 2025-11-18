@@ -121,7 +121,7 @@ class ExecutionTelemetryCollector:
             }
         )
 
-        logger.info(f"ExecutionTelemetryCollector initialized")
+        logger.info("ExecutionTelemetryCollector initialized")
 
     def record_execution(self, telemetry: ExecutionTelemetry) -> None:
         """Record execution telemetry.
@@ -163,9 +163,9 @@ class ExecutionTelemetryCollector:
         ) / (count + 1)
 
         # Update running average speedup
-        stats["avg_speedup"] = (
-            (stats["avg_speedup"] * count) + telemetry.parallel_speedup
-        ) / (count + 1)
+        stats["avg_speedup"] = ((stats["avg_speedup"] * count) + telemetry.parallel_speedup) / (
+            count + 1
+        )
 
         # Update running average estimation error
         stats["avg_estimation_error"] = (

@@ -13,25 +13,20 @@ Based on: Liang et al. 2024 (Q*), arXiv:2406.14283
 """
 
 import logging
-from typing import Dict, List, Optional, Any, Tuple, Set
+from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime
-import json
 
 from .formal_verification import (
     FormalVerificationEngine,
-    PropertyType,
     PropertyCheckResult,
-    SimulationScenario,
     SimulationResult,
-    VerificationMethod,
     PlanSimulator,
 )
 from .validation import PlanValidator
 from .postgres_planning_integration import (
     PostgresPlanningIntegration,
-    PlanningDecision,
 )
 
 logger = logging.getLogger(__name__)
@@ -39,26 +34,29 @@ logger = logging.getLogger(__name__)
 
 class PlanningPhase(str, Enum):
     """Phases in the Q* planning cycle."""
-    GENERATE = "generate"      # Generate initial plan
-    VERIFY = "verify"          # Verify plan properties
-    SIMULATE = "simulate"      # Test in scenarios
-    VALIDATE = "validate"      # Check with LLM
-    REFINE = "refine"          # Improve based on feedback
-    EXECUTE = "execute"        # Ready for execution
+
+    GENERATE = "generate"  # Generate initial plan
+    VERIFY = "verify"  # Verify plan properties
+    SIMULATE = "simulate"  # Test in scenarios
+    VALIDATE = "validate"  # Check with LLM
+    REFINE = "refine"  # Improve based on feedback
+    EXECUTE = "execute"  # Ready for execution
 
 
 class AdaptiveReplanning(str, Enum):
     """Adaptive replanning strategies."""
-    NONE = "none"              # No replanning
-    LOCAL = "local"            # Modify affected tasks only
-    SEGMENT = "segment"        # Replan task segment
-    FULL = "full"              # Complete replan
-    ABORT = "abort"            # Stop and alert
+
+    NONE = "none"  # No replanning
+    LOCAL = "local"  # Modify affected tasks only
+    SEGMENT = "segment"  # Replan task segment
+    FULL = "full"  # Complete replan
+    ABORT = "abort"  # Stop and alert
 
 
 @dataclass
 class PlanExecutionContext:
     """Context for plan execution tracking."""
+
     plan_id: int
     decision_id: int
     current_phase: PlanningPhase
@@ -81,6 +79,7 @@ class PlanExecutionContext:
 @dataclass
 class PlanVerificationReport:
     """Comprehensive plan verification results."""
+
     plan_id: int
     decision_id: int
     timestamp: datetime
@@ -200,9 +199,7 @@ class Phase6Orchestrator:
             success_rate = self._calculate_success_rate(scenario_results)
 
             # 3. VALIDATE: LLM validation
-            validation_score, validation_issues = await self._validate_plan(
-                current_plan
-            )
+            validation_score, validation_issues = await self._validate_plan(current_plan)
 
             # Check if plan is good enough
             if verification_passed and success_rate >= 0.8 and validation_score >= 0.7:
@@ -282,15 +279,10 @@ class Phase6Orchestrator:
             # Use formal verification engine
             result = self.formal_verifier.verify_plan(plan, method="hybrid")
 
-            all_passed = all(
-                prop_result.passed
-                for prop_result in result.property_results.values()
-            )
+            all_passed = all(prop_result.passed for prop_result in result.property_results.values())
 
             if not all_passed:
-                logger.warning(
-                    f"Verification found violations: {result.total_violations}"
-                )
+                logger.warning(f"Verification found violations: {result.total_violations}")
 
             return all_passed
         except Exception as e:
@@ -315,9 +307,7 @@ class Phase6Orchestrator:
             results = self.simulator.simulate(plan, num_scenarios=scenario_count)
 
             success_count = sum(1 for r in results if r.success)
-            logger.info(
-                f"Simulation complete: {success_count}/{len(results)} scenarios passed"
-            )
+            logger.info(f"Simulation complete: {success_count}/{len(results)} scenarios passed")
 
             return results
         except Exception as e:
@@ -373,10 +363,12 @@ class Phase6Orchestrator:
             if not verification_passed:
                 logger.info("Adding formal constraints to plan")
                 refined_plan["constraints"] = refined_plan.get("constraints", [])
-                refined_plan["constraints"].append({
-                    "type": "formal_safety",
-                    "description": "Ensure no invalid state transitions",
-                })
+                refined_plan["constraints"].append(
+                    {
+                        "type": "formal_safety",
+                        "description": "Ensure no invalid state transitions",
+                    }
+                )
 
             # If scenarios failed, identify bottlenecks
             if scenario_results:
@@ -394,10 +386,12 @@ class Phase6Orchestrator:
                 logger.info(f"Adding {len(validation_issues)} requirements from validation")
                 refined_plan["requirements"] = refined_plan.get("requirements", [])
                 for issue in validation_issues:
-                    refined_plan["requirements"].append({
-                        "type": "validation",
-                        "description": issue,
-                    })
+                    refined_plan["requirements"].append(
+                        {
+                            "type": "validation",
+                            "description": issue,
+                        }
+                    )
 
             # Check if plan actually changed
             improved = refined_plan != plan
@@ -447,11 +441,13 @@ class Phase6Orchestrator:
         # Create mitigations for common failures
         for failure_type, results_list in failure_types.items():
             if len(results_list) >= 2:  # Common pattern
-                patterns.append({
-                    "failure_type": failure_type,
-                    "frequency": len(results_list),
-                    "mitigation": f"Add fallback for {failure_type}",
-                })
+                patterns.append(
+                    {
+                        "failure_type": failure_type,
+                        "frequency": len(results_list),
+                        "mitigation": f"Add fallback for {failure_type}",
+                    }
+                )
 
         return patterns
 
@@ -563,6 +559,7 @@ async def initialize_phase6_orchestrator(
         class SimpleValidator:
             def validate(self, plan):
                 return []
+
         plan_validator = SimpleValidator()
 
     orchestrator = Phase6Orchestrator(

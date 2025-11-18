@@ -5,13 +5,10 @@ from typing import Optional
 from athena.core.database import Database
 from athena.phase9.uncertainty.models import (
     ConfidenceCalibration,
-    ConfidenceInterval,
-    ConfidenceLevel,
     ConfidenceScore,
     ConfidenceTrendAnalysis,
     PlanAlternative,
     UncertaintyBreakdown,
-    UncertaintyType,
 )
 
 
@@ -21,6 +18,7 @@ class UncertaintyStore:
     def __init__(self, db: Database):
         """Initialize store with database connection."""
         self.db = db
+
     def _ensure_schema(self):
         """Create tables on first use."""
         cursor = self.db.get_cursor()
@@ -178,7 +176,6 @@ class UncertaintyStore:
 
     def get_plan_alternative(self, id: int) -> Optional[PlanAlternative]:
         """Get plan alternative by ID."""
-        import json
 
         cursor = self.db.get_cursor()
         cursor.execute(
@@ -194,7 +191,6 @@ class UncertaintyStore:
         self, task_id: int, min_confidence: float = 0.0
     ) -> list[PlanAlternative]:
         """List plan alternatives for a task."""
-        import json
 
         cursor = self.db.get_cursor()
         cursor.execute(
@@ -246,7 +242,6 @@ class UncertaintyStore:
         self, task_id: int, aspect: Optional[str] = None
     ) -> list[ConfidenceScore]:
         """Get confidence scores for a task."""
-        import json
 
         cursor = self.db.get_cursor()
         if aspect:
@@ -262,9 +257,7 @@ class UncertaintyStore:
         rows = cursor.fetchall()
         return [self._parse_confidence_score_row(row) for row in rows]
 
-    def create_uncertainty_breakdown(
-        self, breakdown: UncertaintyBreakdown
-    ) -> UncertaintyBreakdown:
+    def create_uncertainty_breakdown(self, breakdown: UncertaintyBreakdown) -> UncertaintyBreakdown:
         """Create uncertainty breakdown."""
         import json
         from datetime import datetime
@@ -293,7 +286,6 @@ class UncertaintyStore:
 
     def get_uncertainty_breakdown(self, task_id: int) -> Optional[UncertaintyBreakdown]:
         """Get latest uncertainty breakdown for task."""
-        import json
 
         cursor = self.db.get_cursor()
         cursor.execute(
@@ -305,9 +297,7 @@ class UncertaintyStore:
             return None
         return self._parse_uncertainty_breakdown_row(row)
 
-    def record_calibration(
-        self, calibration: ConfidenceCalibration
-    ) -> ConfidenceCalibration:
+    def record_calibration(self, calibration: ConfidenceCalibration) -> ConfidenceCalibration:
         """Record confidence calibration data."""
         from datetime import datetime
 
@@ -350,9 +340,7 @@ class UncertaintyStore:
         rows = cursor.fetchall()
         return [self._parse_calibration_row(row) for row in rows]
 
-    def save_trend_analysis(
-        self, trend: ConfidenceTrendAnalysis
-    ) -> ConfidenceTrendAnalysis:
+    def save_trend_analysis(self, trend: ConfidenceTrendAnalysis) -> ConfidenceTrendAnalysis:
         """Save trend analysis."""
         import json
         from datetime import datetime
@@ -383,11 +371,8 @@ class UncertaintyStore:
         # commit handled by cursor context
         return trend
 
-    def get_latest_trend(
-        self, project_id: int, aspect: str
-    ) -> Optional[ConfidenceTrendAnalysis]:
+    def get_latest_trend(self, project_id: int, aspect: str) -> Optional[ConfidenceTrendAnalysis]:
         """Get latest trend analysis."""
-        import json
 
         cursor = self.db.get_cursor()
         cursor.execute(

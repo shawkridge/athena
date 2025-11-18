@@ -3,7 +3,7 @@
 import logging
 import time
 from datetime import datetime
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from athena.core.database import Database
 from athena.core.exceptions import TransactionError

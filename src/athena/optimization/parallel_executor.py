@@ -74,9 +74,7 @@ class ParallelLayerExecutor:
         self.failed_tasks = 0
         self.latest_layer_latencies = {}  # Track per-layer latencies for profiling
 
-    async def execute_parallel(
-        self, tasks: List[QueryTask]
-    ) -> Dict[str, ExecutionResult]:
+    async def execute_parallel(self, tasks: List[QueryTask]) -> Dict[str, ExecutionResult]:
         """Execute multiple query tasks in parallel.
 
         Args:
@@ -188,9 +186,7 @@ class ParallelLayerExecutor:
                 None, lambda: task.query_fn(*task.args, **task.kwargs)
             )
 
-    async def _execute_sequential(
-        self, tasks: List[QueryTask]
-    ) -> Dict[str, ExecutionResult]:
+    async def _execute_sequential(self, tasks: List[QueryTask]) -> Dict[str, ExecutionResult]:
         """Fallback sequential execution.
 
         Args:
@@ -208,9 +204,7 @@ class ParallelLayerExecutor:
 
         return results
 
-    def execute_parallel_sync(
-        self, tasks: List[QueryTask]
-    ) -> Dict[str, ExecutionResult]:
+    def execute_parallel_sync(self, tasks: List[QueryTask]) -> Dict[str, ExecutionResult]:
         """Synchronous wrapper for parallel execution.
 
         Useful when called from sync code. Creates event loop if needed.
@@ -243,9 +237,7 @@ class ParallelLayerExecutor:
         """
         total_queries = self.total_parallel_queries + self.total_sequential_queries
         parallel_pct = (
-            (self.total_parallel_queries / total_queries * 100)
-            if total_queries > 0
-            else 0
+            (self.total_parallel_queries / total_queries * 100) if total_queries > 0 else 0
         )
 
         avg_speedup = (
@@ -380,9 +372,7 @@ class ParallelTier1Executor:
             if exec_result.success:
                 results[layer_name] = exec_result.result
             else:
-                logger.warning(
-                    f"Layer {layer_name} failed: {exec_result.error}"
-                )
+                logger.warning(f"Layer {layer_name} failed: {exec_result.error}")
 
         return results
 

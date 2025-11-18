@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 class OptimizationLevel(Enum):
     """Optimization levels."""
+
     NONE = 0
     BASIC = 1
     AGGRESSIVE = 2
@@ -25,6 +26,7 @@ class OptimizationLevel(Enum):
 @dataclass
 class PerformanceMetrics:
     """Performance metrics for an operation."""
+
     operation: str
     execution_time_ms: float
     memory_used_mb: float = 0.0
@@ -48,7 +50,9 @@ class QueryOptimizer:
         self.optimization_history: Dict[str, PerformanceMetrics] = {}
         self.common_patterns: Dict[str, float] = {}
 
-    def optimize_query(self, query_text: str, optimization_level: OptimizationLevel = OptimizationLevel.BASIC) -> str:
+    def optimize_query(
+        self, query_text: str, optimization_level: OptimizationLevel = OptimizationLevel.BASIC
+    ) -> str:
         """Optimize query text for faster execution."""
         optimized = query_text
 
@@ -135,16 +139,12 @@ class SearchOptimizer:
         # Aggressive: Score sorting optimization
         if optimization_level.value >= OptimizationLevel.AGGRESSIVE.value:
             # Sort by score descending (highest first)
-            optimized = sorted(
-                optimized,
-                key=lambda r: r.get("combined_score", 0),
-                reverse=True
-            )
+            optimized = sorted(optimized, key=lambda r: r.get("combined_score", 0), reverse=True)
 
         # Maximum: Truncate at threshold
         if optimization_level.value >= OptimizationLevel.MAXIMUM.value:
             if len(optimized) > self.max_results_threshold:
-                optimized = optimized[:self.max_results_threshold]
+                optimized = optimized[: self.max_results_threshold]
 
         return optimized
 
@@ -184,7 +184,7 @@ class BatchOptimizer:
 
         batches = []
         for i in range(0, len(items), batch_size):
-            batches.append(items[i:i + batch_size])
+            batches.append(items[i : i + batch_size])
         return batches
 
 
@@ -197,11 +197,7 @@ class PerformanceProfiler:
         self.operation_times: Dict[str, List[float]] = defaultdict(list)
 
     def profile_operation(
-        self,
-        operation_name: str,
-        func: Callable,
-        *args,
-        **kwargs
+        self, operation_name: str, func: Callable, *args, **kwargs
     ) -> Tuple[Any, PerformanceMetrics]:
         """Profile an operation's execution time."""
         start_time = time.time()
@@ -258,7 +254,9 @@ class PerformanceProfiler:
             report += f"\n{op_name}:\n"
             report += f"  Average: {avg_time:.2f}ms\n"
             report += f"  Count: {stats.get('count', 0)}\n"
-            report += f"  Min/Max: {stats.get('min_ms', 0):.2f}ms / {stats.get('max_ms', 0):.2f}ms\n"
+            report += (
+                f"  Min/Max: {stats.get('min_ms', 0):.2f}ms / {stats.get('max_ms', 0):.2f}ms\n"
+            )
 
         return report
 
@@ -290,22 +288,17 @@ class OptimizationEngine:
 
         # Step 2: Execute search
         results, exec_metrics = self.profiler.profile_operation(
-            "search_execution",
-            execute_search_func,
-            optimized_query
+            "search_execution", execute_search_func, optimized_query
         )
 
         # Step 3: Optimize results
         optimized_results = self.search_optimizer.optimize_result_processing(
-            results,
-            optimization_level
+            results, optimization_level
         )
 
         # Step 4: Process results
         final_results, process_metrics = self.profiler.profile_operation(
-            "result_processing",
-            process_results_func,
-            optimized_results
+            "result_processing", process_results_func, optimized_results
         )
 
         optimization_info = {
@@ -349,6 +342,8 @@ class OptimizationEngine:
         if slowest_time > 1000:
             return f"Critical: {slowest_op} is taking {slowest_time:.0f}ms. Consider increasing cache or using batch optimization."
         elif slowest_time > 500:
-            return f"Warning: {slowest_op} is taking {slowest_time:.0f}ms. Consider caching results."
+            return (
+                f"Warning: {slowest_op} is taking {slowest_time:.0f}ms. Consider caching results."
+            )
         else:
             return "Performance is acceptable. Consider profiling specific operations for micro-optimizations."

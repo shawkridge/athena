@@ -3,7 +3,6 @@
 import time
 
 from ..core.database import Database
-from ..core.models import MemoryType
 
 
 class MemoryOptimizer:
@@ -181,9 +180,7 @@ class MemoryOptimizer:
             Optimization stats
         """
         cursor = self.db.get_cursor()
-        cursor.execute(
-            "SELECT * FROM optimization_stats WHERE project_id = ?", (project_id,)
-        )
+        cursor.execute("SELECT * FROM optimization_stats WHERE project_id = ?", (project_id,))
         row = cursor.fetchone()
 
         if not row:

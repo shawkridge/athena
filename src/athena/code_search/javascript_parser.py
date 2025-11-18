@@ -30,9 +30,7 @@ class JavaScriptParser:
         self.language = language
         self.is_typescript = language == "typescript"
 
-    def extract_functions(
-        self, code: str, file_path: str
-    ) -> List[CodeUnit]:
+    def extract_functions(self, code: str, file_path: str) -> List[CodeUnit]:
         """Extract functions from JavaScript code.
 
         Handles:
@@ -54,7 +52,9 @@ class JavaScriptParser:
         # Pattern for regular function declarations
         func_pattern = r"^\s*(async\s+)?function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\("
         # Pattern for arrow functions
-        arrow_pattern = r"(const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*(async\s*)?\([^)]*\)\s*=>"
+        arrow_pattern = (
+            r"(const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*(async\s*)?\([^)]*\)\s*=>"
+        )
         arrow_pattern_simple = r"(const|let|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*(async\s*)?[a-zA-Z_$][a-zA-Z0-9_$]*\s*=>"
 
         for i, line in enumerate(lines):
@@ -75,9 +75,7 @@ class JavaScriptParser:
                     start_line=i + 1,
                     end_line=self._find_function_end(lines, i),
                     docstring=self._extract_docstring(lines, i),
-                    dependencies=self._extract_function_dependencies(
-                        code, i, func_name
-                    ),
+                    dependencies=self._extract_function_dependencies(code, i, func_name),
                 )
                 functions.append(unit)
 
@@ -98,9 +96,7 @@ class JavaScriptParser:
                         start_line=i + 1,
                         end_line=self._find_function_end(lines, i),
                         docstring=self._extract_docstring(lines, i),
-                        dependencies=self._extract_function_dependencies(
-                            code, i, func_name
-                        ),
+                        dependencies=self._extract_function_dependencies(code, i, func_name),
                     )
                     functions.append(unit)
                     break
@@ -390,21 +386,34 @@ class JavaScriptParser:
 
         # Filter out keywords and the function itself
         keywords = {
-            "if", "while", "for", "switch", "catch", "function", "class",
-            "return", "throw", "async", "await", "new", "typeof", "instanceof",
-            "this", "super", "import", "export", "from", "as", "default",
+            "if",
+            "while",
+            "for",
+            "switch",
+            "catch",
+            "function",
+            "class",
+            "return",
+            "throw",
+            "async",
+            "await",
+            "new",
+            "typeof",
+            "instanceof",
+            "this",
+            "super",
+            "import",
+            "export",
+            "from",
+            "as",
+            "default",
         }
 
-        dependencies = {
-            m for m in matches
-            if m not in keywords and m != func_name
-        }
+        dependencies = {m for m in matches if m not in keywords and m != func_name}
 
         return dependencies
 
-    def _extract_class_dependencies(
-        self, code: str, start_line: int, class_name: str
-    ) -> List[str]:
+    def _extract_class_dependencies(self, code: str, start_line: int, class_name: str) -> List[str]:
         """Extract class dependencies (base class, used classes).
 
         Args:

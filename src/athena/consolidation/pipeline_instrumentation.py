@@ -14,7 +14,6 @@ Metrics tracked:
 """
 
 import time
-from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -34,7 +33,9 @@ class StageMetrics:
     @property
     def avg_duration(self) -> float:
         """Average duration for this stage."""
-        return self.total_duration_seconds / self.execution_count if self.execution_count > 0 else 0.0
+        return (
+            self.total_duration_seconds / self.execution_count if self.execution_count > 0 else 0.0
+        )
 
     @property
     def min_duration(self) -> float:
@@ -75,24 +76,24 @@ class PipelineInstrumentation:
             run_id: Optional consolidation run ID
         """
         self.current_run = {
-            'session_id': session_id,
-            'run_id': run_id,
-            'started_at': datetime.now(),
-            'completed_at': None,
-            'stage_durations': {},
-            'pattern_counts': {
-                'input_events': 0,
-                'clustered_groups': 0,
-                'patterns_extracted': 0,
-                'patterns_validated': 0,
-                'patterns_stored': 0
-            }
+            "session_id": session_id,
+            "run_id": run_id,
+            "started_at": datetime.now(),
+            "completed_at": None,
+            "stage_durations": {},
+            "pattern_counts": {
+                "input_events": 0,
+                "clustered_groups": 0,
+                "patterns_extracted": 0,
+                "patterns_validated": 0,
+                "patterns_stored": 0,
+            },
         }
 
     def end_consolidation_run(self):
         """End tracking current consolidation run."""
         if self.current_run:
-            self.current_run['completed_at'] = datetime.now()
+            self.current_run["completed_at"] = datetime.now()
             self.consolidation_runs.append(self.current_run)
             self.current_run = None
 
@@ -128,7 +129,7 @@ class PipelineInstrumentation:
 
             # Update current run if active
             if self.current_run:
-                self.current_run['stage_durations'][stage_name] = duration
+                self.current_run["stage_durations"][stage_name] = duration
 
     def record_stage(self, stage_name: str, duration_seconds: float):
         """Manually record a stage duration.
@@ -146,7 +147,7 @@ class PipelineInstrumentation:
         metrics.durations.append(duration_seconds)
 
         if self.current_run:
-            self.current_run['stage_durations'][stage_name] = duration_seconds
+            self.current_run["stage_durations"][stage_name] = duration_seconds
 
     def record_pattern_count(self, stage_name: str, count: int):
         """Record number of patterns at a stage.
@@ -156,10 +157,10 @@ class PipelineInstrumentation:
             count: Number of patterns
         """
         if self.current_run:
-            key = f'{stage_name}_count'
-            if key not in self.current_run['pattern_counts']:
-                self.current_run['pattern_counts'][key] = 0
-            self.current_run['pattern_counts'][key] = count
+            key = f"{stage_name}_count"
+            if key not in self.current_run["pattern_counts"]:
+                self.current_run["pattern_counts"][key] = 0
+            self.current_run["pattern_counts"][key] = count
 
     def calculate_throughput(self) -> float:
         """Calculate patterns extracted per second.
@@ -172,11 +173,9 @@ class PipelineInstrumentation:
 
         # Use most recent consolidation run
         last_run = self.consolidation_runs[-1]
-        total_duration = (
-            last_run['completed_at'] - last_run['started_at']
-        ).total_seconds()
+        total_duration = (last_run["completed_at"] - last_run["started_at"]).total_seconds()
 
-        patterns_extracted = last_run['pattern_counts'].get('patterns_extracted', 0)
+        patterns_extracted = last_run["pattern_counts"].get("patterns_extracted", 0)
 
         if total_duration <= 0:
             return 0.0
@@ -194,8 +193,8 @@ class PipelineInstrumentation:
 
         throughputs = []
         for run in self.consolidation_runs:
-            total_duration = (run['completed_at'] - run['started_at']).total_seconds()
-            patterns_extracted = run['pattern_counts'].get('patterns_extracted', 0)
+            total_duration = (run["completed_at"] - run["started_at"]).total_seconds()
+            patterns_extracted = run["pattern_counts"].get("patterns_extracted", 0)
 
             if total_duration > 0:
                 throughputs.append(patterns_extracted / total_duration)
@@ -229,12 +228,12 @@ class PipelineInstrumentation:
         stats = {}
         for stage_name, metrics in self.stage_metrics.items():
             stats[stage_name] = {
-                'execution_count': metrics.execution_count,
-                'total_duration_seconds': metrics.total_duration_seconds,
-                'avg_duration_seconds': metrics.avg_duration,
-                'min_duration_seconds': metrics.min_duration,
-                'max_duration_seconds': metrics.max_duration,
-                'stdev_duration_seconds': metrics.stdev_duration
+                "execution_count": metrics.execution_count,
+                "total_duration_seconds": metrics.total_duration_seconds,
+                "avg_duration_seconds": metrics.avg_duration,
+                "min_duration_seconds": metrics.min_duration,
+                "max_duration_seconds": metrics.max_duration,
+                "stdev_duration_seconds": metrics.stdev_duration,
             }
         return stats
 
@@ -246,30 +245,32 @@ class PipelineInstrumentation:
         """
         if not self.consolidation_runs:
             return {
-                'total_runs': 0,
-                'avg_throughput_patterns_per_sec': 0.0,
-                'total_time_seconds': 0.0,
-                'total_patterns_extracted': 0
+                "total_runs": 0,
+                "avg_throughput_patterns_per_sec": 0.0,
+                "total_time_seconds": 0.0,
+                "total_patterns_extracted": 0,
             }
 
         total_runs = len(self.consolidation_runs)
         total_patterns = sum(
-            run['pattern_counts'].get('patterns_extracted', 0)
-            for run in self.consolidation_runs
+            run["pattern_counts"].get("patterns_extracted", 0) for run in self.consolidation_runs
         )
         total_time = sum(
-            (run['completed_at'] - run['started_at']).total_seconds()
-            for run in self.consolidation_runs if run['completed_at']
+            (run["completed_at"] - run["started_at"]).total_seconds()
+            for run in self.consolidation_runs
+            if run["completed_at"]
         )
 
         return {
-            'total_runs': total_runs,
-            'avg_throughput_patterns_per_sec': total_patterns / total_time if total_time > 0 else 0.0,
-            'total_time_seconds': total_time,
-            'total_patterns_extracted': total_patterns,
-            'avg_patterns_per_run': total_patterns / total_runs if total_runs > 0 else 0.0,
-            'stage_breakdown': self.get_stage_breakdown(),
-            'stage_stats': self.get_stage_stats()
+            "total_runs": total_runs,
+            "avg_throughput_patterns_per_sec": (
+                total_patterns / total_time if total_time > 0 else 0.0
+            ),
+            "total_time_seconds": total_time,
+            "total_patterns_extracted": total_patterns,
+            "avg_patterns_per_run": total_patterns / total_runs if total_runs > 0 else 0.0,
+            "stage_breakdown": self.get_stage_breakdown(),
+            "stage_stats": self.get_stage_stats(),
         }
 
     def get_bottlenecks(self) -> List[Dict]:
@@ -284,15 +285,17 @@ class PipelineInstrumentation:
         bottlenecks = []
         for stage_name, percentage in breakdown.items():
             if percentage >= 20:  # Stages taking >20% are potential bottlenecks
-                bottlenecks.append({
-                    'stage': stage_name,
-                    'percentage': percentage,
-                    'avg_duration': stats[stage_name]['avg_duration_seconds'],
-                    'execution_count': stats[stage_name]['execution_count']
-                })
+                bottlenecks.append(
+                    {
+                        "stage": stage_name,
+                        "percentage": percentage,
+                        "avg_duration": stats[stage_name]["avg_duration_seconds"],
+                        "execution_count": stats[stage_name]["execution_count"],
+                    }
+                )
 
         # Sort by percentage descending
-        bottlenecks.sort(key=lambda x: x['percentage'], reverse=True)
+        bottlenecks.sort(key=lambda x: x["percentage"], reverse=True)
         return bottlenecks
 
     def get_run_summary(self, run_index: int = -1) -> Dict:
@@ -308,18 +311,20 @@ class PipelineInstrumentation:
             return {}
 
         run = self.consolidation_runs[run_index]
-        total_duration = (run['completed_at'] - run['started_at']).total_seconds()
-        patterns_extracted = run['pattern_counts'].get('patterns_extracted', 0)
+        total_duration = (run["completed_at"] - run["started_at"]).total_seconds()
+        patterns_extracted = run["pattern_counts"].get("patterns_extracted", 0)
 
         return {
-            'session_id': run['session_id'],
-            'run_id': run['run_id'],
-            'started_at': run['started_at'].isoformat(),
-            'completed_at': run['completed_at'].isoformat(),
-            'total_duration_seconds': total_duration,
-            'throughput_patterns_per_sec': patterns_extracted / total_duration if total_duration > 0 else 0.0,
-            'pattern_counts': run['pattern_counts'],
-            'stage_durations': run['stage_durations']
+            "session_id": run["session_id"],
+            "run_id": run["run_id"],
+            "started_at": run["started_at"].isoformat(),
+            "completed_at": run["completed_at"].isoformat(),
+            "total_duration_seconds": total_duration,
+            "throughput_patterns_per_sec": (
+                patterns_extracted / total_duration if total_duration > 0 else 0.0
+            ),
+            "pattern_counts": run["pattern_counts"],
+            "stage_durations": run["stage_durations"],
         }
 
     def reset(self):
@@ -353,7 +358,7 @@ class PipelineInstrumentation:
         # Check for high variance stages
         stats = self.get_stage_stats()
         for stage_name, stage_stats in stats.items():
-            if stage_stats['stdev_duration_seconds'] > stage_stats['avg_duration_seconds']:
+            if stage_stats["stdev_duration_seconds"] > stage_stats["avg_duration_seconds"]:
                 recommendations.append(
                     f"High variance in {stage_name} duration. "
                     "Investigate input data distribution."

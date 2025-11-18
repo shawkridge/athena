@@ -5,7 +5,8 @@ Runs consolidation locally, returns pattern summaries only.
 Never returns full pattern objects or full event data.
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
+
 try:
     import psycopg
     from psycopg import AsyncConnection
@@ -22,7 +23,7 @@ async def extract_patterns(
     password: str,
     time_window_hours: int = 24,
     min_support: float = 0.3,
-    confidence_threshold: float = 0.5
+    confidence_threshold: float = 0.5,
 ) -> Dict[str, Any]:
     """
     Extract patterns from recent episodic events.
@@ -50,7 +51,9 @@ async def extract_patterns(
         - top_patterns_by_confidence: Top 5 pattern summaries (IDs only)
     """
     try:
-        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
+        conn = await AsyncConnection.connect(
+            host, port=port, dbname=dbname, user=user, password=password
+        )
         cursor = conn.cursor()
 
         # Get recent events
@@ -62,18 +65,14 @@ async def extract_patterns(
             WHERE timestamp >= %s
             ORDER BY timestamp DESC
             """,
-            (cutoff_time.isoformat(),)
+            (cutoff_time.isoformat(),),
         )
 
         events = [dict(row) for row in await cursor.fetchall()]
         await conn.close()
 
         if not events:
-            return {
-                "patterns_extracted": 0,
-                "empty": True,
-                "time_window_hours": time_window_hours
-            }
+            return {"patterns_extracted": 0, "empty": True, "time_window_hours": time_window_hours}
 
         # Extract patterns (local processing)
         patterns = _extract_local(events, min_support, confidence_threshold)
@@ -82,7 +81,7 @@ async def extract_patterns(
             return {
                 "patterns_extracted": 0,
                 "time_window_hours": time_window_hours,
-                "events_analyzed": len(events)
+                "events_analyzed": len(events),
             }
 
         # Summarize patterns
@@ -103,35 +102,28 @@ async def extract_patterns(
             "events_analyzed": len(events),
             "pattern_type_distribution": pattern_types,
             "avg_confidence": sum(confidences) / len(confidences) if confidences else 0,
-            "confidence_range": (min(confidences), max(confidences)) if confidences else (None, None),
+            "confidence_range": (
+                (min(confidences), max(confidences)) if confidences else (None, None)
+            ),
             "top_5_pattern_ids": [p.get("id") for p in top_patterns],
-            "consolidation_quality": _quality_score(patterns)
+            "consolidation_quality": _quality_score(patterns),
         }
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "error_type": type(e).__name__
-        }
+        return {"error": str(e), "error_type": type(e).__name__}
 
 
 async def get_pattern_details(
-    host: str,
-    port: int,
-    dbname: str,
-    user: str,
-    password: str,
-    pattern_id: str
+    host: str, port: int, dbname: str, user: str, password: str, pattern_id: str
 ) -> Dict[str, Any]:
     """Get details for a specific pattern (use sparingly)."""
     try:
-        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
+        conn = await AsyncConnection.connect(
+            host, port=port, dbname=dbname, user=user, password=password
+        )
         cursor = conn.cursor()
 
-        await cursor.execute(
-            "SELECT * FROM patterns WHERE id = %s",
-            (pattern_id,)
-        )
+        await cursor.execute("SELECT * FROM patterns WHERE id = %s", (pattern_id,))
 
         row = await cursor.fetchone()
         await conn.close()
@@ -142,10 +134,7 @@ async def get_pattern_details(
         return dict(row)
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "error_type": type(e).__name__
-        }
+        return {"error": str(e), "error_type": type(e).__name__}
 
 
 def _extract_local(events: List, min_support: float, confidence_threshold: float) -> List[Dict]:
@@ -159,13 +148,15 @@ def _extract_local(events: List, min_support: float, confidence_threshold: float
     for pattern in type_patterns:
         confidence = _calc_confidence(pattern, events)
         if confidence >= confidence_threshold:
-            patterns.append({
-                "id": f"pattern_{len(patterns)}",
-                "type": "event_sequence",
-                "pattern": pattern,
-                "support": _calc_support(pattern, events),
-                "confidence": confidence
-            })
+            patterns.append(
+                {
+                    "id": f"pattern_{len(patterns)}",
+                    "type": "event_sequence",
+                    "pattern": pattern,
+                    "support": _calc_support(pattern, events),
+                    "confidence": confidence,
+                }
+            )
 
     # Outcome transitions
     outcomes = [e.get("outcome") for e in events]
@@ -174,13 +165,15 @@ def _extract_local(events: List, min_support: float, confidence_threshold: float
     for pattern in outcome_patterns:
         confidence = _calc_confidence(pattern, events)
         if confidence >= confidence_threshold:
-            patterns.append({
-                "id": f"pattern_{len(patterns)}",
-                "type": "outcome_transition",
-                "pattern": pattern,
-                "support": _calc_support(pattern, events),
-                "confidence": confidence
-            })
+            patterns.append(
+                {
+                    "id": f"pattern_{len(patterns)}",
+                    "type": "outcome_transition",
+                    "pattern": pattern,
+                    "support": _calc_support(pattern, events),
+                    "confidence": confidence,
+                }
+            )
 
     return patterns
 

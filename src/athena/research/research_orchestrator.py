@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Any
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 class ResearchMode(Enum):
     """Research execution modes."""
+
     REAL_FIRST = "real_first"  # Try real APIs first, fallback to mock
     MOCK_ONLY = "mock_only"  # Use mock data for testing/demos
     HYBRID = "hybrid"  # Combine real and mock for comprehensive results
@@ -37,6 +38,7 @@ class ResearchOrchestrator:
         # Initialize real web research agents
         try:
             from .web_research import WEB_RESEARCH_AGENTS
+
             for agent_name, agent_class in WEB_RESEARCH_AGENTS.items():
                 try:
                     self.web_agents[agent_name] = agent_class()
@@ -50,6 +52,7 @@ class ResearchOrchestrator:
         # Initialize mock research agents (always available)
         try:
             from .agents import RESEARCH_AGENTS
+
             for agent_name, agent_class in RESEARCH_AGENTS.items():
                 try:
                     self.mock_agents[agent_name] = agent_class()
@@ -92,15 +95,9 @@ class ResearchOrchestrator:
 
         # Apply explicit flags
         if not use_real:
-            agents_to_use = {
-                k: v for k, v in agents_to_use.items()
-                if k not in self.web_agents
-            }
+            agents_to_use = {k: v for k, v in agents_to_use.items() if k not in self.web_agents}
         if not use_mock and use_real:
-            agents_to_use = {
-                k: v for k, v in agents_to_use.items()
-                if k in self.web_agents
-            }
+            agents_to_use = {k: v for k, v in agents_to_use.items() if k in self.web_agents}
 
         if not agents_to_use:
             logger.warning(f"No research agents available for mode: {self.mode}")
@@ -133,16 +130,13 @@ class ResearchOrchestrator:
 
         # Create tasks for all agents
         for agent_name, agent in agents.items():
-            task = asyncio.create_task(
-                self._call_agent_with_timeout(agent_name, agent, topic)
-            )
+            task = asyncio.create_task(self._call_agent_with_timeout(agent_name, agent, topic))
             tasks[agent_name] = task
 
         # Wait for all tasks with timeout
         try:
             completed = await asyncio.wait_for(
-                asyncio.gather(*tasks.values(), return_exceptions=True),
-                timeout=self.timeout
+                asyncio.gather(*tasks.values(), return_exceptions=True), timeout=self.timeout
             )
         except asyncio.TimeoutError:
             logger.warning(f"Research timeout after {self.timeout}s")
@@ -188,10 +182,7 @@ class ResearchOrchestrator:
 
         for agent_name, agent in agents.items():
             try:
-                findings = await asyncio.wait_for(
-                    agent.search(topic),
-                    timeout=self.timeout
-                )
+                findings = await asyncio.wait_for(agent.search(topic), timeout=self.timeout)
                 results[agent_name] = findings
             except asyncio.TimeoutError:
                 logger.warning(f"Agent {agent_name} timed out")
@@ -219,10 +210,7 @@ class ResearchOrchestrator:
             List of findings or empty list on error
         """
         try:
-            findings = await asyncio.wait_for(
-                agent.search(topic),
-                timeout=self.timeout
-            )
+            findings = await asyncio.wait_for(agent.search(topic), timeout=self.timeout)
             return findings or []
         except asyncio.TimeoutError:
             logger.warning(f"Agent {agent_name} timed out after {self.timeout}s")

@@ -15,13 +15,12 @@ optimization opportunities.
 import math
 from collections import Counter
 from statistics import mean, stdev
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import numpy as np
 
 from ..core.embeddings import cosine_similarity
 from ..episodic.models import EpisodicEvent
-from ..episodic.store import EpisodicStore
 from ..memory.store import MemoryStore
 
 
@@ -35,8 +34,9 @@ class HallucinationRateCalculator:
     - Novel information not present in source events
     """
 
-    def __init__(self, confidence_threshold_high: float = 0.6,
-                 confidence_threshold_medium: float = 0.75):
+    def __init__(
+        self, confidence_threshold_high: float = 0.6, confidence_threshold_medium: float = 0.75
+    ):
         """Initialize hallucination calculator.
 
         Args:
@@ -59,12 +59,14 @@ class HallucinationRateCalculator:
             return 0.0
 
         high_risk_count = sum(
-            1 for p in patterns
-            if p.get('confidence_score', 0.0) < self.confidence_threshold_high
+            1 for p in patterns if p.get("confidence_score", 0.0) < self.confidence_threshold_high
         )
         medium_risk_count = sum(
-            1 for p in patterns
-            if self.confidence_threshold_high <= p.get('confidence_score', 0.0) < self.confidence_threshold_medium
+            1
+            for p in patterns
+            if self.confidence_threshold_high
+            <= p.get("confidence_score", 0.0)
+            < self.confidence_threshold_medium
         )
 
         # Weight high risk more heavily (2x medium)
@@ -83,23 +85,21 @@ class HallucinationRateCalculator:
             Dict with high_risk, medium_risk, low_risk counts
         """
         if not patterns:
-            return {'high_risk': 0, 'medium_risk': 0, 'low_risk': 0}
+            return {"high_risk": 0, "medium_risk": 0, "low_risk": 0}
 
         high_risk = sum(
-            1 for p in patterns
-            if p.get('confidence_score', 0.0) < self.confidence_threshold_high
+            1 for p in patterns if p.get("confidence_score", 0.0) < self.confidence_threshold_high
         )
         medium_risk = sum(
-            1 for p in patterns
-            if self.confidence_threshold_high <= p.get('confidence_score', 0.0) < self.confidence_threshold_medium
+            1
+            for p in patterns
+            if self.confidence_threshold_high
+            <= p.get("confidence_score", 0.0)
+            < self.confidence_threshold_medium
         )
         low_risk = len(patterns) - high_risk - medium_risk
 
-        return {
-            'high_risk': high_risk,
-            'medium_risk': medium_risk,
-            'low_risk': low_risk
-        }
+        return {"high_risk": high_risk, "medium_risk": medium_risk, "low_risk": low_risk}
 
 
 class PatternDiversityCalculator:
@@ -125,7 +125,7 @@ class PatternDiversityCalculator:
             return 0.0
 
         # Count pattern types
-        type_counts = Counter(p.get('pattern_type', 'unknown') for p in patterns)
+        type_counts = Counter(p.get("pattern_type", "unknown") for p in patterns)
         if len(type_counts) == 0:
             return 0.0
 
@@ -152,7 +152,7 @@ class PatternDiversityCalculator:
         Returns:
             Dict mapping pattern_type -> count
         """
-        return Counter(p.get('pattern_type', 'unknown') for p in patterns)
+        return Counter(p.get("pattern_type", "unknown") for p in patterns)
 
 
 class DualProcessEffectivenessCalculator:
@@ -175,20 +175,20 @@ class DualProcessEffectivenessCalculator:
         """
         if not patterns:
             return {
-                'system1_pattern_count': 0,
-                'system2_pattern_count': 0,
-                'system2_effectiveness_score': 0.0,
-                'system1_avg_confidence': 0.0,
-                'system2_avg_confidence': 0.0,
-                'system2_preferred': False
+                "system1_pattern_count": 0,
+                "system2_pattern_count": 0,
+                "system2_effectiveness_score": 0.0,
+                "system1_avg_confidence": 0.0,
+                "system2_avg_confidence": 0.0,
+                "system2_preferred": False,
             }
 
-        system1 = [p for p in patterns if p.get('extraction_method') == 'system1_heuristics']
-        system2 = [p for p in patterns if p.get('extraction_method') == 'system2_llm']
+        system1 = [p for p in patterns if p.get("extraction_method") == "system1_heuristics"]
+        system2 = [p for p in patterns if p.get("extraction_method") == "system2_llm"]
 
         # Calculate average confidence for each system
-        s1_confidences = [p.get('confidence_score', 0.0) for p in system1]
-        s2_confidences = [p.get('confidence_score', 0.0) for p in system2]
+        s1_confidences = [p.get("confidence_score", 0.0) for p in system1]
+        s2_confidences = [p.get("confidence_score", 0.0) for p in system2]
 
         s1_avg_conf = mean(s1_confidences) if s1_confidences else 0.0
         s2_avg_conf = mean(s2_confidences) if s2_confidences else 0.0
@@ -198,12 +198,12 @@ class DualProcessEffectivenessCalculator:
         s2_effectiveness = s2_high_conf / len(system2) if system2 else 0.0
 
         return {
-            'system1_pattern_count': len(system1),
-            'system2_pattern_count': len(system2),
-            'system2_effectiveness_score': s2_effectiveness,
-            'system1_avg_confidence': s1_avg_conf,
-            'system2_avg_confidence': s2_avg_conf,
-            'system2_preferred': s2_effectiveness > 0.85
+            "system1_pattern_count": len(system1),
+            "system2_pattern_count": len(system2),
+            "system2_effectiveness_score": s2_effectiveness,
+            "system1_avg_confidence": s1_avg_conf,
+            "system2_avg_confidence": s2_avg_conf,
+            "system2_preferred": s2_effectiveness > 0.85,
         }
 
     def get_confidence_distribution(self, patterns: List[Dict]) -> Dict[str, Dict]:
@@ -215,26 +215,29 @@ class DualProcessEffectivenessCalculator:
         Returns:
             Dict with system1 and system2 confidence stats
         """
-        system1 = [p.get('confidence_score', 0.0) for p in patterns
-                   if p.get('extraction_method') == 'system1_heuristics']
-        system2 = [p.get('confidence_score', 0.0) for p in patterns
-                   if p.get('extraction_method') == 'system2_llm']
+        system1 = [
+            p.get("confidence_score", 0.0)
+            for p in patterns
+            if p.get("extraction_method") == "system1_heuristics"
+        ]
+        system2 = [
+            p.get("confidence_score", 0.0)
+            for p in patterns
+            if p.get("extraction_method") == "system2_llm"
+        ]
 
         def get_stats(confidences):
             if not confidences:
-                return {'count': 0, 'mean': 0.0, 'stdev': 0.0, 'min': 0.0, 'max': 0.0}
+                return {"count": 0, "mean": 0.0, "stdev": 0.0, "min": 0.0, "max": 0.0}
             return {
-                'count': len(confidences),
-                'mean': mean(confidences),
-                'stdev': stdev(confidences) if len(confidences) > 1 else 0.0,
-                'min': min(confidences),
-                'max': max(confidences)
+                "count": len(confidences),
+                "mean": mean(confidences),
+                "stdev": stdev(confidences) if len(confidences) > 1 else 0.0,
+                "min": min(confidences),
+                "max": max(confidences),
             }
 
-        return {
-            'system1': get_stats(system1),
-            'system2': get_stats(system2)
-        }
+        return {"system1": get_stats(system1), "system2": get_stats(system2)}
 
 
 class ClusteringCohesionCalculator:
@@ -254,8 +257,11 @@ class ClusteringCohesionCalculator:
         """
         self.semantic_store = semantic_store
 
-    def calculate(self, clusters: List[List[EpisodicEvent]],
-                  embeddings: Optional[Dict[int, np.ndarray]] = None) -> float:
+    def calculate(
+        self,
+        clusters: List[List[EpisodicEvent]],
+        embeddings: Optional[Dict[int, np.ndarray]] = None,
+    ) -> float:
         """Calculate clustering cohesion.
 
         Args:
@@ -278,13 +284,10 @@ class ClusteringCohesionCalculator:
             # Calculate pairwise similarities within cluster
             similarities = []
             for i, event1 in enumerate(cluster):
-                for event2 in cluster[i+1:]:
+                for event2 in cluster[i + 1 :]:
                     # If embeddings provided, use them; otherwise use semantic similarity
                     if embeddings and event1.id in embeddings and event2.id in embeddings:
-                        sim = cosine_similarity(
-                            embeddings[event1.id],
-                            embeddings[event2.id]
-                        )
+                        sim = cosine_similarity(embeddings[event1.id], embeddings[event2.id])
                     else:
                         # Fallback: text-based similarity
                         sim = self._text_similarity(event1, event2)
@@ -294,7 +297,6 @@ class ClusteringCohesionCalculator:
             cohesion_scores.append(cluster_cohesion)
 
         return mean(cohesion_scores) if cohesion_scores else 0.0
-
 
     def _text_similarity(self, event1: EpisodicEvent, event2: EpisodicEvent) -> float:
         """Calculate text-based similarity between events.
@@ -308,8 +310,8 @@ class ClusteringCohesionCalculator:
         Returns:
             Similarity score (0.0-1.0)
         """
-        content1 = event1.content.split() if hasattr(event1, 'content') else []
-        content2 = event2.content.split() if hasattr(event2, 'content') else []
+        content1 = event1.content.split() if hasattr(event1, "content") else []
+        content2 = event2.content.split() if hasattr(event2, "content") else []
 
         if not content1 or not content2:
             return 0.0
@@ -337,12 +339,12 @@ class ClusteringCohesionCalculator:
         cluster_sizes = [len(c) for c in clusters]
 
         return {
-            'num_clusters': len(clusters),
-            'total_events': sum(cluster_sizes),
-            'avg_cluster_size': mean(cluster_sizes) if cluster_sizes else 0.0,
-            'min_cluster_size': min(cluster_sizes) if cluster_sizes else 0,
-            'max_cluster_size': max(cluster_sizes) if cluster_sizes else 0,
-            'stdev_cluster_size': stdev(cluster_sizes) if len(cluster_sizes) > 1 else 0.0
+            "num_clusters": len(clusters),
+            "total_events": sum(cluster_sizes),
+            "avg_cluster_size": mean(cluster_sizes) if cluster_sizes else 0.0,
+            "min_cluster_size": min(cluster_sizes) if cluster_sizes else 0,
+            "max_cluster_size": max(cluster_sizes) if cluster_sizes else 0,
+            "stdev_cluster_size": stdev(cluster_sizes) if len(cluster_sizes) > 1 else 0.0,
         }
 
 
@@ -399,10 +401,7 @@ class PipelineThroughputCalculator:
         if total_time <= 0:
             return {}
 
-        return {
-            stage: (sum(times) / total_time * 100)
-            for stage, times in self.stage_times.items()
-        }
+        return {stage: (sum(times) / total_time * 100) for stage, times in self.stage_times.items()}
 
     def get_stage_stats(self) -> Dict[str, Dict[str, float]]:
         """Get detailed stats for each stage.
@@ -414,11 +413,11 @@ class PipelineThroughputCalculator:
         for stage, times in self.stage_times.items():
             if times:
                 stats[stage] = {
-                    'count': len(times),
-                    'min_seconds': min(times),
-                    'max_seconds': max(times),
-                    'mean_seconds': mean(times),
-                    'total_seconds': sum(times)
+                    "count": len(times),
+                    "min_seconds": min(times),
+                    "max_seconds": max(times),
+                    "mean_seconds": mean(times),
+                    "total_seconds": sum(times),
                 }
         return stats
 
@@ -430,9 +429,12 @@ class SearchImpactCalculator:
     the actual impact on user queries.
     """
 
-    def measure_impact(self, test_queries: List[str],
-                      before_results: List[List[Dict]],
-                      after_results: List[List[Dict]]) -> Dict:
+    def measure_impact(
+        self,
+        test_queries: List[str],
+        before_results: List[List[Dict]],
+        after_results: List[List[Dict]],
+    ) -> Dict:
         """Measure search quality improvement from consolidation.
 
         Args:
@@ -445,16 +447,20 @@ class SearchImpactCalculator:
         """
         if not test_queries:
             return {
-                'queries_tested': 0,
-                'relevance_improvement': 0.0,
-                'queries_improved': 0,
-                'queries_degraded': 0
+                "queries_tested": 0,
+                "relevance_improvement": 0.0,
+                "queries_improved": 0,
+                "queries_degraded": 0,
             }
 
         improvements = []
         for i, query in enumerate(test_queries):
-            before_quality = self._rank_result_quality(before_results[i] if i < len(before_results) else [])
-            after_quality = self._rank_result_quality(after_results[i] if i < len(after_results) else [])
+            before_quality = self._rank_result_quality(
+                before_results[i] if i < len(before_results) else []
+            )
+            after_quality = self._rank_result_quality(
+                after_results[i] if i < len(after_results) else []
+            )
 
             if before_quality > 0:
                 improvement = (after_quality - before_quality) / before_quality
@@ -467,11 +473,11 @@ class SearchImpactCalculator:
         degraded_count = sum(1 for i in improvements if i < -0.01)  # >1% degradation
 
         return {
-            'queries_tested': len(test_queries),
-            'relevance_improvement': mean(improvements) if improvements else 0.0,
-            'queries_improved': improved_count,
-            'queries_degraded': degraded_count,
-            'queries_unchanged': len(test_queries) - improved_count - degraded_count
+            "queries_tested": len(test_queries),
+            "relevance_improvement": mean(improvements) if improvements else 0.0,
+            "queries_improved": improved_count,
+            "queries_degraded": degraded_count,
+            "queries_unchanged": len(test_queries) - improved_count - degraded_count,
         }
 
     def _rank_result_quality(self, results: List[Dict]) -> float:
@@ -490,16 +496,19 @@ class SearchImpactCalculator:
 
         quality_score = 0.0
         for i, result in enumerate(results[:5]):
-            relevance = result.get('relevance_score', 0.0)
+            relevance = result.get("relevance_score", 0.0)
             # DCG: weight = 1 / log2(position + 1)
             position_weight = 1.0 / math.log2(i + 2) if i < 5 else 0.0
             quality_score += relevance * position_weight
 
         return quality_score
 
-    def get_per_query_metrics(self, test_queries: List[str],
-                             before_results: List[List[Dict]],
-                             after_results: List[List[Dict]]) -> List[Dict]:
+    def get_per_query_metrics(
+        self,
+        test_queries: List[str],
+        before_results: List[List[Dict]],
+        after_results: List[List[Dict]],
+    ) -> List[Dict]:
         """Get detailed metrics for each query.
 
         Args:
@@ -512,17 +521,27 @@ class SearchImpactCalculator:
         """
         metrics = []
         for i, query in enumerate(test_queries):
-            before_quality = self._rank_result_quality(before_results[i] if i < len(before_results) else [])
-            after_quality = self._rank_result_quality(after_results[i] if i < len(after_results) else [])
+            before_quality = self._rank_result_quality(
+                before_results[i] if i < len(before_results) else []
+            )
+            after_quality = self._rank_result_quality(
+                after_results[i] if i < len(after_results) else []
+            )
 
             improvement = (after_quality - before_quality) / max(before_quality, 0.01)
 
-            metrics.append({
-                'query': query,
-                'before_quality': before_quality,
-                'after_quality': after_quality,
-                'improvement_delta': improvement,
-                'status': 'improved' if improvement > 0.01 else ('degraded' if improvement < -0.01 else 'unchanged')
-            })
+            metrics.append(
+                {
+                    "query": query,
+                    "before_quality": before_quality,
+                    "after_quality": after_quality,
+                    "improvement_delta": improvement,
+                    "status": (
+                        "improved"
+                        if improvement > 0.01
+                        else ("degraded" if improvement < -0.01 else "unchanged")
+                    ),
+                }
+            )
 
         return metrics

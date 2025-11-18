@@ -11,7 +11,7 @@ import asyncio
 import logging
 from typing import Optional, Dict, List, Callable, Any
 from datetime import datetime
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from ..core.database import Database
 from .orchestrator import AutomationOrchestrator, AutomationEvent
@@ -145,9 +145,7 @@ class EventHandlers:
             return False
 
         initial_count = len(self._listeners[event_type])
-        self._listeners[event_type] = [
-            l for l in self._listeners[event_type] if l.name != name
-        ]
+        self._listeners[event_type] = [l for l in self._listeners[event_type] if l.name != name]
 
         removed = len(self._listeners[event_type]) < initial_count
         if removed:
@@ -181,9 +179,7 @@ class EventHandlers:
             timestamp=datetime.utcnow(),
         )
 
-        logger.info(
-            f"Triggering event: {event_type} on {entity_type} {entity_id}"
-        )
+        logger.info(f"Triggering event: {event_type} on {entity_type} {entity_id}")
 
         # Record in history
         self._record_event_history(event)

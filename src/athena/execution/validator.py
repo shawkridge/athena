@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Assumption:
     """An assumption in a plan."""
+
     assumption_id: str
     description: str
     expected_value: Any
@@ -120,9 +121,7 @@ class AssumptionValidator:
         )
 
         # Calculate error margin
-        error_margin = self._calculate_error_margin(
-            actual_value, assumption.expected_value
-        )
+        error_margin = self._calculate_error_margin(actual_value, assumption.expected_value)
 
         result = AssumptionValidationResult(
             assumption_id=assumption_id,
@@ -140,9 +139,7 @@ class AssumptionValidator:
         self.validation_results[assumption_id].append(result)
 
         # Update next check time
-        self.next_check_times[assumption_id] = (
-            datetime.utcnow() + assumption.check_frequency
-        )
+        self.next_check_times[assumption_id] = datetime.utcnow() + assumption.check_frequency
 
         # Check if this is a violation
         if not valid:
@@ -153,9 +150,7 @@ class AssumptionValidator:
 
         return result
 
-    def predict_assumption_failure(
-        self, assumption_id: str
-    ) -> Optional[AssumptionViolation]:
+    def predict_assumption_failure(self, assumption_id: str) -> Optional[AssumptionViolation]:
         """Predict if an assumption will likely be violated.
 
         Analyzes past validation results to predict future failures.
@@ -182,8 +177,7 @@ class AssumptionValidator:
         # Check for increasing trend
         if len(error_margins) >= 2:
             is_increasing = all(
-                error_margins[i] <= error_margins[i + 1]
-                for i in range(len(error_margins) - 1)
+                error_margins[i] <= error_margins[i + 1] for i in range(len(error_margins) - 1)
             )
 
             if is_increasing and error_margins[-1] > assumption.tolerance:
@@ -203,7 +197,8 @@ class AssumptionValidator:
                     severity=assumption.severity,
                     impact=impact,
                     mitigation=mitigation,
-                    replanning_required=assumption.severity in [
+                    replanning_required=assumption.severity
+                    in [
                         DeviationSeverity.HIGH,
                         DeviationSeverity.CRITICAL,
                     ],
@@ -228,9 +223,7 @@ class AssumptionValidator:
         """
         return dict(self.next_check_times)
 
-    def get_assumption_timeline(
-        self, assumption_id: str
-    ) -> List[AssumptionValidationResult]:
+    def get_assumption_timeline(self, assumption_id: str) -> List[AssumptionValidationResult]:
         """Get validation history for an assumption.
 
         Args:
@@ -254,9 +247,7 @@ class AssumptionValidator:
         self.next_check_times.clear()
         logger.info("Assumption validator reset")
 
-    def _validate_value(
-        self, actual: Any, expected: Any, tolerance: float
-    ) -> tuple[bool, float]:
+    def _validate_value(self, actual: Any, expected: Any, tolerance: float) -> tuple[bool, float]:
         """Validate if actual value is within tolerance of expected.
 
         Args:
@@ -293,9 +284,7 @@ class AssumptionValidator:
                 return is_valid, confidence
 
             # Handle list/dict (length check for tolerance)
-            if isinstance(actual, (list, dict)) and isinstance(
-                expected, (list, dict)
-            ):
+            if isinstance(actual, (list, dict)) and isinstance(expected, (list, dict)):
                 actual_len = len(actual)
                 expected_len = len(expected)
                 if expected_len == 0:
@@ -369,7 +358,8 @@ class AssumptionValidator:
             severity=assumption.severity,
             impact=impact,
             mitigation=mitigation,
-            replanning_required=assumption.severity in [
+            replanning_required=assumption.severity
+            in [
                 DeviationSeverity.HIGH,
                 DeviationSeverity.CRITICAL,
             ],

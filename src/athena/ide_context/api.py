@@ -5,7 +5,6 @@ from typing import Optional
 from athena.core.database import Database, get_database
 
 from .manager import IDEContextManager
-from .models import FileOpenMode
 
 
 class IDEContextAPI:

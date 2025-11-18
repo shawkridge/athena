@@ -84,25 +84,31 @@ class ReplanningMonitor:
 
         # Check 1: Duration exceeded
         if await self._check_duration_exceeded(task):
-            triggers.append({
-                "type": "duration_exceeded",
-                "reason": "Task duration exceeded 150% of estimate",
-            })
+            triggers.append(
+                {
+                    "type": "duration_exceeded",
+                    "reason": "Task duration exceeded 150% of estimate",
+                }
+            )
 
         # Check 2: Quality degradation
         quality_errors = await self._check_quality_degradation(task)
         if quality_errors:
-            triggers.append({
-                "type": "quality_degradation",
-                "reason": f"Detected {quality_errors} errors in task execution",
-            })
+            triggers.append(
+                {
+                    "type": "quality_degradation",
+                    "reason": f"Detected {quality_errors} errors in task execution",
+                }
+            )
 
         # Check 3: Milestone delay
         if await self._check_milestone_delay(task):
-            triggers.append({
-                "type": "milestone_delayed",
-                "reason": "Current milestone delayed >50% of estimate",
-            })
+            triggers.append(
+                {
+                    "type": "milestone_delayed",
+                    "reason": "Current milestone delayed >50% of estimate",
+                }
+            )
 
         if triggers:
             return {
@@ -131,9 +137,7 @@ class ReplanningMonitor:
             return False
 
         # Calculate elapsed time
-        elapsed_minutes = (
-            (datetime.now() - task.phase_started_at).total_seconds() / 60
-        )
+        elapsed_minutes = (datetime.now() - task.phase_started_at).total_seconds() / 60
         estimate = task.plan.estimated_duration_minutes
 
         # Check if exceeded 150% of estimate
@@ -157,9 +161,7 @@ class ReplanningMonitor:
         """
         try:
             # Count error events in recent time window
-            cutoff_time = datetime.now() - timedelta(
-                minutes=self.MONITORING_WINDOW_MINUTES
-            )
+            cutoff_time = datetime.now() - timedelta(minutes=self.MONITORING_WINDOW_MINUTES)
 
             cursor = self.db.get_cursor()
             cursor.execute(
@@ -288,9 +290,7 @@ class ReplanningMonitor:
         except Exception as e:
             logger.error(f"Error in post-tool-use monitoring: {e}")
 
-    async def estimate_new_plan(
-        self, task: ProspectiveTask, reason: str
-    ) -> Optional[list[str]]:
+    async def estimate_new_plan(self, task: ProspectiveTask, reason: str) -> Optional[list[str]]:
         """Estimate new plan for task based on actual progress.
 
         Args:
@@ -307,17 +307,13 @@ class ReplanningMonitor:
         try:
             # Estimate remaining work based on elapsed time vs estimate
             if task.phase_started_at:
-                elapsed = (
-                    (datetime.now() - task.phase_started_at).total_seconds() / 60
-                )
+                elapsed = (datetime.now() - task.phase_started_at).total_seconds() / 60
                 estimate = task.plan.estimated_duration_minutes
 
                 if elapsed > estimate:
                     # Add 20% buffer for recovery
                     buffer_factor = 1.2
-                    new_steps = [
-                        step + " (adapted)" for step in task.plan.steps
-                    ]
+                    new_steps = [step + " (adapted)" for step in task.plan.steps]
                     return new_steps
 
         except Exception as e:

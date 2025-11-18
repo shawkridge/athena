@@ -9,7 +9,6 @@ Improves ActionCycle planning by:
 This closes the learning loop: Past Execution → Pattern → Better Planning
 """
 
-import json
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
@@ -27,7 +26,7 @@ class PlanEnhancement:
         description: str,
         confidence: float,
         source_id: int,
-        source_type: str
+        source_type: str,
     ):
         """Initialize plan enhancement.
 
@@ -68,12 +67,14 @@ class ActionCycleEnhancer:
             db: Database connection
         """
         self.db = db
+
     def _ensure_schema(self):
         """Create action cycle enhancement tables."""
         cursor = self.db.get_cursor()
 
         # Table: Plan enhancements applied
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS plan_enhancements (
                 id INTEGER PRIMARY KEY,
                 cycle_id TEXT NOT NULL,
@@ -88,10 +89,12 @@ class ActionCycleEnhancer:
                 effectiveness REAL,
                 created_at INTEGER NOT NULL
             )
-        """)
+        """
+        )
 
         # Table: Enhancement feedback
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS enhancement_feedback (
                 id INTEGER PRIMARY KEY,
                 enhancement_id INTEGER NOT NULL,
@@ -100,27 +103,27 @@ class ActionCycleEnhancer:
                 recorded_at INTEGER NOT NULL,
                 FOREIGN KEY (enhancement_id) REFERENCES plan_enhancements(id)
             )
-        """)
+        """
+        )
 
         # Indexes
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_plan_enhancements_cycle
             ON plan_enhancements(cycle_id, goal_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_enhancement_feedback_outcome
             ON enhancement_feedback(outcome)
-        """)
+        """
+        )
 
         # commit handled by cursor context
 
-    def analyze_plan(
-        self,
-        cycle_id: str,
-        goal_description: str,
-        plan_steps: list[str]
-    ) -> dict:
+    def analyze_plan(self, cycle_id: str, goal_description: str, plan_steps: list[str]) -> dict:
         """Analyze a plan and suggest enhancements.
 
         Args:
@@ -164,11 +167,7 @@ class ActionCycleEnhancer:
         }
 
     def apply_enhancement(
-        self,
-        cycle_id: str,
-        goal_id: str,
-        step_number: int,
-        enhancement: PlanEnhancement
+        self, cycle_id: str, goal_id: str, step_number: int, enhancement: PlanEnhancement
     ) -> int:
         """Apply an enhancement to a plan.
 
@@ -184,24 +183,27 @@ class ActionCycleEnhancer:
         cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO plan_enhancements
             (cycle_id, goal_id, enhancement_type, step_number,
              description, source_id, source_type, confidence,
              applied, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            cycle_id,
-            goal_id,
-            enhancement.enhancement_type,
-            step_number,
-            enhancement.description,
-            enhancement.source_id,
-            enhancement.source_type,
-            enhancement.confidence,
-            1,  # Applied
-            now
-        ))
+        """,
+            (
+                cycle_id,
+                goal_id,
+                enhancement.enhancement_type,
+                step_number,
+                enhancement.description,
+                enhancement.source_id,
+                enhancement.source_type,
+                enhancement.confidence,
+                1,  # Applied
+                now,
+            ),
+        )
 
         enhancement_id = cursor.lastrowid
         # commit handled by cursor context
@@ -211,7 +213,7 @@ class ActionCycleEnhancer:
         self,
         enhancement_id: int,
         outcome: str,  # helped, neutral, hindered
-        feedback_text: Optional[str] = None
+        feedback_text: Optional[str] = None,
     ) -> int:
         """Record feedback on enhancement effectiveness.
 
@@ -226,11 +228,14 @@ class ActionCycleEnhancer:
         cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp() * 1000)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO enhancement_feedback
             (enhancement_id, outcome, feedback_text, recorded_at)
             VALUES (?, ?, ?, ?)
-        """, (enhancement_id, outcome, feedback_text, now))
+        """,
+            (enhancement_id, outcome, feedback_text, now),
+        )
 
         feedback_id = cursor.lastrowid
 
@@ -243,11 +248,14 @@ class ActionCycleEnhancer:
 
         effectiveness = effectiveness_map.get(outcome, 0.5)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE plan_enhancements
             SET effectiveness = ?
             WHERE id = ?
-        """, (effectiveness, enhancement_id))
+        """,
+            (effectiveness, enhancement_id),
+        )
 
         # commit handled by cursor context
         return feedback_id
@@ -261,12 +269,14 @@ class ActionCycleEnhancer:
         cursor = self.db.get_cursor()
 
         # By enhancement type
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT enhancement_type, COUNT(*), AVG(effectiveness)
             FROM plan_enhancements
             WHERE applied = 1 AND effectiveness IS NOT NULL
             GROUP BY enhancement_type
-        """)
+        """
+        )
 
         by_type = {}
         for row in cursor.fetchall():
@@ -276,11 +286,13 @@ class ActionCycleEnhancer:
             }
 
         # Overall feedback
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT outcome, COUNT(*)
             FROM enhancement_feedback
             GROUP BY outcome
-        """)
+        """
+        )
 
         feedback_summary = {row[0]: row[1] for row in cursor.fetchall()}
 
@@ -302,24 +314,28 @@ class ActionCycleEnhancer:
         cursor = self.db.get_cursor()
 
         # Find procedures with high success rate
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT id, procedure_name, success_rate
             FROM procedure_creations
             WHERE success_rate > 0.7
             ORDER BY success_rate DESC
             LIMIT 3
-        """)
+        """
+        )
 
         enhancements = []
         for idx, row in enumerate(cursor.fetchall()):
-            enhancements.append(PlanEnhancement(
-                step_number=0,  # Could be refined
-                enhancement_type="procedure_suggestion",
-                description=f"Use procedure: {row[1]}",
-                confidence=row[2],
-                source_id=row[0],
-                source_type="procedure"
-            ))
+            enhancements.append(
+                PlanEnhancement(
+                    step_number=0,  # Could be refined
+                    enhancement_type="procedure_suggestion",
+                    description=f"Use procedure: {row[1]}",
+                    confidence=row[2],
+                    source_id=row[0],
+                    source_type="procedure",
+                )
+            )
 
         return enhancements
 
@@ -337,10 +353,7 @@ class ActionCycleEnhancer:
         return []
 
     def suggest_plan_improvement(
-        self,
-        goal_id: str,
-        current_plan: list[str],
-        execution_history: Optional[list[dict]] = None
+        self, goal_id: str, current_plan: list[str], execution_history: Optional[list[dict]] = None
     ) -> dict:
         """Suggest improvements to a plan based on history.
 
@@ -355,21 +368,26 @@ class ActionCycleEnhancer:
         cursor = self.db.get_cursor()
 
         # Find similar past goals
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT id, step_number, description, source_type
             FROM plan_enhancements
             WHERE goal_id LIKE ?
             ORDER BY confidence DESC
             LIMIT 5
-        """, (goal_id[:5] + "%",))
+        """,
+            (goal_id[:5] + "%",),
+        )
 
         similar_enhancements = []
         for row in cursor.fetchall():
-            similar_enhancements.append({
-                "step": row[1],
-                "description": row[2],
-                "source_type": row[3],
-            })
+            similar_enhancements.append(
+                {
+                    "step": row[1],
+                    "description": row[2],
+                    "source_type": row[3],
+                }
+            )
 
         return {
             "goal_id": goal_id,

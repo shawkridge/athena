@@ -12,7 +12,7 @@ Architecture:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Callable, Optional
 
 from pydantic import BaseModel, Field
@@ -92,7 +92,8 @@ class WorkingMemoryAPI:
         cursor = self.db.get_cursor()
 
         # Working memory buffer
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS working_memory (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER,
@@ -107,10 +108,12 @@ class WorkingMemoryAPI:
                 FOREIGN KEY (event_id) REFERENCES episodic_events(id)
                     ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Consolidation triggers log
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS consolidation_triggers (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER,
@@ -125,7 +128,8 @@ class WorkingMemoryAPI:
                 FOREIGN KEY (consolidation_run_id)
                     REFERENCES consolidation_runs(id) ON DELETE SET NULL
             )
-        """)
+        """
+        )
 
         self.db.commit()
 
@@ -153,11 +157,14 @@ class WorkingMemoryAPI:
 
         # Insert into database
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO working_memory
             (project_id, event_id, recency_score, importance_score, distinctiveness_score)
             VALUES (?, ?, ?, ?, ?)
-        """, (event.project_id, event.id, 1.0, importance, distinctiveness))
+        """,
+            (event.project_id, event.id, 1.0, importance, distinctiveness),
+        )
 
         self.db.commit()
 
@@ -208,10 +215,13 @@ class WorkingMemoryAPI:
             List of working memory items, sorted
         """
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM working_memory WHERE project_id = ?
             ORDER BY last_accessed DESC
-        """, (project_id,))
+        """,
+            (project_id,),
+        )
 
         rows = cursor.fetchall()
         items = []
@@ -253,10 +263,13 @@ class WorkingMemoryAPI:
         logger.debug(f"Removing event {event_id} from working memory")
 
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT event_id FROM working_memory
             WHERE event_id = ? AND project_id = ?
-        """, (event_id, project_id))
+        """,
+            (event_id, project_id),
+        )
 
         row = cursor.fetchone()
         if not row:
@@ -266,10 +279,13 @@ class WorkingMemoryAPI:
         event = await self.episodic_store.get_async(event_id)
 
         # Delete from database
-        cursor.execute("""
+        cursor.execute(
+            """
             DELETE FROM working_memory
             WHERE event_id = ? AND project_id = ?
-        """, (event_id, project_id))
+        """,
+            (event_id, project_id),
+        )
 
         self.db.commit()
 
@@ -289,8 +305,9 @@ class WorkingMemoryAPI:
             Number of items cleared
         """
         cursor = self.db.get_cursor()
-        cursor.execute("SELECT COUNT(*) as count FROM working_memory WHERE project_id = ?",
-                      (project_id,))
+        cursor.execute(
+            "SELECT COUNT(*) as count FROM working_memory WHERE project_id = ?", (project_id,)
+        )
         count = cursor.fetchone()["count"]
 
         cursor.execute("DELETE FROM working_memory WHERE project_id = ?", (project_id,))
@@ -344,19 +361,22 @@ class WorkingMemoryAPI:
 
         # Log trigger event
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO consolidation_triggers
             (project_id, trigger_type, working_memory_size, capacity,
              consolidation_type, consolidation_run_id)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            project_id,
-            trigger_type,
-            size,
-            self.capacity,
-            consolidation_type.value if consolidation_type else None,
-            consolidation_run_id,
-        ))
+        """,
+            (
+                project_id,
+                trigger_type,
+                size,
+                self.capacity,
+                consolidation_type.value if consolidation_type else None,
+                consolidation_run_id,
+            ),
+        )
 
         self.db.commit()
 
@@ -394,11 +414,14 @@ class WorkingMemoryAPI:
 
         params.append(event_id)
 
-        cursor.execute(f"""
+        cursor.execute(
+            f"""
             UPDATE working_memory
             SET {', '.join(updates)}
             WHERE event_id = ?
-        """, params)
+        """,
+            params,
+        )
 
         self.db.commit()
         affected = cursor.rowcount

@@ -11,7 +11,6 @@ Key Features:
 """
 
 from typing import List, Optional
-from datetime import datetime
 import json
 import math
 
@@ -44,12 +43,7 @@ class PhonologicalLoop:
     # Core Operations
     # ========================================================================
 
-    def add_item(
-        self,
-        project_id: int,
-        content: str,
-        importance: float = 0.5
-    ) -> int:
+    def add_item(self, project_id: int, content: str, importance: float = 0.5) -> int:
         """
         Add verbal item to phonological loop.
 
@@ -74,28 +68,27 @@ class PhonologicalLoop:
 
         # Insert into working memory
         with self.db.conn:
-            cursor = self.db.conn.execute("""
+            cursor = self.db.conn.execute(
+                """
                 INSERT INTO working_memory
                 (project_id, content, content_type, component,
                  importance_score, embedding, metadata)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                project_id,
-                content,
-                ContentType.VERBAL.value,
-                self.component.value,
-                importance,
-                embedding_bytes,
-                json.dumps({})
-            ))
+            """,
+                (
+                    project_id,
+                    content,
+                    ContentType.VERBAL.value,
+                    self.component.value,
+                    importance,
+                    embedding_bytes,
+                    json.dumps({}),
+                ),
+            )
 
             return cursor.lastrowid
 
-    def get_items(
-        self,
-        project_id: int,
-        apply_decay: bool = True
-    ) -> List[WorkingMemoryItem]:
+    def get_items(self, project_id: int, apply_decay: bool = True) -> List[WorkingMemoryItem]:
         """
         Get all items in phonological loop.
 
@@ -109,28 +102,34 @@ class PhonologicalLoop:
         with self.db.conn:
             if apply_decay:
                 # Use view with automatic decay calculation
-                rows = self.db.conn.execute("""
+                rows = self.db.conn.execute(
+                    """
                     SELECT wm.*, v.current_activation, v.seconds_since_access
                     FROM working_memory wm
                     JOIN v_working_memory_current v ON wm.id = v.id
                     WHERE wm.project_id = ? AND wm.component = ?
                     ORDER BY v.current_activation DESC
-                """, (project_id, self.component.value)).fetchall()
+                """,
+                    (project_id, self.component.value),
+                ).fetchall()
             else:
-                rows = self.db.conn.execute("""
+                rows = self.db.conn.execute(
+                    """
                     SELECT * FROM working_memory
                     WHERE project_id = ? AND component = ?
                     ORDER BY activation_level DESC
-                """, (project_id, self.component.value)).fetchall()
+                """,
+                    (project_id, self.component.value),
+                ).fetchall()
 
             items = []
             for row in rows:
                 item = self._row_to_item(row)
-                if apply_decay and 'current_activation' in row.keys():
+                if apply_decay and "current_activation" in row.keys():
                     # Override with calculated activation
                     item.metadata = item.metadata or {}
-                    item.metadata['current_activation'] = row['current_activation']
-                    item.metadata['seconds_since_access'] = row['seconds_since_access']
+                    item.metadata["current_activation"] = row["current_activation"]
+                    item.metadata["seconds_since_access"] = row["seconds_since_access"]
                 items.append(item)
 
             return items
@@ -138,9 +137,12 @@ class PhonologicalLoop:
     def get_item(self, item_id: int) -> Optional[WorkingMemoryItem]:
         """Get single item by ID."""
         with self.db.conn:
-            row = self.db.conn.execute("""
+            row = self.db.conn.execute(
+                """
                 SELECT * FROM working_memory WHERE id = ?
-            """, (item_id,)).fetchone()
+            """,
+                (item_id,),
+            ).fetchone()
 
             if not row:
                 return None
@@ -155,19 +157,25 @@ class PhonologicalLoop:
         Simulates subvocal repetition in human working memory.
         """
         with self.db.conn:
-            self.db.conn.execute("""
+            self.db.conn.execute(
+                """
                 UPDATE working_memory
                 SET activation_level = 1.0,
                     last_accessed = CURRENT_TIMESTAMP
                 WHERE id = ?
-            """, (item_id,))
+            """,
+                (item_id,),
+            )
 
     def remove_item(self, item_id: int):
         """Remove item from phonological loop."""
         with self.db.conn:
-            self.db.conn.execute("""
+            self.db.conn.execute(
+                """
                 DELETE FROM working_memory WHERE id = ?
-            """, (item_id,))
+            """,
+                (item_id,),
+            )
 
     def update_importance(self, item_id: int, importance: float):
         """
@@ -178,19 +186,25 @@ class PhonologicalLoop:
             importance: New importance score (0.0-1.0)
         """
         with self.db.conn:
-            self.db.conn.execute("""
+            self.db.conn.execute(
+                """
                 UPDATE working_memory
                 SET importance_score = ?
                 WHERE id = ?
-            """, (importance, item_id))
+            """,
+                (importance, item_id),
+            )
 
     def clear(self, project_id: int):
         """Clear all items from phonological loop."""
         with self.db.conn:
-            self.db.conn.execute("""
+            self.db.conn.execute(
+                """
                 DELETE FROM working_memory
                 WHERE project_id = ? AND component = ?
-            """, (project_id, self.component.value))
+            """,
+                (project_id, self.component.value),
+            )
 
     # ========================================================================
     # Capacity Management
@@ -207,28 +221,31 @@ class PhonologicalLoop:
         available = self.max_capacity - count
 
         if count >= self.max_capacity:
-            status = 'full'
+            status = "full"
         elif count >= self.max_capacity - 2:
-            status = 'near_full'
+            status = "near_full"
         else:
-            status = 'available'
+            status = "available"
 
         return {
-            'count': count,
-            'max_capacity': self.max_capacity,
-            'available_slots': available,
-            'status': status
+            "count": count,
+            "max_capacity": self.max_capacity,
+            "available_slots": available,
+            "status": status,
         }
 
     def _get_item_count(self, project_id: int) -> int:
         """Get current item count for project."""
         with self.db.conn:
-            result = self.db.conn.execute("""
+            result = self.db.conn.execute(
+                """
                 SELECT COUNT(*) as count FROM working_memory
                 WHERE project_id = ? AND component = ?
-            """, (project_id, self.component.value)).fetchone()
+            """,
+                (project_id, self.component.value),
+            ).fetchone()
 
-            return result['count']
+            return result["count"]
 
     def _consolidate_oldest(self, project_id: int, count: int = 1):
         """
@@ -240,19 +257,25 @@ class PhonologicalLoop:
         """
         with self.db.conn:
             # Get least active items
-            rows = self.db.conn.execute("""
+            rows = self.db.conn.execute(
+                """
                 SELECT id FROM v_working_memory_current
                 WHERE project_id = ? AND component = ?
                 ORDER BY current_activation ASC
                 LIMIT ?
-            """, (project_id, self.component.value, count)).fetchall()
+            """,
+                (project_id, self.component.value, count),
+            ).fetchall()
 
             for row in rows:
                 # Mark for consolidation (actual routing handled by consolidation_router)
                 # For now, just remove
-                self.db.conn.execute("""
+                self.db.conn.execute(
+                    """
                     DELETE FROM working_memory WHERE id = ?
-                """, (row['id'],))
+                """,
+                    (row["id"],),
+                )
 
     # ========================================================================
     # Decay Calculations (Psychology)
@@ -263,7 +286,7 @@ class PhonologicalLoop:
         initial_activation: float,
         time_seconds: float,
         importance: float,
-        decay_rate: float = 0.1
+        decay_rate: float = 0.1,
     ) -> float:
         """
         Calculate exponential decay.
@@ -310,12 +333,7 @@ class PhonologicalLoop:
     # Retrieval with Context
     # ========================================================================
 
-    def search(
-        self,
-        project_id: int,
-        query: str,
-        k: int = 5
-    ) -> List[WorkingMemoryItem]:
+    def search(self, project_id: int, query: str, k: int = 5) -> List[WorkingMemoryItem]:
         """
         Search items by semantic similarity.
 
@@ -341,7 +359,7 @@ class PhonologicalLoop:
                 similarity = cosine_similarity(query_embedding, item_embedding)
 
                 # Weight by current activation
-                current_activation = item.metadata.get('current_activation', item.activation_level)
+                current_activation = item.metadata.get("current_activation", item.activation_level)
                 score = similarity * 0.7 + current_activation * 0.3
 
                 scored_items.append((score, item))
@@ -351,10 +369,7 @@ class PhonologicalLoop:
         return [item for score, item in scored_items[:k]]
 
     def get_recent_items(
-        self,
-        project_id: int,
-        seconds: int = 60,
-        min_activation: float = 0.3
+        self, project_id: int, seconds: int = 60, min_activation: float = 0.3
     ) -> List[WorkingMemoryItem]:
         """
         Get recently accessed items that are still active.
@@ -371,8 +386,8 @@ class PhonologicalLoop:
 
         recent = []
         for item in items:
-            seconds_since = item.metadata.get('seconds_since_access', float('inf'))
-            current_activation = item.metadata.get('current_activation', 0.0)
+            seconds_since = item.metadata.get("seconds_since_access", float("inf"))
+            current_activation = item.metadata.get("current_activation", 0.0)
 
             if seconds_since <= seconds and current_activation >= min_activation:
                 recent.append(item)
@@ -388,24 +403,20 @@ class PhonologicalLoop:
         items = self.get_items(project_id, apply_decay=True)
 
         if not items:
-            return {
-                'count': 0,
-                'avg_activation': 0.0,
-                'avg_age_seconds': 0.0,
-                'capacity_used': 0.0
-            }
+            return {"count": 0, "avg_activation": 0.0, "avg_age_seconds": 0.0, "capacity_used": 0.0}
 
-        activations = [item.metadata.get('current_activation', item.activation_level)
-                      for item in items]
-        ages = [item.metadata.get('seconds_since_access', 0.0) for item in items]
+        activations = [
+            item.metadata.get("current_activation", item.activation_level) for item in items
+        ]
+        ages = [item.metadata.get("seconds_since_access", 0.0) for item in items]
 
         return {
-            'count': len(items),
-            'avg_activation': sum(activations) / len(activations),
-            'max_activation': max(activations),
-            'min_activation': min(activations),
-            'avg_age_seconds': sum(ages) / len(ages),
-            'capacity_used': len(items) / self.max_capacity
+            "count": len(items),
+            "avg_activation": sum(activations) / len(activations),
+            "max_activation": max(activations),
+            "min_activation": min(activations),
+            "avg_age_seconds": sum(ages) / len(ages),
+            "capacity_used": len(items) / self.max_capacity,
         }
 
     def validate_decay_curve(self, project_id: int) -> dict:
@@ -416,22 +427,22 @@ class PhonologicalLoop:
         """
         with self.db.conn:
             # Get items with decay history
-            rows = self.db.conn.execute("""
+            rows = self.db.conn.execute(
+                """
                 SELECT wm.id, wm.importance_score,
                        wdl.timestamp, wdl.activation_level
                 FROM working_memory wm
                 JOIN working_memory_decay_log wdl ON wm.id = wdl.wm_id
                 WHERE wm.project_id = ? AND wm.component = ?
                 ORDER BY wm.id, wdl.timestamp
-            """, (project_id, self.component.value)).fetchall()
+            """,
+                (project_id, self.component.value),
+            ).fetchall()
 
             # Analyze decay patterns
             # TODO: Implement statistical validation
 
-            return {
-                'status': 'validation_implemented',
-                'samples': len(rows)
-            }
+            return {"status": "validation_implemented", "samples": len(rows)}
 
     # ========================================================================
     # Helper Methods
@@ -440,5 +451,3 @@ class PhonologicalLoop:
     def _row_to_item(self, row) -> WorkingMemoryItem:
         """Convert database row to WorkingMemoryItem."""
         return WorkingMemoryItem.from_db_row(row)
-
-

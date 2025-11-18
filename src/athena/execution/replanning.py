@@ -68,7 +68,9 @@ class AdaptiveReplanningEngine:
                 replanning_needed = True
                 strategy = ReplanningStrategy.FULL
                 confidence = 0.8
-                rationale = f"Critical deviation ({plan_deviation.time_deviation_percent:.1f}%) + violation"
+                rationale = (
+                    f"Critical deviation ({plan_deviation.time_deviation_percent:.1f}%) + violation"
+                )
                 risk_level = "high"
                 estimated_time_impact = timedelta(hours=1)
                 estimated_cost_impact = 500.0
@@ -78,20 +80,24 @@ class AdaptiveReplanningEngine:
                 replanning_needed = True
                 strategy = ReplanningStrategy.SEGMENT
                 confidence = 0.8
-                rationale = f"High deviation ({plan_deviation.time_deviation_percent:.1f}%) + violation"
+                rationale = (
+                    f"High deviation ({plan_deviation.time_deviation_percent:.1f}%) + violation"
+                )
                 risk_level = "medium"
                 estimated_time_impact = timedelta(minutes=15)
                 estimated_cost_impact = 100.0
 
-            elif (
-                plan_deviation.completion_rate > 0.7
-                and violation.severity in [DeviationSeverity.LOW, DeviationSeverity.MEDIUM]
-            ):
+            elif plan_deviation.completion_rate > 0.7 and violation.severity in [
+                DeviationSeverity.LOW,
+                DeviationSeverity.MEDIUM,
+            ]:
                 # Late-stage single issue → LOCAL adjustment
                 replanning_needed = True
                 strategy = ReplanningStrategy.LOCAL
                 confidence = 0.75
-                rationale = f"Late-stage issue (70%+ complete) + {violation.severity.value} violation"
+                rationale = (
+                    f"Late-stage issue (70%+ complete) + {violation.severity.value} violation"
+                )
                 risk_level = "low"
                 estimated_time_impact = timedelta(minutes=5)
                 estimated_cost_impact = 50.0
@@ -388,9 +394,7 @@ class AdaptiveReplanningEngine:
             if option.option_id == option_id:
                 self.selected_option = option
                 self.replanning_count += 1
-                logger.info(
-                    f"Selected replanning option {option_id}: {option.title}"
-                )
+                logger.info(f"Selected replanning option {option_id}: {option.title}")
                 return option
 
         logger.warning(f"Replanning option {option_id} not found")

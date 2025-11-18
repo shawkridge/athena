@@ -12,6 +12,7 @@ from .database import Database
 @dataclass
 class ResourceQuota:
     """Resource quota configuration."""
+
     resource_type: str
     limit: int
     current_usage: int = 0
@@ -51,10 +52,13 @@ class AdvisoryLock:
 
                     # Try to insert lock record
                     expires_at = int(time.time()) + 300  # 5 minute default expiry
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         INSERT OR IGNORE INTO advisory_locks (lock_key, owner, acquired_at, expires_at)
                         VALUES (?, ?, ?, ?)
-                    """, (lock_key, owner, int(time.time()), expires_at))
+                    """,
+                        (lock_key, owner, int(time.time()), expires_at),
+                    )
 
                     if cursor.rowcount > 0:
                         # Lock acquired
@@ -63,26 +67,32 @@ class AdvisoryLock:
                         return True
 
                     # Check if existing lock is expired
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         SELECT owner, expires_at FROM advisory_locks
                         WHERE lock_key = ?
-                    """, (lock_key,))
+                    """,
+                        (lock_key,),
+                    )
 
                     row = cursor.fetchone()
                     if row and time.time() > row[1]:
                         # Lock is expired, try to take it
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             UPDATE advisory_locks
                             SET owner = ?, acquired_at = ?, expires_at = ?
                             WHERE lock_key = ? AND expires_at < ?
-                        """, (owner, int(time.time()), expires_at, lock_key, time.time()))
+                        """,
+                            (owner, int(time.time()), expires_at, lock_key, time.time()),
+                        )
 
                         if cursor.rowcount > 0:
                             # commit handled by cursor context
                             self._local_locks[lock_key] = threading.get_ident()
                             return True
 
-                except (OSError, ValueError, TypeError, KeyError) as e:
+                except (OSError, ValueError, TypeError, KeyError):
                     pass  # Retry on database errors
 
                 # Wait before retry
@@ -114,10 +124,13 @@ class AdvisoryLock:
 
             try:
                 cursor = self.db.get_cursor()
-                cursor.execute("""
+                cursor.execute(
+                    """
                     DELETE FROM advisory_locks
                     WHERE lock_key = ?
-                """, (lock_key,))
+                """,
+                    (lock_key,),
+                )
                 # commit handled by cursor context
                 return True
             except (OSError, ValueError, TypeError, KeyError):
@@ -147,10 +160,13 @@ class AdvisoryLock:
         """Clean up expired locks."""
         try:
             cursor = self.db.get_cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 DELETE FROM advisory_locks
                 WHERE expires_at < ?
-            """, (time.time(),))
+            """,
+                (time.time(),),
+            )
             # commit handled by cursor context
         except (OSError, ValueError, TypeError, KeyError):
             pass  # Ignore cleanup errors
@@ -170,21 +186,26 @@ class ResourceManager:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT OR REPLACE INTO resource_quotas
             (project_id, resource_type, quota_limit, current_usage, last_updated)
             VALUES (?, ?, ?, ?, ?)
-        """, (
-            quota.project_id,
-            quota.resource_type,
-            quota.limit,
-            quota.current_usage,
-            int(time.time())
-        ))
+        """,
+            (
+                quota.project_id,
+                quota.resource_type,
+                quota.limit,
+                quota.current_usage,
+                int(time.time()),
+            ),
+        )
 
         # commit handled by cursor context
 
-    def get_quota(self, resource_type: str, project_id: Optional[int] = None) -> Optional[ResourceQuota]:
+    def get_quota(
+        self, resource_type: str, project_id: Optional[int] = None
+    ) -> Optional[ResourceQuota]:
         """Get current quota for a resource.
 
         Args:
@@ -196,26 +217,28 @@ class ResourceManager:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT project_id, resource_type, quota_limit, current_usage, last_updated
             FROM resource_quotas
             WHERE resource_type = ? AND (project_id = ? OR project_id IS NULL)
             ORDER BY project_id NULLS LAST  -- Prefer project-specific over global
             LIMIT 1
-        """, (resource_type, project_id))
+        """,
+            (resource_type, project_id),
+        )
 
         row = cursor.fetchone()
         if not row:
             return None
 
         return ResourceQuota(
-            project_id=row[0],
-            resource_type=row[1],
-            limit=row[2],
-            current_usage=row[3]
+            project_id=row[0], resource_type=row[1], limit=row[2], current_usage=row[3]
         )
 
-    def check_quota(self, resource_type: str, amount: int = 1, project_id: Optional[int] = None) -> bool:
+    def check_quota(
+        self, resource_type: str, amount: int = 1, project_id: Optional[int] = None
+    ) -> bool:
         """Check if quota allows the requested amount.
 
         Args:
@@ -232,7 +255,9 @@ class ResourceManager:
 
         return quota.current_usage + amount <= quota.limit
 
-    def allocate_resource(self, resource_type: str, amount: int = 1, project_id: Optional[int] = None) -> bool:
+    def allocate_resource(
+        self, resource_type: str, amount: int = 1, project_id: Optional[int] = None
+    ) -> bool:
         """Allocate resource usage.
 
         Args:
@@ -249,7 +274,8 @@ class ResourceManager:
         cursor = self.db.get_cursor()
 
         # Update or insert usage
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT OR REPLACE INTO resource_quotas
             (project_id, resource_type, quota_limit, current_usage, last_updated)
             VALUES (
@@ -263,12 +289,18 @@ class ResourceManager:
                          ORDER BY project_id NULLS LAST LIMIT 1), 0) + ?,
                 ?
             )
-        """, (
-            project_id, resource_type,
-            resource_type, project_id,
-            resource_type, project_id, amount,
-            int(time.time())
-        ))
+        """,
+            (
+                project_id,
+                resource_type,
+                resource_type,
+                project_id,
+                resource_type,
+                project_id,
+                amount,
+                int(time.time()),
+            ),
+        )
 
         # commit handled by cursor context
 
@@ -277,7 +309,9 @@ class ResourceManager:
 
         return True
 
-    def release_resource(self, resource_type: str, amount: int = 1, project_id: Optional[int] = None):
+    def release_resource(
+        self, resource_type: str, amount: int = 1, project_id: Optional[int] = None
+    ):
         """Release allocated resource usage.
 
         Args:
@@ -287,18 +321,23 @@ class ResourceManager:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE resource_quotas
             SET current_usage = MAX(0, current_usage - ?), last_updated = ?
             WHERE resource_type = ? AND (project_id = ? OR project_id IS NULL)
-        """, (amount, int(time.time()), resource_type, project_id))
+        """,
+            (amount, int(time.time()), resource_type, project_id),
+        )
 
         # commit handled by cursor context
 
         # Log the release
         self._log_usage(resource_type, -amount, project_id, "release")
 
-    def _log_usage(self, resource_type: str, amount: int, project_id: Optional[int], operation: str):
+    def _log_usage(
+        self, resource_type: str, amount: int, project_id: Optional[int], operation: str
+    ):
         """Log resource usage change.
 
         Args:
@@ -309,11 +348,14 @@ class ResourceManager:
         """
         try:
             cursor = self.db.get_cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO resource_usage_log
                 (project_id, resource_type, operation, amount, timestamp)
                 VALUES (?, ?, ?, ?, ?)
-            """, (project_id, resource_type, operation, amount, int(time.time())))
+            """,
+                (project_id, resource_type, operation, amount, int(time.time())),
+            )
             # commit handled by cursor context
         except (OSError, ValueError, TypeError, KeyError):
             pass  # Don't fail if logging fails
@@ -332,46 +374,48 @@ class ResourceManager:
         since_time = int(time.time()) - (hours * 3600)
 
         # Current quotas
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT resource_type, quota_limit, current_usage
             FROM resource_quotas
             WHERE (? IS NULL OR project_id = ?) AND quota_limit > 0
-        """, (project_id, project_id))
+        """,
+            (project_id, project_id),
+        )
 
         quotas = {}
         for row in cursor.fetchall():
             quotas[row[0]] = {
-                'limit': row[1],
-                'current': row[2],
-                'utilization': row[2] / row[1] if row[1] > 0 else 0
+                "limit": row[1],
+                "current": row[2],
+                "utilization": row[2] / row[1] if row[1] > 0 else 0,
             }
 
         # Usage over time
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT resource_type, operation, SUM(amount) as total_amount, COUNT(*) as operations
             FROM resource_usage_log
             WHERE timestamp >= ? AND (? IS NULL OR project_id = ?)
             GROUP BY resource_type, operation
-        """, (since_time, project_id, project_id))
+        """,
+            (since_time, project_id, project_id),
+        )
 
         usage = {}
         for row in cursor.fetchall():
             resource_type = row[0]
             if resource_type not in usage:
-                usage[resource_type] = {'allocate': 0, 'release': 0, 'net': 0, 'operations': 0}
+                usage[resource_type] = {"allocate": 0, "release": 0, "net": 0, "operations": 0}
 
             usage[resource_type][row[1]] = row[2]
-            usage[resource_type]['operations'] += row[3]
+            usage[resource_type]["operations"] += row[3]
 
         # Calculate net usage
         for resource_type, stats in usage.items():
-            stats['net'] = stats['allocate'] - stats['release']
+            stats["net"] = stats["allocate"] - stats["release"]
 
-        return {
-            'quotas': quotas,
-            'usage': usage,
-            'period_hours': hours
-        }
+        return {"quotas": quotas, "usage": usage, "period_hours": hours}
 
 
 # Global instances for easy access

@@ -2,7 +2,6 @@
 
 import logging
 import re
-import traceback
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -13,6 +12,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ErrorPattern:
     """A pattern in error occurrences."""
+
     pattern_name: str
     description: str
     regex: str
@@ -24,6 +24,7 @@ class ErrorPattern:
 @dataclass
 class DiagnosedError:
     """A fully diagnosed error with root cause and solution."""
+
     error_id: str
     error_type: str
     message: str
@@ -41,6 +42,7 @@ class DiagnosedError:
 @dataclass
 class ErrorFrequency:
     """Frequency information for an error."""
+
     error_type: str
     occurrences: int
     first_seen: str

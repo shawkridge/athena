@@ -2,7 +2,6 @@
 
 import logging
 import subprocess
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
@@ -126,9 +125,7 @@ class GitContext:
                     "--",
                     filepath,
                 ]
-                stats_result = subprocess.run(
-                    stats_cmd, capture_output=True, text=True, check=True
-                )
+                stats_result = subprocess.run(stats_cmd, capture_output=True, text=True, check=True)
 
                 if stats_result.stdout.strip():
                     stat_line = stats_result.stdout.strip().split("\n")[0]
@@ -197,9 +194,7 @@ class GitContext:
                 "--",
                 filepath,
             ]
-            status_result = subprocess.run(
-                status_cmd, capture_output=True, text=True, check=True
-            )
+            status_result = subprocess.run(status_cmd, capture_output=True, text=True, check=True)
 
             status = "modified"
             if status_result.stdout.startswith("A"):
@@ -223,9 +218,7 @@ class GitContext:
                     "show",
                     f"{commit_range.split('..')[0]}:{filepath}",
                 ]
-                old_result = subprocess.run(
-                    old_cmd, capture_output=True, text=True
-                )
+                old_result = subprocess.run(old_cmd, capture_output=True, text=True)
                 if old_result.returncode == 0:
                     old_content = old_result.stdout
 
@@ -284,9 +277,7 @@ class GitContext:
             logger.error(f"Git status command failed: {e.stderr}")
             return None
 
-    def get_commit_history(
-        self, filepath: str, limit: int = 10
-    ) -> List[Dict[str, str]]:
+    def get_commit_history(self, filepath: str, limit: int = 10) -> List[Dict[str, str]]:
         """Get commit history for a file.
 
         Args:
@@ -420,9 +411,7 @@ class GitContext:
 
         return hunks
 
-    def get_related_files(
-        self, filepath: str, distance: int = 2
-    ) -> List[Tuple[str, int]]:
+    def get_related_files(self, filepath: str, distance: int = 2) -> List[Tuple[str, int]]:
         """Get files frequently changed together with given file.
 
         Args:
@@ -447,9 +436,7 @@ class GitContext:
                 "--",
                 filepath,
             ]
-            commit_result = subprocess.run(
-                cmd, capture_output=True, text=True, check=True
-            )
+            commit_result = subprocess.run(cmd, capture_output=True, text=True, check=True)
 
             if not commit_result.stdout:
                 return []
@@ -472,9 +459,7 @@ class GitContext:
                     "--pretty=",
                     commit,
                 ]
-                files_result = subprocess.run(
-                    files_cmd, capture_output=True, text=True, check=True
-                )
+                files_result = subprocess.run(files_cmd, capture_output=True, text=True, check=True)
 
                 for changed_file in files_result.stdout.strip().split("\n"):
                     if changed_file and changed_file != filepath:

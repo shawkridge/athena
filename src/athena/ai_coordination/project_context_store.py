@@ -26,12 +26,14 @@ class ProjectContextStore:
             db: Database instance
         """
         self.db = db
+
     def _ensure_schema(self) -> None:
         """Create tables if they don't exist."""
         cursor = self.db.get_cursor()
 
         # Project contexts table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS project_contexts (
                 id SERIAL PRIMARY KEY,
                 project_id TEXT UNIQUE NOT NULL,
@@ -46,10 +48,12 @@ class ProjectContextStore:
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL
             )
-        """)
+        """
+        )
 
         # Decisions table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS project_decisions (
                 id SERIAL PRIMARY KEY,
                 project_id TEXT NOT NULL,
@@ -60,10 +64,12 @@ class ProjectContextStore:
                 created_at INTEGER NOT NULL,
                 FOREIGN KEY (project_id) REFERENCES project_contexts(project_id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Error patterns table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS project_errors (
                 id SERIAL PRIMARY KEY,
                 project_id TEXT NOT NULL,
@@ -74,18 +80,23 @@ class ProjectContextStore:
                 resolved BOOLEAN DEFAULT 0,
                 FOREIGN KEY (project_id) REFERENCES project_contexts(project_id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Indexes for common queries
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_project_errors_type
             ON project_errors(project_id, error_type)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_project_decisions_created
             ON project_decisions(project_id, created_at DESC)
-        """)
+        """
+        )
 
         # commit handled by cursor context
 
@@ -103,10 +114,7 @@ class ProjectContextStore:
         cursor = self.db.get_cursor()
 
         # Try to get existing
-        cursor.execute(
-            "SELECT * FROM project_contexts WHERE project_id = ?",
-            (project_id,)
-        )
+        cursor.execute("SELECT * FROM project_contexts WHERE project_id = ?", (project_id,))
         row = cursor.fetchone()
 
         if row:
@@ -114,18 +122,18 @@ class ProjectContextStore:
 
         # Create new
         now = int(time.time() * 1000)  # Milliseconds for better precision
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO project_contexts
             (project_id, name, description, current_phase, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (project_id, name, description, ProjectPhase.PLANNING.value, now, now))
+        """,
+            (project_id, name, description, ProjectPhase.PLANNING.value, now, now),
+        )
 
         # commit handled by cursor context
 
-        cursor.execute(
-            "SELECT * FROM project_contexts WHERE project_id = ?",
-            (project_id,)
-        )
+        cursor.execute("SELECT * FROM project_contexts WHERE project_id = ?", (project_id,))
         row = cursor.fetchone()
         return self._row_to_context(row)
 
@@ -139,10 +147,7 @@ class ProjectContextStore:
             ProjectContext or None if not found
         """
         cursor = self.db.get_cursor()
-        cursor.execute(
-            "SELECT * FROM project_contexts WHERE project_id = ?",
-            (project_id,)
-        )
+        cursor.execute("SELECT * FROM project_contexts WHERE project_id = ?", (project_id,))
         row = cursor.fetchone()
         return self._row_to_context(row) if row else None
 
@@ -156,11 +161,14 @@ class ProjectContextStore:
         cursor = self.db.get_cursor()
         now = int(time.time() * 1000)  # Milliseconds for better precision
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE project_contexts
             SET current_phase = ?, updated_at = ?
             WHERE project_id = ?
-        """, (phase.value, now, project_id))
+        """,
+            (phase.value, now, project_id),
+        )
 
         # commit handled by cursor context
 
@@ -174,11 +182,14 @@ class ProjectContextStore:
         cursor = self.db.get_cursor()
         now = int(time.time() * 1000)  # Milliseconds for better precision
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE project_contexts
             SET current_goal_id = ?, updated_at = ?
             WHERE project_id = ?
-        """, (goal_id, now, project_id))
+        """,
+            (goal_id, now, project_id),
+        )
 
         # commit handled by cursor context
 
@@ -216,8 +227,7 @@ class ProjectContextStore:
         params.append(project_id)
 
         cursor.execute(
-            f"UPDATE project_contexts SET {', '.join(updates)} WHERE project_id = ?",
-            params
+            f"UPDATE project_contexts SET {', '.join(updates)} WHERE project_id = ?", params
         )
 
         # commit handled by cursor context
@@ -232,11 +242,14 @@ class ProjectContextStore:
         cursor = self.db.get_cursor()
         now = int(time.time() * 1000)  # Milliseconds for better precision
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE project_contexts
             SET architecture_json = ?, updated_at = ?
             WHERE project_id = ?
-        """, (json.dumps(architecture), now, project_id))
+        """,
+            (json.dumps(architecture), now, project_id),
+        )
 
         # commit handled by cursor context
 
@@ -252,18 +265,21 @@ class ProjectContextStore:
         cursor = self.db.get_cursor()
         now = int(time.time() * 1000)  # Milliseconds for better precision
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO project_decisions
             (project_id, decision, reasoning, alternatives_json, impact, created_at)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            decision.project_id,
-            decision.decision,
-            decision.reasoning,
-            json.dumps(decision.alternatives_considered),
-            decision.impact,
-            now
-        ))
+        """,
+            (
+                decision.project_id,
+                decision.decision,
+                decision.reasoning,
+                json.dumps(decision.alternatives_considered),
+                decision.impact,
+                now,
+            ),
+        )
 
         # commit handled by cursor context
         return cursor.lastrowid
@@ -279,12 +295,15 @@ class ProjectContextStore:
             List of Decision instances
         """
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM project_decisions
             WHERE project_id = ?
             ORDER BY created_at DESC
             LIMIT ?
-        """, (project_id, limit))
+        """,
+            (project_id, limit),
+        )
 
         return [self._row_to_decision(row) for row in cursor.fetchall()]
 
@@ -297,40 +316,51 @@ class ProjectContextStore:
         cursor = self.db.get_cursor()
 
         # Check if error already exists
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT id FROM project_errors
             WHERE project_id = ? AND error_type = ?
-        """, (error.project_id, error.error_type))
+        """,
+            (error.project_id, error.error_type),
+        )
 
         existing = cursor.fetchone()
 
         if existing:
             # Update existing error
             now = int(time.time())
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE project_errors
                 SET frequency = frequency + 1, last_seen = ?, mitigation = ?, resolved = ?
                 WHERE id = ?
-            """, (now, error.mitigation, error.resolved, existing[0]))
+            """,
+                (now, error.mitigation, error.resolved, existing[0]),
+            )
         else:
             # Create new error entry
             now = int(time.time())
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO project_errors
                 (project_id, error_type, frequency, last_seen, mitigation, resolved)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                error.project_id,
-                error.error_type,
-                error.frequency,
-                now,
-                error.mitigation,
-                error.resolved
-            ))
+            """,
+                (
+                    error.project_id,
+                    error.error_type,
+                    error.frequency,
+                    now,
+                    error.mitigation,
+                    error.resolved,
+                ),
+            )
 
         # commit handled by cursor context
 
-    def get_error_patterns(self, project_id: str, unresolved_only: bool = True) -> list[ErrorPattern]:
+    def get_error_patterns(
+        self, project_id: str, unresolved_only: bool = True
+    ) -> list[ErrorPattern]:
         """Get error patterns for project.
 
         Args:
@@ -343,17 +373,23 @@ class ProjectContextStore:
         cursor = self.db.get_cursor()
 
         if unresolved_only:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM project_errors
                 WHERE project_id = ? AND resolved = 0
                 ORDER BY frequency DESC
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
         else:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM project_errors
                 WHERE project_id = ?
                 ORDER BY frequency DESC
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
 
         return [self._row_to_error(row) for row in cursor.fetchall()]
 
@@ -365,11 +401,14 @@ class ProjectContextStore:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE project_errors
             SET resolved = 1
             WHERE id = ?
-        """, (error_id,))
+        """,
+            (error_id,),
+        )
 
         # commit handled by cursor context
 

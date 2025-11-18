@@ -5,13 +5,13 @@ Systematically violates constraints to explore adjacent possibilities,
 respecting dependency relationships to ensure safety.
 """
 
-from typing import List, Optional, Dict, Set
+from typing import List, Optional, Dict
 from dataclasses import dataclass
 import logging
 import re
 
 from .dependency_analyzer import DependencyGraph, ProcedureDependencyAnalyzer
-from .openrouter_client import OpenRouterClient, OpenRouterModel, DREAM_MODELS_CONFIG
+from .openrouter_client import OpenRouterClient, DREAM_MODELS_CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class DreamProcedure:
             "code": self.code,
             "model_used": self.model_used,
             "reasoning": self.reasoning,
-            "generated_description": self.generated_description
+            "generated_description": self.generated_description,
         }
 
 
@@ -63,7 +63,7 @@ class ConstraintRelaxer:
         procedure_id: int,
         procedure_name: str,
         procedure_code: str,
-        depth: str = "moderate"  # "light", "moderate", "deep"
+        depth: str = "moderate",  # "light", "moderate", "deep"
     ) -> List[DreamProcedure]:
         """
         Generate constraint-relaxation variants of a procedure.
@@ -81,18 +81,11 @@ class ConstraintRelaxer:
         analyzer = ProcedureDependencyAnalyzer(procedure_id, procedure_code)
         dep_graph = analyzer.analyze()
 
-        variant_count = {
-            "light": 5,
-            "moderate": 15,
-            "deep": 30
-        }.get(depth, 15)
+        variant_count = {"light": 5, "moderate": 15, "deep": 30}.get(depth, 15)
 
         # Build prompt for DeepSeek
         prompt = self._build_generation_prompt(
-            procedure_name,
-            procedure_code,
-            dep_graph,
-            variant_count
+            procedure_name, procedure_code, dep_graph, variant_count
         )
 
         try:
@@ -102,15 +95,12 @@ class ConstraintRelaxer:
                 system=self._get_system_prompt(),
                 max_tokens=self.config["max_tokens"],
                 temperature=self.config["temperature"],
-                top_p=self.config["top_p"]
+                top_p=self.config["top_p"],
             )
 
             # Parse response to extract variants
             variants = self._parse_response(
-                response["content"],
-                procedure_id,
-                procedure_name,
-                "constraint_relaxation"
+                response["content"], procedure_id, procedure_name, "constraint_relaxation"
             )
 
             logger.info(
@@ -146,7 +136,7 @@ Generate code that is syntactically valid and executable."""
         procedure_name: str,
         procedure_code: str,
         dep_graph: DependencyGraph,
-        variant_count: int
+        variant_count: int,
     ) -> str:
         """Build prompt for variant generation."""
         # Identify key constraints
@@ -204,33 +194,23 @@ Generate {variant_count} variants total. Be creative but practical."""
 
         # Sequential execution
         if len(dep_graph.steps) > 1:
-            constraints.append(
-                "Steps execute sequentially in defined order"
-            )
+            constraints.append("Steps execute sequentially in defined order")
 
         # Required side effects
         if dep_graph.has_side_effects:
-            constraints.append(
-                "All operations are executed (none can be skipped)"
-            )
+            constraints.append("All operations are executed (none can be skipped)")
 
         # Specific error handling
         if "try" in code or "except" in code:
-            constraints.append(
-                "Error handling path must be followed exactly"
-            )
+            constraints.append("Error handling path must be followed exactly")
 
         # Specific timeouts/delays
         if "sleep" in code or "timeout" in code or "wait" in code:
-            constraints.append(
-                "Specific timing values are fixed"
-            )
+            constraints.append("Specific timing values are fixed")
 
         # Subprocess calls
         if "subprocess" in code or "os.system" in code:
-            constraints.append(
-                "External commands must run in specific order"
-            )
+            constraints.append("External commands must run in specific order")
 
         return constraints
 
@@ -239,34 +219,25 @@ Generate {variant_count} variants total. Be creative but practical."""
         reorderable = []
 
         for i, step_a in enumerate(dep_graph.steps):
-            for j, step_b in enumerate(dep_graph.steps[i + 1:], start=i + 1):
+            for j, step_b in enumerate(dep_graph.steps[i + 1 :], start=i + 1):
                 if dep_graph.can_reorder(i, j):
-                    reorderable.append(
-                        f"Step {i} ↔ Step {j} (swap {step_a.code[:30]}... with ...)"
-                    )
+                    reorderable.append(f"Step {i} ↔ Step {j} (swap {step_a.code[:30]}... with ...)")
 
         return reorderable[:5]  # Return top 5
 
     def _parse_response(
-        self,
-        response: str,
-        procedure_id: int,
-        procedure_name: str,
-        dream_type: str
+        self, response: str, procedure_id: int, procedure_name: str, dream_type: str
     ) -> List[DreamProcedure]:
         """Parse DeepSeek response to extract variant code."""
         variants = []
 
         # Split by variant markers (numbered sections, code blocks, etc.)
         # This is a heuristic parser - adapt to actual DeepSeek output format
-        sections = re.split(r'(?:^|\n)(?:Variant\s+\d+|^#{1,3}\s+(?:Variant|Dream))', response)
+        sections = re.split(r"(?:^|\n)(?:Variant\s+\d+|^#{1,3}\s+(?:Variant|Dream))", response)
 
         for i, section in enumerate(sections[1:], 1):  # Skip first empty section
             variant = self._extract_variant_from_section(
-                section,
-                procedure_id,
-                procedure_name,
-                dream_type
+                section, procedure_id, procedure_name, dream_type
             )
 
             if variant:
@@ -275,33 +246,21 @@ Generate {variant_count} variants total. Be creative but practical."""
         return variants
 
     def _extract_variant_from_section(
-        self,
-        section: str,
-        procedure_id: int,
-        procedure_name: str,
-        dream_type: str
+        self, section: str, procedure_id: int, procedure_name: str, dream_type: str
     ) -> Optional[DreamProcedure]:
         """Extract a single variant from a response section."""
         # Extract Python code block
-        code_match = re.search(
-            r'```python\n(.*?)\n```',
-            section,
-            re.DOTALL
-        )
+        code_match = re.search(r"```python\n(.*?)\n```", section, re.DOTALL)
 
         if not code_match:
-            code_match = re.search(
-                r'```\n(.*?)\n```',
-                section,
-                re.DOTALL
-            )
+            code_match = re.search(r"```\n(.*?)\n```", section, re.DOTALL)
 
         if not code_match:
             # Try to find raw code (lines starting with def or class)
             code_match = re.search(
-                r'^(?:def |class |async def )(.*?)(?=\n(?:def|class|Variant|Dream|$))',
+                r"^(?:def |class |async def )(.*?)(?=\n(?:def|class|Variant|Dream|$))",
                 section,
-                re.MULTILINE | re.DOTALL
+                re.MULTILINE | re.DOTALL,
             )
 
         if not code_match:
@@ -311,20 +270,18 @@ Generate {variant_count} variants total. Be creative but practical."""
 
         # Ensure code is syntactically valid
         try:
-            compile(code, '<string>', 'exec')
+            compile(code, "<string>", "exec")
         except SyntaxError:
-            logger.warning(f"Generated code has syntax error, skipping variant")
+            logger.warning("Generated code has syntax error, skipping variant")
             return None
 
         # Extract description
-        desc_match = re.search(r'^(.{1,100})', section.strip())
+        desc_match = re.search(r"^(.{1,100})", section.strip())
         description = desc_match.group(1) if desc_match else "Generated variant"
 
         # Extract assumption violated
         assumption_match = re.search(
-            r'(?:assumption|constraint|violat)[^:]*?:\s*(.{1,150})',
-            section,
-            re.IGNORECASE
+            r"(?:assumption|constraint|violat)[^:]*?:\s*(.{1,150})", section, re.IGNORECASE
         )
         assumption = assumption_match.group(1) if assumption_match else "Unspecified"
 
@@ -336,10 +293,11 @@ Generate {variant_count} variants total. Be creative but practical."""
             code=code,
             model_used="deepseek/deepseek-chat-v3.1:free",
             reasoning=f"Relaxed: {assumption}",
-            generated_description=description
+            generated_description=description,
         )
 
     def _generate_variant_id(self) -> str:
         """Generate a unique variant ID."""
         import uuid
+
         return str(uuid.uuid4())[:8]

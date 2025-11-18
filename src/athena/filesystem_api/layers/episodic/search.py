@@ -15,6 +15,7 @@ Usage:
 
 from typing import Dict, Any, Optional
 from datetime import datetime
+
 try:
     import psycopg
     from psycopg import AsyncConnection
@@ -79,39 +80,26 @@ async def search_events(
                OR context_branch ILIKE %s
             LIMIT %s
             """,
-            (f"%{query}%", f"%{query}%", f"%{query}%", f"%{query}%", limit)
+            (f"%{query}%", f"%{query}%", f"%{query}%", f"%{query}%", limit),
         )
 
         all_events = [dict(row) for row in await cursor.fetchall()]
         await conn.close()
 
         if not all_events:
-            return {
-                "query": query,
-                "total_found": 0,
-                "high_confidence_count": 0,
-                "empty": True
-            }
+            return {"query": query, "total_found": 0, "high_confidence_count": 0, "empty": True}
 
         # Filter by confidence (local processing)
-        high_conf_events = [
-            e for e in all_events
-            if e.get("confidence", 0) >= confidence_threshold
-        ]
+        high_conf_events = [e for e in all_events if e.get("confidence", 0) >= confidence_threshold]
 
         # Further filter by outcome if specified
         if outcome_filter:
-            high_conf_events = [
-                e for e in high_conf_events
-                if e.get("outcome") == outcome_filter
-            ]
+            high_conf_events = [e for e in high_conf_events if e.get("outcome") == outcome_filter]
 
         # Calculate statistics
         confidences = [e.get("confidence", 0) for e in all_events]
         timestamps = [
-            datetime.fromisoformat(e.get("timestamp", ""))
-            for e in all_events
-            if e.get("timestamp")
+            datetime.fromisoformat(e.get("timestamp", "")) for e in all_events if e.get("timestamp")
         ]
 
         # Count event types
@@ -139,20 +127,11 @@ async def search_events(
         return summary
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "error_type": type(e).__name__,
-            "query": query
-        }
+        return {"error": str(e), "error_type": type(e).__name__, "query": query}
 
 
 async def retrieve_event_details(
-    host: str,
-    port: int,
-    dbname: str,
-    user: str,
-    password: str,
-    event_id: str
+    host: str, port: int, dbname: str, user: str, password: str, event_id: str
 ) -> Dict[str, Any]:
     """
     Retrieve full details for a specific event.
@@ -172,10 +151,7 @@ async def retrieve_event_details(
         # PostgreSQL returns dicts
         cursor = conn.cursor()
 
-        await cursor.execute(
-            "SELECT * FROM episodic_events WHERE id = ?",
-            (event_id,)
-        )
+        await cursor.execute("SELECT * FROM episodic_events WHERE id = ?", (event_id,))
 
         row = await cursor.fetchone()
         await conn.close()
@@ -195,10 +171,7 @@ async def retrieve_event_details(
         return event
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "error_type": type(e).__name__
-        }
+        return {"error": str(e), "error_type": type(e).__name__}
 
 
 if __name__ == "__main__":

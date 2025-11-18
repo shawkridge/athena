@@ -8,7 +8,6 @@ import json
 
 from ..core.database import Database
 from ..core.embeddings import EmbeddingModel
-from .models import Entity, EntityType
 
 logger = logging.getLogger(__name__)
 
@@ -183,9 +182,7 @@ class CommunitySummarizer:
 
                 # Log progress
                 if processed % 10 == 0:
-                    logger.info(
-                        f"Summarized {processed} communities (skipped {skipped})"
-                    )
+                    logger.info(f"Summarized {processed} communities (skipped {skipped})")
 
             logger.info(
                 f"Batch summarization complete: "
@@ -309,9 +306,7 @@ class CommunitySummarizer:
             logger.warning(f"Failed to get community relations: {e}")
             return []
 
-    def _identify_central_entities(
-        self, entity_ids: List[int], relations: List[Dict]
-    ) -> List[int]:
+    def _identify_central_entities(self, entity_ids: List[int], relations: List[Dict]) -> List[int]:
         """Identify central (hub) entities in community.
 
         Uses degree centrality: entities with most connections.
@@ -344,7 +339,7 @@ class CommunitySummarizer:
 
         except Exception as e:
             logger.warning(f"Failed to identify central entities: {e}")
-            return entity_ids[:min(5, len(entity_ids))]
+            return entity_ids[: min(5, len(entity_ids))]
 
     def _build_summary_context(
         self,
@@ -387,9 +382,7 @@ class CommunitySummarizer:
                 rel_type = rel.get("relation_type", "unknown")
                 rel_types[rel_type] = rel_types.get(rel_type, 0) + 1
 
-            for rel_type, count in sorted(
-                rel_types.items(), key=lambda x: x[1], reverse=True
-            )[:5]:
+            for rel_type, count in sorted(rel_types.items(), key=lambda x: x[1], reverse=True)[:5]:
                 lines.append(f"  - {rel_type}: {count} relations")
 
         # Add instruction
@@ -449,7 +442,9 @@ class CommunitySummarizer:
             return "A community with multiple related entities."
 
         top_names = entity_names[:3]
-        return f"Community containing {len(entity_names)} entities including {', '.join(top_names)}."
+        return (
+            f"Community containing {len(entity_names)} entities including {', '.join(top_names)}."
+        )
 
     def _calculate_confidence(self, entity_ids: List[int], relations: List[Dict]) -> float:
         """Calculate confidence score for summary.
@@ -599,9 +594,7 @@ class CommunitySummarizer:
                             }
                         )
                 except Exception as e:
-                    logger.warning(
-                        f"Failed to parse community {community.get('id')}: {e}"
-                    )
+                    logger.warning(f"Failed to parse community {community.get('id')}: {e}")
 
             return result
 

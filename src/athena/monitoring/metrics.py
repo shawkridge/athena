@@ -106,10 +106,7 @@ class MetricsCollector:
                 "misses": self.metrics["cache_misses"],
                 "hit_rate": (
                     self.metrics["cache_hits"]
-                    / (
-                        self.metrics["cache_hits"] + self.metrics["cache_misses"]
-                        or 1
-                    )
+                    / (self.metrics["cache_hits"] + self.metrics["cache_misses"] or 1)
                 ),
             },
             "errors": self.metrics["errors_by_type"],
@@ -314,9 +311,7 @@ query_latency = Histogram(
     labels=["layer", "operation"],
 )
 
-query_count = Counter(
-    "memory_queries_total", "Total queries executed", labels=["layer", "status"]
-)
+query_count = Counter("memory_queries_total", "Total queries executed", labels=["layer", "status"])
 
 consolidation_duration = Histogram(
     "consolidation_duration_ms",

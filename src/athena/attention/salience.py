@@ -10,7 +10,6 @@ import pickle
 from datetime import datetime
 from typing import List, Optional, Tuple
 
-import numpy as np
 
 from ..core.database import Database
 from ..core.embeddings import EmbeddingModel, cosine_similarity
@@ -39,12 +38,7 @@ class SalienceTracker:
         self.db = db
         self.embedder = embedder
 
-    def calculate_novelty(
-        self,
-        content: str,
-        project_id: int,
-        threshold: float = 0.8
-    ) -> float:
+    def calculate_novelty(self, content: str, project_id: int, threshold: float = 0.8) -> float:
         """Calculate novelty score by comparing to existing memories.
 
         Novel content is semantically different from all existing memories.
@@ -63,12 +57,15 @@ class SalienceTracker:
 
         # Get recent semantic memories for comparison (limit to 100 for performance)
         with self.db.get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT embedding FROM semantic_memory
                 WHERE project_id = ?
                 ORDER BY created_at DESC
                 LIMIT 100
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
             existing = cursor.fetchall()
 
         if not existing:
@@ -77,8 +74,8 @@ class SalienceTracker:
         # Calculate max similarity to any existing memory
         max_similarity = 0.0
         for row in existing:
-            if row['embedding']:
-                existing_embedding = pickle.loads(row['embedding'])
+            if row["embedding"]:
+                existing_embedding = pickle.loads(row["embedding"])
                 similarity = cosine_similarity(new_embedding, existing_embedding)
                 max_similarity = max(max_similarity, similarity)
 
@@ -87,12 +84,7 @@ class SalienceTracker:
 
         return novelty
 
-    def calculate_surprise(
-        self,
-        content: str,
-        context: List[str],
-        llm_client=None
-    ) -> float:
+    def calculate_surprise(self, content: str, context: List[str], llm_client=None) -> float:
         """Calculate surprise using LLM.
 
         Given context, how unexpected is this content?
@@ -126,10 +118,7 @@ Respond with only a number between 0.0 (completely expected) and 1.0 (very surpr
             return 0.5  # Default to neutral if error
 
     def detect_contradiction(
-        self,
-        content: str,
-        project_id: int,
-        llm_client=None
+        self, content: str, project_id: int, llm_client=None
     ) -> Tuple[float, Optional[int]]:
         """Detect if content contradicts existing knowledge.
 
@@ -147,19 +136,22 @@ Respond with only a number between 0.0 (completely expected) and 1.0 (very surpr
 
         # Get recent semantic memories
         with self.db.get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT id, content FROM semantic_memory
                 WHERE project_id = ?
                 ORDER BY created_at DESC
                 LIMIT 20
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
             memories = cursor.fetchall()
 
         if not memories:
             return 0.0, None
 
         try:
-            memory_context = '\n'.join([f"{m['id']}: {m['content']}" for m in memories])
+            memory_context = "\n".join([f"{m['id']}: {m['content']}" for m in memories])
 
             prompt = f"""Existing knowledge:
 {memory_context}
@@ -196,7 +188,7 @@ Response:"""
         project_id: int,
         content: str,
         context: Optional[List[str]] = None,
-        llm_client=None
+        llm_client=None,
     ) -> SalienceScore:
         """Mark memory as salient and calculate salience components.
 
@@ -227,11 +219,7 @@ Response:"""
             )
 
         # Overall salience is weighted combination
-        salience = (
-            0.4 * novelty +
-            0.3 * surprise +
-            0.3 * contradiction
-        )
+        salience = 0.4 * novelty + 0.3 * surprise + 0.3 * contradiction
 
         # Determine reason
         reason = None
@@ -240,19 +228,36 @@ Response:"""
         elif surprise > 0.7:
             reason = "High surprise"
         elif contradiction > 0.7:
-            reason = f"Contradicts memory {conflicting_id}" if conflicting_id else "Contradiction detected"
+            reason = (
+                f"Contradicts memory {conflicting_id}"
+                if conflicting_id
+                else "Contradiction detected"
+            )
 
         # Store in database
         detected_at = datetime.now()
         with self.db.get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 INSERT INTO attention_salience
                 (project_id, memory_id, memory_layer, salience_score,
                  novelty_score, surprise_score, contradiction_score,
                  detected_at, reason, conflicting_memory_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (project_id, memory_id, memory_layer, salience,
-                  novelty, surprise, contradiction, detected_at, reason, conflicting_id))
+            """,
+                (
+                    project_id,
+                    memory_id,
+                    memory_layer,
+                    salience,
+                    novelty,
+                    surprise,
+                    contradiction,
+                    detected_at,
+                    reason,
+                    conflicting_id,
+                ),
+            )
             conn.commit()
 
         return SalienceScore(
@@ -264,7 +269,7 @@ Response:"""
             contradiction_score=contradiction,
             detected_at=detected_at,
             reason=reason,
-            conflicting_memory_id=conflicting_id
+            conflicting_memory_id=conflicting_id,
         )
 
     def get_salience(self, memory_id: int, memory_layer: str) -> Optional[SalienceScore]:
@@ -278,34 +283,34 @@ Response:"""
             SalienceScore if found, None otherwise
         """
         with self.db.get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT * FROM attention_salience
                 WHERE memory_id = ? AND memory_layer = ?
                 ORDER BY detected_at DESC
                 LIMIT 1
-            """, (memory_id, memory_layer))
+            """,
+                (memory_id, memory_layer),
+            )
             row = cursor.fetchone()
 
         if not row:
             return None
 
         return SalienceScore(
-            memory_id=row['memory_id'],
-            memory_layer=row['memory_layer'],
-            salience_score=row['salience_score'],
-            novelty_score=row['novelty_score'],
-            surprise_score=row['surprise_score'],
-            contradiction_score=row['contradiction_score'],
-            detected_at=datetime.fromisoformat(row['detected_at']),
-            reason=row['reason'],
-            conflicting_memory_id=row['conflicting_memory_id']
+            memory_id=row["memory_id"],
+            memory_layer=row["memory_layer"],
+            salience_score=row["salience_score"],
+            novelty_score=row["novelty_score"],
+            surprise_score=row["surprise_score"],
+            contradiction_score=row["contradiction_score"],
+            detected_at=datetime.fromisoformat(row["detected_at"]),
+            reason=row["reason"],
+            conflicting_memory_id=row["conflicting_memory_id"],
         )
 
     def get_most_salient(
-        self,
-        project_id: int,
-        limit: int = 10,
-        min_salience: float = 0.5
+        self, project_id: int, limit: int = 10, min_salience: float = 0.5
     ) -> List[SalienceScore]:
         """Get most salient memories for a project.
 
@@ -318,26 +323,28 @@ Response:"""
             List of SalienceScore objects sorted by salience (descending)
         """
         with self.db.get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT * FROM attention_salience
                 WHERE project_id = ? AND salience_score >= ?
                 ORDER BY salience_score DESC, detected_at DESC
                 LIMIT ?
-            """, (project_id, min_salience, limit))
+            """,
+                (project_id, min_salience, limit),
+            )
             rows = cursor.fetchall()
 
         return [
             SalienceScore(
-                memory_id=row['memory_id'],
-                memory_layer=row['memory_layer'],
-                salience_score=row['salience_score'],
-                novelty_score=row['novelty_score'],
-                surprise_score=row['surprise_score'],
-                contradiction_score=row['contradiction_score'],
-                detected_at=datetime.fromisoformat(row['detected_at']),
-                reason=row['reason'],
-                conflicting_memory_id=row['conflicting_memory_id']
+                memory_id=row["memory_id"],
+                memory_layer=row["memory_layer"],
+                salience_score=row["salience_score"],
+                novelty_score=row["novelty_score"],
+                surprise_score=row["surprise_score"],
+                contradiction_score=row["contradiction_score"],
+                detected_at=datetime.fromisoformat(row["detected_at"]),
+                reason=row["reason"],
+                conflicting_memory_id=row["conflicting_memory_id"],
             )
             for row in rows
         ]
-

@@ -2,39 +2,41 @@
 
 from typing import Any, Optional, Dict
 from enum import Enum
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-import time
 from collections import deque
 
 
 class SaturationLevel(Enum):
     """Cognitive load saturation levels."""
-    IDLE = "idle"              # < 20% capacity
-    LIGHT = "light"            # 20-40% capacity
-    MODERATE = "moderate"      # 40-60% capacity
-    HEAVY = "heavy"            # 60-80% capacity
-    SATURATED = "saturated"    # 80-95% capacity
+
+    IDLE = "idle"  # < 20% capacity
+    LIGHT = "light"  # 20-40% capacity
+    MODERATE = "moderate"  # 40-60% capacity
+    HEAVY = "heavy"  # 60-80% capacity
+    SATURATED = "saturated"  # 80-95% capacity
     OVERLOADED = "overloaded"  # > 95% capacity
 
 
 class SaturationRisk(Enum):
     """Risk level for saturation."""
-    LOW = "LOW"           # Plenty of capacity
-    MEDIUM = "MEDIUM"     # Some pressure
-    HIGH = "HIGH"         # Near capacity
-    CRITICAL = "CRITICAL" # Beyond capacity
+
+    LOW = "LOW"  # Plenty of capacity
+    MEDIUM = "MEDIUM"  # Some pressure
+    HIGH = "HIGH"  # Near capacity
+    CRITICAL = "CRITICAL"  # Beyond capacity
 
 
 @dataclass
 class LoadSnapshot:
     """A snapshot of cognitive load at a point in time."""
+
     timestamp: datetime
-    query_latency_ms: float           # Time to execute last query (ms)
-    active_items: int                 # Currently active items in working memory
-    utilization_percent: float        # Percent of 7±2 capacity used
-    saturation_level: SaturationLevel # Categorical saturation level
-    operation_count: int              # Total operations recorded
+    query_latency_ms: float  # Time to execute last query (ms)
+    active_items: int  # Currently active items in working memory
+    utilization_percent: float  # Percent of 7±2 capacity used
+    saturation_level: SaturationLevel  # Categorical saturation level
+    operation_count: int  # Total operations recorded
 
 
 class CognitiveLoadMonitor:
@@ -48,8 +50,8 @@ class CognitiveLoadMonitor:
     """
 
     WORKING_MEMORY_CAPACITY = 7  # Baddeley's 7±2 limit
-    HISTORY_WINDOW_SIZE = 100    # Keep last 100 measurements
-    LATENCY_THRESHOLD_MS = 500   # Query latency > 500ms = high load
+    HISTORY_WINDOW_SIZE = 100  # Keep last 100 measurements
+    LATENCY_THRESHOLD_MS = 500  # Query latency > 500ms = high load
 
     def __init__(self, db: Any):
         """Initialize with Database object."""
@@ -67,19 +69,14 @@ class CognitiveLoadMonitor:
             operation_type: Type of operation (e.g., 'search', 'consolidate', 'plan')
             complexity: Complexity score (0.0-1.0, affects load calculation)
         """
-        self.operation_history.append({
-            'type': operation_type,
-            'complexity': complexity,
-            'timestamp': datetime.now()
-        })
+        self.operation_history.append(
+            {"type": operation_type, "complexity": complexity, "timestamp": datetime.now()}
+        )
         self.total_operations += 1
 
         # Estimate active items based on recent operations
         # More operations = more active working memory items
-        self.active_items = min(
-            self.WORKING_MEMORY_CAPACITY,
-            len(self.operation_history) // 10
-        )
+        self.active_items = min(self.WORKING_MEMORY_CAPACITY, len(self.operation_history) // 10)
 
     def record_latency(self, latency_ms: float) -> None:
         """Record a query latency measurement.
@@ -87,10 +84,7 @@ class CognitiveLoadMonitor:
         Args:
             latency_ms: Query execution time in milliseconds
         """
-        self.latency_history.append({
-            'latency': latency_ms,
-            'timestamp': datetime.now()
-        })
+        self.latency_history.append({"latency": latency_ms, "timestamp": datetime.now()})
 
     def get_current_load(self, project_id: Optional[int] = None) -> Optional[Dict]:
         """Get current cognitive load report.
@@ -106,11 +100,11 @@ class CognitiveLoadMonitor:
             return None
 
         return {
-            'saturation_level': snapshot.saturation_level,
-            'utilization_percent': snapshot.utilization_percent,
-            'query_latency_ms': snapshot.query_latency_ms,
-            'active_items': snapshot.active_items,
-            'timestamp': snapshot.timestamp
+            "saturation_level": snapshot.saturation_level,
+            "utilization_percent": snapshot.utilization_percent,
+            "query_latency_ms": snapshot.query_latency_ms,
+            "active_items": snapshot.active_items,
+            "timestamp": snapshot.timestamp,
         }
 
     def is_overloaded(self, threshold: float = 7.0) -> bool:
@@ -150,7 +144,7 @@ class CognitiveLoadMonitor:
             return {
                 "current_load": {"utilization_percent": 0.0, "saturation_level": "idle"},
                 "saturation_risk": "LOW",
-                "recommendations": []
+                "recommendations": [],
             }
 
         # Assess saturation risk based on trends
@@ -169,7 +163,7 @@ class CognitiveLoadMonitor:
             "operations_recorded": snapshot.operation_count,
             "capacity_remaining": max(0, self.WORKING_MEMORY_CAPACITY - snapshot.active_items),
             "recommendations": recommendations,
-            "timestamp": snapshot.timestamp
+            "timestamp": snapshot.timestamp,
         }
 
     def get_cognitive_load_report(self, project_id: Optional[int] = None) -> Dict:
@@ -192,13 +186,15 @@ class CognitiveLoadMonitor:
                 active_items=0,
                 utilization_percent=0.0,
                 saturation_level=SaturationLevel.IDLE,
-                operation_count=0
+                operation_count=0,
             )
 
         # Calculate average latency from recent measurements
         avg_latency = 0.0
         if self.latency_history:
-            avg_latency = sum(m['latency'] for m in self.latency_history) / len(self.latency_history)
+            avg_latency = sum(m["latency"] for m in self.latency_history) / len(
+                self.latency_history
+            )
 
         # Calculate utilization as percentage of capacity
         utilization = (self.active_items / self.WORKING_MEMORY_CAPACITY) * 100
@@ -212,16 +208,18 @@ class CognitiveLoadMonitor:
             active_items=self.active_items,
             utilization_percent=utilization,
             saturation_level=saturation_level,
-            operation_count=self.total_operations
+            operation_count=self.total_operations,
         )
 
-    def _compute_saturation_level(self, utilization_percent: float, latency_ms: float) -> SaturationLevel:
+    def _compute_saturation_level(
+        self, utilization_percent: float, latency_ms: float
+    ) -> SaturationLevel:
         """Compute saturation level from utilization and latency."""
         # Combined score: 40% utilization, 40% latency, 20% history trend
         utilization_score = utilization_percent / 100.0  # 0-1
         latency_score = min(latency_ms / self.LATENCY_THRESHOLD_MS, 1.0)  # 0-1
 
-        combined_score = (utilization_score * 0.4 + latency_score * 0.4)
+        combined_score = utilization_score * 0.4 + latency_score * 0.4
 
         # Map to saturation level
         if combined_score < 0.2:
@@ -264,6 +262,8 @@ class CognitiveLoadMonitor:
             recommendations.append("Consider consolidation if load continues rising")
 
         if snapshot.query_latency_ms > self.LATENCY_THRESHOLD_MS:
-            recommendations.append(f"High query latency ({snapshot.query_latency_ms:.0f}ms) - optimize searches")
+            recommendations.append(
+                f"High query latency ({snapshot.query_latency_ms:.0f}ms) - optimize searches"
+            )
 
         return recommendations

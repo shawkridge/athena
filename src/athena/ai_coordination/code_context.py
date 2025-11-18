@@ -10,7 +10,6 @@ Stores the code context relevant to a task, including:
 from datetime import datetime
 from enum import Enum
 from typing import Optional
-from uuid import UUID
 
 from pydantic import BaseModel, Field, ConfigDict
 

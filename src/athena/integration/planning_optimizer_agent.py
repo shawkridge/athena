@@ -4,7 +4,6 @@ Phase 5-8 Agent: Validates plans before execution and suggests optimizations
 including parallelization, risk identification, and resource requirements.
 """
 
-from typing import Optional
 from dataclasses import dataclass
 from ..prospective.store import ProspectiveStore
 from ..integration.planning_assistant import PlanningAssistant
@@ -86,30 +85,34 @@ class PlanningOptimizerAgent:
                             identified_risks.append(suggestion.recommendation)
                     elif suggestion.suggestion_type == "dependency":
                         if hasattr(suggestion, "recommendation"):
-                            missing_dependencies.append(
-                                suggestion.recommendation
-                            )
+                            missing_dependencies.append(suggestion.recommendation)
 
         # Build resource requirements
         resource_requirements = {
-            "time_hours": resources.get("time_hours", 0)
-            if isinstance(resources, dict)
-            else getattr(resources, "time_hours", 0),
-            "expertise_level": resources.get("expertise_level", "medium")
-            if isinstance(resources, dict)
-            else getattr(resources, "expertise_level", "medium"),
-            "tools_required": resources.get("tools_required", [])
-            if isinstance(resources, dict)
-            else getattr(resources, "tools_required", []),
-            "dependencies": resources.get("dependencies", [])
-            if isinstance(resources, dict)
-            else getattr(resources, "dependencies", []),
+            "time_hours": (
+                resources.get("time_hours", 0)
+                if isinstance(resources, dict)
+                else getattr(resources, "time_hours", 0)
+            ),
+            "expertise_level": (
+                resources.get("expertise_level", "medium")
+                if isinstance(resources, dict)
+                else getattr(resources, "expertise_level", "medium")
+            ),
+            "tools_required": (
+                resources.get("tools_required", [])
+                if isinstance(resources, dict)
+                else getattr(resources, "tools_required", [])
+            ),
+            "dependencies": (
+                resources.get("dependencies", [])
+                if isinstance(resources, dict)
+                else getattr(resources, "dependencies", [])
+            ),
         }
 
         # Generate recommended sequencing
-        recommended_sequencing = self._generate_sequencing(
-            task, parallelizable_steps
-        )
+        recommended_sequencing = self._generate_sequencing(task, parallelizable_steps)
 
         # Estimate total duration
         estimated_duration = resource_requirements.get("time_hours", 0)
@@ -123,14 +126,10 @@ class PlanningOptimizerAgent:
             resource_requirements=resource_requirements,
             recommended_sequencing=recommended_sequencing,
             estimated_duration_hours=estimated_duration,
-            required_expertise_level=resource_requirements.get(
-                "expertise_level", "medium"
-            ),
+            required_expertise_level=resource_requirements.get("expertise_level", "medium"),
         )
 
-    def _generate_sequencing(
-        self, task, parallelizable_steps: list[int]
-    ) -> list[str]:
+    def _generate_sequencing(self, task, parallelizable_steps: list[int]) -> list[str]:
         """Generate recommended step sequencing.
 
         Args:
@@ -150,24 +149,15 @@ class PlanningOptimizerAgent:
 
         # Check for dependency order
         if hasattr(task, "blocked_reason") and task.blocked_reason:
-            recommendations.append(
-                f"Resolve blocker first: {task.blocked_reason}"
-            )
+            recommendations.append(f"Resolve blocker first: {task.blocked_reason}")
 
         # Add progressive validation strategy
         if hasattr(task, "phase") and str(task.phase).upper() == "PLANNING":
-            recommendations.append(
-                "Validate assumptions with stakeholder before PLAN_READY"
-            )
+            recommendations.append("Validate assumptions with stakeholder before PLAN_READY")
 
         # Add risk mitigation
-        if (
-            hasattr(task, "priority")
-            and str(task.priority).upper() == "CRITICAL"
-        ):
-            recommendations.append(
-                "Critical priority: Consider having backup person available"
-            )
+        if hasattr(task, "priority") and str(task.priority).upper() == "CRITICAL":
+            recommendations.append("Critical priority: Consider having backup person available")
 
         # Default recommendations
         if not recommendations:
@@ -212,9 +202,7 @@ class PlanningOptimizerAgent:
         except (OSError, ValueError, TypeError, KeyError, IndexError):
             return False
 
-    async def get_alternative_plans(
-        self, task_id: int, strategy: str = "parallel"
-    ) -> list[dict]:
+    async def get_alternative_plans(self, task_id: int, strategy: str = "parallel") -> list[dict]:
         """Generate alternative execution strategies.
 
         Args:
@@ -239,9 +227,7 @@ class PlanningOptimizerAgent:
                 "estimated_duration_hours": (
                     sequential_plan.get("estimated_duration")
                     if isinstance(sequential_plan, dict)
-                    else getattr(
-                        sequential_plan, "estimated_duration", 0
-                    )
+                    else getattr(sequential_plan, "estimated_duration", 0)
                 ),
                 "risk_level": "low",
                 "best_for": "Complex tasks with strict dependencies",

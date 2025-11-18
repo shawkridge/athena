@@ -6,7 +6,7 @@ quality monitoring.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +23,7 @@ class LearningTrackerOptimizer:
         self.db = db
 
     async def execute(
-        self,
-        project_id: int = 1,
-        analyze_effectiveness: bool = True,
-        track_patterns: bool = True
+        self, project_id: int = 1, analyze_effectiveness: bool = True, track_patterns: bool = True
     ) -> Dict[str, Any]:
         """Execute learning tracker optimization.
 
@@ -53,21 +50,21 @@ class LearningTrackerOptimizer:
             strategy_patterns = [
                 "quality_best_for_complex_tasks",
                 "speed_good_for_iterations",
-                "balanced_consistent_performer"
+                "balanced_consistent_performer",
             ]
 
             # Step 4: Track pattern effectiveness over time
             pattern_effectiveness = {
                 "high_effectiveness": 5,  # >0.85
                 "medium_effectiveness": 2,  # 0.65-0.85
-                "low_effectiveness": 1  # <0.65
+                "low_effectiveness": 1,  # <0.65
             }
 
             # Step 5: Generate recommendations
             recommendations = [
                 f"Use {best_strategy} strategy for complex tasks",
                 "Run deep consolidation when encoding >6 rounds",
-                "Review low-effectiveness patterns quarterly"
+                "Review low-effectiveness patterns quarterly",
             ]
 
             return {
@@ -104,10 +101,7 @@ class ProcedureSuggesterOptimizer:
         self.db = db
 
     async def execute(
-        self,
-        project_id: int = 1,
-        analyze_patterns: bool = True,
-        discovery_depth: int = 3
+        self, project_id: int = 1, analyze_patterns: bool = True, discovery_depth: int = 3
     ) -> Dict[str, Any]:
         """Execute procedure suggester optimization.
 
@@ -145,9 +139,9 @@ class ProcedureSuggesterOptimizer:
 
             # Step 6: Build recommendations
             confidence_distribution = {
-                "very_high": 3,    # >0.90 confidence
-                "high": 1,         # 0.75-0.90 confidence
-                "medium": 1        # <0.75 confidence
+                "very_high": 3,  # >0.90 confidence
+                "high": 1,  # 0.75-0.90 confidence
+                "medium": 1,  # <0.75 confidence
             }
 
             return {
@@ -187,10 +181,7 @@ class GapDetectorOptimizer:
         self.db = db
 
     async def execute(
-        self,
-        project_id: int = 1,
-        stability_window: int = 7,
-        analyze_contradictions: bool = True
+        self, project_id: int = 1, stability_window: int = 7, analyze_contradictions: bool = True
     ) -> Dict[str, Any]:
         """Execute gap detector optimization.
 
@@ -229,7 +220,7 @@ class GapDetectorOptimizer:
             priority_gaps = [
                 "authentication-pattern-variance",
                 "error-handling-consistency",
-                "database-design-stability"
+                "database-design-stability",
             ]
 
             return {
@@ -272,10 +263,7 @@ class QualityMonitorOptimizer:
         self.db = db
 
     async def execute(
-        self,
-        project_id: int = 1,
-        measure_layers: bool = True,
-        domain_analysis: bool = True
+        self, project_id: int = 1, measure_layers: bool = True, domain_analysis: bool = True
     ) -> Dict[str, Any]:
         """Execute quality monitor optimization.
 
@@ -312,7 +300,7 @@ class QualityMonitorOptimizer:
                 "api-patterns": 0.85,
                 "testing": 0.78,
                 "deployment": 0.72,
-                "monitoring": 0.68
+                "monitoring": 0.68,
             }
 
             # Step 5: Advanced quality metrics
@@ -334,7 +322,7 @@ class QualityMonitorOptimizer:
                 "graph": {"score": 0.80, "items": 156},
                 "meta": {"score": 0.88, "items": 42},
                 "consolidation": {"score": 0.82, "items": 8},
-                "working": {"score": 0.71, "items": 5}
+                "working": {"score": 0.71, "items": 5},
             }
 
             return {

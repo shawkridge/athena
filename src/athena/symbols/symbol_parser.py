@@ -11,12 +11,14 @@ Date: 2025-10-31
 import ast
 import re
 from pathlib import Path
-from typing import List, Optional, Tuple
-from inspect import signature as get_signature
+from typing import List, Optional
 
 from athena.symbols.symbol_models import (
-    Symbol, SymbolType, SymbolMetrics, SymbolAnalysisResult,
-    RelationType, SymbolDependency, create_symbol
+    Symbol,
+    SymbolType,
+    SymbolMetrics,
+    SymbolAnalysisResult,
+    create_symbol,
 )
 from athena.symbols.java_parser import JavaSymbolParser
 from athena.symbols.go_parser import GoSymbolParser
@@ -34,6 +36,7 @@ from athena.symbols.editorconfig_parser import EditorConfigParser
 # ============================================================================
 # LANGUAGE DETECTION
 # ============================================================================
+
 
 class LanguageDetector:
     """Detects programming language from file extension."""
@@ -98,6 +101,7 @@ class LanguageDetector:
 # PYTHON PARSER (AST-based)
 # ============================================================================
 
+
 class PythonSymbolParser:
     """Parse Python source code to extract symbols using AST."""
 
@@ -121,19 +125,17 @@ class PythonSymbolParser:
                 language="python",
                 symbols=[],
                 parse_errors=[f"Syntax error at line {e.lineno}: {e.msg}"],
-                total_lines=len(code.split('\n')),
-                success=False
+                total_lines=len(code.split("\n")),
+                success=False,
             )
 
         symbols = []
-        lines = code.split('\n')
+        lines = code.split("\n")
 
         # Extract module-level symbols
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
-                symbol = PythonSymbolParser._extract_function(
-                    node, file_path, lines, namespace=""
-                )
+                symbol = PythonSymbolParser._extract_function(node, file_path, lines, namespace="")
                 if symbol:
                     symbols.append(symbol)
 
@@ -148,8 +150,7 @@ class PythonSymbolParser:
                     for item in node.body:
                         if isinstance(item, ast.FunctionDef):
                             method_symbol = PythonSymbolParser._extract_function(
-                                item, file_path, lines,
-                                namespace=class_symbol.name
+                                item, file_path, lines, namespace=class_symbol.name
                             )
                             if method_symbol:
                                 symbols.append(method_symbol)
@@ -166,13 +167,16 @@ class PythonSymbolParser:
             language="python",
             symbols=symbols,
             total_lines=len(lines),
-            success=True
+            success=True,
         )
 
     @staticmethod
     def _extract_function(
-        node: ast.FunctionDef, file_path: str, lines: List[str],
-        namespace: str, is_async: bool = False
+        node: ast.FunctionDef,
+        file_path: str,
+        lines: List[str],
+        namespace: str,
+        is_async: bool = False,
     ) -> Optional[Symbol]:
         """Extract function symbol from AST node."""
         try:
@@ -182,8 +186,8 @@ class PythonSymbolParser:
             # Get source code
             line_start = node.lineno
             line_end = node.end_lineno or node.lineno
-            code_lines = lines[line_start-1:line_end]
-            code = '\n'.join(code_lines)
+            code_lines = lines[line_start - 1 : line_end]
+            code = "\n".join(code_lines)
 
             # Get signature
             args = node.args
@@ -198,8 +202,7 @@ class PythonSymbolParser:
 
             # Determine if deprecated
             is_deprecated = any(
-                isinstance(d, ast.Name) and d.id == "deprecated"
-                for d in node.decorator_list
+                isinstance(d, ast.Name) and d.id == "deprecated" for d in node.decorator_list
             )
 
             full_qname = f"{namespace}.{node.name}" if namespace else node.name
@@ -218,7 +221,7 @@ class PythonSymbolParser:
                 visibility="private" if node.name.startswith("_") else "public",
                 is_async=is_async,
                 is_deprecated=is_deprecated,
-                metrics=metrics
+                metrics=metrics,
             )
 
         except (AttributeError, ValueError, TypeError, IndexError):
@@ -235,21 +238,17 @@ class PythonSymbolParser:
 
             line_start = node.lineno
             line_end = node.end_lineno or node.lineno
-            code_lines = lines[line_start-1:line_end]
-            code = '\n'.join(code_lines)
+            code_lines = lines[line_start - 1 : line_end]
+            code = "\n".join(code_lines)
 
             # Get base classes
-            bases = ", ".join([
-                b.id if isinstance(b, ast.Name) else str(b)
-                for b in node.bases[:3]
-            ])
+            bases = ", ".join([b.id if isinstance(b, ast.Name) else str(b) for b in node.bases[:3]])
             signature = f"({bases})" if bases else "()"
 
             metrics = PythonSymbolParser._compute_metrics(node, code)
 
             is_dataclass = any(
-                isinstance(d, ast.Name) and d.id == "dataclass"
-                for d in node.decorator_list
+                isinstance(d, ast.Name) and d.id == "dataclass" for d in node.decorator_list
             )
 
             full_qname = f"{namespace}.{node.name}" if namespace else node.name
@@ -266,7 +265,7 @@ class PythonSymbolParser:
                 docstring=docstring,
                 language="python",
                 visibility="private" if node.name.startswith("_") else "public",
-                metrics=metrics
+                metrics=metrics,
             )
 
         except (AttributeError, ValueError, TypeError, IndexError):
@@ -277,8 +276,9 @@ class PythonSymbolParser:
         """Compute basic metrics from AST node and code."""
         # Lines of code (excluding comments and docstrings)
         code_lines = [
-            line.strip() for line in code.split('\n')
-            if line.strip() and not line.strip().startswith('#')
+            line.strip()
+            for line in code.split("\n")
+            if line.strip() and not line.strip().startswith("#")
         ]
         lines_of_code = len(code_lines)
 
@@ -304,7 +304,7 @@ class PythonSymbolParser:
             cognitive_complexity=cyclomatic + max_depth,
             parameters=0,
             nesting_depth=max_depth,
-            maintainability_index=maintainability
+            maintainability_index=maintainability,
         )
 
     @staticmethod
@@ -313,7 +313,9 @@ class PythonSymbolParser:
         if root is target:
             return current_depth
         for child in ast.iter_child_nodes(root):
-            if isinstance(child, (ast.If, ast.For, ast.While, ast.With, ast.FunctionDef, ast.ClassDef)):
+            if isinstance(
+                child, (ast.If, ast.For, ast.While, ast.With, ast.FunctionDef, ast.ClassDef)
+            ):
                 result = PythonSymbolParser._get_nesting_depth(child, target, current_depth + 1)
                 if result >= 0:
                     return result
@@ -324,35 +326,25 @@ class PythonSymbolParser:
 # JAVASCRIPT/TYPESCRIPT PARSER (Regex-based)
 # ============================================================================
 
+
 class JavaScriptSymbolParser:
     """Parse JavaScript/TypeScript source code using regex patterns."""
 
     # Regex patterns for different symbol types
     FUNCTION_PATTERN = re.compile(
-        r'(?:async\s+)?(?:function\s+)?(\w+)\s*\(([^)]*)\)\s*[:{]',
-        re.MULTILINE
+        r"(?:async\s+)?(?:function\s+)?(\w+)\s*\(([^)]*)\)\s*[:{]", re.MULTILINE
     )
     ARROW_FUNCTION_PATTERN = re.compile(
-        r'(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\(([^)]*)\)\s*=>',
-        re.MULTILINE
+        r"(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\(([^)]*)\)\s*=>", re.MULTILINE
     )
-    CLASS_PATTERN = re.compile(
-        r'class\s+(\w+)(?:\s+extends\s+(\w+))?\s*[{]',
-        re.MULTILINE
-    )
-    METHOD_PATTERN = re.compile(
-        r'(?:async\s+)?(\w+)\s*\(([^)]*)\)\s*[:{]',
-        re.MULTILINE
-    )
+    CLASS_PATTERN = re.compile(r"class\s+(\w+)(?:\s+extends\s+(\w+))?\s*[{]", re.MULTILINE)
+    METHOD_PATTERN = re.compile(r"(?:async\s+)?(\w+)\s*\(([^)]*)\)\s*[:{]", re.MULTILINE)
     IMPORT_PATTERN = re.compile(
-        r'(?:import|require)\s+(?:\{[^}]*\}|[\w*]+)?\s*from?\s+["\']([^"\']+)["\']',
-        re.MULTILINE
+        r'(?:import|require)\s+(?:\{[^}]*\}|[\w*]+)?\s*from?\s+["\']([^"\']+)["\']', re.MULTILINE
     )
 
     @staticmethod
-    def parse_file(
-        file_path: str, code: str, language: str = "javascript"
-    ) -> SymbolAnalysisResult:
+    def parse_file(file_path: str, code: str, language: str = "javascript") -> SymbolAnalysisResult:
         """
         Parse JavaScript/TypeScript file and extract symbols.
 
@@ -365,7 +357,7 @@ class JavaScriptSymbolParser:
             SymbolAnalysisResult with extracted symbols
         """
         symbols = []
-        lines = code.split('\n')
+        lines = code.split("\n")
 
         try:
             # Extract classes
@@ -407,7 +399,7 @@ class JavaScriptSymbolParser:
                 symbols=symbols,
                 parse_errors=[str(e)],
                 total_lines=len(lines),
-                success=len(symbols) > 0
+                success=len(symbols) > 0,
             )
 
         return SymbolAnalysisResult(
@@ -415,7 +407,7 @@ class JavaScriptSymbolParser:
             language=language,
             symbols=symbols,
             total_lines=len(lines),
-            success=True
+            success=True,
         )
 
     @staticmethod
@@ -425,7 +417,7 @@ class JavaScriptSymbolParser:
         """Extract class from regex match."""
         try:
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Find class body end
             line_end = line_num
@@ -434,8 +426,8 @@ class JavaScriptSymbolParser:
                     line_end = i + 1
                     break
 
-            code_lines = lines[line_num-1:line_end]
-            class_code = '\n'.join(code_lines)
+            code_lines = lines[line_num - 1 : line_end]
+            class_code = "\n".join(code_lines)
 
             return create_symbol(
                 file_path=file_path,
@@ -448,7 +440,7 @@ class JavaScriptSymbolParser:
                 code=class_code,
                 docstring="",
                 language=language,
-                visibility="public"
+                visibility="public",
             )
 
         except (AttributeError, ValueError, TypeError, IndexError):
@@ -456,25 +448,30 @@ class JavaScriptSymbolParser:
 
     @staticmethod
     def _extract_function(
-        match, file_path: str, code: str, lines: List[str],
-        language: str, is_declaration: bool = False, is_arrow: bool = False
+        match,
+        file_path: str,
+        code: str,
+        lines: List[str],
+        language: str,
+        is_declaration: bool = False,
+        is_arrow: bool = False,
     ) -> Optional[Symbol]:
         """Extract function from regex match."""
         try:
             name = match.group(1)
             params = match.group(2) if len(match.groups()) > 1 else ""
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Estimate function end (simplified - look for next function or end)
             line_end = line_num
             for i in range(line_num, min(line_num + 50, len(lines))):
-                if i > line_num and re.match(r'\s*(function|const|let|var|class)', lines[i]):
+                if i > line_num and re.match(r"\s*(function|const|let|var|class)", lines[i]):
                     line_end = i
                     break
             line_end = max(line_num + 1, line_end)
 
-            code_lines = lines[line_num-1:line_end]
-            func_code = '\n'.join(code_lines)
+            code_lines = lines[line_num - 1 : line_end]
+            func_code = "\n".join(code_lines)
 
             is_async = "async" in func_code
             symbol_type = SymbolType.ASYNC_FUNCTION if is_async else SymbolType.FUNCTION
@@ -491,7 +488,7 @@ class JavaScriptSymbolParser:
                 docstring="",
                 language=language,
                 visibility="public",
-                is_async=is_async
+                is_async=is_async,
             )
 
         except (AttributeError, ValueError, TypeError, IndexError):
@@ -504,14 +501,14 @@ class JavaScriptSymbolParser:
         """Extract import statement as a symbol."""
         try:
             module_name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
-            import_line = lines[line_num-1]
+            import_line = lines[line_num - 1]
 
             return create_symbol(
                 file_path=file_path,
                 symbol_type=SymbolType.IMPORT,
-                name=module_name.split('/')[-1],
+                name=module_name.split("/")[-1],
                 namespace="imports",
                 signature="",
                 line_start=line_num,
@@ -519,7 +516,7 @@ class JavaScriptSymbolParser:
                 code=import_line,
                 docstring="",
                 language=language,
-                visibility="public"
+                visibility="public",
             )
 
         except (AttributeError, ValueError, TypeError, IndexError):
@@ -529,6 +526,7 @@ class JavaScriptSymbolParser:
 # ============================================================================
 # MAIN PARSER DISPATCHER
 # ============================================================================
+
 
 class SymbolParser:
     """Main parser that dispatches to language-specific parsers."""
@@ -548,7 +546,7 @@ class SymbolParser:
         # Read file if code not provided
         if code is None:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     code = f.read()
             except Exception as e:
                 return SymbolAnalysisResult(
@@ -556,7 +554,7 @@ class SymbolParser:
                     language="unknown",
                     symbols=[],
                     parse_errors=[f"Failed to read file: {str(e)}"],
-                    success=False
+                    success=False,
                 )
 
         # Detect language
@@ -567,7 +565,7 @@ class SymbolParser:
                 language="unknown",
                 symbols=[],
                 parse_errors=["Unsupported file type"],
-                success=False
+                success=False,
             )
 
         # Dispatch to language-specific parser
@@ -582,8 +580,8 @@ class SymbolParser:
                 language="java",
                 symbols=java_symbols,
                 parse_errors=[],
-                total_lines=len(code.split('\n')),
-                success=True
+                total_lines=len(code.split("\n")),
+                success=True,
             )
         elif language == "go":
             go_symbols = GoSymbolParser().parse_file(file_path, code)
@@ -592,8 +590,8 @@ class SymbolParser:
                 language="go",
                 symbols=go_symbols,
                 parse_errors=[],
-                total_lines=len(code.split('\n')),
-                success=True
+                total_lines=len(code.split("\n")),
+                success=True,
             )
         elif language == "rust":
             rust_symbols = RustSymbolParser().parse_file(file_path, code)
@@ -602,8 +600,8 @@ class SymbolParser:
                 language="rust",
                 symbols=rust_symbols,
                 parse_errors=[],
-                total_lines=len(code.split('\n')),
-                success=True
+                total_lines=len(code.split("\n")),
+                success=True,
             )
         elif language == "csharp":
             csharp_symbols = CSharpSymbolParser().parse_file(file_path, code)
@@ -612,8 +610,8 @@ class SymbolParser:
                 language="csharp",
                 symbols=csharp_symbols,
                 parse_errors=[],
-                total_lines=len(code.split('\n')),
-                success=True
+                total_lines=len(code.split("\n")),
+                success=True,
             )
         elif language == "package.json":
             pkg_symbols = PackageJsonParser().parse_file(file_path, code)
@@ -622,8 +620,8 @@ class SymbolParser:
                 language="package.json",
                 symbols=pkg_symbols,
                 parse_errors=[],
-                total_lines=len(code.split('\n')),
-                success=True
+                total_lines=len(code.split("\n")),
+                success=True,
             )
         elif language == "tsconfig.json":
             tsconfig_symbols = TsConfigParser().parse_file(file_path, code)
@@ -632,8 +630,8 @@ class SymbolParser:
                 language="tsconfig.json",
                 symbols=tsconfig_symbols,
                 parse_errors=[],
-                total_lines=len(code.split('\n')),
-                success=True
+                total_lines=len(code.split("\n")),
+                success=True,
             )
         elif language in ("babel.config.json", "babel.config.js"):
             babel_symbols = BabelConfigParser().parse_file(file_path, code)
@@ -642,8 +640,8 @@ class SymbolParser:
                 language=language,
                 symbols=babel_symbols,
                 parse_errors=[],
-                total_lines=len(code.split('\n')),
-                success=True
+                total_lines=len(code.split("\n")),
+                success=True,
             )
         elif language in ("eslintrc.json", "eslintrc.js", "eslintrc"):
             eslint_symbols = ESLintConfigParser().parse_file(file_path, code)
@@ -652,8 +650,8 @@ class SymbolParser:
                 language=language,
                 symbols=eslint_symbols,
                 parse_errors=[],
-                total_lines=len(code.split('\n')),
-                success=True
+                total_lines=len(code.split("\n")),
+                success=True,
             )
         elif language in ("jest.config.json", "jest.config.js"):
             jest_symbols = JestConfigParser().parse_file(file_path, code)
@@ -662,8 +660,8 @@ class SymbolParser:
                 language=language,
                 symbols=jest_symbols,
                 parse_errors=[],
-                total_lines=len(code.split('\n')),
-                success=True
+                total_lines=len(code.split("\n")),
+                success=True,
             )
         elif language in ("prettierrc", "prettierrc.json", "prettierrc.js", "prettier.config.js"):
             prettier_symbols = PrettierConfigParser().parse_file(file_path, code)
@@ -672,8 +670,8 @@ class SymbolParser:
                 language=language,
                 symbols=prettier_symbols,
                 parse_errors=[],
-                total_lines=len(code.split('\n')),
-                success=True
+                total_lines=len(code.split("\n")),
+                success=True,
             )
         elif language == "editorconfig":
             editorconfig_symbols = EditorConfigParser().parse_file(file_path, code)
@@ -682,8 +680,8 @@ class SymbolParser:
                 language=language,
                 symbols=editorconfig_symbols,
                 parse_errors=[],
-                total_lines=len(code.split('\n')),
-                success=True
+                total_lines=len(code.split("\n")),
+                success=True,
             )
         else:
             return SymbolAnalysisResult(
@@ -691,7 +689,7 @@ class SymbolParser:
                 language=language,
                 symbols=[],
                 parse_errors=[f"Parser not implemented for {language}"],
-                success=False
+                success=False,
             )
 
 

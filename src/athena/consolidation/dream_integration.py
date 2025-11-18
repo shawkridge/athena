@@ -46,7 +46,7 @@ class DreamIntegration:
         self,
         strategy: str = "balanced",
         project_id: Optional[int] = None,
-        consolidation_run_id: Optional[int] = None
+        consolidation_run_id: Optional[int] = None,
     ) -> dict:
         """
         Generate dreams as part of consolidation.
@@ -76,7 +76,7 @@ class DreamIntegration:
             "constraint_relaxation": 0,
             "cross_project_synthesis": 0,
             "parameter_exploration": 0,
-            "conditional_variant": 0
+            "conditional_variant": 0,
         }
         procedures_processed = 0
 
@@ -120,7 +120,7 @@ class DreamIntegration:
                         procedure_name=procedure.name,
                         procedure_code=procedure.code,
                         related_procedures=related_procedures,
-                        config=config
+                        config=config,
                     )
 
                     # Store dreams
@@ -140,8 +140,7 @@ class DreamIntegration:
 
                 except Exception as e:
                     logger.error(
-                        f"Error generating dreams for {procedure.name}: {e}",
-                        exc_info=True
+                        f"Error generating dreams for {procedure.name}: {e}", exc_info=True
                     )
                     continue
 
@@ -151,13 +150,13 @@ class DreamIntegration:
                 total_dreams=total_dreams,
                 dreams_by_type=dreams_by_type,
                 duration=time.time() - start_time,
-                procedures_processed=procedures_processed
+                procedures_processed=procedures_processed,
             )
 
             # Log summary
             elapsed = time.time() - start_time
             logger.info("=" * 70)
-            logger.info(f"DREAM GENERATION COMPLETE")
+            logger.info("DREAM GENERATION COMPLETE")
             logger.info(f"  Total dreams: {total_dreams}")
             logger.info(f"  By type: {dreams_by_type}")
             logger.info(f"  Procedures processed: {procedures_processed}")
@@ -171,7 +170,7 @@ class DreamIntegration:
                 "generation_time": elapsed,
                 "procedures_processed": procedures_processed,
                 "run_id": run_id,
-                "consolidation_run_id": consolidation_run_id
+                "consolidation_run_id": consolidation_run_id,
             }
 
         except Exception as e:
@@ -182,12 +181,10 @@ class DreamIntegration:
                 "generation_time": time.time() - start_time,
                 "procedures_processed": procedures_processed,
                 "run_id": None,
-                "error": str(e)
+                "error": str(e),
             }
 
-    async def _find_related_procedures(
-        self, procedure: Procedure
-    ) -> List[ProcedureReference]:
+    async def _find_related_procedures(self, procedure: Procedure) -> List[ProcedureReference]:
         """
         Find procedures related to the given procedure.
 
@@ -229,7 +226,7 @@ class DreamIntegration:
                             description=other.description or "",
                             code_snippet=other.code[:500] if other.code else "",
                             applicable_contexts=other.applicable_contexts or [],
-                            semantic_tags=other.applicable_contexts or []
+                            semantic_tags=other.applicable_contexts or [],
                         )
                     )
 
@@ -247,7 +244,7 @@ class DreamIntegration:
         total_dreams: int,
         dreams_by_type: dict,
         duration: float,
-        procedures_processed: int
+        procedures_processed: int,
     ) -> int:
         """Record a dream generation run."""
         try:
@@ -264,7 +261,7 @@ class DreamIntegration:
                     "deepseek_v3_1": 25,  # Estimated
                     "qwen_2_5_coder": 25,
                     "local_qwen3": 0,
-                }
+                },
             )
 
             run_id = await self.dream_store.record_generation_run(run)
@@ -294,7 +291,7 @@ async def integrate_dreams_into_consolidation(
     db: Database,
     strategy: str = "balanced",
     project_id: Optional[int] = None,
-    consolidation_run_id: Optional[int] = None
+    consolidation_run_id: Optional[int] = None,
 ) -> dict:
     """
     Generate dreams and integrate results into consolidation.
@@ -319,9 +316,7 @@ async def integrate_dreams_into_consolidation(
 
     try:
         return await integration.generate_dreams_from_consolidation(
-            strategy=strategy,
-            project_id=project_id,
-            consolidation_run_id=consolidation_run_id
+            strategy=strategy, project_id=project_id, consolidation_run_id=consolidation_run_id
         )
 
     finally:

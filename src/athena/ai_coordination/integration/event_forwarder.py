@@ -7,7 +7,6 @@ This is the foundation of Phase 7.1 - enables AI Coordination data to flow
 into the Memory-MCP consolidation system.
 """
 
-import json
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 from enum import Enum
@@ -78,7 +77,7 @@ class EventForwarder:
         self,
         db: "Database",
         episodic_store: "EpisodicStore",
-        forwarding_store: Optional["EventForwarderStore"] = None
+        forwarding_store: Optional["EventForwarderStore"] = None,
     ):
         """Initialize EventForwarder
 
@@ -127,7 +126,9 @@ class EventForwarder:
         }
 
         # Build metadata using actual ExecutionTrace fields
-        trace_id = str(trace.id) if trace.id else f"{trace.session_id}_{int(trace.timestamp.timestamp())}"
+        trace_id = (
+            str(trace.id) if trace.id else f"{trace.session_id}_{int(trace.timestamp.timestamp())}"
+        )
 
         metadata = {
             "trace_id": trace_id,
@@ -219,7 +220,7 @@ class EventForwarder:
         }
 
         # Determine session_id from trace or use trace_id
-        session_id = getattr(trace, 'session_id', trace.trace_id)
+        session_id = getattr(trace, "session_id", trace.trace_id)
 
         # Create episodic event
         event = EpisodicEvent(
@@ -227,8 +228,14 @@ class EventForwarder:
             session_id=session_id,
             event_type=EventType.DECISION,
             content=f"Reasoning: {trace.pattern_type}",
-            timestamp=trace.timestamp if isinstance(trace.timestamp, datetime) else datetime.fromtimestamp(trace.timestamp),
-            outcome=EventOutcome.SUCCESS if trace.effectiveness_score > 0.5 else EventOutcome.PARTIAL,
+            timestamp=(
+                trace.timestamp
+                if isinstance(trace.timestamp, datetime)
+                else datetime.fromtimestamp(trace.timestamp)
+            ),
+            outcome=(
+                EventOutcome.SUCCESS if trace.effectiveness_score > 0.5 else EventOutcome.PARTIAL
+            ),
             learned=trace.problem_statement if trace.problem_statement else None,
         )
 
@@ -268,7 +275,12 @@ class EventForwarder:
         }
 
         # Add plan steps if present
-        if hasattr(cycle, 'plan') and cycle.plan and hasattr(cycle.plan, 'steps') and cycle.plan.steps:
+        if (
+            hasattr(cycle, "plan")
+            and cycle.plan
+            and hasattr(cycle.plan, "steps")
+            and cycle.plan.steps
+        ):
             metadata["plan_steps"] = [
                 {
                     "step_num": s.step_num,
@@ -278,7 +290,7 @@ class EventForwarder:
             ]
 
         # Add lessons if present
-        if hasattr(cycle, 'lessons_learned') and cycle.lessons_learned:
+        if hasattr(cycle, "lessons_learned") and cycle.lessons_learned:
             metadata["lessons"] = [
                 {
                     "lesson_text": l.lesson_text,
@@ -288,7 +300,7 @@ class EventForwarder:
             ]
 
         # Determine session_id from cycle or use goal_id
-        session_id = getattr(cycle, 'session_id', cycle.goal_id or "default")
+        session_id = getattr(cycle, "session_id", cycle.goal_id or "default")
 
         # Map status to outcome
         status_outcome_map = {
@@ -351,7 +363,11 @@ class EventForwarder:
         session_id = context.project_id
 
         # Calculate progress percentage based on goal counts
-        total_goals = context.completed_goal_count + context.in_progress_goal_count + context.blocked_goal_count
+        total_goals = (
+            context.completed_goal_count
+            + context.in_progress_goal_count
+            + context.blocked_goal_count
+        )
         progress = (context.completed_goal_count / total_goals * 100) if total_goals > 0 else 0
 
         # Create episodic event
@@ -402,7 +418,11 @@ class EventForwarder:
             "task_id": code_context.task_id,
             "file_count": code_context.file_count,
             "relevant_files": code_context.relevant_files or [],
-            "dependency_types": [str(d) for d in code_context.dependency_types] if code_context.dependency_types else [],
+            "dependency_types": (
+                [str(d) for d in code_context.dependency_types]
+                if code_context.dependency_types
+                else []
+            ),
         }
 
         # Use task_id as session_id for code context

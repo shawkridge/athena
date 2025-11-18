@@ -16,11 +16,12 @@ import time
 import psutil
 import logging
 from contextlib import contextmanager
-from typing import Optional, Dict, Any
+from typing import Optional
 from functools import wraps
 
 try:
     from prometheus_client import Counter, Histogram, Gauge, CollectorRegistry, generate_latest
+
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 class PrometheusMetrics:
     """Prometheus metrics collection for Athena operations."""
 
-    def __init__(self, registry: Optional['CollectorRegistry'] = None):
+    def __init__(self, registry: Optional["CollectorRegistry"] = None):
         """Initialize Prometheus metrics.
 
         Args:
@@ -47,109 +48,97 @@ class PrometheusMetrics:
 
         # Operation metrics
         self.operation_counter = Counter(
-            'athena_operations_total',
-            'Total operations by type and status',
-            ['operation_type', 'status'],
-            registry=self.registry
+            "athena_operations_total",
+            "Total operations by type and status",
+            ["operation_type", "status"],
+            registry=self.registry,
         )
 
         self.operation_latency = Histogram(
-            'athena_operation_latency_seconds',
-            'Operation latency in seconds',
-            ['operation_type'],
+            "athena_operation_latency_seconds",
+            "Operation latency in seconds",
+            ["operation_type"],
             buckets=(0.01, 0.05, 0.1, 0.5, 1.0, 5.0),
-            registry=self.registry
+            registry=self.registry,
         )
 
         # Resource metrics
         self.memory_usage = Gauge(
-            'athena_memory_bytes',
-            'Memory usage in bytes',
-            registry=self.registry
+            "athena_memory_bytes", "Memory usage in bytes", registry=self.registry
         )
 
-        self.cpu_usage = Gauge(
-            'athena_cpu_percent',
-            'CPU usage percentage',
-            registry=self.registry
-        )
+        self.cpu_usage = Gauge("athena_cpu_percent", "CPU usage percentage", registry=self.registry)
 
         self.db_connections = Gauge(
-            'athena_db_connections_active',
-            'Active database connections',
-            registry=self.registry
+            "athena_db_connections_active", "Active database connections", registry=self.registry
         )
 
         # Cache metrics
         self.cache_hits = Counter(
-            'athena_cache_hits_total',
-            'Total cache hits by type',
-            ['cache_type'],
-            registry=self.registry
+            "athena_cache_hits_total",
+            "Total cache hits by type",
+            ["cache_type"],
+            registry=self.registry,
         )
 
         self.cache_misses = Counter(
-            'athena_cache_misses_total',
-            'Total cache misses by type',
-            ['cache_type'],
-            registry=self.registry
+            "athena_cache_misses_total",
+            "Total cache misses by type",
+            ["cache_type"],
+            registry=self.registry,
         )
 
         self.cache_evictions = Counter(
-            'athena_cache_evictions_total',
-            'Total LRU evictions by cache type',
-            ['cache_type'],
-            registry=self.registry
+            "athena_cache_evictions_total",
+            "Total LRU evictions by cache type",
+            ["cache_type"],
+            registry=self.registry,
         )
 
         # Business metrics
         self.memories_stored = Gauge(
-            'athena_memories_stored_total',
-            'Total memories stored',
-            registry=self.registry
+            "athena_memories_stored_total", "Total memories stored", registry=self.registry
         )
 
         self.consolidations_total = Counter(
-            'athena_consolidations_total',
-            'Total consolidation runs',
-            ['strategy'],
-            registry=self.registry
+            "athena_consolidations_total",
+            "Total consolidation runs",
+            ["strategy"],
+            registry=self.registry,
         )
 
         self.procedures_learned = Gauge(
-            'athena_procedures_learned_total',
-            'Total procedures extracted',
-            registry=self.registry
+            "athena_procedures_learned_total", "Total procedures extracted", registry=self.registry
         )
 
         self.graph_entities = Gauge(
-            'athena_graph_entities_total',
-            'Total entities in knowledge graph',
-            registry=self.registry
+            "athena_graph_entities_total",
+            "Total entities in knowledge graph",
+            registry=self.registry,
         )
 
         self.graph_relations = Gauge(
-            'athena_graph_relations_total',
-            'Total relations in knowledge graph',
-            registry=self.registry
+            "athena_graph_relations_total",
+            "Total relations in knowledge graph",
+            registry=self.registry,
         )
 
         # Error metrics
         self.operation_errors = Counter(
-            'athena_operation_errors_total',
-            'Total operation errors by type',
-            ['operation_type', 'error_type'],
-            registry=self.registry
+            "athena_operation_errors_total",
+            "Total operation errors by type",
+            ["operation_type", "error_type"],
+            registry=self.registry,
         )
 
         # Working memory metrics
         self.working_memory_items = Gauge(
-            'athena_working_memory_items_current',
-            'Current items in working memory',
-            registry=self.registry
+            "athena_working_memory_items_current",
+            "Current items in working memory",
+            registry=self.registry,
         )
 
-    def record_operation(self, operation_type: str, status: str = 'success', duration: float = 0):
+    def record_operation(self, operation_type: str, status: str = "success", duration: float = 0):
         """Record an operation metric.
 
         Args:
@@ -306,17 +295,17 @@ class PrometheusMetrics:
         Yields:
             Dictionary for tracking operation context
         """
-        context = {'start_time': time.time(), 'status': 'success'}
+        context = {"start_time": time.time(), "status": "success"}
         try:
             yield context
         except Exception as e:
-            context['status'] = 'error'
+            context["status"] = "error"
             error_type = type(e).__name__
             self.record_error(operation_type, error_type)
             raise
         finally:
-            duration = time.time() - context['start_time']
-            self.record_operation(operation_type, context['status'], duration)
+            duration = time.time() - context["start_time"]
+            self.record_operation(operation_type, context["status"], duration)
 
     def track_operation(self, operation_type: str):
         """Decorator for tracking operation metrics.
@@ -327,6 +316,7 @@ class PrometheusMetrics:
         Returns:
             Decorated function
         """
+
         def decorator(func):
             @wraps(func)
             async def async_wrapper(*args, **kwargs):
@@ -339,7 +329,7 @@ class PrometheusMetrics:
                     return func(*args, **kwargs)
 
             # Return appropriate wrapper based on function type
-            if hasattr(func, '__await__'):
+            if hasattr(func, "__await__"):
                 return async_wrapper
             return sync_wrapper
 
@@ -355,7 +345,7 @@ class PrometheusMetrics:
             return "# Prometheus metrics not available"
 
         try:
-            return generate_latest(self.registry).decode('utf-8')
+            return generate_latest(self.registry).decode("utf-8")
         except Exception as e:
             logger.error(f"Failed to export metrics: {e}")
             return "# Error exporting metrics"
@@ -377,7 +367,7 @@ def get_metrics() -> PrometheusMetrics:
     return _metrics_instance
 
 
-def initialize_metrics(registry: Optional['CollectorRegistry'] = None) -> PrometheusMetrics:
+def initialize_metrics(registry: Optional["CollectorRegistry"] = None) -> PrometheusMetrics:
     """Initialize global metrics instance.
 
     Args:

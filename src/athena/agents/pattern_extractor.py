@@ -16,16 +16,15 @@ high confidence and reusability.
 """
 
 import logging
-from typing import Optional, Dict, Any, List, Tuple
-from datetime import datetime, timedelta
+from typing import Optional, Dict, Any, List
+from datetime import datetime
 
 # Import coordinator base class
 from .coordinator import AgentCoordinator
 
 # Import core operations
-from ..episodic.operations import recall_recent, get_by_session
+from ..episodic.operations import get_by_session
 from ..consolidation.operations import consolidate, extract_patterns
-from ..procedural.operations import extract_procedure as extract_proc
 
 logger = logging.getLogger(__name__)
 
@@ -265,9 +264,7 @@ def get_extractor() -> PatternExtractorAgent:
     return _extractor
 
 
-async def extract_session_patterns(
-    session_id: str, min_confidence: float = 0.8
-) -> Dict[str, Any]:
+async def extract_session_patterns(session_id: str, min_confidence: float = 0.8) -> Dict[str, Any]:
     """Convenience function to extract patterns from a session.
 
     Args:

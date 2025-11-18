@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional, Dict, List
 
-from .models import ProjectPlan, PhasePlan, TaskStatusModel, Milestone, ProjectDependency
+from .models import ProjectPlan, PhasePlan, TaskStatusModel, Milestone
 
 
 class PlanningIntegration:
@@ -21,10 +21,7 @@ class PlanningIntegration:
         self._task_feedback: Dict = {}
 
     def link_task_to_pattern(
-        self,
-        task_id: int,
-        pattern_id: int,
-        pattern_type: str = "planning_pattern"
+        self, task_id: int, pattern_id: int, pattern_type: str = "planning_pattern"
     ) -> Dict:
         """Link a task to a planning pattern.
 
@@ -112,9 +109,7 @@ class PlanningIntegration:
         for task_id in milestone.depends_on_task_ids:
             feedback = self._task_feedback.get(task_id)
             if not feedback:
-                validation_result["issues"].append(
-                    f"Dependent task {task_id} not completed"
-                )
+                validation_result["issues"].append(f"Dependent task {task_id} not completed")
                 validation_result["valid"] = False
 
         # Check milestone dependencies are met
@@ -167,8 +162,9 @@ class PlanningIntegration:
 
         if phase.actual_duration_days:
             variance = (
-                (phase.actual_duration_days - phase.planned_duration_days) /
-                phase.planned_duration_days * 100
+                (phase.actual_duration_days - phase.planned_duration_days)
+                / phase.planned_duration_days
+                * 100
             )
             analysis["variance_percentage"] = variance
 
@@ -231,8 +227,9 @@ class PlanningIntegration:
         schedule_variance = 0.0
         if project_plan.actual_duration_days and project_plan.estimated_duration_days:
             schedule_variance = (
-                (project_plan.actual_duration_days - project_plan.estimated_duration_days) /
-                project_plan.estimated_duration_days * 100
+                (project_plan.actual_duration_days - project_plan.estimated_duration_days)
+                / project_plan.estimated_duration_days
+                * 100
             )
 
         # Calculate average quality
@@ -241,8 +238,12 @@ class PlanningIntegration:
 
         progress = {
             "project_id": project_plan.project_id,
-            "phases_complete_percentage": (completed_phases / total_phases * 100) if total_phases > 0 else 0.0,
-            "tasks_complete_percentage": (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0.0,
+            "phases_complete_percentage": (
+                (completed_phases / total_phases * 100) if total_phases > 0 else 0.0
+            ),
+            "tasks_complete_percentage": (
+                (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0.0
+            ),
             "tasks_in_progress": in_progress_tasks,
             "schedule_variance_percentage": schedule_variance,
             "quality_score": avg_quality,
@@ -251,7 +252,11 @@ class PlanningIntegration:
                 if total_phases > 0 and total_tasks > 0
                 else 0.0
             ),
-            "status": "on_track" if schedule_variance < 20 else "at_risk" if schedule_variance < 50 else "off_track",
+            "status": (
+                "on_track"
+                if schedule_variance < 20
+                else "at_risk" if schedule_variance < 50 else "off_track"
+            ),
         }
 
         return progress

@@ -44,7 +44,9 @@ class CodeElement(BaseModel):
     source_code: str = Field(..., description="Full source code of the element")
     start_line: int = Field(..., description="Starting line number")
     end_line: int = Field(..., description="Ending line number")
-    parent_element: Optional[str] = Field(None, description="Parent element ID (for nested elements)")
+    parent_element: Optional[str] = Field(
+        None, description="Parent element ID (for nested elements)"
+    )
     imports: List[str] = Field(default_factory=list, description="List of imported modules/names")
     references: List[str] = Field(default_factory=list, description="References to other elements")
     signature: Optional[str] = Field(None, description="Function/method signature")
@@ -96,9 +98,7 @@ class CodeQuery(BaseModel):
 
     query_text: str = Field(..., description="Natural language search query")
     language: Optional[CodeLanguage] = Field(None, description="Filter by language")
-    element_type: Optional[CodeElementType] = Field(
-        None, description="Filter by element type"
-    )
+    element_type: Optional[CodeElementType] = Field(None, description="Filter by element type")
     file_pattern: Optional[str] = Field(None, description="File path glob pattern")
     max_results: int = Field(default=10, description="Maximum results to return")
     min_score: float = Field(default=0.3, description="Minimum score threshold")

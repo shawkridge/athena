@@ -19,6 +19,7 @@ class CostOptimizationStore:
     def __init__(self, db: Database):
         """Initialize store with database connection."""
         self.db = db
+
     def _ensure_schema(self):
         """Create tables on first use."""
         cursor = self.db.get_cursor()
@@ -158,9 +159,7 @@ class CostOptimizationStore:
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_resource_rates_org ON resource_rates(organization_id, resource_type)"
         )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_task_costs_task ON task_costs(task_id)"
-        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_task_costs_task ON task_costs(task_id)")
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_task_costs_project ON task_costs(project_id)"
         )
@@ -266,7 +265,6 @@ class CostOptimizationStore:
 
     def get_task_cost(self, task_id: int) -> Optional[TaskCost]:
         """Get latest task cost."""
-        import json
 
         cursor = self.db.get_cursor()
         cursor.execute(
@@ -321,7 +319,6 @@ class CostOptimizationStore:
 
     def get_budget_allocation(self, project_id: int) -> Optional[BudgetAllocation]:
         """Get latest budget allocation for project."""
-        import json
 
         cursor = self.db.get_cursor()
         cursor.execute(
@@ -374,9 +371,7 @@ class CostOptimizationStore:
             return None
         return self._parse_roi_row(row)
 
-    def create_cost_optimization(
-        self, optimization: CostOptimization
-    ) -> CostOptimization:
+    def create_cost_optimization(self, optimization: CostOptimization) -> CostOptimization:
         """Create cost optimization suggestion."""
         from datetime import datetime
 

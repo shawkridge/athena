@@ -3,7 +3,7 @@
 Part of Phase 3c: Predictive Analytics
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 
 def analyze_high_variance_tasks(
@@ -81,6 +81,7 @@ def analyze_high_variance_tasks(
     try:
         if db is None:
             from ..core.database import Database
+
             db = Database()
 
         from ..predictive.accuracy import EstimateAccuracyStore

@@ -59,7 +59,11 @@ class ResearchConsolidationStore(BaseStore):
             """,
                 (
                     pattern.task_id,
-                    pattern.pattern_type.value if isinstance(pattern.pattern_type, ResearchPatternType) else pattern.pattern_type,
+                    (
+                        pattern.pattern_type.value
+                        if isinstance(pattern.pattern_type, ResearchPatternType)
+                        else pattern.pattern_type
+                    ),
                     pattern.pattern_content,
                     pattern.confidence,
                     json.dumps(pattern.metrics),

@@ -72,7 +72,7 @@ class BaseEventSource(ABC):
         source_type: str,
         source_name: str,
         config: Optional[Dict[str, Any]] = None,
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
     ):
         """Initialize base event source.
 
@@ -129,11 +129,7 @@ class BaseEventSource(ABC):
 
     @classmethod
     @abstractmethod
-    async def create(
-        cls,
-        credentials: Dict[str, Any],
-        config: Dict[str, Any]
-    ) -> "BaseEventSource":
+    async def create(cls, credentials: Dict[str, Any], config: Dict[str, Any]) -> "BaseEventSource":
         """Factory method to create and initialize an event source.
 
         This is the primary entry point for creating event sources. Subclasses
@@ -279,9 +275,7 @@ class BaseEventSource(ABC):
     # ========================================================================
 
     async def _batch_events(
-        self,
-        events: List[EpisodicEvent],
-        batch_size: int = 100
+        self, events: List[EpisodicEvent], batch_size: int = 100
     ) -> AsyncGenerator[List[EpisodicEvent], None]:
         """Batch events for efficient processing.
 
@@ -304,7 +298,7 @@ class BaseEventSource(ABC):
         ```
         """
         for i in range(0, len(events), batch_size):
-            batch = events[i:i + batch_size]
+            batch = events[i : i + batch_size]
             yield batch
 
     def _log_event_generated(self, event: EpisodicEvent) -> None:
@@ -372,12 +366,12 @@ class BaseEventSource(ABC):
             }
         """
         return {
-            'source_id': self.source_id,
-            'source_type': self.source_type,
-            'source_name': self.source_name,
-            'events_generated': self._events_generated,
-            'events_failed': self._events_failed,
-            'last_event_time': self._last_event_time,
+            "source_id": self.source_id,
+            "source_type": self.source_type,
+            "source_name": self.source_name,
+            "events_generated": self._events_generated,
+            "events_failed": self._events_failed,
+            "last_event_time": self._last_event_time,
         }
 
     # ========================================================================

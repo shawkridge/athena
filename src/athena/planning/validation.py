@@ -8,12 +8,11 @@ Validates plans before execution:
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import List, Optional, Dict, Any
 from enum import Enum
 import statistics
 
-from .models import ValidationRule, ExecutionFeedback, ExecutionOutcome
+from .models import ValidationRule, ExecutionFeedback
 from .store import PlanningStore
 from .advanced_validation import (
     AdvancedValidationManager,
@@ -119,9 +118,7 @@ class PlanValidator:
         """
         self.store = planning_store
 
-    def validate_plan_structure(
-        self, plan_dict: Dict[str, Any]
-    ) -> ValidationResult:
+    def validate_plan_structure(self, plan_dict: Dict[str, Any]) -> ValidationResult:
         """Validate plan structure.
 
         Checks:
@@ -334,14 +331,10 @@ class PlanValidator:
                 result.rules_passed += 1
             else:
                 result.all_pass = False
-                result.violations.append(
-                    f"Rule '{rule.rule_name}' failed: {rule.description}"
-                )
+                result.violations.append(f"Rule '{rule.rule_name}' failed: {rule.description}")
 
         # Generate summary
-        result.summary = (
-            f"Validation: {result.rules_passed}/{result.rules_checked} rules passed"
-        )
+        result.summary = f"Validation: {result.rules_passed}/{result.rules_checked} rules passed"
 
         return result
 
@@ -390,9 +383,7 @@ class PlanValidator:
                 recommendation.suggested_changes = feedback.assumption_violations
             elif variance > deviation_threshold:
                 recommendation.action = AdjustmentAction.ADJUST
-                recommendation.suggested_changes = [
-                    "Adjust remaining tasks based on current pace"
-                ]
+                recommendation.suggested_changes = ["Adjust remaining tasks based on current pace"]
             else:
                 recommendation.action = AdjustmentAction.CONTINUE
 
@@ -474,9 +465,7 @@ class PlanValidator:
 
         return False
 
-    def _apply_single_rule(
-        self, rule: ValidationRule, plan_dict: Dict[str, Any]
-    ) -> bool:
+    def _apply_single_rule(self, rule: ValidationRule, plan_dict: Dict[str, Any]) -> bool:
         """Apply a single validation rule.
 
         Args:
@@ -517,6 +506,7 @@ class PlanValidator:
 
 # Convenience functions
 
+
 def validate_plan_structure(plan_dict: Dict[str, Any]) -> ValidationResult:
     """Convenience function for structure validation.
 
@@ -536,9 +526,7 @@ def validate_plan_feasibility(
 ) -> FeasibilityReport:
     """Convenience function for feasibility validation."""
     validator = PlanValidator(planning_store)
-    return validator.validate_plan_feasibility(
-        project_id, plan_dict, available_time_minutes
-    )
+    return validator.validate_plan_feasibility(project_id, plan_dict, available_time_minutes)
 
 
 def apply_validation_rules(
@@ -563,6 +551,7 @@ def feedback_loop_integration(
 
 
 # Advanced Validation Integration
+
 
 def create_advanced_validation_system(
     planning_store: PlanningStore,
@@ -699,9 +688,7 @@ def approve_validation_gate(
     Returns:
         True if approval recorded successfully
     """
-    return validation_manager.human_gates.record_human_review(
-        gate_id, "approved", feedback
-    )
+    return validation_manager.human_gates.record_human_review(gate_id, "approved", feedback)
 
 
 def reject_validation_gate(
@@ -719,6 +706,4 @@ def reject_validation_gate(
     Returns:
         True if rejection recorded successfully
     """
-    return validation_manager.human_gates.record_human_review(
-        gate_id, "rejected", feedback
-    )
+    return validation_manager.human_gates.record_human_review(gate_id, "rejected", feedback)

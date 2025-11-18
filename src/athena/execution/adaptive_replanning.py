@@ -13,7 +13,7 @@ improves task success by 40-60% when monitoring continuous execution.
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class RecoveryLevel(Enum):
     """Levels of recovery from plan failure."""
+
     CONTINUE = "continue"  # No recovery needed, continue
     LOCAL_ADJUST = "local_adjust"  # Small local fix
     SEGMENT_REPLAN = "segment_replan"  # Replan current segment
@@ -30,6 +31,7 @@ class RecoveryLevel(Enum):
 
 class FailureType(Enum):
     """Types of plan failures detected."""
+
     TIMING_OVERRUN = "timing_overrun"  # Step took longer than estimate
     ASSUMPTION_VIOLATED = "assumption_violated"  # Key assumption no longer true
     RESOURCE_UNAVAILABLE = "resource_unavailable"  # Expected resource not available
@@ -41,6 +43,7 @@ class FailureType(Enum):
 @dataclass
 class ExecutionMetrics:
     """Metrics from actual plan execution."""
+
     step_id: int
     expected_duration: timedelta
     actual_duration: timedelta
@@ -53,6 +56,7 @@ class ExecutionMetrics:
 @dataclass
 class PlanFailure:
     """Represents a detected plan failure."""
+
     failure_type: FailureType
     step_id: int
     timestamp: datetime
@@ -64,6 +68,7 @@ class PlanFailure:
 @dataclass
 class RecoveryAction:
     """Action to recover from plan failure."""
+
     action_id: str
     recovery_level: RecoveryLevel
     description: str
@@ -76,6 +81,7 @@ class RecoveryAction:
 @dataclass
 class RefinedPlan:
     """A refined plan based on execution feedback."""
+
     plan_id: str
     original_plan_id: str
     refinement_reason: str
@@ -132,7 +138,9 @@ class AdaptiveReplanningOrchestrator:
         failure_type = None
 
         # Check 1: Timing overrun
-        time_ratio = actual_duration / expected_duration if expected_duration.total_seconds() > 0 else 0
+        time_ratio = (
+            actual_duration / expected_duration if expected_duration.total_seconds() > 0 else 0
+        )
         if time_ratio > 1.5:
             failure_type = FailureType.TIMING_OVERRUN
             severity = min((time_ratio - 1.5) / 1.0, 1.0)  # 0-1 scale
@@ -286,30 +294,36 @@ class AdaptiveReplanningOrchestrator:
             # If step consistently overruns, adjust estimate
             if metric.actual_duration > metric.expected_duration * 1.3:
                 scale_factor = metric.actual_duration / metric.expected_duration
-                changes.append({
-                    "step_id": metric.step_id,
-                    "adjustment": "duration_increase",
-                    "scale_factor": scale_factor,
-                    "reason": "Step consistently overruns estimate",
-                })
+                changes.append(
+                    {
+                        "step_id": metric.step_id,
+                        "adjustment": "duration_increase",
+                        "scale_factor": scale_factor,
+                        "reason": "Step consistently overruns estimate",
+                    }
+                )
 
             # If quality is low, add error handling
             if metric.quality_score < 0.8:
-                changes.append({
-                    "step_id": metric.step_id,
-                    "adjustment": "add_error_handling",
-                    "quality_score": metric.quality_score,
-                    "reason": "Low quality score detected",
-                })
+                changes.append(
+                    {
+                        "step_id": metric.step_id,
+                        "adjustment": "add_error_handling",
+                        "quality_score": metric.quality_score,
+                        "reason": "Low quality score detected",
+                    }
+                )
 
             # If assumptions violated, add preconditions
             if metric.assumptions_violated:
-                changes.append({
-                    "step_id": metric.step_id,
-                    "adjustment": "add_preconditions",
-                    "assumptions": metric.assumptions_violated,
-                    "reason": "Assumptions were violated",
-                })
+                changes.append(
+                    {
+                        "step_id": metric.step_id,
+                        "adjustment": "add_preconditions",
+                        "assumptions": metric.assumptions_violated,
+                        "reason": "Assumptions were violated",
+                    }
+                )
 
         # Calculate time savings from refinement
         time_saved = total_expected - total_actual
@@ -350,13 +364,10 @@ class AdaptiveReplanningOrchestrator:
             recovery_levels[rl] = recovery_levels.get(rl, 0) + 1
 
         avg_severity = (
-            sum(f.severity for f in self.failures) / len(self.failures)
-            if self.failures
-            else 0.0
+            sum(f.severity for f in self.failures) / len(self.failures) if self.failures else 0.0
         )
         avg_recovery_success = (
-            sum(a.success_probability for a in self.recovery_actions)
-            / len(self.recovery_actions)
+            sum(a.success_probability for a in self.recovery_actions) / len(self.recovery_actions)
             if self.recovery_actions
             else 0.0
         )

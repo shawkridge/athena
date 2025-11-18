@@ -9,11 +9,10 @@ import json
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
-from ..core.database import Database
 from ..episodic.store import EpisodicStore
 from ..episodic.models import EpisodicEvent, EventType, EventOutcome
 from ..graph.store import GraphStore
-from .models import Task, TaskStatus, TaskPriority, TaskMetrics, QueueStatistics
+from .models import Task, TaskStatus, TaskPriority, QueueStatistics
 
 
 class TaskQueue:
@@ -358,9 +357,7 @@ class TaskQueue:
         success_row = cursor.fetchone()
         succeeded = success_row["succeeded"] or 0
         failed = success_row["failed"] or 0
-        success_rate = (
-            succeeded / (succeeded + failed) if (succeeded + failed) > 0 else 0.0
-        )
+        success_rate = succeeded / (succeeded + failed) if (succeeded + failed) > 0 else 0.0
 
         # Average execution time
         cursor.execute(

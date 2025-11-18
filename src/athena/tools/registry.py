@@ -3,6 +3,7 @@
 Provides centralized registry for all MCP tools with metadata
 and discovery capabilities.
 """
+
 from typing import Dict, List, Optional, Type
 from .base import BaseTool, ToolMetadata
 
@@ -75,9 +76,7 @@ class ToolRegistry:
         return tool_class()
 
     def list_tools(
-        self,
-        category: Optional[str] = None,
-        include_metadata: bool = False
+        self, category: Optional[str] = None, include_metadata: bool = False
     ) -> List[str] | List[tuple[str, ToolMetadata]]:
         """List registered tools, optionally filtered by category.
 
@@ -182,9 +181,7 @@ class ToolRegistry:
         return {
             "total_tools": len(self._tools),
             "total_categories": len(self._categories),
-            "categories_breakdown": {
-                cat: len(keys) for cat, keys in self._categories.items()
-            }
+            "categories_breakdown": {cat: len(keys) for cat, keys in self._categories.items()},
         }
 
 

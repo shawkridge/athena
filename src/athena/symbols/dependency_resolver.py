@@ -9,17 +9,17 @@ Provides:
 - Module hierarchy visualization
 """
 
-from typing import Optional, Dict, List, Set, Tuple
-from pathlib import Path
+from typing import Optional, Dict, List, Set
 from dataclasses import dataclass, field
 from enum import Enum
 import re
 
-from .symbol_models import Symbol, SymbolType
+from .symbol_models import Symbol
 
 
 class DependencyType(str, Enum):
     """Types of dependencies between symbols."""
+
     IMPORT = "import"  # Direct import
     INHERIT = "inherit"  # Class inheritance
     IMPLEMENT = "implement"  # Interface implementation
@@ -31,6 +31,7 @@ class DependencyType(str, Enum):
 @dataclass
 class SymbolReference:
     """A reference to a symbol from another file."""
+
     source_file: str
     source_symbol: Optional[Symbol]
     target_module: str  # Module/file being imported
@@ -42,6 +43,7 @@ class SymbolReference:
 @dataclass
 class DependencyEdge:
     """An edge in the dependency graph."""
+
     from_symbol: Symbol
     to_symbol: Symbol
     dependency_type: DependencyType
@@ -51,6 +53,7 @@ class DependencyEdge:
 @dataclass
 class DependencyPath:
     """A path in the dependency graph."""
+
     symbols: List[Symbol]
     types: List[DependencyType]
 
@@ -94,15 +97,15 @@ class DependencyResolver:
         references: List[SymbolReference] = []
 
         # Detect language from file extension
-        if file_path.endswith(('.py', '.pyw')):
+        if file_path.endswith((".py", ".pyw")):
             references.extend(self._resolve_python_imports(file_path, code))
-        elif file_path.endswith(('.js', '.jsx', '.ts', '.tsx')):
+        elif file_path.endswith((".js", ".jsx", ".ts", ".tsx")):
             references.extend(self._resolve_js_imports(file_path, code))
-        elif file_path.endswith('.java'):
+        elif file_path.endswith(".java"):
             references.extend(self._resolve_java_imports(file_path, code))
-        elif file_path.endswith('.go'):
+        elif file_path.endswith(".go"):
             references.extend(self._resolve_go_imports(file_path, code))
-        elif file_path.endswith('.rs'):
+        elif file_path.endswith(".rs"):
             references.extend(self._resolve_rust_imports(file_path, code))
 
         return references
@@ -110,33 +113,33 @@ class DependencyResolver:
     def _resolve_python_imports(self, file_path: str, code: str) -> List[SymbolReference]:
         """Resolve Python import statements."""
         references: List[SymbolReference] = []
-        lines = code.split('\n')
+        lines = code.split("\n")
 
         # Pattern: from module import name
-        from_pattern = re.compile(r'from\s+([\w.]+)\s+import\s+([^#\n]+)')
+        from_pattern = re.compile(r"from\s+([\w.]+)\s+import\s+([^#\n]+)")
         # Pattern: import module
-        import_pattern = re.compile(r'import\s+([\w.]+)(?:\s+as\s+(\w+))?')
+        import_pattern = re.compile(r"import\s+([\w.]+)(?:\s+as\s+(\w+))?")
 
         for line_num, line in enumerate(lines, 1):
             # Skip comments
-            if '#' in line:
-                line = line[:line.index('#')]
+            if "#" in line:
+                line = line[: line.index("#")]
 
             # from ... import
             from_match = from_pattern.search(line)
             if from_match:
                 module = from_match.group(1)
                 imports = from_match.group(2)
-                for imported in imports.split(','):
-                    name = imported.strip().split(' as ')[-1].strip()
-                    if name and name != '*':
+                for imported in imports.split(","):
+                    name = imported.strip().split(" as ")[-1].strip()
+                    if name and name != "*":
                         ref = SymbolReference(
                             source_file=file_path,
                             source_symbol=None,
                             target_module=module,
                             target_symbol=name,
                             dependency_type=DependencyType.IMPORT,
-                            line_number=line_num
+                            line_number=line_num,
                         )
                         references.append(ref)
 
@@ -148,9 +151,9 @@ class DependencyResolver:
                     source_file=file_path,
                     source_symbol=None,
                     target_module=module,
-                    target_symbol=module.split('.')[-1],
+                    target_symbol=module.split(".")[-1],
                     dependency_type=DependencyType.IMPORT,
-                    line_number=line_num
+                    line_number=line_num,
                 )
                 references.append(ref)
 
@@ -159,7 +162,7 @@ class DependencyResolver:
     def _resolve_js_imports(self, file_path: str, code: str) -> List[SymbolReference]:
         """Resolve JavaScript/TypeScript import statements."""
         references: List[SymbolReference] = []
-        lines = code.split('\n')
+        lines = code.split("\n")
 
         # Pattern: import { name } from 'module'
         named_pattern = re.compile(r'import\s+{([^}]+)}\s+from\s+[\'"]([^\'"]+)[\'"]')
@@ -176,8 +179,8 @@ class DependencyResolver:
             if named_match:
                 imports = named_match.group(1)
                 module = named_match.group(2)
-                for imported in imports.split(','):
-                    name = imported.strip().split(' as ')[-1].strip()
+                for imported in imports.split(","):
+                    name = imported.strip().split(" as ")[-1].strip()
                     if name:
                         ref = SymbolReference(
                             source_file=file_path,
@@ -185,7 +188,7 @@ class DependencyResolver:
                             target_module=module,
                             target_symbol=name,
                             dependency_type=DependencyType.IMPORT,
-                            line_number=line_num
+                            line_number=line_num,
                         )
                         references.append(ref)
                 continue
@@ -200,14 +203,14 @@ class DependencyResolver:
                     target_module=module,
                     target_symbol="*",
                     dependency_type=DependencyType.IMPORT,
-                    line_number=line_num
+                    line_number=line_num,
                 )
                 references.append(ref)
                 continue
 
             # default imports
             default_match = default_pattern.search(line)
-            if default_match and 'import {' not in line and 'import *' not in line:
+            if default_match and "import {" not in line and "import *" not in line:
                 module = default_match.group(2)
                 ref = SymbolReference(
                     source_file=file_path,
@@ -215,7 +218,7 @@ class DependencyResolver:
                     target_module=module,
                     target_symbol="default",
                     dependency_type=DependencyType.IMPORT,
-                    line_number=line_num
+                    line_number=line_num,
                 )
                 references.append(ref)
                 continue
@@ -228,9 +231,9 @@ class DependencyResolver:
                     source_file=file_path,
                     source_symbol=None,
                     target_module=module,
-                    target_symbol=module.split('/')[-1],
+                    target_symbol=module.split("/")[-1],
                     dependency_type=DependencyType.IMPORT,
-                    line_number=line_num
+                    line_number=line_num,
                 )
                 references.append(ref)
 
@@ -241,15 +244,15 @@ class DependencyResolver:
         references: List[SymbolReference] = []
 
         # Pattern: import package.Class; or import package.*;
-        import_pattern = re.compile(r'import\s+([\w.]+(?:\.\*)?);')
+        import_pattern = re.compile(r"import\s+([\w.]+(?:\.\*)?);")
 
-        for line_num, line_obj in enumerate(code.split('\n'), 1):
+        for line_num, line_obj in enumerate(code.split("\n"), 1):
             import_match = import_pattern.search(line_obj)
             if import_match:
                 fully_qualified = import_match.group(1)
 
                 # Handle wildcard imports
-                if fully_qualified.endswith('.*'):
+                if fully_qualified.endswith(".*"):
                     package = fully_qualified[:-2]  # Remove .*
                     ref = SymbolReference(
                         source_file=file_path,
@@ -257,12 +260,12 @@ class DependencyResolver:
                         target_module=package,
                         target_symbol="*",
                         dependency_type=DependencyType.IMPORT,
-                        line_number=line_num
+                        line_number=line_num,
                     )
                     references.append(ref)
                 else:
-                    class_name = fully_qualified.split('.')[-1]
-                    package = '.'.join(fully_qualified.split('.')[:-1])
+                    class_name = fully_qualified.split(".")[-1]
+                    package = ".".join(fully_qualified.split(".")[:-1])
 
                     ref = SymbolReference(
                         source_file=file_path,
@@ -270,7 +273,7 @@ class DependencyResolver:
                         target_module=package,
                         target_symbol=class_name,
                         dependency_type=DependencyType.IMPORT,
-                        line_number=line_num
+                        line_number=line_num,
                     )
                     references.append(ref)
 
@@ -285,7 +288,7 @@ class DependencyResolver:
         # Pattern: import alias "package"
         alias_pattern = re.compile(r'import\s+(\w+)\s+"([^"]+)"')
         # Pattern: multi-line import block
-        multiline_pattern = re.compile(r'import\s*\((.*?)\)', re.DOTALL)
+        multiline_pattern = re.compile(r"import\s*\((.*?)\)", re.DOTALL)
         # Pattern: quoted string in import block
         quoted_pattern = re.compile(r'"([^"]+)"')
 
@@ -300,16 +303,16 @@ class DependencyResolver:
                     source_file=file_path,
                     source_symbol=None,
                     target_module=module,
-                    target_symbol=module.split('/')[-1],
+                    target_symbol=module.split("/")[-1],
                     dependency_type=DependencyType.IMPORT,
-                    line_number=1
+                    line_number=1,
                 )
                 references.append(ref)
 
         # Then check for single-line imports
-        for line_num, line_obj in enumerate(code.split('\n'), 1):
+        for line_num, line_obj in enumerate(code.split("\n"), 1):
             # Skip lines already processed in multi-line block
-            if 'import (' in line_obj or ')' in line_obj:
+            if "import (" in line_obj or ")" in line_obj:
                 continue
 
             alias_match = alias_pattern.search(line_obj)
@@ -321,7 +324,7 @@ class DependencyResolver:
                     target_module=module,
                     target_symbol=alias_match.group(1),
                     dependency_type=DependencyType.IMPORT,
-                    line_number=line_num
+                    line_number=line_num,
                 )
                 references.append(ref)
                 continue
@@ -333,9 +336,9 @@ class DependencyResolver:
                     source_file=file_path,
                     source_symbol=None,
                     target_module=module,
-                    target_symbol=module.split('/')[-1],
+                    target_symbol=module.split("/")[-1],
                     dependency_type=DependencyType.IMPORT,
-                    line_number=line_num
+                    line_number=line_num,
                 )
                 references.append(ref)
 
@@ -346,13 +349,13 @@ class DependencyResolver:
         references: List[SymbolReference] = []
 
         # Pattern: use module::Item;
-        use_pattern = re.compile(r'use\s+([\w:]+)(?:\s+as\s+(\w+))?;')
+        use_pattern = re.compile(r"use\s+([\w:]+)(?:\s+as\s+(\w+))?;")
 
-        for line_num, line_obj in enumerate(code.split('\n'), 1):
+        for line_num, line_obj in enumerate(code.split("\n"), 1):
             use_match = use_pattern.search(line_obj)
             if use_match:
                 path = use_match.group(1)
-                parts = path.split('::')
+                parts = path.split("::")
                 module = parts[0]
                 symbol = parts[-1] if len(parts) > 1 else module
 
@@ -362,7 +365,7 @@ class DependencyResolver:
                     target_module=module,
                     target_symbol=symbol,
                     dependency_type=DependencyType.IMPORT,
-                    line_number=line_num
+                    line_number=line_num,
                 )
                 references.append(ref)
 
@@ -409,7 +412,10 @@ class DependencyResolver:
 
             edges = self.dependencies.get(qname, [])
             for edge in edges:
-                to_qname = edge.to_symbol.full_qualified_name or f"{edge.to_symbol.file_path}:{edge.to_symbol.name}"
+                to_qname = (
+                    edge.to_symbol.full_qualified_name
+                    or f"{edge.to_symbol.file_path}:{edge.to_symbol.name}"
+                )
 
                 if to_qname not in visited:
                     dfs(to_qname, path[:], rec_stack)
@@ -417,7 +423,9 @@ class DependencyResolver:
                     # Found a cycle
                     cycle_start = path.index(to_qname)
                     cycle_qnames = path[cycle_start:] + [to_qname]
-                    cycle_symbols = [self.symbol_index.get(n) for n in cycle_qnames if n in self.symbol_index]
+                    cycle_symbols = [
+                        self.symbol_index.get(n) for n in cycle_qnames if n in self.symbol_index
+                    ]
                     if cycle_symbols and len(cycle_symbols) > 1:
                         cycles.append(cycle_symbols)
 
@@ -443,7 +451,7 @@ class DependencyResolver:
 
         impact_map = {
             "direct": [ref.source_symbol for ref in directly_affected if ref.source_symbol],
-            "indirect": []
+            "indirect": [],
         }
 
         # Find indirectly affected symbols (symbols that use the directly affected ones)
@@ -478,7 +486,7 @@ class DependencyResolver:
             "total_dependencies": total_dependencies,
             "circular_dependencies": circular_deps,
             "max_dependency_depth": max_depth,
-            "files_with_symbols": len(self.symbols)
+            "files_with_symbols": len(self.symbols),
         }
 
     def _calculate_dependency_depth(self, qname: str, visited: Optional[Set[str]] = None) -> int:
@@ -497,7 +505,10 @@ class DependencyResolver:
 
         max_child_depth = 0
         for edge in edges:
-            to_qname = edge.to_symbol.full_qualified_name or f"{edge.to_symbol.file_path}:{edge.to_symbol.name}"
+            to_qname = (
+                edge.to_symbol.full_qualified_name
+                or f"{edge.to_symbol.file_path}:{edge.to_symbol.name}"
+            )
             depth = self._calculate_dependency_depth(to_qname, visited)
             max_child_depth = max(max_child_depth, depth)
 

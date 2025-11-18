@@ -11,13 +11,13 @@ Provides:
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
-import math
 
 from .symbol_models import Symbol, SymbolType
 
 
 class DebtCategory(str, Enum):
     """Categories of technical debt."""
+
     SECURITY = "security"  # Security vulnerabilities
     PERFORMANCE = "performance"  # Performance issues
     QUALITY = "quality"  # Code quality/smells
@@ -28,6 +28,7 @@ class DebtCategory(str, Enum):
 
 class DebtSeverity(str, Enum):
     """Severity levels for debt items."""
+
     CRITICAL = "critical"  # Blocks deployment or causes crashes
     HIGH = "high"  # Significant issues, should fix soon
     MEDIUM = "medium"  # Moderate issues, plan to fix
@@ -37,6 +38,7 @@ class DebtSeverity(str, Enum):
 
 class DebtPriority(str, Enum):
     """Priority for addressing debt (based on impact + effort)."""
+
     CRITICAL_PATH = "critical_path"  # Highest priority
     HIGH_IMPACT = "high_impact"  # High ROI
     MEDIUM_IMPACT = "medium_impact"  # Moderate ROI
@@ -46,6 +48,7 @@ class DebtPriority(str, Enum):
 @dataclass
 class DebtItem:
     """Individual technical debt item."""
+
     symbol: Symbol
     category: DebtCategory
     severity: DebtSeverity
@@ -60,10 +63,11 @@ class DebtItem:
 @dataclass
 class DebtScore:
     """Technical debt score for a symbol."""
+
     symbol: Symbol
     overall_debt_score: float  # 0-100, higher = more debt
     debt_items: List[DebtItem]
-    
+
     # Debt breakdown by category
     security_debt: float
     performance_debt: float
@@ -71,7 +75,7 @@ class DebtScore:
     testing_debt: float
     documentation_debt: float
     maintainability_debt: float
-    
+
     # Estimated effort and impact
     total_estimated_effort: float  # Hours
     total_estimated_impact: float  # Impact points
@@ -81,6 +85,7 @@ class DebtScore:
 @dataclass
 class DebtMetrics:
     """Overall technical debt metrics."""
+
     total_symbols: int
     total_debt_items: int
     average_debt_score: float
@@ -102,15 +107,18 @@ class TechnicalDebtAnalyzer:
         self.scores: List[DebtScore] = []
         self.metrics: Optional[DebtMetrics] = None
 
-    def analyze_symbol(self, symbol: Symbol,
-                      security_issues: int = 0,
-                      performance_issues: int = 0,
-                      code_smells: int = 0,
-                      maintainability_score: float = 50.0,
-                      testability_score: float = 50.0,
-                      has_docstring: bool = False) -> Optional[DebtScore]:
+    def analyze_symbol(
+        self,
+        symbol: Symbol,
+        security_issues: int = 0,
+        performance_issues: int = 0,
+        code_smells: int = 0,
+        maintainability_score: float = 50.0,
+        testability_score: float = 50.0,
+        has_docstring: bool = False,
+    ) -> Optional[DebtScore]:
         """Analyze technical debt of a single symbol.
-        
+
         Args:
             symbol: Symbol to analyze
             security_issues: Number of security issues found
@@ -119,7 +127,7 @@ class TechnicalDebtAnalyzer:
             maintainability_score: Maintainability score (0-100)
             testability_score: Testability score (0-100)
             has_docstring: Whether symbol has documentation
-            
+
         Returns:
             DebtScore or None if not applicable
         """
@@ -136,18 +144,23 @@ class TechnicalDebtAnalyzer:
 
         # Weighted overall score
         overall_debt_score = (
-            security_debt * 0.25 +
-            performance_debt * 0.20 +
-            quality_debt * 0.15 +
-            testing_debt * 0.15 +
-            documentation_debt * 0.10 +
-            maintainability_debt * 0.15
+            security_debt * 0.25
+            + performance_debt * 0.20
+            + quality_debt * 0.15
+            + testing_debt * 0.15
+            + documentation_debt * 0.10
+            + maintainability_debt * 0.15
         )
 
         # Detect debt items
         debt_items = self._detect_debt_items(
-            symbol, security_issues, performance_issues, code_smells,
-            maintainability_score, testability_score, has_docstring
+            symbol,
+            security_issues,
+            performance_issues,
+            code_smells,
+            maintainability_score,
+            testability_score,
+            has_docstring,
         )
 
         # Calculate effort and impact
@@ -167,7 +180,7 @@ class TechnicalDebtAnalyzer:
             maintainability_debt=maintainability_debt,
             total_estimated_effort=total_effort,
             total_estimated_impact=total_impact,
-            efficiency_ratio=efficiency_ratio
+            efficiency_ratio=efficiency_ratio,
         )
 
         self.scores.append(score)
@@ -175,10 +188,10 @@ class TechnicalDebtAnalyzer:
 
     def analyze_all(self, symbols_with_issues: List[Tuple]) -> List[DebtScore]:
         """Analyze debt for multiple symbols.
-        
+
         Args:
             symbols_with_issues: List of (symbol, security, performance, smells, maint, test, doc) tuples
-            
+
         Returns:
             List of DebtScores
         """
@@ -191,7 +204,7 @@ class TechnicalDebtAnalyzer:
             maint = item[4] if len(item) > 4 else 50.0
             test = item[5] if len(item) > 5 else 50.0
             doc = item[6] if len(item) > 6 else False
-            
+
             score = self.analyze_symbol(symbol, security, performance, smells, maint, test, doc)
             if score:
                 pass  # Already appended
@@ -250,102 +263,119 @@ class TechnicalDebtAnalyzer:
         maintainability_debt = 100.0 - maintainability_score
         return max(0.0, min(100.0, maintainability_debt))
 
-    def _detect_debt_items(self, symbol: Symbol,
-                          security_issues: int,
-                          performance_issues: int,
-                          code_smells: int,
-                          maintainability_score: float,
-                          testability_score: float,
-                          has_docstring: bool) -> List[DebtItem]:
+    def _detect_debt_items(
+        self,
+        symbol: Symbol,
+        security_issues: int,
+        performance_issues: int,
+        code_smells: int,
+        maintainability_score: float,
+        testability_score: float,
+        has_docstring: bool,
+    ) -> List[DebtItem]:
         """Detect individual debt items."""
         items = []
 
         # Security debt items
         if security_issues > 0:
             for i in range(min(security_issues, 3)):  # Cap at 3 items
-                items.append(DebtItem(
-                    symbol=symbol,
-                    category=DebtCategory.SECURITY,
-                    severity=DebtSeverity.CRITICAL,
-                    title=f"Security vulnerability #{i+1}",
-                    description="Fix identified security vulnerability",
-                    estimated_effort=8.0,
-                    estimated_impact=0.9,
-                    priority=DebtPriority.CRITICAL_PATH,
-                    related_issues=[]
-                ))
+                items.append(
+                    DebtItem(
+                        symbol=symbol,
+                        category=DebtCategory.SECURITY,
+                        severity=DebtSeverity.CRITICAL,
+                        title=f"Security vulnerability #{i+1}",
+                        description="Fix identified security vulnerability",
+                        estimated_effort=8.0,
+                        estimated_impact=0.9,
+                        priority=DebtPriority.CRITICAL_PATH,
+                        related_issues=[],
+                    )
+                )
 
         # Performance debt items
         if performance_issues > 0:
             for i in range(min(performance_issues, 2)):
-                items.append(DebtItem(
-                    symbol=symbol,
-                    category=DebtCategory.PERFORMANCE,
-                    severity=DebtSeverity.HIGH,
-                    title=f"Performance issue #{i+1}",
-                    description="Optimize performance bottleneck",
-                    estimated_effort=6.0,
-                    estimated_impact=0.7,
-                    priority=DebtPriority.HIGH_IMPACT,
-                    related_issues=[]
-                ))
+                items.append(
+                    DebtItem(
+                        symbol=symbol,
+                        category=DebtCategory.PERFORMANCE,
+                        severity=DebtSeverity.HIGH,
+                        title=f"Performance issue #{i+1}",
+                        description="Optimize performance bottleneck",
+                        estimated_effort=6.0,
+                        estimated_impact=0.7,
+                        priority=DebtPriority.HIGH_IMPACT,
+                        related_issues=[],
+                    )
+                )
 
         # Quality debt items (code smells)
         if code_smells > 0:
             for i in range(min(code_smells, 2)):
-                items.append(DebtItem(
-                    symbol=symbol,
-                    category=DebtCategory.QUALITY,
-                    severity=DebtSeverity.MEDIUM,
-                    title=f"Code smell #{i+1}",
-                    description="Refactor to eliminate code smell",
-                    estimated_effort=4.0,
-                    estimated_impact=0.5,
-                    priority=DebtPriority.MEDIUM_IMPACT,
-                    related_issues=[]
-                ))
+                items.append(
+                    DebtItem(
+                        symbol=symbol,
+                        category=DebtCategory.QUALITY,
+                        severity=DebtSeverity.MEDIUM,
+                        title=f"Code smell #{i+1}",
+                        description="Refactor to eliminate code smell",
+                        estimated_effort=4.0,
+                        estimated_impact=0.5,
+                        priority=DebtPriority.MEDIUM_IMPACT,
+                        related_issues=[],
+                    )
+                )
 
         # Testing debt item
         if testability_score < 60:
-            items.append(DebtItem(
-                symbol=symbol,
-                category=DebtCategory.TESTING,
-                severity=DebtSeverity.MEDIUM,
-                title="Poor testability",
-                description=f"Improve testability (score: {testability_score:.0f})",
-                estimated_effort=5.0,
-                estimated_impact=0.6,
-                priority=DebtPriority.MEDIUM_IMPACT,
-                related_issues=[]
-            ))
+            items.append(
+                DebtItem(
+                    symbol=symbol,
+                    category=DebtCategory.TESTING,
+                    severity=DebtSeverity.MEDIUM,
+                    title="Poor testability",
+                    description=f"Improve testability (score: {testability_score:.0f})",
+                    estimated_effort=5.0,
+                    estimated_impact=0.6,
+                    priority=DebtPriority.MEDIUM_IMPACT,
+                    related_issues=[],
+                )
+            )
 
         # Documentation debt item
         if not has_docstring:
-            items.append(DebtItem(
-                symbol=symbol,
-                category=DebtCategory.DOCUMENTATION,
-                severity=DebtSeverity.LOW,
-                title="Missing documentation",
-                description="Add comprehensive documentation",
-                estimated_effort=2.0,
-                estimated_impact=0.3,
-                priority=DebtPriority.LOW_PRIORITY,
-                related_issues=[]
-            ))
+            items.append(
+                DebtItem(
+                    symbol=symbol,
+                    category=DebtCategory.DOCUMENTATION,
+                    severity=DebtSeverity.LOW,
+                    title="Missing documentation",
+                    description="Add comprehensive documentation",
+                    estimated_effort=2.0,
+                    estimated_impact=0.3,
+                    priority=DebtPriority.LOW_PRIORITY,
+                    related_issues=[],
+                )
+            )
 
         # Maintainability debt item
         if maintainability_score < 60:
-            items.append(DebtItem(
-                symbol=symbol,
-                category=DebtCategory.MAINTAINABILITY,
-                severity=DebtSeverity.MEDIUM if maintainability_score > 40 else DebtSeverity.HIGH,
-                title="Low maintainability",
-                description=f"Improve maintainability (score: {maintainability_score:.0f})",
-                estimated_effort=8.0,
-                estimated_impact=0.7,
-                priority=DebtPriority.MEDIUM_IMPACT,
-                related_issues=[]
-            ))
+            items.append(
+                DebtItem(
+                    symbol=symbol,
+                    category=DebtCategory.MAINTAINABILITY,
+                    severity=(
+                        DebtSeverity.MEDIUM if maintainability_score > 40 else DebtSeverity.HIGH
+                    ),
+                    title="Low maintainability",
+                    description=f"Improve maintainability (score: {maintainability_score:.0f})",
+                    estimated_effort=8.0,
+                    estimated_impact=0.7,
+                    priority=DebtPriority.MEDIUM_IMPACT,
+                    related_issues=[],
+                )
+            )
 
         return items
 
@@ -357,7 +387,9 @@ class TechnicalDebtAnalyzer:
         """Get all critical debt items."""
         critical = []
         for score in self.scores:
-            critical.extend([item for item in score.debt_items if item.severity == DebtSeverity.CRITICAL])
+            critical.extend(
+                [item for item in score.debt_items if item.severity == DebtSeverity.CRITICAL]
+            )
         return critical
 
     def get_highest_debt_symbols(self, limit: int = 10) -> List[DebtScore]:
@@ -370,18 +402,17 @@ class TechnicalDebtAnalyzer:
         all_items = []
         for score in self.scores:
             all_items.extend(score.debt_items)
-        
+
         # Sort by impact/effort ratio (highest = best ROI)
-        sorted_items = sorted(all_items, key=lambda i: i.estimated_impact / max(0.1, i.estimated_effort), reverse=True)
+        sorted_items = sorted(
+            all_items, key=lambda i: i.estimated_impact / max(0.1, i.estimated_effort), reverse=True
+        )
         return sorted_items[:limit]
 
     def get_debt_report(self) -> Dict:
         """Generate comprehensive debt report."""
         if not self.scores:
-            return {
-                "status": "no_analysis",
-                "message": "No symbols analyzed yet"
-            }
+            return {"status": "no_analysis", "message": "No symbols analyzed yet"}
 
         self._calculate_metrics()
 
@@ -393,7 +424,7 @@ class TechnicalDebtAnalyzer:
                 "critical": self.metrics.critical_count,
                 "high": self.metrics.high_count,
                 "medium": self.metrics.medium_count,
-                "low": self.metrics.low_count
+                "low": self.metrics.low_count,
             },
             "total_debt_items": self.metrics.total_debt_items,
             "total_estimated_effort": self.metrics.total_estimated_effort,
@@ -405,7 +436,7 @@ class TechnicalDebtAnalyzer:
                     "symbol": s.symbol.name,
                     "debt_score": s.overall_debt_score,
                     "item_count": len(s.debt_items),
-                    "estimated_effort": s.total_estimated_effort
+                    "estimated_effort": s.total_estimated_effort,
                 }
                 for s in self.get_highest_debt_symbols(5)
             ],
@@ -416,10 +447,10 @@ class TechnicalDebtAnalyzer:
                     "title": item.title,
                     "effort": item.estimated_effort,
                     "impact": item.estimated_impact,
-                    "roi": item.estimated_impact / max(0.1, item.estimated_effort)
+                    "roi": item.estimated_impact / max(0.1, item.estimated_effort),
                 }
                 for item in self.get_best_roi_debt_items(5)
-            ]
+            ],
         }
 
     def _calculate_metrics(self):
@@ -436,32 +467,36 @@ class TechnicalDebtAnalyzer:
                 total_estimated_effort=0.0,
                 average_effort_per_item=0.0,
                 most_common_debt_category=DebtCategory.QUALITY,
-                highest_priority_debt_items=0
+                highest_priority_debt_items=0,
             )
             return
 
         avg_score = sum(s.overall_debt_score for s in self.scores) / len(self.scores)
-        
+
         # Count all debt items and by severity
         all_items = []
         for score in self.scores:
             all_items.extend(score.debt_items)
-        
+
         critical = len([i for i in all_items if i.severity == DebtSeverity.CRITICAL])
         high = len([i for i in all_items if i.severity == DebtSeverity.HIGH])
         medium = len([i for i in all_items if i.severity == DebtSeverity.MEDIUM])
         low = len([i for i in all_items if i.severity == DebtSeverity.LOW])
-        
+
         # Most common category
         category_counts = {}
         for item in all_items:
             category_counts[item.category] = category_counts.get(item.category, 0) + 1
-        
-        most_common = max(category_counts, key=category_counts.get) if category_counts else DebtCategory.QUALITY
-        
+
+        most_common = (
+            max(category_counts, key=category_counts.get)
+            if category_counts
+            else DebtCategory.QUALITY
+        )
+
         # Critical path items (high priority)
         critical_path = len([i for i in all_items if i.priority == DebtPriority.CRITICAL_PATH])
-        
+
         # Total effort
         total_effort = sum(i.estimated_effort for i in all_items)
         avg_effort = total_effort / len(all_items) if all_items else 0.0
@@ -477,5 +512,5 @@ class TechnicalDebtAnalyzer:
             total_estimated_effort=total_effort,
             average_effort_per_item=avg_effort,
             most_common_debt_category=most_common,
-            highest_priority_debt_items=critical_path
+            highest_priority_debt_items=critical_path,
         )

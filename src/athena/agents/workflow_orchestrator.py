@@ -22,7 +22,6 @@ from .coordinator import AgentCoordinator
 from ..orchestration.adaptive_agent import AdaptiveAgent
 
 # Import core memory operations
-from ..episodic.operations import remember as remember_event
 from ..memory.operations import store as store_fact
 
 logger = logging.getLogger(__name__)
@@ -30,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 class TaskType(Enum):
     """Types of tasks that can be routed."""
+
     CODE_ANALYSIS = "code_analysis"
     RESEARCH = "research"
     MEMORY_MANAGEMENT = "memory_management"
@@ -41,6 +41,7 @@ class TaskType(Enum):
 
 class AgentType(Enum):
     """Available agent types."""
+
     CODE_ANALYZER = "code-analyzer"
     RESEARCH_COORDINATOR = "research-coordinator"
     MEMORY_COORDINATOR = "memory-coordinator"
@@ -52,6 +53,7 @@ class AgentType(Enum):
 @dataclass
 class TaskRoute:
     """Routing decision for a task."""
+
     task_id: str
     task_type: TaskType
     agent: AgentType
@@ -65,6 +67,7 @@ class TaskRoute:
 @dataclass
 class AgentLoad:
     """Represents current load on an agent."""
+
     agent: AgentType
     queued_tasks: int
     active_tasks: int
@@ -147,10 +150,7 @@ class WorkflowOrchestratorAgent(AgentCoordinator, AdaptiveAgent):
         # Check each classifier
         for classifier_name, classifier in self.TASK_CLASSIFIERS.items():
             # Count keyword matches
-            matches = sum(
-                1 for keyword in classifier["keywords"]
-                if keyword in desc_lower
-            )
+            matches = sum(1 for keyword in classifier["keywords"] if keyword in desc_lower)
 
             if matches > 0:
                 # Confidence based on number of matches
@@ -261,8 +261,7 @@ class WorkflowOrchestratorAgent(AgentCoordinator, AdaptiveAgent):
         try:
             # Calculate overall load
             total_tasks = sum(
-                load.queued_tasks + load.active_tasks
-                for load in self.agent_loads.values()
+                load.queued_tasks + load.active_tasks for load in self.agent_loads.values()
             )
 
             if total_tasks == 0:
@@ -286,24 +285,30 @@ class WorkflowOrchestratorAgent(AgentCoordinator, AdaptiveAgent):
             # Generate recommendations
             if overloaded:
                 for agent, load in overloaded:
-                    decisions["recommendations"].append({
-                        "agent": agent.value,
-                        "status": "overloaded",
-                        "current_load": load,
-                        "recommendation": f"Consider delegating tasks from {agent.value}",
-                    })
+                    decisions["recommendations"].append(
+                        {
+                            "agent": agent.value,
+                            "status": "overloaded",
+                            "current_load": load,
+                            "recommendation": f"Consider delegating tasks from {agent.value}",
+                        }
+                    )
 
             if underloaded:
                 for agent, load in underloaded:
-                    decisions["recommendations"].append({
-                        "agent": agent.value,
-                        "status": "underutilized",
-                        "current_load": load,
-                        "recommendation": f"Can handle more tasks from {agent.value}",
-                    })
+                    decisions["recommendations"].append(
+                        {
+                            "agent": agent.value,
+                            "status": "underutilized",
+                            "current_load": load,
+                            "recommendation": f"Can handle more tasks from {agent.value}",
+                        }
+                    )
 
             decisions["status"] = "balanced" if not (overloaded and underloaded) else "rebalancing"
-            logger.info(f"Workload analysis: {len(overloaded)} overloaded, {len(underloaded)} underloaded")
+            logger.info(
+                f"Workload analysis: {len(overloaded)} overloaded, {len(underloaded)} underloaded"
+            )
 
         except Exception as e:
             logger.error(f"Error balancing workload: {e}")
@@ -339,8 +344,7 @@ class WorkflowOrchestratorAgent(AgentCoordinator, AdaptiveAgent):
 
             # Resolve dependencies
             ordered_tasks = await self.resolve_dependencies(
-                f"task-{self.tasks_routed}",
-                {f"task-{self.tasks_routed}": dependencies or []}
+                f"task-{self.tasks_routed}", {f"task-{self.tasks_routed}": dependencies or []}
             )
 
             # Create routing decision

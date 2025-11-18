@@ -28,7 +28,7 @@ class SkillMatcher:
         task_description: str,
         domain: Optional[SkillDomain] = None,
         min_relevance: float = 0.5,
-        limit: int = 5
+        limit: int = 5,
     ) -> List[SkillMatch]:
         """Find applicable skills for a task.
 
@@ -83,11 +83,7 @@ class SkillMatcher:
 
         # Keyword matching (25%)
         keyword_matches = 0
-        keywords = [
-            metadata.name,
-            *metadata.tags,
-            *metadata.examples
-        ]
+        keywords = [metadata.name, *metadata.tags, *metadata.examples]
 
         for keyword in keywords:
             if keyword and keyword.lower() in task_lower:
@@ -162,9 +158,6 @@ class SkillMatcher:
         Returns:
             Skills sorted by relevance
         """
-        scored = [
-            (skill, self._compute_relevance(task_description, skill))
-            for skill in skills
-        ]
+        scored = [(skill, self._compute_relevance(task_description, skill)) for skill in skills]
         scored.sort(key=lambda x: x[1], reverse=True)
         return [skill for skill, _ in scored]

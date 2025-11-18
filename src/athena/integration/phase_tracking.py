@@ -1,7 +1,6 @@
 """Phase transition tracking and metrics recording."""
 
 import logging
-from datetime import datetime
 from typing import Optional
 
 from ..core.database import Database

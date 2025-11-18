@@ -70,9 +70,7 @@ class ConsolidationHook:
             pattern = self._row_to_pattern(pattern_row)
 
             # Update pattern based on task outcome
-            updated_pattern = self._update_pattern_from_outcome(
-                pattern, success, actual_outcome
-            )
+            updated_pattern = self._update_pattern_from_outcome(pattern, success, actual_outcome)
 
             # Save updated pattern
             self.pattern_store.save_pattern(updated_pattern)

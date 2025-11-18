@@ -9,6 +9,7 @@ from typing import Optional
 
 try:
     from .database_postgres import PostgresDatabase
+
     POSTGRES_AVAILABLE = True
 except ImportError:
     POSTGRES_AVAILABLE = False
@@ -40,16 +41,12 @@ class DatabaseFactory:
 
     # Only PostgreSQL supported
     BACKENDS = {
-        'postgres': PostgresDatabase if POSTGRES_AVAILABLE else None,
-        'postgresql': PostgresDatabase if POSTGRES_AVAILABLE else None,
+        "postgres": PostgresDatabase if POSTGRES_AVAILABLE else None,
+        "postgresql": PostgresDatabase if POSTGRES_AVAILABLE else None,
     }
 
     @classmethod
-    def create(
-        cls,
-        backend: Optional[str] = None,
-        **kwargs
-    ) -> PostgresDatabase:
+    def create(cls, backend: Optional[str] = None, **kwargs) -> PostgresDatabase:
         """Create a PostgreSQL database instance.
 
         Args:
@@ -64,7 +61,7 @@ class DatabaseFactory:
         """
 
         # PostgreSQL only
-        backend_class = cls.BACKENDS.get('postgres')
+        backend_class = cls.BACKENDS.get("postgres")
         if backend_class is None:
             raise ValueError(
                 "PostgreSQL backend is not available. "
@@ -72,7 +69,6 @@ class DatabaseFactory:
             )
 
         return cls._create_postgres(**kwargs)
-
 
     @classmethod
     def _create_postgres(cls, **kwargs) -> PostgresDatabase:
@@ -99,28 +95,15 @@ class DatabaseFactory:
 
         # Configuration with proper priority: kwargs > env > defaults
         config = {
-            'host': kwargs.get(
-                'host',
-                os.environ.get('ATHENA_POSTGRES_HOST', 'localhost')
+            "host": kwargs.get("host", os.environ.get("ATHENA_POSTGRES_HOST", "localhost")),
+            "port": int(kwargs.get("port", os.environ.get("ATHENA_POSTGRES_PORT", "5432"))),
+            "dbname": kwargs.get("dbname", os.environ.get("ATHENA_POSTGRES_DB", "athena")),
+            "user": kwargs.get("user", os.environ.get("ATHENA_POSTGRES_USER", "postgres")),
+            "password": kwargs.get(
+                "password", os.environ.get("ATHENA_POSTGRES_PASSWORD", "postgres")
             ),
-            'port': int(kwargs.get(
-                'port',
-                os.environ.get('ATHENA_POSTGRES_PORT', '5432')
-            )),
-            'dbname': kwargs.get(
-                'dbname',
-                os.environ.get('ATHENA_POSTGRES_DB', 'athena')
-            ),
-            'user': kwargs.get(
-                'user',
-                os.environ.get('ATHENA_POSTGRES_USER', 'postgres')
-            ),
-            'password': kwargs.get(
-                'password',
-                os.environ.get('ATHENA_POSTGRES_PASSWORD', 'postgres')
-            ),
-            'min_size': int(kwargs.get('min_size', '2')),
-            'max_size': int(kwargs.get('max_size', '10')),
+            "min_size": int(kwargs.get("min_size", "2")),
+            "max_size": int(kwargs.get("max_size", "10")),
         }
 
         return PostgresDatabase(**config)
@@ -179,6 +162,7 @@ def get_database(**kwargs) -> PostgresDatabase:
     """
     # Import singleton from main database module to ensure consistency
     from . import database as db_module
+
     # Remove backend parameter (PostgreSQL only, so it's ignored)
-    kwargs.pop('backend', None)
+    kwargs.pop("backend", None)
     return db_module.get_database(**kwargs)

@@ -8,12 +8,15 @@ Enables goal-aware task decomposition and strategy-informed planning.
 """
 
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 from dataclasses import dataclass
 
 from .models import (
-    Goal, GoalType, GoalStatus, StrategyType,
-    ProgressMilestone, TaskSwitch, StrategyRecommendation
+    Goal,
+    GoalType,
+    StrategyType,
+    ProgressMilestone,
+    StrategyRecommendation,
 )
 
 
@@ -260,9 +263,8 @@ class ExecutiveAgentBridge:
                 id=None,  # Will be assigned by store
                 goal_id=goal.id,
                 name=f"{percent}% - {step.description[:50]}",
-                target_completion=datetime.now() + timedelta(
-                    milliseconds=plan.estimated_total_duration_ms * (percent / 100.0)
-                ),
+                target_completion=datetime.now()
+                + timedelta(milliseconds=plan.estimated_total_duration_ms * (percent / 100.0)),
                 is_completed=False,
                 completed_at=None,
             )
@@ -334,7 +336,8 @@ class ExecutiveAgentBridge:
             Success rate (0.0-1.0)
         """
         matching = [
-            rec for goal_id, recs in self.goal_strategy_history.items()
+            rec
+            for goal_id, recs in self.goal_strategy_history.items()
             for rec in recs
             if rec.strategy_type == strategy and rec.outcome == "success"
         ]

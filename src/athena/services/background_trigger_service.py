@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 
 from ..prospective.models import ProspectiveTask, TaskStatus, TaskPhase
 from ..prospective.triggers import TriggerEvaluator
@@ -86,9 +86,7 @@ class BackgroundTriggerService:
                 f"(interval: {evaluation_interval_seconds}s)"
             )
 
-            self._task = asyncio.create_task(
-                self._evaluation_loop(evaluation_interval_seconds)
-            )
+            self._task = asyncio.create_task(self._evaluation_loop(evaluation_interval_seconds))
 
     async def stop(self) -> None:
         """Stop background service gracefully.
@@ -126,10 +124,7 @@ class BackgroundTriggerService:
             except Exception as e:
                 self.metrics["evaluation_errors"] += 1
                 self.metrics["last_error"] = str(e)
-                logger.error(
-                    f"Error in trigger evaluation cycle: {e}",
-                    exc_info=True
-                )
+                logger.error(f"Error in trigger evaluation cycle: {e}", exc_info=True)
 
             if self._running:
                 # Wait before next evaluation
@@ -165,8 +160,7 @@ class BackgroundTriggerService:
                 activation_count += 1
             except Exception as e:
                 logger.error(
-                    f"Error handling task activation for task {task.id}: {e}",
-                    exc_info=True
+                    f"Error handling task activation for task {task.id}: {e}", exc_info=True
                 )
 
         # Phase 5: Check for deviations in executing tasks (optional, if deviation_monitor available)
@@ -212,19 +206,14 @@ class BackgroundTriggerService:
             task: Task that was activated
             context: Execution context that triggered activation
         """
-        logger.info(
-            f"Task activated by trigger: '{task.content}' (id={task.id})"
-        )
+        logger.info(f"Task activated by trigger: '{task.content}' (id={task.id})")
 
         # Update task phase to PLAN_READY
         # This indicates the task is ready to be executed
         try:
             self.prospective_store.update_task_phase(task.id, TaskPhase.PLAN_READY)
         except Exception as e:
-            logger.error(
-                f"Failed to update task phase for task {task.id}: {e}",
-                exc_info=True
-            )
+            logger.error(f"Failed to update task phase for task {task.id}: {e}", exc_info=True)
             raise
 
         # Record episodic event for learning
@@ -257,8 +246,7 @@ class BackgroundTriggerService:
                     self.episodic_store.save_event(event)
             except Exception as e:
                 logger.error(
-                    f"Failed to record episodic event for task {task.id}: {e}",
-                    exc_info=True
+                    f"Failed to record episodic event for task {task.id}: {e}", exc_info=True
                 )
 
         # Send notification (if available)
@@ -266,10 +254,7 @@ class BackgroundTriggerService:
             try:
                 await self._send_notification(task)
             except Exception as e:
-                logger.error(
-                    f"Failed to send notification for task {task.id}: {e}",
-                    exc_info=True
-                )
+                logger.error(f"Failed to send notification for task {task.id}: {e}", exc_info=True)
 
     async def _send_notification(self, task: ProspectiveTask) -> None:
         """Send notification about task activation.

@@ -18,8 +18,7 @@ Decision Logic:
 """
 
 import logging
-from typing import Optional, Dict, Any, List
-from datetime import datetime
+from typing import Optional, Dict, Any
 
 # Import coordinator base class
 from .coordinator import AgentCoordinator
@@ -27,7 +26,6 @@ from .coordinator import AgentCoordinator
 # Import core memory operations
 from ..episodic.operations import remember as remember_event
 from ..memory.operations import store as store_fact
-from ..procedural.operations import extract_procedure as extract_proc
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +99,7 @@ class MemoryCoordinatorAgent(AgentCoordinator):
         try:
             # Query semantic memory for similar content
             from ..memory.operations import search as search_semantic
+
             similar = await search_semantic(content, limit=1)
 
             # If we find something with high confidence, it's not novel
@@ -149,9 +148,7 @@ class MemoryCoordinatorAgent(AgentCoordinator):
         # Default: store as episodic event
         return "episodic"
 
-    async def coordinate_storage(
-        self, context: Dict[str, Any]
-    ) -> Optional[str]:
+    async def coordinate_storage(self, context: Dict[str, Any]) -> Optional[str]:
         """Coordinate memory storage decision and execution.
 
         This is the main entry point for the agent. Given a context,
@@ -197,9 +194,7 @@ class MemoryCoordinatorAgent(AgentCoordinator):
                     source=source,
                     importance=importance,
                 )
-                logger.info(
-                    f"Coordinator stored episodic memory: {memory_id}"
-                )
+                logger.info(f"Coordinator stored episodic memory: {memory_id}")
 
             elif memory_type == "semantic":
                 # Store as semantic fact
@@ -208,9 +203,7 @@ class MemoryCoordinatorAgent(AgentCoordinator):
                     topics=tags,
                     confidence=importance,
                 )
-                logger.info(
-                    f"Coordinator stored semantic memory: {memory_id}"
-                )
+                logger.info(f"Coordinator stored semantic memory: {memory_id}")
 
             elif memory_type == "procedural":
                 # Note: procedural extraction happens from episodic events
@@ -222,9 +215,7 @@ class MemoryCoordinatorAgent(AgentCoordinator):
                     source=source,
                     importance=importance,
                 )
-                logger.info(
-                    f"Coordinator stored procedural source (episodic): {memory_id}"
-                )
+                logger.info(f"Coordinator stored procedural source (episodic): {memory_id}")
 
             if memory_id:
                 self.memories_stored += 1

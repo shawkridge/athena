@@ -8,10 +8,7 @@ from typing import Dict, List, Optional, Tuple
 
 from ..consolidation.project_learning import ProjectLearningEngine
 from .models import (
-    ExecutionFeedback,
-    ExecutionOutcome,
     PlanningPattern,
-    ValidationRule,
 )
 from .store import PlanningStore
 
@@ -334,7 +331,11 @@ class AdaptiveReplanning:
         remaining_tasks = total_planned_tasks - completed_tasks
 
         # Adjust based on actual vs planned ratio
-        ratio = average_duration_actual / average_duration_planned if average_duration_planned > 0 else 1.0
+        ratio = (
+            average_duration_actual / average_duration_planned
+            if average_duration_planned > 0
+            else 1.0
+        )
 
         remaining_minutes = int(remaining_tasks * average_duration_planned * ratio)
         description = (

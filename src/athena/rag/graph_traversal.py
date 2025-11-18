@@ -7,7 +7,7 @@ semantic relationship exploration.
 """
 
 import logging
-from typing import Optional, List, Dict, Set, Tuple, Any
+from typing import Optional, List
 from dataclasses import dataclass, field
 from collections import deque
 
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GraphEntity:
     """Entity in knowledge graph."""
+
     entity_id: int
     name: str
     entity_type: str
@@ -29,6 +30,7 @@ class GraphEntity:
 @dataclass
 class GraphRelation:
     """Relationship between entities."""
+
     from_entity_id: int
     to_entity_id: int
     relation_type: str
@@ -38,6 +40,7 @@ class GraphRelation:
 @dataclass
 class TraversalResult:
     """Result of graph traversal."""
+
     root_entity: Optional[GraphEntity] = None
     related_entities: List[GraphEntity] = field(default_factory=list)
     relations: List[GraphRelation] = field(default_factory=list)
@@ -103,7 +106,7 @@ class GraphTraversal:
 
             return TraversalResult(
                 root_entity=root,
-                related_entities=related[:self.max_results],
+                related_entities=related[: self.max_results],
                 relations=relations,
                 context_summary=summary,
                 richness_score=richness,
@@ -365,7 +368,7 @@ class GraphTraversal:
             for entity in related[:5]:
                 rel_type = next(
                     (r.relation_type for r in relations if r.to_entity_id == entity.entity_id),
-                    "related to"
+                    "related to",
                 )
                 lines.append(f"  • {entity.name} ({rel_type})")
 
@@ -401,11 +404,7 @@ class GraphTraversal:
         depth_richness = 0.5 if len(related) > 0 else 0.0  # Has any depth
 
         # Weighted average
-        richness = (
-            0.4 * entity_richness +
-            0.4 * relation_richness +
-            0.2 * depth_richness
-        )
+        richness = 0.4 * entity_richness + 0.4 * relation_richness + 0.2 * depth_richness
 
         return min(1.0, richness)
 

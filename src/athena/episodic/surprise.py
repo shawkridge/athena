@@ -13,7 +13,7 @@ Key Innovation: Surprise = KL Divergence(P_after || P_before) + Prediction Error
 
 import math
 import numpy as np
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from dataclasses import dataclass
 
 
@@ -161,9 +161,7 @@ class BayesianSurprise:
         ]
 
         # Step 2: Find peaks above threshold
-        candidate_boundaries = [
-            i for i, s in enumerate(surprises) if s > threshold
-        ]
+        candidate_boundaries = [i for i, s in enumerate(surprises) if s > threshold]
 
         if not candidate_boundaries:
             return []
@@ -174,9 +172,7 @@ class BayesianSurprise:
         )
 
         # Step 4: Refine with coherence checking
-        refined_boundaries = self._refine_with_coherence(
-            tokens, filtered_boundaries, surprises
-        )
+        refined_boundaries = self._refine_with_coherence(tokens, filtered_boundaries, surprises)
 
         # Step 5: Create SurpriseEvent objects with confidence scores
         surprise_events = []
@@ -186,9 +182,7 @@ class BayesianSurprise:
             surprise_score = surprises[boundary_idx]
             normalized = surprise_score / max_surprise if max_surprise > 0 else 0
             coherence = self._calculate_local_coherence(tokens, boundary_idx)
-            confidence = (
-                0.7 * normalized + 0.3 * coherence
-            )  # Weight surprise + coherence
+            confidence = 0.7 * normalized + 0.3 * coherence  # Weight surprise + coherence
 
             event = SurpriseEvent(
                 index=boundary_idx,
@@ -475,14 +469,8 @@ class BayesianSurprise:
         after_window = tokens[idx : min(len(tokens), idx + window_size)]
 
         # Calculate type-token ratio in each window
-        before_ratio = (
-            len(set(before_window)) / len(before_window)
-            if before_window
-            else 0.5
-        )
-        after_ratio = (
-            len(set(after_window)) / len(after_window) if after_window else 0.5
-        )
+        before_ratio = len(set(before_window)) / len(before_window) if before_window else 0.5
+        after_ratio = len(set(after_window)) / len(after_window) if after_window else 0.5
 
         # Coherence = inverse of type-token ratio (token repetition)
         # Low type-token ratio = high repetition = high coherence = BAD split point

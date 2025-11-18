@@ -164,7 +164,11 @@ class EnhancedCodeParser:
                                         CodeElement(
                                             element_id=f"{file_path}:import:{match_text[:30]}",
                                             file_path=file_path,
-                                            language=CodeLanguage.TYPESCRIPT if language == "typescript" else CodeLanguage.JAVASCRIPT,
+                                            language=(
+                                                CodeLanguage.TYPESCRIPT
+                                                if language == "typescript"
+                                                else CodeLanguage.JAVASCRIPT
+                                            ),
                                             element_type=CodeElementType.IMPORT,
                                             name=match_text.strip(),
                                             source_code=match_text,
@@ -229,7 +233,11 @@ class EnhancedCodeParser:
                                                 CodeElement(
                                                     element_id=f"{file_path}:function:{name}",
                                                     file_path=file_path,
-                                                    language=CodeLanguage.TYPESCRIPT if language == "typescript" else CodeLanguage.JAVASCRIPT,
+                                                    language=(
+                                                        CodeLanguage.TYPESCRIPT
+                                                        if language == "typescript"
+                                                        else CodeLanguage.JAVASCRIPT
+                                                    ),
                                                     element_type=CodeElementType.FUNCTION,
                                                     name=name,
                                                     source_code=match_text,
@@ -282,6 +290,7 @@ class EnhancedCodeParser:
                                 if match_text:
                                     # Extract class name
                                     import re
+
                                     name_match = re.search(r"class\s+(\w+)", match_text)
                                     if name_match:
                                         name = name_match.group(1)
@@ -289,7 +298,11 @@ class EnhancedCodeParser:
                                             CodeElement(
                                                 element_id=f"{file_path}:class:{name}",
                                                 file_path=file_path,
-                                                language=CodeLanguage.TYPESCRIPT if language == "typescript" else CodeLanguage.JAVASCRIPT,
+                                                language=(
+                                                    CodeLanguage.TYPESCRIPT
+                                                    if language == "typescript"
+                                                    else CodeLanguage.JAVASCRIPT
+                                                ),
                                                 element_type=CodeElementType.CLASS,
                                                 name=name,
                                                 source_code=match_text,
@@ -346,7 +359,11 @@ class EnhancedCodeParser:
                                         CodeElement(
                                             element_id=f"{file_path}:export:{count}",
                                             file_path=file_path,
-                                            language=CodeLanguage.TYPESCRIPT if language == "typescript" else CodeLanguage.JAVASCRIPT,
+                                            language=(
+                                                CodeLanguage.TYPESCRIPT
+                                                if language == "typescript"
+                                                else CodeLanguage.JAVASCRIPT
+                                            ),
                                             element_type=CodeElementType.CLASS,  # Use class for exports
                                             name=f"export_{count}",
                                             source_code=match_text,
@@ -402,6 +419,7 @@ class EnhancedCodeParser:
     def _extract_name_from_pattern(self, text: str) -> Optional[str]:
         """Extract function name from matched text."""
         import re
+
         patterns = [
             r"function\s+(\w+)",
             r"const\s+(\w+)",

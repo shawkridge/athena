@@ -9,11 +9,11 @@ Manages workflow orchestration with goal awareness:
 - Strategy-aware planning pipeline
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple
 from enum import Enum
 
-from .models import Goal, GoalStatus, GoalType, TaskSwitch, StrategyType
+from .models import Goal, GoalStatus, TaskSwitch, StrategyType
 from .hierarchy import GoalHierarchy
 from .strategy import StrategySelector
 from .conflict import ConflictResolver
@@ -180,7 +180,7 @@ class OrchestrationBridge:
 
         # Priority factor
         priority_diff = abs(from_goal.priority - to_goal.priority)
-        cost *= (1.0 + priority_diff * 0.05)  # Max 50% increase
+        cost *= 1.0 + priority_diff * 0.05  # Max 50% increase
 
         # Dependency factor
         if to_goal.parent_goal_id == from_goal.id:
@@ -229,9 +229,7 @@ class OrchestrationBridge:
                 lower_priority_id = max(
                     conflict["goal_ids"],
                     key=lambda gid: (
-                        self.hierarchy.get_goal(gid).priority
-                        if self.hierarchy.get_goal(gid)
-                        else 0
+                        self.hierarchy.get_goal(gid).priority if self.hierarchy.get_goal(gid) else 0
                     ),
                 )
                 goal = self.hierarchy.get_goal(lower_priority_id)
@@ -426,14 +424,16 @@ class OrchestrationBridge:
         for goal in goals:
             # Calculate composite score
             score = self._calculate_goal_priority_score(goal)
-            scored.append({
-                "goal_id": goal.id,
-                "goal_text": goal.goal_text,
-                "priority": goal.priority,
-                "score": score,
-                "on_track": goal.is_on_track(),
-                "days_to_deadline": goal.days_to_deadline(),
-            })
+            scored.append(
+                {
+                    "goal_id": goal.id,
+                    "goal_text": goal.goal_text,
+                    "priority": goal.priority,
+                    "score": score,
+                    "on_track": goal.is_on_track(),
+                    "days_to_deadline": goal.days_to_deadline(),
+                }
+            )
 
         # Sort by score descending
         return sorted(scored, key=lambda g: g["score"], reverse=True)

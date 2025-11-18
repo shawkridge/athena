@@ -38,12 +38,14 @@ class SpatialGrounder:
             db: Database connection
         """
         self.db = db
+
     def _ensure_schema(self):
         """Create spatial_grounding tables if they don't exist."""
         cursor = self.db.get_cursor()
 
         # Table: Integration links between coordination and memory layers
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS integration_links (
                 id INTEGER PRIMARY KEY,
                 source_type TEXT NOT NULL,  -- ExecutionTrace, CodeContext, etc
@@ -55,10 +57,12 @@ class SpatialGrounder:
                 created_at INTEGER NOT NULL,
                 last_accessed INTEGER
             )
-        """)
+        """
+        )
 
         # Table: Graph entity references (cross-layer)
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS graph_entity_refs (
                 id INTEGER PRIMARY KEY,
                 entity_name TEXT NOT NULL,  -- function, class, file, etc
@@ -71,31 +75,35 @@ class SpatialGrounder:
                 metadata TEXT,              -- JSON with additional context
                 created_at INTEGER NOT NULL
             )
-        """)
+        """
+        )
 
         # Indexes for performance
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_integration_links_source
             ON integration_links(source_type, source_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_integration_links_target
             ON integration_links(target_type, target_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_graph_entity_name
             ON graph_entity_refs(entity_name, entity_type)
-        """)
+        """
+        )
 
         # commit handled by cursor context
 
     def link_code_context_to_spatial(
-        self,
-        code_context: "CodeContext",
-        episodic_event_id: int,
-        task_id: Optional[str] = None
+        self, code_context: "CodeContext", episodic_event_id: int, task_id: Optional[str] = None
     ) -> int:
         """Link CodeContext files to spatial hierarchy.
 
@@ -119,22 +127,29 @@ class SpatialGrounder:
                     "task_id": task_id,
                     "context_id": code_context.context_id,
                     "file_count": code_context.file_count,
-                    "dependency_types": [str(d) for d in code_context.dependency_types] if code_context.dependency_types else [],
+                    "dependency_types": (
+                        [str(d) for d in code_context.dependency_types]
+                        if code_context.dependency_types
+                        else []
+                    ),
                 }
 
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO integration_links
                     (source_type, source_id, target_type, target_id, link_type, metadata, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    "CodeContext",
-                    str(code_context.context_id),
-                    "spatial_node",
-                    episodic_event_id,
-                    "file_scope",
-                    json.dumps(metadata),
-                    now
-                ))
+                """,
+                    (
+                        "CodeContext",
+                        str(code_context.context_id),
+                        "spatial_node",
+                        episodic_event_id,
+                        "file_scope",
+                        json.dumps(metadata),
+                        now,
+                    ),
+                )
 
                 link_count += 1
 
@@ -147,7 +162,7 @@ class SpatialGrounder:
         file_path: str,
         function_name: Optional[str],
         line_number: Optional[int],
-        episodic_event_id: int
+        episodic_event_id: int,
     ) -> int:
         """Link execution to specific code location.
 
@@ -170,19 +185,22 @@ class SpatialGrounder:
             "line_number": line_number,
         }
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO integration_links
             (source_type, source_id, target_type, target_id, link_type, metadata, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            "ExecutionTrace",
-            execution_id,
-            "code_location",
-            episodic_event_id,
-            "execution_location",
-            json.dumps(metadata),
-            now
-        ))
+        """,
+            (
+                "ExecutionTrace",
+                execution_id,
+                "code_location",
+                episodic_event_id,
+                "execution_location",
+                json.dumps(metadata),
+                now,
+            ),
+        )
 
         link_id = cursor.lastrowid
         # commit handled by cursor context
@@ -199,12 +217,15 @@ class SpatialGrounder:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT DISTINCT metadata
             FROM integration_links
             WHERE link_type = 'file_scope'
             AND metadata LIKE ?
-        """, (f'%"task_id": "{task_id}"%',))
+        """,
+            (f'%"task_id": "{task_id}"%',),
+        )
 
         files = []
         for row in cursor.fetchall():
@@ -228,13 +249,16 @@ class SpatialGrounder:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT COUNT(DISTINCT metadata), metadata
             FROM integration_links
             WHERE link_type = 'file_scope'
             AND metadata LIKE ?
             LIMIT 1
-        """, (f'%"task_id": "{task_id}"%',))
+        """,
+            (f'%"task_id": "{task_id}"%',),
+        )
 
         row = cursor.fetchone()
         if not row:
@@ -256,7 +280,7 @@ class SpatialGrounder:
         file_path: str,
         access_type: str,  # read, write, modify, create, delete
         execution_id: str,
-        episodic_event_id: int
+        episodic_event_id: int,
     ) -> int:
         """Record file access during execution.
 
@@ -277,19 +301,22 @@ class SpatialGrounder:
             "access_type": access_type,
         }
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO integration_links
             (source_type, source_id, target_type, target_id, link_type, metadata, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            "ExecutionTrace",
-            execution_id,
-            "spatial_node",
-            episodic_event_id,
-            f"file_{access_type}",
-            json.dumps(metadata),
-            now
-        ))
+        """,
+            (
+                "ExecutionTrace",
+                execution_id,
+                "spatial_node",
+                episodic_event_id,
+                f"file_{access_type}",
+                json.dumps(metadata),
+                now,
+            ),
+        )
 
         link_id = cursor.lastrowid
         # commit handled by cursor context
@@ -306,13 +333,16 @@ class SpatialGrounder:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT metadata
             FROM integration_links
             WHERE source_type = 'ExecutionTrace'
             AND source_id = ?
             AND link_type IN ('execution_location', 'file_read', 'file_write', 'file_modify')
-        """, (execution_id,))
+        """,
+            (execution_id,),
+        )
 
         locations = []
         for row in cursor.fetchall():
@@ -335,12 +365,15 @@ class SpatialGrounder:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT link_type, metadata
             FROM integration_links
             WHERE target_type IN ('spatial_node', 'code_location')
             AND target_id = ?
-        """, (episodic_event_id,))
+        """,
+            (episodic_event_id,),
+        )
 
         spatial_context = {
             "files": set(),

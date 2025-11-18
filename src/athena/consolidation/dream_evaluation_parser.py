@@ -32,18 +32,18 @@ class DreamEvaluationParser:
         """Initialize the parser."""
         self.score_patterns = [
             # "viability: 0.8", "score: 0.8", "confidence: 0.8"
-            r'(?:viability|score|confidence)[\s:]+([0-9]\.[0-9]|1\.0|0\.0)',
+            r"(?:viability|score|confidence)[\s:]+([0-9]\.[0-9]|1\.0|0\.0)",
             # "0.8/1.0", "0.8 out of 1.0"
-            r'([0-9]\.[0-9])\s*(?:/|out\s+of)\s*1\.?0?',
+            r"([0-9]\.[0-9])\s*(?:/|out\s+of)\s*1\.?0?",
             # "80%", "80 percent"
-            r'([0-9]+)\s*(?:%|percent)',
+            r"([0-9]+)\s*(?:%|percent)",
         ]
 
         self.tier_patterns = [
             # "tier 1", "tier1", "tier: 1"
-            r'tier[\s:]*([1-3])',
+            r"tier[\s:]*([1-3])",
             # "Tier 1: Viable", etc.
-            r'(?:viable|speculative|archive)(?:\s+\()?tier\s+([1-3])',
+            r"(?:viable|speculative|archive)(?:\s+\()?tier\s+([1-3])",
         ]
 
     def parse_evaluations(self, response_text: str) -> List[DreamEvaluation]:
@@ -85,9 +85,7 @@ class DreamEvaluationParser:
 
         # Split by dream markers
         dream_blocks = re.split(
-            r'(?:^|\n)(?:Dream|Variant|Procedure)\s+([0-9]+|[A-Za-z_]+):?',
-            text,
-            flags=re.MULTILINE
+            r"(?:^|\n)(?:Dream|Variant|Procedure)\s+([0-9]+|[A-Za-z_]+):?", text, flags=re.MULTILINE
         )
 
         # Process pairs of (dream_id, content)
@@ -114,9 +112,9 @@ class DreamEvaluationParser:
 
         # Try to find dream references (Dream 1, Dream A, Procedure name, etc.)
         dream_refs = re.finditer(
-            r'(?:Dream|Variant|Procedure|Alternative)\s+([0-9A-Za-z_\s]+?)(?=[.,:;])',
+            r"(?:Dream|Variant|Procedure|Alternative)\s+([0-9A-Za-z_\s]+?)(?=[.,:;])",
             text,
-            re.IGNORECASE
+            re.IGNORECASE,
         )
 
         for match in dream_refs:
@@ -148,7 +146,7 @@ class DreamEvaluationParser:
         import json
 
         # Find JSON blocks in the response
-        json_pattern = r'\[[\s\S]*?\]|\{[\s\S]*?\}'
+        json_pattern = r"\[[\s\S]*?\]|\{[\s\S]*?\}"
         json_blocks = re.findall(json_pattern, text)
 
         evaluations = []
@@ -187,10 +185,7 @@ class DreamEvaluationParser:
             return None
 
         return DreamEvaluation(
-            dream_id_or_name=dream_id,
-            viability_score=score,
-            tier=tier,
-            reasoning=reasoning
+            dream_id_or_name=dream_id, viability_score=score, tier=tier, reasoning=reasoning
         )
 
     def _extract_from_json_object(self, obj: Dict) -> Optional[DreamEvaluation]:
@@ -234,10 +229,7 @@ class DreamEvaluationParser:
         reasoning = obj.get("reasoning", obj.get("reason", ""))
 
         return DreamEvaluation(
-            dream_id_or_name=dream_id,
-            viability_score=score,
-            tier=tier,
-            reasoning=str(reasoning)
+            dream_id_or_name=dream_id, viability_score=score, tier=tier, reasoning=str(reasoning)
         )
 
     def _extract_score(self, text: str) -> Optional[float]:
@@ -275,9 +267,9 @@ class DreamEvaluationParser:
         """Extract reasoning text."""
         # Look for explicit reasoning sections
         reasoning_patterns = [
-            r'reason(?:ing)?:\s*([^.\n]+)',
-            r'because\s+([^.\n]+)',
-            r'explanation:\s*([^\n]+)',
+            r"reason(?:ing)?:\s*([^.\n]+)",
+            r"because\s+([^.\n]+)",
+            r"explanation:\s*([^\n]+)",
         ]
 
         for pattern in reasoning_patterns:
@@ -287,7 +279,7 @@ class DreamEvaluationParser:
                 return reason[:limit]
 
         # Fall back to first sentence
-        sentences = re.split(r'[.!?]', text)
+        sentences = re.split(r"[.!?]", text)
         if sentences:
             return sentences[0][:limit].strip()
 

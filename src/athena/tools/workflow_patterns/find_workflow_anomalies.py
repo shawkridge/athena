@@ -57,6 +57,7 @@ def find_workflow_anomalies(
     try:
         if db is None:
             from ..core.database import Database
+
             db = Database()
 
         from ..workflow.analyzer import TaskSequenceAnalyzer
@@ -75,13 +76,15 @@ def find_workflow_anomalies(
             for pattern in result.get("patterns", []):
                 confidence = pattern.get("confidence", 1.0)
                 if confidence < confidence_threshold:
-                    anomalies.append({
-                        "from_type": pattern.get("from_type"),
-                        "to_type": pattern.get("to_type"),
-                        "confidence": confidence,
-                        "frequency": pattern.get("frequency", 0),
-                        "risk": _classify_risk(confidence),
-                    })
+                    anomalies.append(
+                        {
+                            "from_type": pattern.get("from_type"),
+                            "to_type": pattern.get("to_type"),
+                            "confidence": confidence,
+                            "frequency": pattern.get("frequency", 0),
+                            "risk": _classify_risk(confidence),
+                        }
+                    )
 
         return {
             "anomalies": sorted(anomalies, key=lambda x: x.get("confidence", 1.0)),

@@ -13,7 +13,7 @@ Features:
 
 import logging
 import json
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 
@@ -23,7 +23,7 @@ from ..memory.store import MemoryStore
 from ..episodic.store import EpisodicStore
 from ..procedural.store import ProceduralStore
 from ..prospective.store import ProspectiveStore
-from .models import WorkingMemoryItem, TargetLayer, ConsolidationRoute
+from .models import WorkingMemoryItem, TargetLayer
 
 logger = logging.getLogger(__name__)
 
@@ -132,8 +132,7 @@ class ConsolidationRouterV2:
         )
 
         logger.debug(
-            f"Routed item {wm_item.id} to {target_layer.value} "
-            f"(confidence: {confidence:.2f})"
+            f"Routed item {wm_item.id} to {target_layer.value} " f"(confidence: {confidence:.2f})"
         )
 
         return target_layer, confidence
@@ -164,8 +163,7 @@ class ConsolidationRouterV2:
         ltm_id = await self._consolidate_to_layer_async(wm_item, target_layer, project_id)
 
         logger.info(
-            f"Consolidated item {wm_item.id} to {target_layer.value} "
-            f"(LTM ID: {ltm_id})"
+            f"Consolidated item {wm_item.id} to {target_layer.value} " f"(LTM ID: {ltm_id})"
         )
 
         return {
@@ -279,9 +277,7 @@ class ConsolidationRouterV2:
                 return None
 
         except Exception as e:
-            logger.error(
-                f"Failed to consolidate item {wm_item.id} to {target_layer.value}: {e}"
-            )
+            logger.error(f"Failed to consolidate item {wm_item.id} to {target_layer.value}: {e}")
             return None
 
     # ========================================================================
@@ -374,7 +370,6 @@ class ConsolidationRouterV2:
 
     def _has_temporal_markers(self, content: str) -> bool:
         """Check for temporal indicators."""
-        from datetime import datetime
 
         temporal_words = [
             "yesterday",
@@ -467,15 +462,18 @@ class ConsolidationRouterV2:
         """
         try:
             cursor = self.db.get_cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO consolidation_routes
                 (target_layer, confidence, features)
                 VALUES (?, ?, ?)
-            """, (
-                target_layer.value,
-                confidence,
-                json.dumps(features.tolist()),
-            ))
+            """,
+                (
+                    target_layer.value,
+                    confidence,
+                    json.dumps(features.tolist()),
+                ),
+            )
             self.db.commit()
         except Exception as e:
             logger.error(f"Failed to log routing decision: {e}")
@@ -497,18 +495,20 @@ class ConsolidationRouterV2:
             total = cursor.fetchone()["count"] if cursor.fetchone() else 0
 
             # Routes by layer
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT target_layer, COUNT(*) as count
                 FROM consolidation_routes
                 GROUP BY target_layer
-            """)
+            """
+            )
             by_layer = cursor.fetchall()
 
             return {
                 "total_routes": total,
-                "by_layer": {
-                    row["target_layer"]: row["count"] for row in by_layer
-                } if by_layer else {},
+                "by_layer": (
+                    {row["target_layer"]: row["count"] for row in by_layer} if by_layer else {}
+                ),
                 "is_trained": self.is_trained,
             }
         except Exception as e:

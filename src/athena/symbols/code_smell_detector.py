@@ -13,7 +13,7 @@ Provides:
 - Feature envy detection
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
 import re
@@ -23,6 +23,7 @@ from .symbol_models import Symbol, SymbolType
 
 class CodeSmellType(str, Enum):
     """Types of code smells."""
+
     LONG_METHOD = "long_method"  # Method/function too long
     TOO_MANY_PARAMETERS = "too_many_parameters"  # Too many parameters
     LONG_VARIABLE_NAME = "long_variable_name"  # Variable name too long
@@ -41,6 +42,7 @@ class CodeSmellType(str, Enum):
 
 class SmellSeverity(str, Enum):
     """Severity levels for code smells."""
+
     INFO = "info"  # Informational
     LOW = "low"  # Minor code smell
     MEDIUM = "medium"  # Moderate code smell
@@ -51,6 +53,7 @@ class SmellSeverity(str, Enum):
 @dataclass
 class CodeSmell:
     """A detected code smell."""
+
     symbol: Symbol
     smell_type: CodeSmellType
     severity: SmellSeverity
@@ -63,6 +66,7 @@ class CodeSmell:
 @dataclass
 class SmellMetrics:
     """Code smell metrics for analyzed code."""
+
     total_symbols: int
     symbols_with_smells: int
     total_smells: int
@@ -100,36 +104,49 @@ class CodeSmellDetector:
         smells = []
 
         # Skip non-analyzable symbols
-        if symbol.symbol_type not in [SymbolType.FUNCTION, SymbolType.METHOD, SymbolType.ASYNC_FUNCTION, SymbolType.CLASS]:
+        if symbol.symbol_type not in [
+            SymbolType.FUNCTION,
+            SymbolType.METHOD,
+            SymbolType.ASYNC_FUNCTION,
+            SymbolType.CLASS,
+        ]:
             return smells
 
-        lines = code.split('\n')
+        lines = code.split("\n")
 
         # Check long method/function
         if len(lines) > self.long_method_threshold:
-            smells.append(CodeSmell(
-                symbol=symbol,
-                smell_type=CodeSmellType.LONG_METHOD,
-                severity=SmellSeverity.MEDIUM,
-                line_number=symbol.line_start,
-                code_snippet=f"Function spans {len(lines)} lines",
-                message=f"{symbol.symbol_type.value} is too long ({len(lines)} lines)",
-                suggestion="Consider breaking into smaller methods. Aim for methods under 20 lines."
-            ))
+            smells.append(
+                CodeSmell(
+                    symbol=symbol,
+                    smell_type=CodeSmellType.LONG_METHOD,
+                    severity=SmellSeverity.MEDIUM,
+                    line_number=symbol.line_start,
+                    code_snippet=f"Function spans {len(lines)} lines",
+                    message=f"{symbol.symbol_type.value} is too long ({len(lines)} lines)",
+                    suggestion="Consider breaking into smaller methods. Aim for methods under 20 lines.",
+                )
+            )
 
         # Check parameters
-        if symbol.symbol_type in [SymbolType.FUNCTION, SymbolType.METHOD, SymbolType.ASYNC_FUNCTION]:
+        if symbol.symbol_type in [
+            SymbolType.FUNCTION,
+            SymbolType.METHOD,
+            SymbolType.ASYNC_FUNCTION,
+        ]:
             param_count = self._count_parameters(symbol.signature)
             if param_count > self.too_many_params_threshold:
-                smells.append(CodeSmell(
-                    symbol=symbol,
-                    smell_type=CodeSmellType.TOO_MANY_PARAMETERS,
-                    severity=SmellSeverity.HIGH,
-                    line_number=symbol.line_start,
-                    code_snippet=symbol.signature[:80],
-                    message=f"Too many parameters ({param_count})",
-                    suggestion="Consider using objects to group related parameters. Limit to 5 parameters."
-                ))
+                smells.append(
+                    CodeSmell(
+                        symbol=symbol,
+                        smell_type=CodeSmellType.TOO_MANY_PARAMETERS,
+                        severity=SmellSeverity.HIGH,
+                        line_number=symbol.line_start,
+                        code_snippet=symbol.signature[:80],
+                        message=f"Too many parameters ({param_count})",
+                        suggestion="Consider using objects to group related parameters. Limit to 5 parameters.",
+                    )
+                )
 
         # Check variable names
         for line_num, line in enumerate(lines, symbol.line_start):
@@ -139,40 +156,46 @@ class CodeSmellDetector:
         # Check nesting depth
         max_nesting = self._calculate_max_nesting(code)
         if max_nesting > self.deep_nesting_threshold:
-            smells.append(CodeSmell(
-                symbol=symbol,
-                smell_type=CodeSmellType.DEEP_NESTING,
-                severity=SmellSeverity.MEDIUM,
-                line_number=symbol.line_start,
-                code_snippet="Nested code block",
-                message=f"Code has deep nesting ({max_nesting} levels)",
-                suggestion="Extract nested blocks into separate methods. Limit nesting to 3 levels."
-            ))
+            smells.append(
+                CodeSmell(
+                    symbol=symbol,
+                    smell_type=CodeSmellType.DEEP_NESTING,
+                    severity=SmellSeverity.MEDIUM,
+                    line_number=symbol.line_start,
+                    code_snippet="Nested code block",
+                    message=f"Code has deep nesting ({max_nesting} levels)",
+                    suggestion="Extract nested blocks into separate methods. Limit nesting to 3 levels.",
+                )
+            )
 
         # Check missing documentation
         if not symbol.docstring or symbol.docstring.strip() == "":
-            smells.append(CodeSmell(
-                symbol=symbol,
-                smell_type=CodeSmellType.MISSING_DOCUMENTATION,
-                severity=SmellSeverity.LOW,
-                line_number=symbol.line_start,
-                code_snippet=symbol.signature[:80],
-                message=f"Missing docstring",
-                suggestion="Add docstring explaining purpose, parameters, and return value."
-            ))
+            smells.append(
+                CodeSmell(
+                    symbol=symbol,
+                    smell_type=CodeSmellType.MISSING_DOCUMENTATION,
+                    severity=SmellSeverity.LOW,
+                    line_number=symbol.line_start,
+                    code_snippet=symbol.signature[:80],
+                    message="Missing docstring",
+                    suggestion="Add docstring explaining purpose, parameters, and return value.",
+                )
+            )
 
         # Check complexity
         complexity = symbol.metrics.cyclomatic_complexity
         if complexity > self.high_complexity_threshold:
-            smells.append(CodeSmell(
-                symbol=symbol,
-                smell_type=CodeSmellType.HIGH_COMPLEXITY,
-                severity=SmellSeverity.HIGH,
-                line_number=symbol.line_start,
-                code_snippet=f"Cyclomatic complexity: {complexity}",
-                message=f"High complexity ({complexity})",
-                suggestion="Reduce conditional branches. Extract into smaller methods with single responsibility."
-            ))
+            smells.append(
+                CodeSmell(
+                    symbol=symbol,
+                    smell_type=CodeSmellType.HIGH_COMPLEXITY,
+                    severity=SmellSeverity.HIGH,
+                    line_number=symbol.line_start,
+                    code_snippet=f"Cyclomatic complexity: {complexity}",
+                    message=f"High complexity ({complexity})",
+                    suggestion="Reduce conditional branches. Extract into smaller methods with single responsibility.",
+                )
+            )
 
         # Check for magic numbers
         for line_num, line in enumerate(lines, symbol.line_start):
@@ -182,15 +205,17 @@ class CodeSmellDetector:
         # Check for feature envy
         method_calls = self._count_method_calls(code)
         if method_calls > 10:
-            smells.append(CodeSmell(
-                symbol=symbol,
-                smell_type=CodeSmellType.FEATURE_ENVY,
-                severity=SmellSeverity.MEDIUM,
-                line_number=symbol.line_start,
-                code_snippet=f"{method_calls} method calls detected",
-                message=f"Possible feature envy ({method_calls} method calls)",
-                suggestion="Method may be using another class too much. Consider moving to that class."
-            ))
+            smells.append(
+                CodeSmell(
+                    symbol=symbol,
+                    smell_type=CodeSmellType.FEATURE_ENVY,
+                    severity=SmellSeverity.MEDIUM,
+                    line_number=symbol.line_start,
+                    code_snippet=f"{method_calls} method calls detected",
+                    message=f"Possible feature envy ({method_calls} method calls)",
+                    suggestion="Method may be using another class too much. Consider moving to that class.",
+                )
+            )
 
         self.smells.extend(smells)
         return smells
@@ -198,44 +223,48 @@ class CodeSmellDetector:
     def _count_parameters(self, signature: str) -> int:
         """Count parameters in a function signature."""
         # Simple parameter counting
-        if '(' not in signature or ')' not in signature:
+        if "(" not in signature or ")" not in signature:
             return 0
-        params_str = signature[signature.find('(') + 1:signature.rfind(')')]
+        params_str = signature[signature.find("(") + 1 : signature.rfind(")")]
         if not params_str.strip():
             return 0
-        return len([p for p in params_str.split(',') if p.strip() and p.strip() != 'self'])
+        return len([p for p in params_str.split(",") if p.strip() and p.strip() != "self"])
 
     def _check_variable_names(self, symbol: Symbol, line: str, line_num: int) -> List[CodeSmell]:
         """Check for problematic variable names."""
         smells = []
 
         # Check for very long variable names
-        matches = re.findall(r'\b[a-zA-Z_]\w{' + str(self.long_name_threshold) + ',}\b', line)
+        matches = re.findall(r"\b[a-zA-Z_]\w{" + str(self.long_name_threshold) + ",}\b", line)
         for match in matches:
-            smells.append(CodeSmell(
-                symbol=symbol,
-                smell_type=CodeSmellType.LONG_VARIABLE_NAME,
-                severity=SmellSeverity.LOW,
-                line_number=line_num,
-                code_snippet=line.strip()[:80],
-                message=f"Variable name too long: '{match}'",
-                suggestion="Use shorter, more concise variable names. Avoid redundancy."
-            ))
+            smells.append(
+                CodeSmell(
+                    symbol=symbol,
+                    smell_type=CodeSmellType.LONG_VARIABLE_NAME,
+                    severity=SmellSeverity.LOW,
+                    line_number=line_num,
+                    code_snippet=line.strip()[:80],
+                    message=f"Variable name too long: '{match}'",
+                    suggestion="Use shorter, more concise variable names. Avoid redundancy.",
+                )
+            )
 
         # Check for single-letter variable names (except loop counters i, j, k, x, y, z)
-        single_letter_vars = re.findall(r'\b(?<![a-zA-Z0-9_])([^ijkxyz])\s*=', line)
-        if single_letter_vars and 'for' not in line:
+        single_letter_vars = re.findall(r"\b(?<![a-zA-Z0-9_])([^ijkxyz])\s*=", line)
+        if single_letter_vars and "for" not in line:
             for var in single_letter_vars:
-                if var not in ['i', 'j', 'k', 'x', 'y', 'z']:
-                    smells.append(CodeSmell(
-                        symbol=symbol,
-                        smell_type=CodeSmellType.SHORT_VARIABLE_NAME,
-                        severity=SmellSeverity.LOW,
-                        line_number=line_num,
-                        code_snippet=line.strip()[:80],
-                        message=f"Single-letter variable name: '{var}'",
-                        suggestion="Use descriptive variable names that indicate purpose."
-                    ))
+                if var not in ["i", "j", "k", "x", "y", "z"]:
+                    smells.append(
+                        CodeSmell(
+                            symbol=symbol,
+                            smell_type=CodeSmellType.SHORT_VARIABLE_NAME,
+                            severity=SmellSeverity.LOW,
+                            line_number=line_num,
+                            code_snippet=line.strip()[:80],
+                            message=f"Single-letter variable name: '{var}'",
+                            suggestion="Use descriptive variable names that indicate purpose.",
+                        )
+                    )
 
         return smells
 
@@ -244,33 +273,35 @@ class CodeSmellDetector:
         max_depth = 0
         current_depth = 0
         for char in code:
-            if char in '{[(':
+            if char in "{[(":
                 current_depth += 1
                 max_depth = max(max_depth, current_depth)
-            elif char in '}])':
+            elif char in "}])":
                 current_depth = max(0, current_depth - 1)
         return max_depth
 
     def _count_method_calls(self, code: str) -> int:
         """Count method calls (.) in code."""
-        return len(re.findall(r'\.\w+\s*\(', code))
+        return len(re.findall(r"\.\w+\s*\(", code))
 
     def _check_magic_numbers(self, symbol: Symbol, line: str, line_num: int) -> List[CodeSmell]:
         """Check for magic numbers in code."""
         smells = []
 
         # Look for numeric literals (not in strings)
-        magic_numbers = re.findall(r'(?<!\w)([0-9]{3,}|[0-9]\.[0-9]{2,})(?!\w)', line)
+        magic_numbers = re.findall(r"(?<!\w)([0-9]{3,}|[0-9]\.[0-9]{2,})(?!\w)", line)
         if magic_numbers and '"' not in line and "'" not in line:
-            smells.append(CodeSmell(
-                symbol=symbol,
-                smell_type=CodeSmellType.MAGIC_NUMBERS,
-                severity=SmellSeverity.LOW,
-                line_number=line_num,
-                code_snippet=line.strip()[:80],
-                message=f"Magic number detected: {magic_numbers[0]}",
-                suggestion="Extract magic numbers to named constants. Makes code more maintainable."
-            ))
+            smells.append(
+                CodeSmell(
+                    symbol=symbol,
+                    smell_type=CodeSmellType.MAGIC_NUMBERS,
+                    severity=SmellSeverity.LOW,
+                    line_number=line_num,
+                    code_snippet=line.strip()[:80],
+                    message=f"Magic number detected: {magic_numbers[0]}",
+                    suggestion="Extract magic numbers to named constants. Makes code more maintainable.",
+                )
+            )
 
         return smells
 
@@ -326,7 +357,7 @@ class CodeSmellDetector:
             medium_count=medium_count,
             low_count=low_count,
             info_count=info_count,
-            smell_density=smell_density
+            smell_density=smell_density,
         )
 
     def get_smells(self, severity: Optional[SmellSeverity] = None) -> List[CodeSmell]:

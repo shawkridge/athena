@@ -53,7 +53,7 @@ class AuditAction(str, Enum):
 class AuditLogger:
     """Audit logger for security-relevant events."""
 
-    def __init__(self, name: str = 'athena.audit'):
+    def __init__(self, name: str = "athena.audit"):
         """Initialize audit logger.
 
         Args:
@@ -69,7 +69,7 @@ class AuditLogger:
         resource_id: Optional[str] = None,
         details: Optional[Dict[str, Any]] = None,
         user_id: Optional[str] = None,
-        status: str = 'success',
+        status: str = "success",
     ):
         """Log audit action.
 
@@ -83,31 +83,26 @@ class AuditLogger:
             status: Status (success, failure)
         """
         audit_entry = {
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
-            'action': action.value,
-            'status': status,
-            'project_id': project_id,
-            'resource_type': resource_type,
-            'resource_id': resource_id,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "action": action.value,
+            "status": status,
+            "project_id": project_id,
+            "resource_type": resource_type,
+            "resource_id": resource_id,
         }
 
         if user_id:
-            audit_entry['user_id'] = user_id
+            audit_entry["user_id"] = user_id
 
         if details:
-            audit_entry['details'] = details
+            audit_entry["details"] = details
 
         self.logger.info(json.dumps(audit_entry))
 
     # Memory operations
 
     def log_memory_store(
-        self,
-        project_id: str,
-        memory_id: str,
-        memory_type: str,
-        size_bytes: int,
-        **kwargs
+        self, project_id: str, memory_id: str, memory_type: str, size_bytes: int, **kwargs
     ):
         """Log memory storage.
 
@@ -121,21 +116,13 @@ class AuditLogger:
         self.log_action(
             AuditAction.MEMORY_STORE,
             project_id=project_id,
-            resource_type='memory',
+            resource_type="memory",
             resource_id=memory_id,
-            details={
-                'memory_type': memory_type,
-                'size_bytes': size_bytes,
-                **kwargs
-            }
+            details={"memory_type": memory_type, "size_bytes": size_bytes, **kwargs},
         )
 
     def log_memory_delete(
-        self,
-        project_id: str,
-        memory_id: str,
-        reason: str = 'user_request',
-        **kwargs
+        self, project_id: str, memory_id: str, reason: str = "user_request", **kwargs
     ):
         """Log memory deletion.
 
@@ -148,21 +135,12 @@ class AuditLogger:
         self.log_action(
             AuditAction.MEMORY_DELETE,
             project_id=project_id,
-            resource_type='memory',
+            resource_type="memory",
             resource_id=memory_id,
-            details={
-                'reason': reason,
-                **kwargs
-            }
+            details={"reason": reason, **kwargs},
         )
 
-    def log_memory_retrieve(
-        self,
-        project_id: str,
-        query: str,
-        result_count: int,
-        **kwargs
-    ):
+    def log_memory_retrieve(self, project_id: str, query: str, result_count: int, **kwargs):
         """Log memory retrieval.
 
         Args:
@@ -175,21 +153,15 @@ class AuditLogger:
             AuditAction.MEMORY_RETRIEVE,
             project_id=project_id,
             details={
-                'query': query[:100],  # Truncate for logging
-                'result_count': result_count,
-                **kwargs
-            }
+                "query": query[:100],  # Truncate for logging
+                "result_count": result_count,
+                **kwargs,
+            },
         )
 
     # Consolidation operations
 
-    def log_consolidation_start(
-        self,
-        project_id: str,
-        strategy: str,
-        event_count: int,
-        **kwargs
-    ):
+    def log_consolidation_start(self, project_id: str, strategy: str, event_count: int, **kwargs):
         """Log consolidation start.
 
         Args:
@@ -201,11 +173,7 @@ class AuditLogger:
         self.log_action(
             AuditAction.CONSOLIDATION_START,
             project_id=project_id,
-            details={
-                'strategy': strategy,
-                'event_count': event_count,
-                **kwargs
-            }
+            details={"strategy": strategy, "event_count": event_count, **kwargs},
         )
 
     def log_consolidation_complete(
@@ -214,7 +182,7 @@ class AuditLogger:
         strategy: str,
         patterns_extracted: int,
         duration_seconds: float,
-        **kwargs
+        **kwargs,
     ):
         """Log consolidation completion.
 
@@ -229,20 +197,14 @@ class AuditLogger:
             AuditAction.CONSOLIDATION_COMPLETE,
             project_id=project_id,
             details={
-                'strategy': strategy,
-                'patterns_extracted': patterns_extracted,
-                'duration_seconds': duration_seconds,
-                **kwargs
-            }
+                "strategy": strategy,
+                "patterns_extracted": patterns_extracted,
+                "duration_seconds": duration_seconds,
+                **kwargs,
+            },
         )
 
-    def log_consolidation_error(
-        self,
-        project_id: str,
-        strategy: str,
-        error_message: str,
-        **kwargs
-    ):
+    def log_consolidation_error(self, project_id: str, strategy: str, error_message: str, **kwargs):
         """Log consolidation error.
 
         Args:
@@ -254,22 +216,13 @@ class AuditLogger:
         self.log_action(
             AuditAction.CONSOLIDATION_ERROR,
             project_id=project_id,
-            status='failure',
-            details={
-                'strategy': strategy,
-                'error': error_message,
-                **kwargs
-            }
+            status="failure",
+            details={"strategy": strategy, "error": error_message, **kwargs},
         )
 
     # Project management
 
-    def log_project_create(
-        self,
-        project_id: str,
-        project_name: str,
-        **kwargs
-    ):
+    def log_project_create(self, project_id: str, project_name: str, **kwargs):
         """Log project creation.
 
         Args:
@@ -280,20 +233,12 @@ class AuditLogger:
         self.log_action(
             AuditAction.PROJECT_CREATE,
             project_id=project_id,
-            resource_type='project',
+            resource_type="project",
             resource_id=project_id,
-            details={
-                'name': project_name,
-                **kwargs
-            }
+            details={"name": project_name, **kwargs},
         )
 
-    def log_project_delete(
-        self,
-        project_id: str,
-        project_name: str,
-        **kwargs
-    ):
+    def log_project_delete(self, project_id: str, project_name: str, **kwargs):
         """Log project deletion.
 
         Args:
@@ -304,23 +249,15 @@ class AuditLogger:
         self.log_action(
             AuditAction.PROJECT_DELETE,
             project_id=project_id,
-            resource_type='project',
+            resource_type="project",
             resource_id=project_id,
-            details={
-                'name': project_name,
-                **kwargs
-            }
+            details={"name": project_name, **kwargs},
         )
 
     # Task/Goal management
 
     def log_task_create(
-        self,
-        project_id: str,
-        task_id: str,
-        title: str,
-        priority: str = 'medium',
-        **kwargs
+        self, project_id: str, task_id: str, title: str, priority: str = "medium", **kwargs
     ):
         """Log task creation.
 
@@ -334,21 +271,13 @@ class AuditLogger:
         self.log_action(
             AuditAction.TASK_CREATE,
             project_id=project_id,
-            resource_type='task',
+            resource_type="task",
             resource_id=task_id,
-            details={
-                'title': title,
-                'priority': priority,
-                **kwargs
-            }
+            details={"title": title, "priority": priority, **kwargs},
         )
 
     def log_task_delete(
-        self,
-        project_id: str,
-        task_id: str,
-        reason: str = 'user_request',
-        **kwargs
+        self, project_id: str, task_id: str, reason: str = "user_request", **kwargs
     ):
         """Log task deletion.
 
@@ -361,21 +290,13 @@ class AuditLogger:
         self.log_action(
             AuditAction.TASK_DELETE,
             project_id=project_id,
-            resource_type='task',
+            resource_type="task",
             resource_id=task_id,
-            details={
-                'reason': reason,
-                **kwargs
-            }
+            details={"reason": reason, **kwargs},
         )
 
     def log_goal_set(
-        self,
-        project_id: str,
-        goal_id: str,
-        goal_name: str,
-        priority: str = 'medium',
-        **kwargs
+        self, project_id: str, goal_id: str, goal_name: str, priority: str = "medium", **kwargs
     ):
         """Log goal setting.
 
@@ -389,24 +310,14 @@ class AuditLogger:
         self.log_action(
             AuditAction.GOAL_SET,
             project_id=project_id,
-            resource_type='goal',
+            resource_type="goal",
             resource_id=goal_id,
-            details={
-                'name': goal_name,
-                'priority': priority,
-                **kwargs
-            }
+            details={"name": goal_name, "priority": priority, **kwargs},
         )
 
     # Configuration
 
-    def log_config_change(
-        self,
-        config_key: str,
-        old_value: Any,
-        new_value: Any,
-        **kwargs
-    ):
+    def log_config_change(self, config_key: str, old_value: Any, new_value: Any, **kwargs):
         """Log configuration change.
 
         Args:
@@ -418,20 +329,14 @@ class AuditLogger:
         self.log_action(
             AuditAction.CONFIG_CHANGE,
             details={
-                'key': config_key,
-                'old_value': str(old_value)[:100],
-                'new_value': str(new_value)[:100],
-                **kwargs
-            }
+                "key": config_key,
+                "old_value": str(old_value)[:100],
+                "new_value": str(new_value)[:100],
+                **kwargs,
+            },
         )
 
-    def log_rate_limit_change(
-        self,
-        operation: str,
-        old_limit: int,
-        new_limit: int,
-        **kwargs
-    ):
+    def log_rate_limit_change(self, operation: str, old_limit: int, new_limit: int, **kwargs):
         """Log rate limit change.
 
         Args:
@@ -443,22 +348,16 @@ class AuditLogger:
         self.log_action(
             AuditAction.RATE_LIMIT_CHANGE,
             details={
-                'operation': operation,
-                'old_limit': old_limit,
-                'new_limit': new_limit,
-                **kwargs
-            }
+                "operation": operation,
+                "old_limit": old_limit,
+                "new_limit": new_limit,
+                **kwargs,
+            },
         )
 
     # Security events
 
-    def log_permission_denied(
-        self,
-        action: str,
-        resource: str,
-        reason: str,
-        **kwargs
-    ):
+    def log_permission_denied(self, action: str, resource: str, reason: str, **kwargs):
         """Log permission denied event.
 
         Args:
@@ -469,13 +368,8 @@ class AuditLogger:
         """
         self.log_action(
             AuditAction.PERMISSION_DENIED,
-            status='failure',
-            details={
-                'action': action,
-                'resource': resource,
-                'reason': reason,
-                **kwargs
-            }
+            status="failure",
+            details={"action": action, "resource": resource, "reason": reason, **kwargs},
         )
 
 
@@ -495,7 +389,7 @@ def get_audit_logger() -> AuditLogger:
     return _audit_logger
 
 
-def initialize_audit_logger(name: str = 'athena.audit') -> AuditLogger:
+def initialize_audit_logger(name: str = "athena.audit") -> AuditLogger:
     """Initialize global audit logger.
 
     Args:

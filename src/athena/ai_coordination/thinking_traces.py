@@ -7,7 +7,6 @@ it to execution outcomes to extract effective reasoning patterns.
 from datetime import datetime
 from enum import Enum
 from typing import Optional
-from uuid import UUID
 
 from pydantic import BaseModel, Field
 

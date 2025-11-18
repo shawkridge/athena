@@ -13,12 +13,12 @@ from dataclasses import dataclass, field
 from enum import Enum
 import statistics
 
-from .symbol_models import Symbol
 from .code_quality_scorer import CodeQualityScore, QualityRating
 
 
 class TrendDirection(str, Enum):
     """Direction of metric trend."""
+
     IMPROVING = "improving"
     STABLE = "stable"
     DECLINING = "declining"
@@ -27,6 +27,7 @@ class TrendDirection(str, Enum):
 @dataclass
 class MetricStats:
     """Statistical metrics for a quality metric."""
+
     metric_name: str
     count: int
     mean: float
@@ -41,6 +42,7 @@ class MetricStats:
 @dataclass
 class QualityTrend:
     """Quality metric trend over time."""
+
     metric_name: str
     previous_value: float
     current_value: float
@@ -53,6 +55,7 @@ class QualityTrend:
 @dataclass
 class ProjectMetrics:
     """Aggregated project metrics."""
+
     total_symbols: int
     analyzed_symbols: int
     overall_quality_score: float
@@ -235,7 +238,9 @@ class MetricsAggregator:
         sorted_scores = sorted(self.scores, key=lambda s: s.overall_score)
         return [(s.symbol.name, s.overall_score) for s in sorted_scores[:limit]]
 
-    def _calculate_health_score(self, excellent: int, critical: int, total_issues: int, total: int) -> float:
+    def _calculate_health_score(
+        self, excellent: int, critical: int, total_issues: int, total: int
+    ) -> float:
         """Calculate overall project health score (0-1)."""
         if total == 0:
             return 0.0
@@ -265,45 +270,63 @@ class MetricsAggregator:
         # Overall quality trend
         change = current.overall_quality_score - previous.overall_quality_score
         percent_change = (change / max(0.1, previous.overall_quality_score)) * 100
-        direction = TrendDirection.IMPROVING if change > 0 else TrendDirection.DECLINING if change < 0 else TrendDirection.STABLE
+        direction = (
+            TrendDirection.IMPROVING
+            if change > 0
+            else TrendDirection.DECLINING if change < 0 else TrendDirection.STABLE
+        )
         is_significant = abs(change) > 5.0
 
-        trends.append(QualityTrend(
-            metric_name="overall_quality",
-            previous_value=previous.overall_quality_score,
-            current_value=current.overall_quality_score,
-            change=change,
-            percent_change=percent_change,
-            direction=direction,
-            is_significant=is_significant,
-        ))
+        trends.append(
+            QualityTrend(
+                metric_name="overall_quality",
+                previous_value=previous.overall_quality_score,
+                current_value=current.overall_quality_score,
+                change=change,
+                percent_change=percent_change,
+                direction=direction,
+                is_significant=is_significant,
+            )
+        )
 
         # Issues trend
         issues_change = current.total_issues - previous.total_issues
         issues_percent = (issues_change / max(1, previous.total_issues)) * 100
-        issues_direction = TrendDirection.DECLINING if issues_change < 0 else TrendDirection.IMPROVING if issues_change > 0 else TrendDirection.STABLE
-        trends.append(QualityTrend(
-            metric_name="total_issues",
-            previous_value=float(previous.total_issues),
-            current_value=float(current.total_issues),
-            change=float(issues_change),
-            percent_change=issues_percent,
-            direction=issues_direction,
-            is_significant=abs(issues_change) > 3,
-        ))
+        issues_direction = (
+            TrendDirection.DECLINING
+            if issues_change < 0
+            else TrendDirection.IMPROVING if issues_change > 0 else TrendDirection.STABLE
+        )
+        trends.append(
+            QualityTrend(
+                metric_name="total_issues",
+                previous_value=float(previous.total_issues),
+                current_value=float(current.total_issues),
+                change=float(issues_change),
+                percent_change=issues_percent,
+                direction=issues_direction,
+                is_significant=abs(issues_change) > 3,
+            )
+        )
 
         # Health trend
         health_change = current.health_score - previous.health_score
-        health_direction = TrendDirection.IMPROVING if health_change > 0 else TrendDirection.DECLINING if health_change < 0 else TrendDirection.STABLE
-        trends.append(QualityTrend(
-            metric_name="health_score",
-            previous_value=previous.health_score,
-            current_value=current.health_score,
-            change=health_change,
-            percent_change=(health_change / max(0.1, previous.health_score)) * 100,
-            direction=health_direction,
-            is_significant=abs(health_change) > 0.1,
-        ))
+        health_direction = (
+            TrendDirection.IMPROVING
+            if health_change > 0
+            else TrendDirection.DECLINING if health_change < 0 else TrendDirection.STABLE
+        )
+        trends.append(
+            QualityTrend(
+                metric_name="health_score",
+                previous_value=previous.health_score,
+                current_value=current.health_score,
+                change=health_change,
+                percent_change=(health_change / max(0.1, previous.health_score)) * 100,
+                direction=health_direction,
+                is_significant=abs(health_change) > 0.1,
+            )
+        )
 
         return trends
 
@@ -367,10 +390,7 @@ class MetricsAggregator:
     def get_aggregate_report(self) -> Dict:
         """Generate aggregate metrics report."""
         if self.current_metrics is None:
-            return {
-                "status": "no_data",
-                "message": "No metrics aggregated yet"
-            }
+            return {"status": "no_data", "message": "No metrics aggregated yet"}
 
         metrics = self.current_metrics
         return {
@@ -404,14 +424,18 @@ class MetricsAggregator:
             },
             "top_performers": metrics.top_performers[:5],
             "worst_performers": metrics.worst_performers[:5],
-            "trends": [
-                {
-                    "metric": t.metric_name,
-                    "direction": t.direction.value,
-                    "change": round(t.change, 2),
-                    "percent_change": round(t.percent_change, 1),
-                    "is_significant": t.is_significant,
-                }
-                for t in metrics.trends
-            ] if metrics.trends else [],
+            "trends": (
+                [
+                    {
+                        "metric": t.metric_name,
+                        "direction": t.direction.value,
+                        "change": round(t.change, 2),
+                        "percent_change": round(t.percent_change, 1),
+                        "is_significant": t.is_significant,
+                    }
+                    for t in metrics.trends
+                ]
+                if metrics.trends
+                else []
+            ),
         }

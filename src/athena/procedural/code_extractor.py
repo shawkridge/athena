@@ -5,12 +5,11 @@ steps, and examples into executable Python code suitable for storing in git.
 """
 
 import ast
-import json
 import logging
 import re
 from typing import Optional, List, Dict, Tuple
 
-from .models import Procedure, ExecutableProcedure, ProcedureParameter
+from .models import Procedure, ExecutableProcedure
 
 logger = logging.getLogger(__name__)
 
@@ -137,11 +136,13 @@ class ProcedureCodeExtractor:
             var_pattern = r"\{\{(\w+)\}\}"
             for match in re.finditer(var_pattern, self.procedure.template):
                 var_name = match.group(1)
-                params.append({
-                    "name": var_name,
-                    "type": "str",
-                    "description": f"Template variable: {var_name}",
-                })
+                params.append(
+                    {
+                        "name": var_name,
+                        "type": "str",
+                        "description": f"Template variable: {var_name}",
+                    }
+                )
 
         # Extract from steps
         if self.procedure.steps:
@@ -150,11 +151,13 @@ class ProcedureCodeExtractor:
                     if "variables" in step:
                         for var_name in step["variables"]:
                             if not any(p["name"] == var_name for p in params):
-                                params.append({
-                                    "name": var_name,
-                                    "type": "str",
-                                    "description": f"Step variable: {var_name}",
-                                })
+                                params.append(
+                                    {
+                                        "name": var_name,
+                                        "type": "str",
+                                        "description": f"Step variable: {var_name}",
+                                    }
+                                )
 
         return params
 
@@ -200,7 +203,7 @@ class ProcedureCodeExtractor:
             if action.startswith("bash:") or action.startswith("command:"):
                 # Extract command
                 cmd = action.replace("bash:", "").replace("command:", "").strip()
-                code += f"    import subprocess\n"
+                code += "    import subprocess\n"
                 code += f"    result = subprocess.run('{cmd}', shell=True, capture_output=True, text=True)\n"
                 code += f"    results['step_{step_num}_output'] = result.stdout\n"
             elif action.startswith("file:"):
@@ -302,7 +305,9 @@ class ProcedureCodeExtractor:
             analysis["factors"]["template_length"] = min(1.0, len(self.procedure.template) / 1000)
             analysis["factors"]["template_complexity"] = 0.5
 
-        analysis["factors"]["validation_passed"] = 1.0 if self._validate_code(self.generated_code) else 0.0
+        analysis["factors"]["validation_passed"] = (
+            1.0 if self._validate_code(self.generated_code) else 0.0
+        )
 
         return analysis
 

@@ -48,19 +48,12 @@ class ProjectPlan(BaseModel):
     orchestration_pattern_id: Optional[int] = None
 
     # Project structure
-    phases: list[int] = Field(
-        default_factory=list,
-        description="List of phase IDs in order"
-    )
-    milestones: list[int] = Field(
-        default_factory=list,
-        description="List of milestone IDs"
-    )
+    phases: list[int] = Field(default_factory=list, description="List of phase IDs in order")
+    milestones: list[int] = Field(default_factory=list, description="List of milestone IDs")
 
     # Validation approach
     validation_rule_ids: list[int] = Field(
-        default_factory=list,
-        description="Validation rules to apply to this project"
+        default_factory=list, description="Validation rules to apply to this project"
     )
 
     # Project metrics
@@ -72,8 +65,7 @@ class ProjectPlan(BaseModel):
     # Status
     status: str = Field(default="pending")  # pending|in_progress|completed|on_hold
     assumptions: list[str] = Field(
-        default_factory=list,
-        description="Key assumptions about the project"
+        default_factory=list, description="Key assumptions about the project"
     )
 
     # Metadata
@@ -97,10 +89,7 @@ class PhasePlan(BaseModel):
     description: str = Field(..., description="Phase description")
 
     # Execution tracking
-    tasks: list[int] = Field(
-        default_factory=list,
-        description="List of task IDs in this phase"
-    )
+    tasks: list[int] = Field(default_factory=list, description="List of task IDs in this phase")
 
     # Duration tracking
     planned_duration_days: float = Field(..., ge=0.1, description="Estimated duration")
@@ -113,27 +102,21 @@ class PhasePlan(BaseModel):
 
     # Validation gates
     pre_phase_validation_rules: list[int] = Field(
-        default_factory=list,
-        description="Validation rules to check before starting phase"
+        default_factory=list, description="Validation rules to check before starting phase"
     )
     post_phase_validation_rules: list[int] = Field(
-        default_factory=list,
-        description="Validation rules to check after completing phase"
+        default_factory=list, description="Validation rules to check after completing phase"
     )
 
     # Quality tracking
     quality_score: float = Field(default=0.0, ge=0.0, le=1.0)
     completion_criteria: list[str] = Field(
-        default_factory=list,
-        description="What defines successful completion"
+        default_factory=list, description="What defines successful completion"
     )
 
     # Feedback
     feedback_enabled: bool = Field(default=True)
-    blockers: list[str] = Field(
-        default_factory=list,
-        description="Current blockers for this phase"
-    )
+    blockers: list[str] = Field(default_factory=list, description="Current blockers for this phase")
 
     # Metadata
     created_at: datetime = Field(default_factory=datetime.now)
@@ -160,7 +143,9 @@ class TaskStatusModel(BaseModel):
     project_id: int
     phase_plan_id: int
     content: str = Field(..., description="Task description")
-    active_form: str = Field(..., description="Active form for status messages (e.g., 'Implementing X')")
+    active_form: str = Field(
+        ..., description="Active form for status messages (e.g., 'Implementing X')"
+    )
 
     # Status
     status: TaskStatus = TaskStatus.PENDING
@@ -174,26 +159,20 @@ class TaskStatusModel(BaseModel):
     # Completion
     completion_percentage: float = Field(default=0.0, ge=0.0, le=100.0)
     acceptance_criteria: list[str] = Field(
-        default_factory=list,
-        description="Criteria for task completion"
+        default_factory=list, description="Criteria for task completion"
     )
 
     # Metrics
     quality_score: float = Field(default=0.0, ge=0.0, le=1.0)
     completion_metrics: dict = Field(
-        default_factory=dict,
-        description="Custom metrics (e.g., code coverage, test pass rate)"
+        default_factory=dict, description="Custom metrics (e.g., code coverage, test pass rate)"
     )
 
     # Dependencies and blockers
     depends_on_task_ids: list[int] = Field(
-        default_factory=list,
-        description="Task IDs that must complete first"
+        default_factory=list, description="Task IDs that must complete first"
     )
-    blockers: list[str] = Field(
-        default_factory=list,
-        description="Current blockers"
-    )
+    blockers: list[str] = Field(default_factory=list, description="Current blockers")
 
     # Metadata
     created_at: datetime = Field(default_factory=datetime.now)
@@ -220,30 +199,25 @@ class Milestone(BaseModel):
 
     # Dependencies
     depends_on_task_ids: list[int] = Field(
-        default_factory=list,
-        description="Task IDs that must complete before this milestone"
+        default_factory=list, description="Task IDs that must complete before this milestone"
     )
     depends_on_milestone_ids: list[int] = Field(
-        default_factory=list,
-        description="Other milestone IDs that must complete first"
+        default_factory=list, description="Other milestone IDs that must complete first"
     )
 
     # Validation
     validation_rule_ids: list[int] = Field(
-        default_factory=list,
-        description="Rules to validate before unlocking next phase"
+        default_factory=list, description="Rules to validate before unlocking next phase"
     )
 
     # Assumptions
     assumptions: list[str] = Field(
-        default_factory=list,
-        description="Assumptions to verify at this milestone"
+        default_factory=list, description="Assumptions to verify at this milestone"
     )
 
     # Success criteria
     success_criteria: list[str] = Field(
-        default_factory=list,
-        description="Definitions of successful milestone completion"
+        default_factory=list, description="Definitions of successful milestone completion"
     )
 
     # Status
@@ -275,19 +249,12 @@ class ProjectDependency(BaseModel):
     to_phase_id: Optional[int] = None
 
     # Type
-    dependency_type: str = Field(
-        default="blocks",
-        description="blocks|depends_on|relates_to"
-    )
-    criticality: str = Field(
-        default="medium",
-        description="low|medium|high|critical"
-    )
+    dependency_type: str = Field(default="blocks", description="blocks|depends_on|relates_to")
+    criticality: str = Field(default="medium", description="low|medium|high|critical")
 
     # Validation
     validation_before_transition: bool = Field(
-        default=True,
-        description="Whether to validate dependency before transition"
+        default=True, description="Whether to validate dependency before transition"
     )
 
     # Description

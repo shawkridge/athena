@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Optional, Dict
 import logging
 
-from .models import CodeUnit, SearchResult, SearchQuery
+from .models import SearchResult
 from .indexer import CodebaseIndexer
 from .semantic_searcher import SemanticCodeSearcher
 from .parser import CodeParser
@@ -100,9 +100,7 @@ class TreeSitterCodeSearch:
         self.indexer.index_directory()
 
         # Create semantic searcher from indexed units
-        self.semantic_searcher = SemanticCodeSearcher(
-            self.indexer, self.embed_manager
-        )
+        self.semantic_searcher = SemanticCodeSearcher(self.indexer, self.embed_manager)
 
         # Add units to graph store if available
         if self.graph_store:
@@ -199,9 +197,7 @@ class TreeSitterCodeSearch:
                 return cached_results
 
         # Perform semantic search
-        results = self.semantic_searcher.search(
-            query, limit=top_k, min_score=min_score
-        )
+        results = self.semantic_searcher.search(query, limit=top_k, min_score=min_score)
 
         # Cache results
         if self.cache:
@@ -323,9 +319,7 @@ class TreeSitterCodeSearch:
             "total_units": len(units),
         }
 
-    def find_dependencies(
-        self, file_path: str, entity_name: str
-    ) -> Dict:
+    def find_dependencies(self, file_path: str, entity_name: str) -> Dict:
         """
         Find dependencies of a code entity.
 
@@ -423,11 +417,13 @@ class TreeSitterCodeSearch:
         issues = []
         for unit in units:
             if hasattr(unit, "complexity") and unit.complexity > 10:
-                issues.append({
-                    "type": "high_complexity",
-                    "unit": unit.name,
-                    "value": unit.complexity,
-                })
+                issues.append(
+                    {
+                        "type": "high_complexity",
+                        "unit": unit.name,
+                        "value": unit.complexity,
+                    }
+                )
 
         # Create analysis results
         analysis_results = {

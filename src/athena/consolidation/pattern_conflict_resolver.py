@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 class ConflictResolutionStrategy(Enum):
     """Strategies for resolving pattern conflicts."""
+
     SYSTEM_1_WINS = "system_1"  # Use fast heuristic (reliable but conservative)
     SYSTEM_2_WINS = "system_2"  # Use LLM reasoning (deeper but slower)
     MERGE = "merge"  # Combine both patterns
@@ -33,6 +34,7 @@ class ConflictResolutionStrategy(Enum):
 @dataclass
 class PatternConflict:
     """Represents a conflict between System 1 and System 2 patterns."""
+
     cluster_id: int
     system_1_pattern: Dict[str, Any]
     system_2_pattern: Dict[str, Any]
@@ -53,6 +55,7 @@ class PatternConflict:
 @dataclass
 class ResolutionResult:
     """Result of resolving a conflict."""
+
     selected_pattern: Dict[str, Any]
     strategy_used: ConflictResolutionStrategy
     rationale: str
@@ -311,9 +314,7 @@ class PatternConflictResolver:
             confidence = conflict.system_2_confidence
         elif strategy == ConflictResolutionStrategy.MERGE:
             pattern = self._merge_patterns(conflict)
-            confidence = (
-                conflict.system_1_confidence + conflict.system_2_confidence
-            ) / 2
+            confidence = (conflict.system_1_confidence + conflict.system_2_confidence) / 2
         else:  # DEFER
             pattern = conflict.system_2_pattern
             confidence = 0.5
@@ -362,9 +363,7 @@ class PatternConflictResolver:
             "average_confidence": avg_confidence,
             "requiring_human_review": human_review_count,
             "human_review_rate": (
-                human_review_count / len(self.resolutions)
-                if self.resolutions
-                else 0.0
+                human_review_count / len(self.resolutions) if self.resolutions else 0.0
             ),
         }
 

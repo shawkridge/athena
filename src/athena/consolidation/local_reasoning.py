@@ -144,9 +144,7 @@ class LocalConsolidationReasoner:
 
             # Calculate confidence from patterns
             confidence_score = (
-                sum(p.confidence for p in patterns) / len(patterns)
-                if patterns
-                else 0.0
+                sum(p.confidence for p in patterns) / len(patterns) if patterns else 0.0
             )
 
             # Optionally validate with Claude if confidence is low
@@ -159,7 +157,7 @@ class LocalConsolidationReasoner:
                 patterns = await self._validate_patterns_with_claude(
                     patterns=patterns,
                     events_text=events_text,
-                    local_reasoning=reasoning_result.text
+                    local_reasoning=reasoning_result.text,
                 )
 
             return LocalReasoningResult(
@@ -381,7 +379,7 @@ Return JSON array with validation results:
                 lambda: self.claude_client.messages.create(
                     model="claude-3-5-sonnet-20241022",
                     max_tokens=1000,
-                    messages=[{"role": "user", "content": validation_prompt}]
+                    messages=[{"role": "user", "content": validation_prompt}],
                 )
             )
 
@@ -408,7 +406,9 @@ Return JSON array with validation results:
                         else:
                             validated_patterns.append(pattern)
 
-                    logger.info(f"Claude validation: {len(validated_patterns)}/{len(patterns)} patterns validated")
+                    logger.info(
+                        f"Claude validation: {len(validated_patterns)}/{len(patterns)} patterns validated"
+                    )
                     return validated_patterns
             except (json.JSONDecodeError, IndexError) as e:
                 logger.warning(f"Failed to parse Claude validation response: {e}")
@@ -510,7 +510,8 @@ class ConsolidationWithDualProcess:
         # Step 3: Optionally validate with Claude
         if use_claude_validation and local_patterns:
             compression_result = await self.local_reasoner.compress_for_claude_validation(
-                patterns=local_patterns, events_text=self.local_reasoner._format_events(event_cluster)
+                patterns=local_patterns,
+                events_text=self.local_reasoner._format_events(event_cluster),
             )
 
             cost_saved = compression_result["token_savings"]
@@ -519,7 +520,7 @@ class ConsolidationWithDualProcess:
             claude_patterns = await self.local_reasoner._validate_patterns_with_claude(
                 patterns=local_patterns,
                 events_text=self.local_reasoner._format_events(event_cluster),
-                local_reasoning=json.dumps([p.to_dict() for p in local_patterns])
+                local_reasoning=json.dumps([p.to_dict() for p in local_patterns]),
             )
             logger.info(f"Compressed prompt: saved {cost_saved} tokens")
 
@@ -545,9 +546,7 @@ class ConsolidationWithDualProcess:
             cost_saved_percent=cost_saved_percent,
         )
 
-    def _merge_patterns(
-        self, system_1: List[Pattern], system_2: List[Pattern]
-    ) -> List[Pattern]:
+    def _merge_patterns(self, system_1: List[Pattern], system_2: List[Pattern]) -> List[Pattern]:
         """Merge patterns from System 1 and System 2 using conflict resolution.
 
         Uses intelligent conflict resolution when patterns disagree:
@@ -566,6 +565,7 @@ class ConsolidationWithDualProcess:
         # Import conflict resolver (avoid circular imports)
         try:
             from .pattern_conflict_resolver import PatternConflictResolver
+
             use_conflict_resolver = True
         except ImportError:
             use_conflict_resolver = False
@@ -672,6 +672,4 @@ def get_local_reasoner(
     Returns:
         LocalConsolidationReasoner instance
     """
-    return LocalConsolidationReasoner(
-        llm_client=llm_client, enable_compression=enable_compression
-    )
+    return LocalConsolidationReasoner(llm_client=llm_client, enable_compression=enable_compression)

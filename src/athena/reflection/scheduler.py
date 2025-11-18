@@ -4,12 +4,10 @@ Implements background reflection cycles with metric tracking,
 trend analysis, and proactive alerting.
 """
 
-import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List
-from dataclasses import dataclass, asdict
-import json
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +46,12 @@ class ReflectionMetricsStore:
 
     def __init__(self, db):
         self.db = db
+
     def _ensure_schema(self):
         """Create metrics table if not exists."""
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS reflection_metrics (
                 id INTEGER PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -67,8 +67,10 @@ class ReflectionMetricsStore:
                 workload_trend TEXT,
                 FOREIGN KEY(project_id) REFERENCES projects(id)
             )
-        """)
-        cursor.execute("""
+        """
+        )
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS reflection_alerts (
                 id INTEGER PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -80,26 +82,36 @@ class ReflectionMetricsStore:
                 dismissed_at DATETIME,
                 FOREIGN KEY(project_id) REFERENCES projects(id)
             )
-        """)
+        """
+        )
         # commit handled by cursor context
 
     def record_metrics(self, metrics: ReflectionMetrics) -> int:
         """Record reflection metrics."""
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO reflection_metrics (
                 project_id, timestamp, accuracy, false_positive_rate,
                 gap_count, contradiction_count, memory_size_bytes,
                 query_latency_ms, wm_utilization, cognitive_load,
                 workload_trend
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            metrics.project_id, metrics.timestamp, metrics.accuracy,
-            metrics.false_positive_rate, metrics.gap_count,
-            metrics.contradiction_count, metrics.memory_size_bytes,
-            metrics.query_latency_ms, metrics.wm_utilization,
-            metrics.cognitive_load, metrics.workload_trend
-        ))
+        """,
+            (
+                metrics.project_id,
+                metrics.timestamp,
+                metrics.accuracy,
+                metrics.false_positive_rate,
+                metrics.gap_count,
+                metrics.contradiction_count,
+                metrics.memory_size_bytes,
+                metrics.query_latency_ms,
+                metrics.wm_utilization,
+                metrics.cognitive_load,
+                metrics.workload_trend,
+            ),
+        )
         # commit handled by cursor context
         return cursor.lastrowid
 
@@ -107,63 +119,76 @@ class ReflectionMetricsStore:
         """Get metrics from last N hours."""
         cursor = self.db.get_cursor()
         cutoff = datetime.now() - timedelta(hours=hours)
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM reflection_metrics
             WHERE project_id = ? AND timestamp > ?
             ORDER BY timestamp DESC
-        """, (project_id, cutoff))
+        """,
+            (project_id, cutoff),
+        )
         return [self._row_to_metrics(row) for row in cursor.fetchall()]
 
     def _row_to_metrics(self, row) -> ReflectionMetrics:
         """Convert database row to ReflectionMetrics."""
         return ReflectionMetrics(
-            project_id=row['project_id'],
-            timestamp=datetime.fromisoformat(row['timestamp']),
-            accuracy=row['accuracy'],
-            false_positive_rate=row['false_positive_rate'],
-            gap_count=row['gap_count'],
-            contradiction_count=row['contradiction_count'],
-            memory_size_bytes=row['memory_size_bytes'],
-            query_latency_ms=row['query_latency_ms'],
-            wm_utilization=row['wm_utilization'],
-            cognitive_load=row['cognitive_load'],
-            workload_trend=row['workload_trend']
+            project_id=row["project_id"],
+            timestamp=datetime.fromisoformat(row["timestamp"]),
+            accuracy=row["accuracy"],
+            false_positive_rate=row["false_positive_rate"],
+            gap_count=row["gap_count"],
+            contradiction_count=row["contradiction_count"],
+            memory_size_bytes=row["memory_size_bytes"],
+            query_latency_ms=row["query_latency_ms"],
+            wm_utilization=row["wm_utilization"],
+            cognitive_load=row["cognitive_load"],
+            workload_trend=row["workload_trend"],
         )
 
     def record_alert(self, alert: ReflectionAlert) -> int:
         """Record a reflection alert."""
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO reflection_alerts (
                 project_id, alert_type, severity, message,
                 recommended_action, created_at
             ) VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            alert.project_id, alert.alert_type, alert.severity,
-            alert.message, alert.recommended_action, alert.created_at
-        ))
+        """,
+            (
+                alert.project_id,
+                alert.alert_type,
+                alert.severity,
+                alert.message,
+                alert.recommended_action,
+                alert.created_at,
+            ),
+        )
         # commit handled by cursor context
         return cursor.lastrowid
 
     def get_active_alerts(self, project_id: int) -> List[ReflectionAlert]:
         """Get unaddressed alerts."""
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM reflection_alerts
             WHERE project_id = ? AND dismissed_at IS NULL
             ORDER BY created_at DESC
-        """, (project_id,))
+        """,
+            (project_id,),
+        )
         return [self._row_to_alert(row) for row in cursor.fetchall()]
 
     def _row_to_alert(self, row) -> ReflectionAlert:
         """Convert database row to ReflectionAlert."""
         return ReflectionAlert(
-            project_id=row['project_id'],
-            alert_type=row['alert_type'],
-            severity=row['severity'],
-            message=row['message'],
-            recommended_action=row['recommended_action'],
-            created_at=datetime.fromisoformat(row['created_at'])
+            project_id=row["project_id"],
+            alert_type=row["alert_type"],
+            severity=row["severity"],
+            message=row["message"],
+            recommended_action=row["recommended_action"],
+            created_at=datetime.fromisoformat(row["created_at"]),
         )
 
 
@@ -263,15 +288,15 @@ class ReflectionScheduler:
             metrics = ReflectionMetrics(
                 project_id=project_id,
                 timestamp=datetime.now(),
-                accuracy=quality.get('accuracy', 0.9),
-                false_positive_rate=quality.get('false_positive_rate', 0.02),
+                accuracy=quality.get("accuracy", 0.9),
+                false_positive_rate=quality.get("false_positive_rate", 0.02),
                 gap_count=len(unresolved_gaps),
                 contradiction_count=len(contradictions),
                 memory_size_bytes=self._estimate_memory_size(project_id),
-                query_latency_ms=load.get('avg_query_latency_ms', 50),
-                wm_utilization=load.get('utilization_percent', 0) / 100,
-                cognitive_load=load.get('saturation_level', 'healthy'),
-                workload_trend='stable'
+                query_latency_ms=load.get("avg_query_latency_ms", 50),
+                wm_utilization=load.get("utilization_percent", 0) / 100,
+                cognitive_load=load.get("saturation_level", "healthy"),
+                workload_trend="stable",
             )
 
             # Record metrics
@@ -291,7 +316,7 @@ class ReflectionScheduler:
                     severity="high" if "accuracy" in quality_issue else "medium",
                     message=quality_issue,
                     recommended_action="/consolidate",
-                    created_at=datetime.now()
+                    created_at=datetime.now(),
                 )
                 self.metrics_store.record_alert(alert)
                 alerts.append(alert)
@@ -304,7 +329,7 @@ class ReflectionScheduler:
                     severity="medium",
                     message=gap_issue,
                     recommended_action="/research",
-                    created_at=datetime.now()
+                    created_at=datetime.now(),
                 )
                 self.metrics_store.record_alert(alert)
                 alerts.append(alert)
@@ -317,7 +342,7 @@ class ReflectionScheduler:
                     severity="high",
                     message=load_issue,
                     recommended_action="/focus consolidate all true",
-                    created_at=datetime.now()
+                    created_at=datetime.now(),
                 )
                 self.metrics_store.record_alert(alert)
                 alerts.append(alert)
@@ -328,17 +353,14 @@ class ReflectionScheduler:
                 "alerts_generated": len(alerts),
                 "quality": {
                     "accuracy": metrics.accuracy,
-                    "false_positive_rate": metrics.false_positive_rate
+                    "false_positive_rate": metrics.false_positive_rate,
                 },
-                "gaps": {
-                    "count": metrics.gap_count,
-                    "contradictions": metrics.contradiction_count
-                },
+                "gaps": {"count": metrics.gap_count, "contradictions": metrics.contradiction_count},
                 "load": {
                     "utilization": metrics.wm_utilization,
-                    "cognitive_load": metrics.cognitive_load
+                    "cognitive_load": metrics.cognitive_load,
                 },
-                "trend": metrics.workload_trend
+                "trend": metrics.workload_trend,
             }
 
         except Exception as e:

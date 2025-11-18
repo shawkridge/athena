@@ -76,7 +76,7 @@ class ProceduralOperations:
             created_at=datetime.now(),
             last_used=None,
             use_count=0,
-            metadata={"source": source}
+            metadata={"source": source},
         )
 
         return await self.store.store(procedure)
@@ -245,8 +245,7 @@ def get_operations() -> ProceduralOperations:
     """
     if _operations is None:
         raise RuntimeError(
-            "Procedural operations not initialized. "
-            "Call initialize(db, store) first."
+            "Procedural operations not initialized. " "Call initialize(db, store) first."
         )
     return _operations
 

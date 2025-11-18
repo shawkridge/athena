@@ -4,8 +4,6 @@ Implements spreading activation algorithm where activation flows from
 source nodes through associative links, decaying with distance.
 """
 
-from collections import defaultdict
-from datetime import datetime
 from typing import Dict, List, Tuple
 
 from ..core.database import Database
@@ -139,9 +137,7 @@ class ActivationPropagation:
                         target_layer = link.from_layer
 
                     # Calculate activation transfer
-                    transferred = (
-                        current_activation * link.link_strength * decay_factor
-                    )
+                    transferred = current_activation * link.link_strength * decay_factor
 
                     # Skip if below threshold
                     if transferred < min_activation:
@@ -186,9 +182,7 @@ class ActivationPropagation:
         nodes.sort(key=lambda n: n.activation_level, reverse=True)
         return nodes
 
-    def get_activation_level(
-        self, memory_id: int, layer: str, project_id: int
-    ) -> float:
+    def get_activation_level(self, memory_id: int, layer: str, project_id: int) -> float:
         """Get current activation level for a memory.
 
         Args:

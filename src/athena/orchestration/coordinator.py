@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 class TaskStatus(Enum):
     """Task execution status."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -72,10 +73,7 @@ class AgentOrchestrator:
 
     def create_plan(self, plan_id: str, project_id: int) -> ExecutionPlan:
         """Create a new execution plan."""
-        plan = ExecutionPlan(
-            plan_id=plan_id,
-            project_id=project_id
-        )
+        plan = ExecutionPlan(plan_id=plan_id, project_id=project_id)
         self.executions[plan_id] = plan
         return plan
 
@@ -172,8 +170,7 @@ class AgentOrchestrator:
             # Execute ready tasks in parallel
             tasks_to_run = [plan.tasks[task_id] for task_id in ready]
             results = await asyncio.gather(
-                *[self._execute_task(task) for task in tasks_to_run],
-                return_exceptions=True
+                *[self._execute_task(task) for task in tasks_to_run], return_exceptions=True
             )
 
             # Process results
@@ -243,10 +240,7 @@ class DAGBuilder:
         for agent in agents:
             task_id = f"research_{self.next_id}"
             task = AgentTask(
-                id=task_id,
-                agent_name=agent,
-                task_type="research",
-                input_data={"query": query}
+                id=task_id, agent_name=agent, task_type="research", input_data={"query": query}
             )
             self.tasks[task_id] = task
             task_ids.append(task_id)
@@ -254,11 +248,7 @@ class DAGBuilder:
 
         return task_ids
 
-    def add_analysis_task(
-        self,
-        depends_on: List[str],
-        analysis_type: str = "synthesis"
-    ) -> str:
+    def add_analysis_task(self, depends_on: List[str], analysis_type: str = "synthesis") -> str:
         """Add analysis task depending on prior tasks.
 
         Args:
@@ -274,7 +264,7 @@ class DAGBuilder:
             agent_name="analyzer",
             task_type=analysis_type,
             input_data={},  # Will use results from dependencies
-            dependencies=depends_on
+            dependencies=depends_on,
         )
         self.tasks[task_id] = task
         self.next_id += 1
@@ -295,7 +285,7 @@ class DAGBuilder:
             agent_name="consolidator",
             task_type="consolidation",
             input_data={},
-            dependencies=depends_on
+            dependencies=depends_on,
         )
         self.tasks[task_id] = task
         self.next_id += 1
@@ -303,11 +293,7 @@ class DAGBuilder:
 
     def build(self) -> ExecutionPlan:
         """Build execution plan from tasks."""
-        plan = ExecutionPlan(
-            plan_id=self.plan_id,
-            project_id=self.project_id,
-            tasks=self.tasks
-        )
+        plan = ExecutionPlan(plan_id=self.plan_id, project_id=self.project_id, tasks=self.tasks)
         return plan
 
 
@@ -316,10 +302,7 @@ class WorkflowBuilder:
 
     @staticmethod
     def create_research_workflow(
-        query: str,
-        agents: List[str],
-        with_analysis: bool = True,
-        with_consolidation: bool = True
+        query: str, agents: List[str], with_analysis: bool = True, with_consolidation: bool = True
     ) -> ExecutionPlan:
         """Create a standard research workflow.
 

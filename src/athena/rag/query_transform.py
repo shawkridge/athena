@@ -57,7 +57,9 @@ class QueryTransformer:
             return query
 
         # Limit history to recent turns
-        recent_history = conversation_history[-max_history_turns * 2 :] if conversation_history else []
+        recent_history = (
+            conversation_history[-max_history_turns * 2 :] if conversation_history else []
+        )
 
         try:
             # Build prompt with context

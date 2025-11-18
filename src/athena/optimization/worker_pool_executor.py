@@ -13,7 +13,7 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -110,9 +110,7 @@ class LoadBalancer:
 
         return best_worker
 
-    def record_task_completion(
-        self, worker_id: int, elapsed_ms: float, queue_depth: int
-    ) -> None:
+    def record_task_completion(self, worker_id: int, elapsed_ms: float, queue_depth: int) -> None:
         """Record task completion for load tracking.
 
         Args:
@@ -136,9 +134,7 @@ class LoadBalancer:
         # Keep only recent latencies (sliding window)
         max_latencies = 100
         if len(self.worker_latencies[worker_id]) > max_latencies:
-            self.worker_latencies[worker_id] = self.worker_latencies[worker_id][
-                -max_latencies:
-            ]
+            self.worker_latencies[worker_id] = self.worker_latencies[worker_id][-max_latencies:]
 
 
 class WorkerPool:
@@ -343,10 +339,7 @@ class WorkerPool:
             self.active_workers = min(target_workers, self.max_workers)
             logger.info(f"Scaling up to {self.active_workers} workers")
 
-        elif (
-            target_workers < self.active_workers
-            and target_workers < self.active_workers * 0.8
-        ):
+        elif target_workers < self.active_workers and target_workers < self.active_workers * 0.8:
             self.active_workers = max(target_workers, self.min_workers)
             logger.info(f"Scaling down to {self.active_workers} workers")
 
@@ -364,14 +357,13 @@ class WorkerPool:
             "max_workers": self.max_workers,
             "queue_depth": queue_depth,
             "queue_capacity": self.task_queue_size,
-            "queue_utilization": queue_depth / self.task_queue_size if self.task_queue_size > 0 else 0,
+            "queue_utilization": (
+                queue_depth / self.task_queue_size if self.task_queue_size > 0 else 0
+            ),
             "total_tasks_submitted": self.total_tasks_submitted,
             "total_tasks_completed": self.total_tasks_completed,
             "total_tasks_failed": self.total_tasks_failed,
-            "success_rate": (
-                self.total_tasks_completed
-                / max(self.total_tasks_submitted, 1)
-            ),
+            "success_rate": (self.total_tasks_completed / max(self.total_tasks_submitted, 1)),
             "total_bytes_processed": self.total_bytes_processed,
             "cached_results": len(self.result_cache),
         }
@@ -388,25 +380,25 @@ class WorkerPool:
             - avg_queue_depth: Average queue depth across workers
             - health_status: 'healthy', 'degraded', or 'unhealthy'
         """
-        health_status = 'healthy'
+        health_status = "healthy"
         if self.total_tasks_submitted > 0:
             failure_rate = self.total_tasks_failed / self.total_tasks_submitted
             if failure_rate > 0.1:
-                health_status = 'degraded'
+                health_status = "degraded"
             if failure_rate > 0.25:
-                health_status = 'unhealthy'
+                health_status = "unhealthy"
 
         return {
-            'active_workers': self.active_workers,
-            'total_tasks_submitted': self.total_tasks_submitted,
-            'total_tasks_completed': self.total_tasks_completed,
-            'total_tasks_failed': self.total_tasks_failed,
-            'task_success_rate': (
+            "active_workers": self.active_workers,
+            "total_tasks_submitted": self.total_tasks_submitted,
+            "total_tasks_completed": self.total_tasks_completed,
+            "total_tasks_failed": self.total_tasks_failed,
+            "task_success_rate": (
                 self.total_tasks_completed / self.total_tasks_submitted
                 if self.total_tasks_submitted > 0
                 else 0.0
             ),
-            'health_status': health_status,
+            "health_status": health_status,
         }
 
     def get_stats(self) -> Dict[str, Any]:
@@ -422,12 +414,12 @@ class WorkerPool:
             - task_success_rate: Percentage of tasks completed successfully
         """
         return {
-            'total_tasks_submitted': self.total_tasks_submitted,
-            'total_tasks_completed': self.total_tasks_completed,
-            'total_tasks_failed': self.total_tasks_failed,
-            'total_bytes_processed': self.total_bytes_processed,
-            'active_workers': self.active_workers,
-            'task_success_rate': (
+            "total_tasks_submitted": self.total_tasks_submitted,
+            "total_tasks_completed": self.total_tasks_completed,
+            "total_tasks_failed": self.total_tasks_failed,
+            "total_bytes_processed": self.total_bytes_processed,
+            "active_workers": self.active_workers,
+            "task_success_rate": (
                 (self.total_tasks_completed / self.total_tasks_submitted * 100)
                 if self.total_tasks_submitted > 0
                 else 0.0

@@ -49,6 +49,7 @@ def get_typical_workflow(
     try:
         if db is None:
             from ..core.database import Database
+
             db = Database()
 
         from ..workflow.suggestions import PatternSuggestionEngine

@@ -32,9 +32,7 @@ class ConsolidationLearningOptimizer:
         self._consolidation_experiments = []
 
     def get_prioritized_memories(
-        self,
-        all_memories: List[Dict[str, Any]],
-        agent_names: Optional[List[str]] = None
+        self, all_memories: List[Dict[str, Any]], agent_names: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
         """Get memories prioritized for consolidation based on learning.
 
@@ -63,7 +61,7 @@ class ConsolidationLearningOptimizer:
             score = self._score_memory(memory, agent_scores)
             memory_copy = memory.copy() if isinstance(memory, dict) else memory
             if isinstance(memory_copy, dict):
-                memory_copy['consolidation_priority_score'] = score
+                memory_copy["consolidation_priority_score"] = score
             scored_memories.append((memory_copy, score))
 
         # Sort by score (descending)
@@ -87,7 +85,7 @@ class ConsolidationLearningOptimizer:
             "code-analyzer",
             "research-coordinator",
             "workflow-orchestrator",
-            "metacognition"
+            "metacognition",
         ]
 
         for agent_name in agents:
@@ -106,11 +104,7 @@ class ConsolidationLearningOptimizer:
 
         return scores
 
-    def _score_memory(
-        self,
-        memory: Dict[str, Any],
-        agent_scores: Dict[str, float]
-    ) -> float:
+    def _score_memory(self, memory: Dict[str, Any], agent_scores: Dict[str, float]) -> float:
         """Score a single memory for consolidation priority.
 
         Args:
@@ -124,17 +118,17 @@ class ConsolidationLearningOptimizer:
 
         # Boost if from an improving agent
         if isinstance(memory, dict):
-            agent = memory.get('source_agent')
+            agent = memory.get("source_agent")
             if agent and agent in agent_scores:
                 # Weight: if agent is improving, memory is valuable
                 score += agent_scores[agent] * 0.3
 
             # Boost if memory is high importance
-            importance = float(memory.get('importance', 0.5))
+            importance = float(memory.get("importance", 0.5))
             score += importance * 0.2
 
             # Boost if recent
-            timestamp = memory.get('timestamp')
+            timestamp = memory.get("timestamp")
             if timestamp:
                 age_hours = (datetime.now() - timestamp).total_seconds() / 3600
                 recency = max(0, 1 - (age_hours / 168))  # Decay over week
@@ -142,11 +136,7 @@ class ConsolidationLearningOptimizer:
 
         return min(1.0, score)
 
-    def select_consolidation_strategy(
-        self,
-        memory_count: int,
-        agent_improvement_avg: float
-    ) -> str:
+    def select_consolidation_strategy(self, memory_count: int, agent_improvement_avg: float) -> str:
         """Select consolidation strategy based on learning.
 
         Args:
@@ -170,12 +160,14 @@ class ConsolidationLearningOptimizer:
             decision = "conservative"
 
         # Track the decision
-        self._consolidation_experiments.append({
-            'timestamp': datetime.now(),
-            'decision': decision,
-            'memory_count': memory_count,
-            'agent_improvement': agent_improvement_avg
-        })
+        self._consolidation_experiments.append(
+            {
+                "timestamp": datetime.now(),
+                "decision": decision,
+                "memory_count": memory_count,
+                "agent_improvement": agent_improvement_avg,
+            }
+        )
 
         return decision
 
@@ -184,7 +176,7 @@ class ConsolidationLearningOptimizer:
         strategy_used: str,
         patterns_extracted: int,
         procedures_extracted: int,
-        agent_feedback: Optional[Dict[str, float]] = None
+        agent_feedback: Optional[Dict[str, float]] = None,
     ):
         """Learn effectiveness of consolidation strategy.
 
@@ -198,17 +190,19 @@ class ConsolidationLearningOptimizer:
         extracted_total = patterns_extracted + procedures_extracted
         if extracted_total == 0:
             success_rate = 0.3  # Not very successful
-            outcome = 'failure'
+            outcome = "failure"
         elif extracted_total < 5:
             success_rate = 0.6
-            outcome = 'partial'
+            outcome = "partial"
         else:
             success_rate = 0.9
-            outcome = 'success'
+            outcome = "success"
 
         # Adjust if agents provided feedback
         if agent_feedback:
-            avg_feedback = sum(agent_feedback.values()) / len(agent_feedback) if agent_feedback else 0
+            avg_feedback = (
+                sum(agent_feedback.values()) / len(agent_feedback) if agent_feedback else 0
+            )
             success_rate = (success_rate + avg_feedback) / 2
 
         # Track this learning
@@ -218,15 +212,14 @@ class ConsolidationLearningOptimizer:
             outcome=outcome,
             success_rate=success_rate,
             context={
-                'patterns': patterns_extracted,
-                'procedures': procedures_extracted,
-                'agent_feedback_count': len(agent_feedback) if agent_feedback else 0
-            }
+                "patterns": patterns_extracted,
+                "procedures": procedures_extracted,
+                "agent_feedback_count": len(agent_feedback) if agent_feedback else 0,
+            },
         )
 
     def get_optimal_consolidation_timing(
-        self,
-        agent_names: Optional[List[str]] = None
+        self, agent_names: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """Determine optimal timing for next consolidation.
 
@@ -243,7 +236,7 @@ class ConsolidationLearningOptimizer:
             "code-analyzer",
             "research-coordinator",
             "workflow-orchestrator",
-            "metacognition"
+            "metacognition",
         ]
 
         # Check agent improvement velocity
@@ -256,7 +249,9 @@ class ConsolidationLearningOptimizer:
                 velocity = (rate_now - rate_6h) / rate_6h
                 improvement_scores.append(velocity)
 
-        avg_velocity = sum(improvement_scores) / len(improvement_scores) if improvement_scores else 0.0
+        avg_velocity = (
+            sum(improvement_scores) / len(improvement_scores) if improvement_scores else 0.0
+        )
 
         # High improvement velocity = consolidate sooner (capture the learning)
         # Low improvement velocity = consolidate later (let more data accumulate)
@@ -276,11 +271,11 @@ class ConsolidationLearningOptimizer:
         next_time = datetime.now() + timedelta(hours=hours_until)
 
         return {
-            'next_consolidation': next_time.isoformat(),
-            'hours_until': hours_until,
-            'urgency': urgency,
-            'reason': reason,
-            'agent_velocity': avg_velocity
+            "next_consolidation": next_time.isoformat(),
+            "hours_until": hours_until,
+            "urgency": urgency,
+            "reason": reason,
+            "agent_velocity": avg_velocity,
         }
 
     def get_consolidation_stats(self) -> Dict[str, Any]:
@@ -290,7 +285,7 @@ class ConsolidationLearningOptimizer:
             Dict with consolidation learning statistics
         """
         return {
-            'total_experiments': len(self._consolidation_experiments),
-            'strategies_used': len(set(e['decision'] for e in self._consolidation_experiments)),
-            'consolidation_tracker_stats': self.tracker.get_statistics("consolidation-optimizer")
+            "total_experiments": len(self._consolidation_experiments),
+            "strategies_used": len(set(e["decision"] for e in self._consolidation_experiments)),
+            "consolidation_tracker_stats": self.tracker.get_statistics("consolidation-optimizer"),
         }

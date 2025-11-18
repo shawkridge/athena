@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 class TaskOutcome(str, Enum):
     """Possible outcomes of task execution."""
+
     SUCCESS = "success"
     FAILURE = "failure"
     PARTIAL = "partial"
@@ -16,6 +17,7 @@ class TaskOutcome(str, Enum):
 
 class DeviationSeverity(str, Enum):
     """Severity levels for plan deviations."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -24,6 +26,7 @@ class DeviationSeverity(str, Enum):
 
 class AssumptionValidationType(str, Enum):
     """Types of assumption validation."""
+
     AUTO = "auto"  # Sensor data, automatic checks
     MANUAL = "manual"  # User input
     EXTERNAL = "external"  # API calls
@@ -32,6 +35,7 @@ class AssumptionValidationType(str, Enum):
 
 class ReplanningStrategy(str, Enum):
     """Strategies for adaptive replanning."""
+
     NONE = "none"  # Continue as planned
     LOCAL = "local"  # Adjust current task parameters
     SEGMENT = "segment"  # Replan next 3-5 tasks
@@ -42,6 +46,7 @@ class ReplanningStrategy(str, Enum):
 @dataclass
 class TaskExecutionRecord:
     """Record of actual task execution."""
+
     task_id: str
     planned_start: datetime
     actual_start: Optional[datetime] = None
@@ -60,6 +65,7 @@ class TaskExecutionRecord:
 @dataclass
 class PlanDeviation:
     """Metrics about overall plan deviation."""
+
     time_deviation: timedelta
     time_deviation_percent: float
     resource_deviation: Dict[str, float]
@@ -77,6 +83,7 @@ class PlanDeviation:
 @dataclass
 class AssumptionValidationResult:
     """Result of validating an assumption."""
+
     assumption_id: str
     valid: bool
     validation_time: datetime
@@ -91,6 +98,7 @@ class AssumptionValidationResult:
 @dataclass
 class AssumptionViolation:
     """A violated assumption that requires attention."""
+
     assumption_id: str
     violation_time: datetime
     severity: DeviationSeverity
@@ -104,6 +112,7 @@ class AssumptionViolation:
 @dataclass
 class ReplanningEvaluation:
     """Evaluation of whether replanning is needed."""
+
     replanning_needed: bool
     strategy: ReplanningStrategy
     confidence: float
@@ -119,6 +128,7 @@ class ReplanningEvaluation:
 @dataclass
 class ReplanningOption:
     """A possible replanning option."""
+
     option_id: int
     title: str
     description: str
@@ -135,6 +145,7 @@ class ReplanningOption:
 @dataclass
 class ExecutionPattern:
     """Pattern learned from execution outcomes."""
+
     pattern_id: str
     description: str
     confidence: float  # 0.0 to 1.0

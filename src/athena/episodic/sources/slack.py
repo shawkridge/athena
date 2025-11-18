@@ -57,10 +57,8 @@ Cursor Format:
 """
 
 import logging
-import asyncio
 from typing import Dict, Any, AsyncGenerator, Optional, List
 from datetime import datetime
-from urllib.parse import urlencode
 
 try:
     from slack_sdk import WebClient
@@ -70,7 +68,7 @@ except ImportError:
     SlackApiError = None
 
 from ._base import BaseEventSource
-from ..models import EpisodicEvent, EventType, EventOutcome, EventContext
+from ..models import EpisodicEvent, EventType, EventContext
 
 
 logger = logging.getLogger(__name__)
@@ -222,10 +220,7 @@ class SlackEventSource(BaseEventSource):
             raise ValueError("Config must include 'channels' (list of channel names)")
 
         # Normalize channel names (ensure they start with #)
-        channels = [
-            f"#{ch}" if not ch.startswith("#") else ch
-            for ch in channels
-        ]
+        channels = [f"#{ch}" if not ch.startswith("#") else ch for ch in channels]
 
         # Create instance
         source = cls(
@@ -402,9 +397,7 @@ class SlackEventSource(BaseEventSource):
                 )
 
                 if not result["ok"]:
-                    self._logger.error(
-                        f"Failed to fetch channel history: {result.get('error')}"
-                    )
+                    self._logger.error(f"Failed to fetch channel history: {result.get('error')}")
                     return
 
                 messages = result.get("messages", [])
@@ -646,4 +639,5 @@ class SlackEventSource(BaseEventSource):
 
 # Register SlackEventSource with the factory on module import
 from .factory import EventSourceFactory
+
 EventSourceFactory.register_source("slack", SlackEventSource)

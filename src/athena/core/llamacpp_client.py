@@ -7,10 +7,11 @@ and text generation, optimized for CPU-only deployment.
 import logging
 import os
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 
 try:
     from llama_cpp import Llama
+
     LLAMACPP_AVAILABLE = True
 except ImportError:
     LLAMACPP_AVAILABLE = False
@@ -38,8 +39,7 @@ class LlamaCppEmbedding:
         """
         if not LLAMACPP_AVAILABLE:
             raise ImportError(
-                "llama-cpp-python not installed. "
-                "Install with: pip install llama-cpp-python"
+                "llama-cpp-python not installed. " "Install with: pip install llama-cpp-python"
             )
 
         self.model_path = Path(model_path)
@@ -116,8 +116,7 @@ class LlamaCppLLM:
         """
         if not LLAMACPP_AVAILABLE:
             raise ImportError(
-                "llama-cpp-python not installed. "
-                "Install with: pip install llama-cpp-python"
+                "llama-cpp-python not installed. " "Install with: pip install llama-cpp-python"
             )
 
         self.model_path = Path(model_path)
@@ -206,10 +205,7 @@ class LlamaCppLLM:
         return response["choices"][0]["message"]["content"]
 
 
-def get_embedding_model(
-    model_path: Optional[str] = None,
-    **kwargs
-) -> LlamaCppEmbedding:
+def get_embedding_model(model_path: Optional[str] = None, **kwargs) -> LlamaCppEmbedding:
     """Factory function to create embedding model.
 
     Args:
@@ -227,10 +223,7 @@ def get_embedding_model(
     return LlamaCppEmbedding(model_path, **kwargs)
 
 
-def get_llm_model(
-    model_path: Optional[str] = None,
-    **kwargs
-) -> LlamaCppLLM:
+def get_llm_model(model_path: Optional[str] = None, **kwargs) -> LlamaCppLLM:
     """Factory function to create LLM.
 
     Args:

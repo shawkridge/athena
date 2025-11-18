@@ -68,6 +68,7 @@ def get_estimation_trends(
     try:
         if db is None:
             from ..core.database import Database
+
             db = Database()
 
         from ..predictive.estimator import PredictiveEstimator

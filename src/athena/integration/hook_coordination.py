@@ -5,8 +5,7 @@ coordinating calls to Phase 5-6 operations for enhanced task monitoring and plan
 """
 
 import logging
-from typing import Any, Dict, List, Optional
-from datetime import datetime, timedelta
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +22,7 @@ class SessionStartOptimizer:
         self.db = db
 
     async def execute(
-        self,
-        project_id: Optional[int] = None,
-        validate_plans: bool = True
+        self, project_id: Optional[int] = None, validate_plans: bool = True
     ) -> Dict[str, Any]:
         """Execute optimized SessionStart hook.
 
@@ -120,7 +117,6 @@ class SessionEndOptimizer:
         """
         try:
             import time
-            from ..consolidation.system import ConsolidationSystem
 
             consolidation_start = time.time()
             consolidation_events = 0
@@ -133,23 +129,33 @@ class SessionEndOptimizer:
                 # Get the consolidation system from database
                 # In production, this would be passed from the MCP server
                 cursor = self.db.get_cursor()
-                cursor.execute("SELECT COUNT(*) as count FROM episodic_events WHERE session_id = %s", (session_id,))
+                cursor.execute(
+                    "SELECT COUNT(*) as count FROM episodic_events WHERE session_id = %s",
+                    (session_id,),
+                )
                 result = cursor.fetchone()
                 consolidation_events = result.get("count", 0) if result else 0
 
                 if consolidation_events >= 3:  # Only consolidate if enough events
                     # Try to access consolidation system
-                    if hasattr(self.db, 'consolidation_system'):
+                    if hasattr(self.db, "consolidation_system"):
                         # Run full consolidation (semantic + graph)
-                        run_id = self.db.consolidation_system.run_consolidation(project_id=project_id)
-                        logger.info(f"Session consolidation completed: run_id={run_id}, events={consolidation_events}")
+                        run_id = self.db.consolidation_system.run_consolidation(
+                            project_id=project_id
+                        )
+                        logger.info(
+                            f"Session consolidation completed: run_id={run_id}, events={consolidation_events}"
+                        )
 
                         # Get consolidation metrics
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             SELECT avg_quality_before, avg_quality_after,
                                    compression_ratio, retrieval_recall, pattern_consistency, avg_information_density
                             FROM consolidation_runs WHERE id = %s
-                        """, (run_id,))
+                        """,
+                            (run_id,),
+                        )
                         run_metrics = cursor.fetchone()
                         if run_metrics:
                             quality_metrics = {
@@ -158,7 +164,9 @@ class SessionEndOptimizer:
                                 "compression_ratio": run_metrics.get("compression_ratio", 0),
                                 "retrieval_recall": run_metrics.get("retrieval_recall", 0),
                                 "pattern_consistency": run_metrics.get("pattern_consistency", 0),
-                                "avg_information_density": run_metrics.get("avg_information_density", 0),
+                                "avg_information_density": run_metrics.get(
+                                    "avg_information_density", 0
+                                ),
                             }
                     else:
                         logger.debug("Consolidation system not available in database")
@@ -175,18 +183,24 @@ class SessionEndOptimizer:
             if extract_patterns and session_id:
                 try:
                     # Query completed tasks from this session
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         SELECT COUNT(*) as count FROM prospective_tasks
                         WHERE session_id = %s AND status = 'completed'
-                    """, (session_id,))
+                    """,
+                        (session_id,),
+                    )
                     result = cursor.fetchone()
                     tasks_analyzed = result.get("count", 0) if result else 0
 
                     # Patterns are extracted during consolidation process
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         SELECT COUNT(*) as count FROM extracted_patterns
                         WHERE session_id = %s
-                    """, (session_id,))
+                    """,
+                        (session_id,),
+                    )
                     result = cursor.fetchone()
                     patterns_extracted = result.get("count", 0) if result else 0
 
@@ -194,14 +208,18 @@ class SessionEndOptimizer:
                     logger.warning(f"Pattern extraction monitoring failed: {e}")
 
             # Step 3: Measure consolidation quality
-            quality_score = quality_metrics.get("avg_quality_after", 0) / 10.0 if quality_metrics else 0.0  # Normalize
+            quality_score = (
+                quality_metrics.get("avg_quality_after", 0) / 10.0 if quality_metrics else 0.0
+            )  # Normalize
             compression_ratio = quality_metrics.get("compression_ratio", 0.75)
             recall_score = quality_metrics.get("retrieval_recall", 0.82)
             consistency_score = quality_metrics.get("pattern_consistency", 0.78)
 
-            logger.info(f"SessionEnd consolidation complete: "
-                       f"events={consolidation_events}, patterns={patterns_extracted}, "
-                       f"quality={quality_score:.2f}, duration={consolidation_duration_ms:.0f}ms")
+            logger.info(
+                f"SessionEnd consolidation complete: "
+                f"events={consolidation_events}, patterns={patterns_extracted}, "
+                f"quality={quality_score:.2f}, duration={consolidation_duration_ms:.0f}ms"
+            )
 
             return {
                 "status": "success",
@@ -238,9 +256,7 @@ class UserPromptOptimizer:
         self.db = db
 
     async def execute(
-        self,
-        project_id: Optional[int] = None,
-        monitor_health: bool = True
+        self, project_id: Optional[int] = None, monitor_health: bool = True
     ) -> Dict[str, Any]:
         """Execute optimized UserPromptSubmit hook.
 
@@ -303,7 +319,7 @@ class PostToolOptimizer:
         tool_name: str,
         execution_time_ms: int = 0,
         tool_result: str = "unknown",
-        task_id: Optional[int] = None
+        task_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """Execute optimized PostToolUse hook.
 
@@ -377,10 +393,7 @@ class PreExecutionOptimizer:
         self.db = db
 
     async def execute(
-        self,
-        task_id: int,
-        strict_mode: bool = False,
-        run_scenarios: str = "auto"
+        self, task_id: int, strict_mode: bool = False, run_scenarios: str = "auto"
     ) -> Dict[str, Any]:
         """Execute optimized PreExecution hook.
 
@@ -426,17 +439,16 @@ class PreExecutionOptimizer:
             # Step 5: Risk assessment
             recommendations = []
             if properties_overall_score < 0.70:
-                recommendations.append({
-                    "type": "quality",
-                    "description": "Plan quality low, recommend refinement"
-                })
+                recommendations.append(
+                    {"type": "quality", "description": "Plan quality low, recommend refinement"}
+                )
 
             # Determine if ready for execution
             ready_for_execution = (
-                structure_valid and
-                feasibility_valid and
-                properties_overall_score >= 0.70 and
-                scenario_success_prob >= 0.80
+                structure_valid
+                and feasibility_valid
+                and properties_overall_score >= 0.70
+                and scenario_success_prob >= 0.80
             )
 
             return {

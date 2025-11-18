@@ -13,7 +13,7 @@ Tags working memory by:
 
 import logging
 import re
-from typing import Optional, Dict, Any, List, Set
+from typing import Optional, Dict, Any, Set
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class ContentType(str, Enum):
     """Semantic content types."""
+
     CODE = "code"
     DOCUMENTATION = "documentation"
     CONCEPT = "concept"
@@ -33,6 +34,7 @@ class ContentType(str, Enum):
 
 class Domain(str, Enum):
     """Knowledge domains."""
+
     MACHINE_LEARNING = "machine-learning"
     SECURITY = "security"
     PERFORMANCE = "performance"
@@ -45,6 +47,7 @@ class Domain(str, Enum):
 
 class ConsolidationTarget(str, Enum):
     """Where should this memory item be consolidated to?"""
+
     SEMANTIC = "semantic"  # General knowledge
     PROCEDURAL = "procedural"  # Reusable workflow
     EPISODIC = "episodic"  # Historical record
@@ -54,6 +57,7 @@ class ConsolidationTarget(str, Enum):
 
 class Urgency(str, Enum):
     """How urgent is consolidation?"""
+
     IMMEDIATE = "immediate"  # Consolidate now
     SOON = "soon"  # Within session
     LATER = "later"  # After session
@@ -70,7 +74,7 @@ class SemanticTag:
         consolidation_target: ConsolidationTarget,
         urgency: Urgency,
         custom_tags: Optional[Set[str]] = None,
-        confidence: float = 0.5
+        confidence: float = 0.5,
     ):
         self.content_type = content_type
         self.domain = domain
@@ -97,50 +101,50 @@ class WorkingMemorySemanticTagger:
     # Domain detection patterns
     DOMAIN_PATTERNS = {
         Domain.MACHINE_LEARNING: [
-            r'\b(?:neural|network|model|learning|algorithm|classifier|regression)\b',
-            r'\b(?:train|epoch|gradient|tensor|embedding)\b'
+            r"\b(?:neural|network|model|learning|algorithm|classifier|regression)\b",
+            r"\b(?:train|epoch|gradient|tensor|embedding)\b",
         ],
         Domain.SECURITY: [
-            r'\b(?:security|encrypt|hash|token|authentication|vulnerability)\b',
-            r'\b(?:attack|threat|breach|exploit|permission)\b'
+            r"\b(?:security|encrypt|hash|token|authentication|vulnerability)\b",
+            r"\b(?:attack|threat|breach|exploit|permission)\b",
         ],
         Domain.PERFORMANCE: [
-            r'\b(?:performance|optimize|latency|throughput|cache|memory)\b',
-            r'\b(?:bottleneck|profile|benchmark|load)\b'
+            r"\b(?:performance|optimize|latency|throughput|cache|memory)\b",
+            r"\b(?:bottleneck|profile|benchmark|load)\b",
         ],
         Domain.TESTING: [
-            r'\b(?:test|unit|integration|coverage|mock|assert)\b',
-            r'\b(?:validate|verify|check|qa|bug)\b'
+            r"\b(?:test|unit|integration|coverage|mock|assert)\b",
+            r"\b(?:validate|verify|check|qa|bug)\b",
         ],
         Domain.ARCHITECTURE: [
-            r'\b(?:architecture|design|pattern|component|module|interface)\b',
-            r'\b(?:layer|service|dependency|coupling)\b'
-        ]
+            r"\b(?:architecture|design|pattern|component|module|interface)\b",
+            r"\b(?:layer|service|dependency|coupling)\b",
+        ],
     }
 
     # Content type detection patterns
     CONTENT_PATTERNS = {
         ContentType.CODE: [
-            r'(?:^|\n)\s*(?:def|class|function|const|let|var|import)',
-            r'(?:{|}|\(|\)|;|==|=>)',
-            r'(?:```|<code>)'
+            r"(?:^|\n)\s*(?:def|class|function|const|let|var|import)",
+            r"(?:{|}|\(|\)|;|==|=>)",
+            r"(?:```|<code>)",
         ],
         ContentType.ERROR: [
-            r'\b(?:error|exception|failed|failure|traceback|stack trace)\b',
-            r'\b(?:warning|deprecated|null|undefined)\b'
+            r"\b(?:error|exception|failed|failure|traceback|stack trace)\b",
+            r"\b(?:warning|deprecated|null|undefined)\b",
         ],
         ContentType.CONCEPT: [
-            r'\b(?:concept|idea|theory|principle|framework|model)\b',
-            r'\b(?:understand|explain|define|outline)\b'
+            r"\b(?:concept|idea|theory|principle|framework|model)\b",
+            r"\b(?:understand|explain|define|outline)\b",
         ],
         ContentType.STRATEGY: [
-            r'\b(?:strategy|approach|method|technique|plan|process)\b',
-            r'\b(?:implement|execute|follow|workflow)\b'
+            r"\b(?:strategy|approach|method|technique|plan|process)\b",
+            r"\b(?:implement|execute|follow|workflow)\b",
         ],
         ContentType.DOCUMENTATION: [
-            r'\b(?:documentation|document|manual|guide|readme|spec)\b',
-            r'(?:```|##+\s|\*\*)'
-        ]
+            r"\b(?:documentation|document|manual|guide|readme|spec)\b",
+            r"(?:```|##+\s|\*\*)",
+        ],
     }
 
     # Consolidation target routing rules
@@ -192,7 +196,7 @@ class WorkingMemorySemanticTagger:
             consolidation_target=consolidation_target,
             urgency=urgency,
             custom_tags=custom_tags,
-            confidence=confidence
+            confidence=confidence,
         )
 
         self.logger.debug(
@@ -219,11 +223,11 @@ class WorkingMemorySemanticTagger:
                     return ctype
 
         # Check for patterns
-        if re.search(r'(?:pattern|trend|relationship|correlation)', content_lower):
+        if re.search(r"(?:pattern|trend|relationship|correlation)", content_lower):
             return ContentType.PATTERN
 
         # Check for insights
-        if re.search(r'(?:insight|discover|find|learn|realize)', content_lower):
+        if re.search(r"(?:insight|discover|find|learn|realize)", content_lower):
             return ContentType.INSIGHT
 
         # Default based on length
@@ -255,9 +259,7 @@ class WorkingMemorySemanticTagger:
         return Domain.ARCHITECTURE  # Default
 
     def _determine_consolidation_target(
-        self,
-        content_type: ContentType,
-        domain: Domain
+        self, content_type: ContentType, domain: Domain
     ) -> ConsolidationTarget:
         """Determine where item should consolidate to.
 
@@ -307,18 +309,14 @@ class WorkingMemorySemanticTagger:
             return Urgency.SOON
 
         # Recent/hot content
-        if metadata.get('is_recent'):
+        if metadata.get("is_recent"):
             return Urgency.SOON
 
         # Default
         return Urgency.LATER
 
     @staticmethod
-    def _generate_custom_tags(
-        content: str,
-        content_type: ContentType,
-        domain: Domain
-    ) -> Set[str]:
+    def _generate_custom_tags(content: str, content_type: ContentType, domain: Domain) -> Set[str]:
         """Generate custom tags for item.
 
         Args:
@@ -337,32 +335,28 @@ class WorkingMemorySemanticTagger:
 
         # Add length tags
         if len(content) < 50:
-            tags.add('concise')
+            tags.add("concise")
         elif len(content) > 500:
-            tags.add('detailed')
+            tags.add("detailed")
 
         # Add urgency indicators
-        if re.search(r'(?:critical|urgent|immediate|asap)', content, re.IGNORECASE):
-            tags.add('urgent')
+        if re.search(r"(?:critical|urgent|immediate|asap)", content, re.IGNORECASE):
+            tags.add("urgent")
 
-        if re.search(r'(?:important|significant|key)', content, re.IGNORECASE):
-            tags.add('important')
+        if re.search(r"(?:important|significant|key)", content, re.IGNORECASE):
+            tags.add("important")
 
         # Add source indicators
-        if re.search(r'(?:research|study|paper)', content, re.IGNORECASE):
-            tags.add('research-backed')
+        if re.search(r"(?:research|study|paper)", content, re.IGNORECASE):
+            tags.add("research-backed")
 
-        if re.search(r'(?:best practice|industry standard)', content, re.IGNORECASE):
-            tags.add('best-practice')
+        if re.search(r"(?:best practice|industry standard)", content, re.IGNORECASE):
+            tags.add("best-practice")
 
         return tags
 
     @staticmethod
-    def _calculate_confidence(
-        content: str,
-        content_type: ContentType,
-        domain: Domain
-    ) -> float:
+    def _calculate_confidence(content: str, content_type: ContentType, domain: Domain) -> float:
         """Calculate confidence of tagging.
 
         Args:
@@ -399,19 +393,14 @@ class WorkingMemorySemanticTagger:
         Returns:
             Routing recommendation with target and priority
         """
-        priority = {
-            Urgency.IMMEDIATE: 3,
-            Urgency.SOON: 2,
-            Urgency.LATER: 1,
-            Urgency.ARCHIVE: 0
-        }
+        priority = {Urgency.IMMEDIATE: 3, Urgency.SOON: 2, Urgency.LATER: 1, Urgency.ARCHIVE: 0}
 
         return {
-            'target': tag.consolidation_target.value,
-            'priority': priority[tag.urgency],
-            'urgency': tag.urgency.value,
-            'confidence': tag.confidence,
-            'tags': list(tag.custom_tags),
-            'domain': tag.domain.value,
-            'content_type': tag.content_type.value
+            "target": tag.consolidation_target.value,
+            "priority": priority[tag.urgency],
+            "urgency": tag.urgency.value,
+            "confidence": tag.confidence,
+            "tags": list(tag.custom_tags),
+            "domain": tag.domain.value,
+            "content_type": tag.content_type.value,
         }

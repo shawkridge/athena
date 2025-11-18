@@ -5,12 +5,12 @@ from datetime import datetime
 from athena.learning.cross_project_synthesis import CrossProjectSynthesis
 from athena.learning.performance_profiler import PerformanceProfiler, PerformanceMetric
 from athena.consolidation.advanced_strategies import AdvancedConsolidationStrategy
-from athena.learning.tracker import LearningTracker
 
 
 class MockDB:
     def __init__(self):
         self.data = {}
+
     def execute(self, sql, params=None):
         if "CREATE TABLE" in sql:
             return None
@@ -18,22 +18,24 @@ class MockDB:
             outcome_id = len(self.data) + 1
             if params:
                 self.data[outcome_id] = {
-                    'id': outcome_id,
-                    'agent_name': params[0],
-                    'decision': params[1],
-                    'outcome': params[2],
-                    'success_rate': params[3],
-                    'execution_time_ms': params[4],
-                    'context': params[5] if len(params) > 5 else {},
-                    'session_id': params[6] if len(params) > 6 else None,
-                    'timestamp': datetime.now()
+                    "id": outcome_id,
+                    "agent_name": params[0],
+                    "decision": params[1],
+                    "outcome": params[2],
+                    "success_rate": params[3],
+                    "execution_time_ms": params[4],
+                    "context": params[5] if len(params) > 5 else {},
+                    "session_id": params[6] if len(params) > 6 else None,
+                    "timestamp": datetime.now(),
                 }
             return [(outcome_id,)]
         if "SELECT AVG(success_rate)" in sql:
             agent_name = params[0] if params else None
-            outcomes = [v for v in self.data.values() if not agent_name or v['agent_name'] == agent_name]
+            outcomes = [
+                v for v in self.data.values() if not agent_name or v["agent_name"] == agent_name
+            ]
             if outcomes:
-                avg_rate = sum(o['success_rate'] for o in outcomes) / len(outcomes)
+                avg_rate = sum(o["success_rate"] for o in outcomes) / len(outcomes)
                 return [[avg_rate, len(outcomes)]]
             return [[None, 0]]
         return None
@@ -77,7 +79,7 @@ class TestCrossProjectSynthesis:
             agent_name="code-analyzer",
             decision="deep_analysis",
             outcome="success",
-            success_rate=0.95
+            success_rate=0.95,
         )
 
         practices = cross_project_synthesis.get_universal_best_practices("code-analyzer")
@@ -88,9 +90,9 @@ class TestCrossProjectSynthesis:
         trends = cross_project_synthesis.detect_emerging_trends()
 
         assert isinstance(trends, dict)
-        assert 'improving' in trends
-        assert 'declining' in trends
-        assert 'stable' in trends
+        assert "improving" in trends
+        assert "declining" in trends
+        assert "stable" in trends
 
     async def test_learning_velocity(self, cross_project_synthesis, mock_db):
         """Test learning velocity analysis."""
@@ -102,23 +104,23 @@ class TestCrossProjectSynthesis:
                 agent_name="code-analyzer",
                 decision=f"test_{i}",
                 outcome="success",
-                success_rate=0.8 + (i * 0.05)
+                success_rate=0.8 + (i * 0.05),
             )
 
         velocity = cross_project_synthesis.learning_velocity_analysis()
 
         assert isinstance(velocity, dict)
-        assert 'agent_velocities' in velocity
-        assert 'system_velocity' in velocity
+        assert "agent_velocities" in velocity
+        assert "system_velocity" in velocity
 
     async def test_get_cross_project_insights(self, cross_project_synthesis):
         """Test comprehensive cross-project insights."""
         insights = cross_project_synthesis.get_cross_project_insights()
 
         assert isinstance(insights, dict)
-        assert 'universal_practices' in insights
-        assert 'trends' in insights
-        assert 'recommendations' in insights
+        assert "universal_practices" in insights
+        assert "trends" in insights
+        assert "recommendations" in insights
 
 
 @pytest.mark.asyncio
@@ -133,10 +135,7 @@ class TestPerformanceProfiler:
     async def test_record_execution(self, performance_profiler):
         """Test recording executions."""
         performance_profiler.record_execution(
-            agent_name="code-analyzer",
-            operation="analyze",
-            execution_time_ms=300,
-            memory_mb=50.0
+            agent_name="code-analyzer", operation="analyze", execution_time_ms=300, memory_mb=50.0
         )
 
         assert len(performance_profiler._metrics_buffer) == 1
@@ -150,7 +149,7 @@ class TestPerformanceProfiler:
         performance_profiler.record_execution(
             agent_name="code-analyzer",
             operation="analyze",
-            execution_time_ms=1500  # Way over 500ms target
+            execution_time_ms=1500,  # Way over 500ms target
         )
 
         # Should be tracked as performance issue
@@ -161,16 +160,14 @@ class TestPerformanceProfiler:
         # Record some executions
         for i in range(3):
             performance_profiler.record_execution(
-                agent_name="code-analyzer",
-                operation="test",
-                execution_time_ms=400 + (i * 50)
+                agent_name="code-analyzer", operation="test", execution_time_ms=400 + (i * 50)
             )
 
         stats = performance_profiler.get_performance_stats("code-analyzer")
 
-        assert stats['agent'] == "code-analyzer"
-        assert stats['measurements'] == 3
-        assert stats['avg_time_ms'] > 0
+        assert stats["agent"] == "code-analyzer"
+        assert stats["measurements"] == 3
+        assert stats["avg_time_ms"] > 0
 
     async def test_calculate_trend(self, performance_profiler):
         """Test trend calculation."""
@@ -181,7 +178,7 @@ class TestPerformanceProfiler:
         ]
 
         trend = performance_profiler._calculate_trend(metrics)
-        assert trend in ['improving', 'stable', 'degrading']
+        assert trend in ["improving", "stable", "degrading"]
 
     async def test_get_slowest_operations(self, performance_profiler):
         """Test finding slowest operations."""
@@ -191,16 +188,14 @@ class TestPerformanceProfiler:
 
         slowest = performance_profiler.get_slowest_operations("test")
         assert len(slowest) > 0
-        assert slowest[0]['operation'] == 'slow'
+        assert slowest[0]["operation"] == "slow"
 
     async def test_recommend_optimizations(self, performance_profiler):
         """Test optimization recommendations."""
         # Record a slow operation
         for _ in range(5):
             performance_profiler.record_execution(
-                agent_name="code-analyzer",
-                operation="slow_op",
-                execution_time_ms=1200
+                agent_name="code-analyzer", operation="slow_op", execution_time_ms=1200
             )
 
         recs = performance_profiler.recommend_optimizations("code-analyzer")
@@ -216,8 +211,8 @@ class TestPerformanceProfiler:
         system_perf = performance_profiler.get_system_performance()
 
         assert isinstance(system_perf, dict)
-        assert 'system_health_score' in system_perf
-        assert 'agents' in system_perf
+        assert "system_health_score" in system_perf
+        assert "agents" in system_perf
 
 
 @pytest.mark.asyncio
@@ -238,7 +233,7 @@ class TestAdvancedStrategies:
                 agent_name="code-analyzer",
                 decision=f"decision_{i}",
                 outcome="success",
-                success_rate=0.85
+                success_rate=0.85,
             )
 
         patterns = advanced_strategy.extract_causal_patterns()
@@ -254,23 +249,19 @@ class TestAdvancedStrategies:
                 agent_name="code-analyzer",
                 decision="test_decision",
                 outcome="success",
-                success_rate=0.85
+                success_rate=0.85,
             )
 
         hierarchy = advanced_strategy.extract_hierarchical_patterns("code-analyzer")
 
         assert isinstance(hierarchy, dict)
-        assert 'micro_patterns' in hierarchy
-        assert 'meso_patterns' in hierarchy
-        assert 'macro_pattern' in hierarchy
+        assert "micro_patterns" in hierarchy
+        assert "meso_patterns" in hierarchy
+        assert "macro_pattern" in hierarchy
 
     async def test_validate_pattern_confidence(self, advanced_strategy):
         """Test pattern validation."""
-        pattern = {
-            'occurrences': 5,
-            'strength': 0.85,
-            'consistency': 0.9
-        }
+        pattern = {"occurrences": 5, "strength": 0.85, "consistency": 0.9}
 
         confidence = advanced_strategy.validate_pattern_confidence(pattern)
 
@@ -289,13 +280,13 @@ class TestAdvancedStrategies:
                     agent_name=agent,
                     decision="universal_decision",
                     outcome="success",
-                    success_rate=0.85
+                    success_rate=0.85,
                 )
 
         synthesis = advanced_strategy.synthesize_multi_agent_patterns()
 
         assert isinstance(synthesis, dict)
-        assert 'universal_patterns' in synthesis
+        assert "universal_patterns" in synthesis
 
     async def test_extract_procedures(self, advanced_strategy, mock_db):
         """Test procedural knowledge extraction."""
@@ -307,7 +298,7 @@ class TestAdvancedStrategies:
                 agent_name="code-analyzer",
                 decision=f"step_{i}",
                 outcome="success",
-                success_rate=0.9
+                success_rate=0.9,
             )
 
         procedures = advanced_strategy.extract_procedural_knowledge("code-analyzer")

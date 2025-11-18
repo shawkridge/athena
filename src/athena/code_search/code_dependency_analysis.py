@@ -16,17 +16,19 @@ logger = logging.getLogger(__name__)
 
 class DependencyType(Enum):
     """Types of dependencies between code units."""
-    IMPORT = "import"               # Direct import
+
+    IMPORT = "import"  # Direct import
     FUNCTION_CALL = "function_call"  # Function/method call
     CLASS_INHERITANCE = "inheritance"  # Class inheritance
     INTERFACE_IMPL = "interface_impl"  # Interface implementation
     TYPE_REFERENCE = "type_reference"  # Type/class reference
-    COMPOSITION = "composition"     # Object composition
+    COMPOSITION = "composition"  # Object composition
 
 
 @dataclass
 class Dependency:
     """Represents a dependency between two code units."""
+
     source: str
     target: str
     source_file: str
@@ -55,16 +57,17 @@ class Dependency:
 @dataclass
 class DependencyMetrics:
     """Metrics for dependency analysis."""
+
     entity_name: str
     file_path: str
-    incoming_dependencies: int = 0   # Number of entities depending on this
-    outgoing_dependencies: int = 0   # Number of entities this depends on
-    external_dependencies: int = 0   # Number of external library dependencies
-    dependency_depth: int = 0        # Maximum chain length
-    fan_in: float = 0.0             # Incoming dependency count (normalized)
-    fan_out: float = 0.0            # Outgoing dependency count (normalized)
-    instability: float = 0.0        # fan_out / (fan_in + fan_out)
-    coupling: float = 0.0           # Overall coupling score
+    incoming_dependencies: int = 0  # Number of entities depending on this
+    outgoing_dependencies: int = 0  # Number of entities this depends on
+    external_dependencies: int = 0  # Number of external library dependencies
+    dependency_depth: int = 0  # Maximum chain length
+    fan_in: float = 0.0  # Incoming dependency count (normalized)
+    fan_out: float = 0.0  # Outgoing dependency count (normalized)
+    instability: float = 0.0  # fan_out / (fan_in + fan_out)
+    coupling: float = 0.0  # Overall coupling score
 
 
 class DependencyGraph:
@@ -98,9 +101,7 @@ class DependencyGraph:
         """Get entities that depend on this entity."""
         return self.reverse_graph.get(entity, [])
 
-    def find_import_chain(
-        self, source: str, target: str
-    ) -> Optional[List[str]]:
+    def find_import_chain(self, source: str, target: str) -> Optional[List[str]]:
         """Find path from source to target."""
         visited = set()
         queue = deque([(source, [source])])
@@ -176,7 +177,9 @@ class DependencyGraph:
                 metrics.external_dependencies += 1
 
         # Calculate fan-in/out (normalized 0-1)
-        all_entities = len(set(d.source for d in self.dependencies) | set(d.target for d in self.dependencies))
+        all_entities = len(
+            set(d.source for d in self.dependencies) | set(d.target for d in self.dependencies)
+        )
         if all_entities > 0:
             metrics.fan_in = min(metrics.incoming_dependencies / all_entities, 1.0)
             metrics.fan_out = min(metrics.outgoing_dependencies / all_entities, 1.0)
@@ -221,7 +224,9 @@ class DependencyGraph:
     ) -> List[Tuple[str, DependencyMetrics]]:
         """Find entities with high instability."""
         problematic = []
-        all_entities = set(d.source for d in self.dependencies) | set(d.target for d in self.dependencies)
+        all_entities = set(d.source for d in self.dependencies) | set(
+            d.target for d in self.dependencies
+        )
 
         for entity in all_entities:
             metrics = self.get_dependency_metrics(entity)
@@ -253,9 +258,7 @@ class DependencyAnalyzer:
                     mutual_deps[pair] += 1
 
         high_coupling = [
-            (pair[0], pair[1], count)
-            for pair, count in mutual_deps.items()
-            if count >= threshold
+            (pair[0], pair[1], count) for pair, count in mutual_deps.items() if count >= threshold
         ]
 
         return sorted(high_coupling, key=lambda x: x[2], reverse=True)
@@ -277,10 +280,7 @@ class DependencyAnalyzer:
         bottlenecks = []
         all_entities = set(self.graph.graph.keys()) | set(self.graph.reverse_graph.keys())
 
-        max_incoming = max(
-            (len(self.graph.get_dependents(e)) for e in all_entities),
-            default=0
-        )
+        max_incoming = max((len(self.graph.get_dependents(e)) for e in all_entities), default=0)
 
         if max_incoming > 0:
             threshold = max_incoming * 0.7

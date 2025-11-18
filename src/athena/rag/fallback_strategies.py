@@ -8,7 +8,6 @@ Provides fallback mechanisms when primary retrieval methods fail:
 """
 
 import logging
-import time
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -224,9 +223,7 @@ class FallbackStrategyManager:
             logger.warning("Embedding search returned empty results")
 
         except TimeoutError:
-            logger.warning(
-                f"Embedding search timed out after {self.config.embedding_timeout}s"
-            )
+            logger.warning(f"Embedding search timed out after {self.config.embedding_timeout}s")
 
         except Exception as e:
             logger.warning(f"Embedding search failed: {e}. Falling back to keyword search.")
@@ -471,9 +468,7 @@ class PartialResultHandler:
         return fresh
 
     @staticmethod
-    def format_degradation_notice(
-        reason: str, fallback_strategy: str, result_count: int
-    ) -> str:
+    def format_degradation_notice(reason: str, fallback_strategy: str, result_count: int) -> str:
         """Format a user-visible notice about degraded service.
 
         Args:

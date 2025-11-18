@@ -21,7 +21,6 @@ from .coordinator import AgentCoordinator
 from ..orchestration.adaptive_agent import AdaptiveAgent
 
 # Import core memory operations
-from ..episodic.operations import remember as remember_event
 from ..memory.operations import store as store_fact
 
 logger = logging.getLogger(__name__)
@@ -29,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 class HealthStatus(Enum):
     """System health status."""
+
     EXCELLENT = "excellent"  # >95% health
     GOOD = "good"  # 80-95% health
     FAIR = "fair"  # 60-80% health
@@ -39,6 +39,7 @@ class HealthStatus(Enum):
 @dataclass
 class ComponentHealth:
     """Health status of a system component."""
+
     component: str
     status: HealthStatus
     score: float  # 0.0-1.0
@@ -50,6 +51,7 @@ class ComponentHealth:
 @dataclass
 class Bottleneck:
     """Represents a system bottleneck."""
+
     component: str
     issue: str
     severity: int  # 1-10
@@ -61,6 +63,7 @@ class Bottleneck:
 @dataclass
 class Optimization:
     """Represents a recommended optimization."""
+
     component: str
     optimization: str
     expected_improvement: float  # percentage
@@ -146,9 +149,7 @@ class MetacognitionAgent(AgentCoordinator, AdaptiveAgent):
 
             # Collect all issues
             health_report["issues"] = (
-                memory_health.issues +
-                agents_health.issues +
-                hooks_health.issues
+                memory_health.issues + agents_health.issues + hooks_health.issues
             )
 
             self.last_health_check = health_report["timestamp"]
@@ -260,34 +261,42 @@ class MetacognitionAgent(AgentCoordinator, AdaptiveAgent):
             if "consolidation_time_ms" in performance_data:
                 cons_time = performance_data["consolidation_time_ms"]
                 if cons_time > 5000:  # >5 seconds is too long
-                    adaptations["changes"].append({
-                        "component": "consolidation",
-                        "change": "Use faster clustering algorithm",
-                        "expected_improvement": "30% faster consolidation",
-                    })
+                    adaptations["changes"].append(
+                        {
+                            "component": "consolidation",
+                            "change": "Use faster clustering algorithm",
+                            "expected_improvement": "30% faster consolidation",
+                        }
+                    )
 
             # Adjust agent load balancing
             if "agent_loads" in performance_data:
                 max_load = max(performance_data["agent_loads"].values())
                 if max_load > 10:  # Too many queued tasks
-                    adaptations["changes"].append({
-                        "component": "orchestration",
-                        "change": "Increase parallel task processing",
-                        "expected_improvement": "Better load distribution",
-                    })
+                    adaptations["changes"].append(
+                        {
+                            "component": "orchestration",
+                            "change": "Increase parallel task processing",
+                            "expected_improvement": "Better load distribution",
+                        }
+                    )
 
             # Adjust memory retention
             if "memory_size_mb" in performance_data:
                 mem_size = performance_data["memory_size_mb"]
                 if mem_size > 1000:  # >1GB is large
-                    adaptations["changes"].append({
-                        "component": "memory",
-                        "change": "Increase consolidation frequency",
-                        "expected_improvement": "Reduce episodic event size",
-                    })
+                    adaptations["changes"].append(
+                        {
+                            "component": "memory",
+                            "change": "Increase consolidation frequency",
+                            "expected_improvement": "Reduce episodic event size",
+                        }
+                    )
 
             if adaptations["changes"]:
-                adaptations["reasoning"] = f"Applied {len(adaptations['changes'])} adaptations to improve performance"
+                adaptations["reasoning"] = (
+                    f"Applied {len(adaptations['changes'])} adaptations to improve performance"
+                )
                 logger.info(f"Made {len(adaptations['changes'])} strategy adaptations")
             else:
                 adaptations["reasoning"] = "System is operating optimally, no changes needed"

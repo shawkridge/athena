@@ -2,7 +2,6 @@
 
 import hashlib
 import logging
-from datetime import datetime, timedelta
 from typing import Optional, List
 from dataclasses import dataclass, field
 import time
@@ -13,6 +12,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CachedResult:
     """Cached research result."""
+
     task_id: int
     topic: str
     findings: list = field(default_factory=list)
@@ -145,9 +145,7 @@ class ResearchQueryCache:
             Cache stats dict
         """
         total_requests = self.metrics["hits"] + self.metrics["misses"]
-        hit_rate = (
-            self.metrics["hits"] / total_requests if total_requests > 0 else 0.0
-        )
+        hit_rate = self.metrics["hits"] / total_requests if total_requests > 0 else 0.0
 
         return {
             "size": len(self.cache),

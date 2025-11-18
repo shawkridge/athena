@@ -25,16 +25,16 @@ class EventType(str, Enum):
 class CodeEventType(str, Enum):
     """Specialized event types for code-aware memory tracking."""
 
-    CODE_EDIT = "code_edit"                    # File/symbol-level edit with diff
-    SYMBOL_LOOKUP = "symbol_lookup"            # Navigate to function/class definition
-    REFACTORING = "refactoring"                # Semantic code transformation pattern
-    TEST_RUN = "test_run"                      # Test execution with pass/fail metrics
-    BUG_DISCOVERY = "bug_discovery"            # Stack trace and reproduction steps
-    PERFORMANCE_PROFILE = "perf_profile"       # Timing/memory metrics
-    CODE_REVIEW = "code_review"                # Feedback on code structure
-    ARCHITECTURE_DECISION = "arch_decision"    # Major design choice
-    DEPENDENCY_CHANGE = "dependency_change"    # Add/remove/update dependency
-    MERGE_CONFLICT = "merge_conflict"          # Git merge with resolution
+    CODE_EDIT = "code_edit"  # File/symbol-level edit with diff
+    SYMBOL_LOOKUP = "symbol_lookup"  # Navigate to function/class definition
+    REFACTORING = "refactoring"  # Semantic code transformation pattern
+    TEST_RUN = "test_run"  # Test execution with pass/fail metrics
+    BUG_DISCOVERY = "bug_discovery"  # Stack trace and reproduction steps
+    PERFORMANCE_PROFILE = "perf_profile"  # Timing/memory metrics
+    CODE_REVIEW = "code_review"  # Feedback on code structure
+    ARCHITECTURE_DECISION = "arch_decision"  # Major design choice
+    DEPENDENCY_CHANGE = "dependency_change"  # Add/remove/update dependency
+    MERGE_CONFLICT = "merge_conflict"  # Git merge with resolution
 
 
 class EventOutcome(str, Enum):
@@ -86,36 +86,46 @@ class EpisodicEvent(BaseModel):
 
     # Lifecycle management (new activation-based system)
     lifecycle_status: str = "active"  # 'active', 'consolidated', 'archived'
-    consolidation_score: float = Field(default=0.0, ge=0.0, le=1.0)  # Likelihood pattern was extracted
+    consolidation_score: float = Field(
+        default=0.0, ge=0.0, le=1.0
+    )  # Likelihood pattern was extracted
     last_activation: datetime = Field(default_factory=datetime.now)  # Last time accessed
     activation_count: int = 0  # How many times retrieved
 
     # Code-aware tracking (optional fields for code events)
     code_event_type: Optional[CodeEventType] = None
-    file_path: Optional[str] = None                    # Absolute or relative file path
-    symbol_name: Optional[str] = None                  # Function, class, or module name
-    symbol_type: Optional[str] = None                  # 'function', 'class', 'method', 'module'
-    language: Optional[str] = None                     # 'python', 'typescript', 'go', etc.
-    diff: Optional[str] = None                         # Code diff (unified diff format)
-    git_commit: Optional[str] = None                   # Git commit hash
-    git_author: Optional[str] = None                   # Git author name/email
-    test_name: Optional[str] = None                    # Test function name
-    test_passed: Optional[bool] = None                 # Test outcome
-    error_type: Optional[str] = None                   # Exception/error class name
-    stack_trace: Optional[str] = None                  # Stack trace for debugging
-    performance_metrics: Optional[dict] = None         # {metric_name: value}
-    code_quality_score: Optional[float] = None         # 0.0-1.0 quality rating
+    file_path: Optional[str] = None  # Absolute or relative file path
+    symbol_name: Optional[str] = None  # Function, class, or module name
+    symbol_type: Optional[str] = None  # 'function', 'class', 'method', 'module'
+    language: Optional[str] = None  # 'python', 'typescript', 'go', etc.
+    diff: Optional[str] = None  # Code diff (unified diff format)
+    git_commit: Optional[str] = None  # Git commit hash
+    git_author: Optional[str] = None  # Git author name/email
+    test_name: Optional[str] = None  # Test function name
+    test_passed: Optional[bool] = None  # Test outcome
+    error_type: Optional[str] = None  # Exception/error class name
+    stack_trace: Optional[str] = None  # Stack trace for debugging
+    performance_metrics: Optional[dict] = None  # {metric_name: value}
+    code_quality_score: Optional[float] = None  # 0.0-1.0 quality rating
 
     # Enhanced context metadata for working memory optimization
-    project_name: Optional[str] = None                 # Project name for context
-    project_goal: Optional[str] = None                 # Current project goal/objective
-    project_phase_status: Optional[str] = None         # Current phase of project (planning, development, testing, etc.)
-    importance_score: float = Field(default=0.5, ge=0.0, le=1.0)  # 0.0-1.0, drives working memory ranking
-    actionability_score: float = Field(default=0.5, ge=0.0, le=1.0)  # 0.0-1.0, indicates if item is actionable
-    context_completeness_score: float = Field(default=0.5, ge=0.0, le=1.0)  # 0.0-1.0, whether item has sufficient context
-    has_next_step: bool = False                        # Whether this discovery has a clear next step
-    has_blocker: bool = False                          # Whether this discovery has blockers
-    required_decisions: Optional[str] = None           # JSON list of decisions needed
+    project_name: Optional[str] = None  # Project name for context
+    project_goal: Optional[str] = None  # Current project goal/objective
+    project_phase_status: Optional[str] = (
+        None  # Current phase of project (planning, development, testing, etc.)
+    )
+    importance_score: float = Field(
+        default=0.5, ge=0.0, le=1.0
+    )  # 0.0-1.0, drives working memory ranking
+    actionability_score: float = Field(
+        default=0.5, ge=0.0, le=1.0
+    )  # 0.0-1.0, indicates if item is actionable
+    context_completeness_score: float = Field(
+        default=0.5, ge=0.0, le=1.0
+    )  # 0.0-1.0, whether item has sufficient context
+    has_next_step: bool = False  # Whether this discovery has a clear next step
+    has_blocker: bool = False  # Whether this discovery has blockers
+    required_decisions: Optional[str] = None  # JSON list of decisions needed
 
     model_config = ConfigDict(use_enum_values=True)
 

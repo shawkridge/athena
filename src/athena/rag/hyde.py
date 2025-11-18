@@ -1,7 +1,6 @@
 """HyDE (Hypothetical Document Embeddings) for improved retrieval."""
 
 import logging
-from typing import Optional
 
 from ..core.models import MemorySearchResult
 from ..memory.search import SemanticSearch

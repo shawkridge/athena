@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 class AgentRole(Enum):
     """Agent roles in research."""
+
     WEB_SEARCHER = "web_searcher"
     ACADEMIC_RESEARCHER = "academic_researcher"
     SYNTHESIZER = "synthesizer"
@@ -42,6 +43,7 @@ class AgentRole(Enum):
 @dataclass
 class AgentMessage:
     """Message between agents."""
+
     sender_id: str
     receiver_id: Optional[str]  # None = broadcast
     role: AgentRole
@@ -53,6 +55,7 @@ class AgentMessage:
 @dataclass
 class ResearchTask:
     """A research task to be assigned to agents."""
+
     task_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     query: str = ""
     task_type: str = ""  # 'web_search', 'academic_search', 'synthesis', etc.
@@ -67,6 +70,7 @@ class ResearchTask:
 @dataclass
 class SharedContext:
     """Shared context and memory for research session."""
+
     session_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     original_query: str = ""
     search_results: List[SearchResult] = field(default_factory=list)
@@ -114,10 +118,7 @@ class ResearchAgent(ABC):
             while self._status == "running":
                 try:
                     # Get task with timeout
-                    message = await asyncio.wait_for(
-                        self._inbox.get(),
-                        timeout=5.0
-                    )
+                    message = await asyncio.wait_for(self._inbox.get(), timeout=5.0)
                     await self._handle_message(message)
 
                 except asyncio.TimeoutError:
@@ -167,7 +168,7 @@ class ResearchAgent(ABC):
                 "status": self._status,
                 "tasks_completed": len([t for t in self._tasks.values() if t.status == "complete"]),
                 "tasks_pending": len([t for t in self._tasks.values() if t.status == "pending"]),
-            }
+            },
         )
 
     async def send_message(self, message: AgentMessage) -> None:
@@ -217,10 +218,7 @@ class WebSearchAgent(ResearchAgent):
             )
 
             # Filter duplicates
-            new_results = [
-                r for r in results
-                if r.url not in self.context.visited_urls
-            ]
+            new_results = [r for r in results if r.url not in self.context.visited_urls]
 
             # Update context
             self.context.search_results.extend(new_results)
@@ -349,9 +347,7 @@ Synthesis:"""
             # Extract key findings
             lines = response.text.split("\n")
             self.context.key_findings = [
-                line.strip()
-                for line in lines
-                if line.strip().startswith(("-", "•", "*"))
+                line.strip() for line in lines if line.strip().startswith(("-", "•", "*"))
             ][:5]
 
             task.results = [response.text]

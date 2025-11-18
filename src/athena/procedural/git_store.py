@@ -7,14 +7,12 @@ aligned with the MCP paradigm.
 
 import json
 import logging
-import os
 import subprocess
-import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List
 
-from .models import ExecutableProcedure, ProcedureVersion, ProcedureCategory
+from .models import ExecutableProcedure
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +170,9 @@ class GitBackedProcedureStore:
 
         # Create commit
         if not commit_message:
-            commit_message = f"Add procedure {procedure.id}: {procedure.name} (v{procedure.code_version})"
+            commit_message = (
+                f"Add procedure {procedure.id}: {procedure.name} (v{procedure.code_version})"
+            )
 
         try:
             result = subprocess.run(
@@ -422,12 +422,14 @@ class GitBackedProcedureStore:
                     continue
                 parts = line.split("|")
                 if len(parts) >= 4:
-                    history.append({
-                        "commit": parts[0],
-                        "author": parts[1],
-                        "timestamp": parts[2],
-                        "message": parts[3],
-                    })
+                    history.append(
+                        {
+                            "commit": parts[0],
+                            "author": parts[1],
+                            "timestamp": parts[2],
+                            "message": parts[3],
+                        }
+                    )
 
             return history
 
@@ -489,7 +491,9 @@ class GitBackedProcedureStore:
         for procedure_id in self.list_procedures():
             procedure = self.get_procedure(procedure_id)
             if procedure:
-                code_file = export_dir / f"{procedure_id}_{procedure.name.lower().replace(' ', '_')}.py"
+                code_file = (
+                    export_dir / f"{procedure_id}_{procedure.name.lower().replace(' ', '_')}.py"
+                )
                 code_file.write_text(procedure.code, encoding="utf-8")
                 count += 1
 

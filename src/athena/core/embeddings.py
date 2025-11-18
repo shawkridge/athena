@@ -13,7 +13,7 @@ class EmbeddingModel:
         self,
         model: Optional[str] = None,
         provider: Optional[str] = None,
-        version: Optional[str] = None
+        version: Optional[str] = None,
     ):
         """Initialize llama.cpp embedding model with optional version tracking.
 
@@ -97,7 +97,7 @@ class EmbeddingModel:
         # Try to extract from metadata
         if self.model_metadata:
             # Check common version fields
-            for key in ['model', 'version', 'name', 'model_name']:
+            for key in ["model", "version", "name", "model_name"]:
                 if key in self.model_metadata:
                     return str(self.model_metadata[key])
 
@@ -105,8 +105,8 @@ class EmbeddingModel:
         if self.model:
             model_str = str(self.model)
             # Extract model name from path (e.g., "nomic-embed-text-v1.5.Q4_K_M.gguf" -> "nomic-embed-text-v1.5")
-            if '.' in model_str:
-                return model_str.split('.')[0]
+            if "." in model_str:
+                return model_str.split(".")[0]
             return model_str
 
         # Default fallback
@@ -135,7 +135,7 @@ class EmbeddingModel:
             "version": self.get_version(),
             "provider": self.provider,
             "backend": self.backend,
-            "embedding_dim": getattr(self, 'embedding_dim', None),
+            "embedding_dim": getattr(self, "embedding_dim", None),
             "metadata": self.model_metadata,
         }
 
@@ -156,15 +156,14 @@ class EmbeddingModel:
 
         try:
             with httpx.Client(timeout=30.0) as client:
-                response = client.post(
-                    f"{self.backend}/embedding",
-                    json={"content": text}
-                )
+                response = client.post(f"{self.backend}/embedding", json={"content": text})
                 response.raise_for_status()
                 data = response.json()
                 return data.get("embedding", [])
         except Exception as e:
-            logger.warning(f"Failed to generate embedding via llama.cpp: {e}, using fallback mock embedding")
+            logger.warning(
+                f"Failed to generate embedding via llama.cpp: {e}, using fallback mock embedding"
+            )
             return self._mock_embedding(text)
 
     def _mock_embedding(self, text: str) -> list[float]:

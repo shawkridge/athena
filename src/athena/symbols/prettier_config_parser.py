@@ -13,7 +13,7 @@ Supports:
 
 import json
 import re
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 from .symbol_models import Symbol, SymbolType, create_symbol
 
 
@@ -32,7 +32,7 @@ class PrettierConfigParser:
         """
         if code is None:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     code = f.read()
             except (IOError, UnicodeDecodeError):
                 return []
@@ -40,7 +40,11 @@ class PrettierConfigParser:
         symbols = []
 
         # Try JSON parsing first (for .prettierrc, .prettierrc.json, prettier.config.json)
-        if file_path.endswith('.json') or file_path.endswith('.prettierrc') or file_path.endswith('/.prettierrc'):
+        if (
+            file_path.endswith(".json")
+            or file_path.endswith(".prettierrc")
+            or file_path.endswith("/.prettierrc")
+        ):
             try:
                 data = json.loads(code)
                 symbols.extend(self._extract_from_json(data, file_path))
@@ -50,7 +54,7 @@ class PrettierConfigParser:
                 pass  # Fall through to JS parsing
 
         # For JS files, use regex-based extraction
-        if file_path.endswith('.js') or file_path.endswith('/.prettierrc'):
+        if file_path.endswith(".js") or file_path.endswith("/.prettierrc"):
             symbols.extend(self._extract_from_js(code, file_path))
             return symbols
 
@@ -73,7 +77,7 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Print width: {data['printWidth']} characters",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -90,7 +94,7 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Tab width: {data['tabWidth']} spaces",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -107,7 +111,7 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Use tabs: {data['useTabs']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -124,7 +128,7 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Use single quotes: {data['singleQuote']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -141,7 +145,7 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Trailing comma: {data['trailingComma']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -158,7 +162,7 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Bracket spacing: {data['bracketSpacing']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -175,7 +179,7 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Print semicolons: {data['semi']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -192,7 +196,7 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Arrow function parens: {data['arrowParens']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -209,7 +213,7 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"JSX bracket same line: {data['bracketSameLine']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -226,7 +230,7 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"End of line: {data['endOfLine']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -243,7 +247,7 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Prose wrap: {data['proseWrap']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -261,7 +265,7 @@ class PrettierConfigParser:
                     code="",
                     docstring=f"Prettier plugin: {plugin}",
                     language="json",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
@@ -284,7 +288,7 @@ class PrettierConfigParser:
                                 code="",
                                 docstring=f"Override pattern: {file_pattern}",
                                 language="json",
-                                visibility="public"
+                                visibility="public",
                             )
                             symbols.append(symbol)
 
@@ -302,7 +306,7 @@ class PrettierConfigParser:
                                 code="",
                                 docstring=f"Override option: {option_key}",
                                 language="json",
-                                visibility="public"
+                                visibility="public",
                             )
                             symbols.append(symbol)
 
@@ -313,7 +317,7 @@ class PrettierConfigParser:
         symbols = []
 
         # Extract printWidth
-        print_width_match = re.search(r'printWidth\s*:\s*(\d+)', code)
+        print_width_match = re.search(r"printWidth\s*:\s*(\d+)", code)
         if print_width_match:
             width = print_width_match.group(1)
             symbol = create_symbol(
@@ -327,12 +331,12 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Print width: {width} characters",
                 language="javascript",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
         # Extract tabWidth
-        tab_width_match = re.search(r'tabWidth\s*:\s*(\d+)', code)
+        tab_width_match = re.search(r"tabWidth\s*:\s*(\d+)", code)
         if tab_width_match:
             width = tab_width_match.group(1)
             symbol = create_symbol(
@@ -346,12 +350,12 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Tab width: {width} spaces",
                 language="javascript",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
         # Extract useTabs
-        use_tabs_match = re.search(r'useTabs\s*:\s*(true|false)', code)
+        use_tabs_match = re.search(r"useTabs\s*:\s*(true|false)", code)
         if use_tabs_match:
             symbol = create_symbol(
                 file_path=file_path,
@@ -364,12 +368,12 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Use tabs: {use_tabs_match.group(1)}",
                 language="javascript",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
         # Extract singleQuote
-        single_quote_match = re.search(r'singleQuote\s*:\s*(true|false)', code)
+        single_quote_match = re.search(r"singleQuote\s*:\s*(true|false)", code)
         if single_quote_match:
             symbol = create_symbol(
                 file_path=file_path,
@@ -382,7 +386,7 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Use single quotes: {single_quote_match.group(1)}",
                 language="javascript",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -400,12 +404,12 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Trailing comma: {trailing_comma_match.group(1)}",
                 language="javascript",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
         # Extract bracketSpacing
-        bracket_spacing_match = re.search(r'bracketSpacing\s*:\s*(true|false)', code)
+        bracket_spacing_match = re.search(r"bracketSpacing\s*:\s*(true|false)", code)
         if bracket_spacing_match:
             symbol = create_symbol(
                 file_path=file_path,
@@ -418,12 +422,12 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Bracket spacing: {bracket_spacing_match.group(1)}",
                 language="javascript",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
         # Extract semi
-        semi_match = re.search(r'semi\s*:\s*(true|false)', code)
+        semi_match = re.search(r"semi\s*:\s*(true|false)", code)
         if semi_match:
             symbol = create_symbol(
                 file_path=file_path,
@@ -436,7 +440,7 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Print semicolons: {semi_match.group(1)}",
                 language="javascript",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -454,12 +458,12 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Arrow function parens: {arrow_parens_match.group(1)}",
                 language="javascript",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
         # Extract bracketSameLine
-        bracket_same_line_match = re.search(r'bracketSameLine\s*:\s*(true|false)', code)
+        bracket_same_line_match = re.search(r"bracketSameLine\s*:\s*(true|false)", code)
         if bracket_same_line_match:
             symbol = create_symbol(
                 file_path=file_path,
@@ -472,7 +476,7 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"JSX bracket same line: {bracket_same_line_match.group(1)}",
                 language="javascript",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -490,7 +494,7 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"End of line: {end_of_line_match.group(1)}",
                 language="javascript",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -508,12 +512,12 @@ class PrettierConfigParser:
                 code="",
                 docstring=f"Prose wrap: {prose_wrap_match.group(1)}",
                 language="javascript",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
         # Extract plugins
-        plugins_pattern = r'plugins\s*:\s*\[([^\]]+)\]'
+        plugins_pattern = r"plugins\s*:\s*\[([^\]]+)\]"
         plugins_match = re.search(plugins_pattern, code)
         if plugins_match:
             plugins_content = plugins_match.group(1)
@@ -530,30 +534,32 @@ class PrettierConfigParser:
                     code="",
                     docstring=f"Prettier plugin: {plugin}",
                     language="javascript",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
         # Extract overrides with file patterns using brace matching
-        overrides_match = re.search(r'overrides\s*:\s*\[', code)
+        overrides_match = re.search(r"overrides\s*:\s*\[", code)
         if overrides_match:
             # Find the entire overrides array using brace matching
             start = overrides_match.end() - 1  # Position of [
             depth = 0
             end = start
             for i in range(start, len(code)):
-                if code[i] == '[':
+                if code[i] == "[":
                     depth += 1
-                elif code[i] == ']':
+                elif code[i] == "]":
                     depth -= 1
                     if depth == 0:
                         end = i
                         break
 
             if end > start:
-                overrides_content = code[start:end+1]
+                overrides_content = code[start : end + 1]
                 # Find file patterns within overrides
-                file_patterns = re.findall(r'files\s*:\s*\[([^\]]+)\]', overrides_content, re.DOTALL)
+                file_patterns = re.findall(
+                    r"files\s*:\s*\[([^\]]+)\]", overrides_content, re.DOTALL
+                )
                 for i, patterns_str in enumerate(file_patterns):
                     patterns = re.findall(r'["\']([^\'"]+)["\']', patterns_str)
                     for pattern in patterns:
@@ -568,7 +574,7 @@ class PrettierConfigParser:
                             code="",
                             docstring=f"Override pattern: {pattern}",
                             language="javascript",
-                            visibility="public"
+                            visibility="public",
                         )
                         symbols.append(symbol)
 

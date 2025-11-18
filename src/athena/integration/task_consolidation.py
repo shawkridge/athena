@@ -9,7 +9,6 @@ When tasks complete, consolidate outcomes into:
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 
 from ..core.database import Database
 from ..episodic.models import EpisodicEvent, EventContext, EventOutcome, EventType
@@ -145,9 +144,7 @@ class TaskConsolidation:
             logger.error(f"Error gathering task events: {e}")
             return []
 
-    async def _create_semantic_memories(
-        self, task: ProspectiveTask, events: list[dict]
-    ) -> int:
+    async def _create_semantic_memories(self, task: ProspectiveTask, events: list[dict]) -> int:
         """Create semantic memories from task execution.
 
         Args:
@@ -183,9 +180,13 @@ class TaskConsolidation:
             # Create learning from phase metrics
             if task.phase_metrics:
                 for metric in task.phase_metrics:
-                    phase_name = metric.phase.value if hasattr(metric.phase, "value") else metric.phase
+                    phase_name = (
+                        metric.phase.value if hasattr(metric.phase, "value") else metric.phase
+                    )
                     if metric.duration_minutes:
-                        learning = f"Phase '{phase_name}' took {metric.duration_minutes:.1f} minutes"
+                        learning = (
+                            f"Phase '{phase_name}' took {metric.duration_minutes:.1f} minutes"
+                        )
                         if self.semantic_store:
                             self.semantic_store.remember(
                                 content=learning,
@@ -200,9 +201,7 @@ class TaskConsolidation:
 
         return count
 
-    async def _extract_procedures(
-        self, task: ProspectiveTask, events: list[dict]
-    ) -> int:
+    async def _extract_procedures(self, task: ProspectiveTask, events: list[dict]) -> int:
         """Extract reusable procedures from task execution.
 
         Args:
@@ -237,9 +236,7 @@ class TaskConsolidation:
                         )
                         self.procedure_store.create_procedure(procedure)
                         count += 1
-                        logger.info(
-                            f"Extracted procedure template for task {task.id}"
-                        )
+                        logger.info(f"Extracted procedure template for task {task.id}")
                     except Exception as e:
                         logger.warning(f"Could not save procedure: {e}")
 
@@ -337,13 +334,9 @@ class TaskConsolidation:
                 variance = ((actual - estimate) / estimate) * 100
 
                 if variance > 20:
-                    lessons.append(
-                        f"Duration estimates need adjustment (+{variance:.0f}%)"
-                    )
+                    lessons.append(f"Duration estimates need adjustment (+{variance:.0f}%)")
                 elif variance < -20:
-                    lessons.append(
-                        f"Can complete similar tasks {abs(variance):.0f}% faster"
-                    )
+                    lessons.append(f"Can complete similar tasks {abs(variance):.0f}% faster")
                 else:
                     lessons.append("Duration estimation was accurate")
 
@@ -378,9 +371,7 @@ class TaskConsolidation:
 
         return lessons
 
-    async def _record_consolidation_event(
-        self, task: ProspectiveTask, result: dict
-    ) -> None:
+    async def _record_consolidation_event(self, task: ProspectiveTask, result: dict) -> None:
         """Record consolidation as episodic event.
 
         Args:
@@ -411,9 +402,7 @@ class TaskConsolidation:
         except Exception as e:
             logger.error(f"Error recording consolidation event: {e}")
 
-    async def consolidate_all_recent_completed_tasks(
-        self, hours_back: int = 24
-    ) -> dict:
+    async def consolidate_all_recent_completed_tasks(self, hours_back: int = 24) -> dict:
         """Consolidate all recently completed tasks.
 
         Args:
@@ -455,9 +444,7 @@ class TaskConsolidation:
 
                 if result["status"] == "success":
                     summary["tasks_consolidated"] += 1
-                    summary["total_semantic_memories"] += result[
-                        "semantic_memories_created"
-                    ]
+                    summary["total_semantic_memories"] += result["semantic_memories_created"]
                     summary["total_procedures"] += result["procedures_extracted"]
                     summary["total_entities"] += result["entities_linked"]
 

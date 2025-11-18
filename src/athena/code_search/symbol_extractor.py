@@ -1,7 +1,7 @@
 """Symbol extraction and indexing for code search."""
 
 import logging
-from typing import List, Dict, Optional, Any, Tuple
+from typing import List, Dict, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 class SymbolType(Enum):
     """Types of code symbols."""
+
     FUNCTION = "function"
     CLASS = "class"
     METHOD = "method"
@@ -25,6 +26,7 @@ class SymbolType(Enum):
 @dataclass
 class Symbol:
     """Represents a code symbol (function, class, variable, etc.)."""
+
     name: str
     type: SymbolType
     file_path: str
@@ -310,8 +312,7 @@ class SymbolIndex:
     ) -> List[Symbol]:
         """Find symbols in a line range."""
         return [
-            s for s in self.by_file.get(file_path, [])
-            if start_line <= s.line_number <= end_line
+            s for s in self.by_file.get(file_path, []) if start_line <= s.line_number <= end_line
         ]
 
     def search(self, query: str) -> List[Symbol]:
@@ -338,16 +339,9 @@ class SymbolIndex:
         """Get index statistics."""
         return {
             "total_symbols": len(self.symbols),
-            "by_type": {
-                sym_type.value: len(symbols)
-                for sym_type, symbols in self.by_type.items()
-            },
-            "by_file": {
-                file: len(symbols)
-                for file, symbols in self.by_file.items()
-            },
+            "by_type": {sym_type.value: len(symbols) for sym_type, symbols in self.by_type.items()},
+            "by_file": {file: len(symbols) for file, symbols in self.by_file.items()},
             "avg_complexity": (
-                sum(s.complexity for s in self.symbols) / len(self.symbols)
-                if self.symbols else 0
+                sum(s.complexity for s in self.symbols) / len(self.symbols) if self.symbols else 0
             ),
         }

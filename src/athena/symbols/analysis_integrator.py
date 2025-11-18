@@ -7,7 +7,7 @@ Provides:
 - Single-point analysis execution
 """
 
-from typing import Dict, Optional
+from typing import Dict
 from dataclasses import dataclass
 
 from .symbol_models import Symbol
@@ -16,6 +16,7 @@ from .symbol_models import Symbol
 @dataclass
 class AnalysisResult:
     """Complete analysis result."""
+
     total_symbols: int
     quality_scores: Dict
     metrics: Dict
@@ -66,28 +67,28 @@ class AnalysisIntegrator:
         # Basic analysis
         total_symbols = len(symbols)
         quality_scores = {name: {"score": 75.0} for name in symbols.keys()}
-        
+
         metrics = {
             "overall_score": 75.0,
             "health_score": 0.8,
             "total_issues": 0,
             "critical_issues": 0,
         }
-        
+
         complexity_report = {
             "total_symbols": total_symbols,
             "average_complexity": 10.0,
             "complex_count": 0,
         }
-        
+
         dependency_report = {
             "status": "analyzed" if total_symbols > 0 else "no_dependencies",
             "total_symbols": total_symbols,
             "hotspot_symbols": [],
         }
-        
+
         violations = []
-        
+
         return AnalysisResult(
             total_symbols=total_symbols,
             quality_scores=quality_scores,

@@ -3,7 +3,7 @@
 Part of Phase 3b: Workflow Pattern Mining
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 
 def suggest_next_task_with_patterns(
@@ -62,14 +62,13 @@ def suggest_next_task_with_patterns(
     try:
         if db is None:
             from ..core.database import Database
+
             db = Database()
 
         from ..workflow.suggestions import PatternSuggestionEngine
 
         engine = PatternSuggestionEngine(db)
-        suggestions = engine.suggest_next_task_with_patterns(
-            project_id, completed_task_id, limit
-        )
+        suggestions = engine.suggest_next_task_with_patterns(project_id, completed_task_id, limit)
 
         if not suggestions:
             return {

@@ -188,12 +188,14 @@ class ConceptNetAPI:
                 target = relation["end"]
                 weight = relation["weight"]
 
-                graph["edges"].append({
-                    "source": node,
-                    "target": target,
-                    "type": relation["type"],
-                    "weight": weight,
-                })
+                graph["edges"].append(
+                    {
+                        "source": node,
+                        "target": target,
+                        "type": relation["type"],
+                        "weight": weight,
+                    }
+                )
 
                 # Recursive expansion
                 await expand_recursive(target, depth + 1)
@@ -345,12 +347,14 @@ class ConceptNetAPISync(ConceptNetAPI):
 
         for relation in result.get("relations", [])[:10]:
             target = relation["end"]
-            graph["edges"].append({
-                "source": concept,
-                "target": target,
-                "type": relation["type"],
-                "weight": relation["weight"],
-            })
+            graph["edges"].append(
+                {
+                    "source": concept,
+                    "target": target,
+                    "type": relation["type"],
+                    "weight": relation["weight"],
+                }
+            )
 
         return graph
 

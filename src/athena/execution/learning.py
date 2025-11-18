@@ -1,7 +1,6 @@
 """Execution Learner - Extract patterns and insights from execution outcomes."""
 
-from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Any
 import logging
 import statistics
 
@@ -62,7 +61,8 @@ class ExecutionLearner:
 
         # Pattern 2: Duration deviations
         records_with_duration = [
-            r for r in execution_records.values()
+            r
+            for r in execution_records.values()
             if r.actual_duration is not None and r.planned_duration
         ]
 
@@ -93,9 +93,7 @@ class ExecutionLearner:
                 patterns.append(pattern)
 
         # Pattern 3: Resource utilization
-        records_with_resources = [
-            r for r in execution_records.values() if r.resources_used
-        ]
+        records_with_resources = [r for r in execution_records.values() if r.resources_used]
 
         if records_with_resources:
             all_resources = set()
@@ -104,7 +102,10 @@ class ExecutionLearner:
 
             for resource in all_resources:
                 usages = [
-                    (r.resources_used.get(resource, 0) / max(r.resources_planned.get(resource, 1), 0.01))
+                    (
+                        r.resources_used.get(resource, 0)
+                        / max(r.resources_planned.get(resource, 1), 0.01)
+                    )
                     for r in records_with_resources
                     if r.resources_planned
                 ]
@@ -186,32 +187,27 @@ class ExecutionLearner:
         bottlenecks: List[tuple[str, float]] = []
 
         records_with_duration = [
-            r for r in execution_records.values()
+            r
+            for r in execution_records.values()
             if r.actual_duration is not None and r.planned_duration
         ]
 
         if not records_with_duration:
             return bottlenecks
 
-        total_actual = sum(
-            r.actual_duration.total_seconds()
-            for r in records_with_duration
-        )
+        total_actual = sum(r.actual_duration.total_seconds() for r in records_with_duration)
 
         # Calculate impact of each task as percentage of total time
         for record in records_with_duration:
             if total_actual > 0:
-                time_impact = (
-                    record.actual_duration.total_seconds() / total_actual
-                )
+                time_impact = record.actual_duration.total_seconds() / total_actual
             else:
                 time_impact = 0.0
 
             # Also consider deviations
             if record.planned_duration.total_seconds() > 0:
                 deviation = (
-                    record.actual_duration.total_seconds()
-                    / record.planned_duration.total_seconds()
+                    record.actual_duration.total_seconds() / record.planned_duration.total_seconds()
                 )
             else:
                 deviation = 1.0
@@ -271,8 +267,7 @@ class ExecutionLearner:
 
         # Recommendation 4: Resource allocation
         successful_tasks = sum(
-            1 for r in execution_records.values()
-            if r.outcome == TaskOutcome.SUCCESS
+            1 for r in execution_records.values() if r.outcome == TaskOutcome.SUCCESS
         )
         if successful_tasks < len(execution_records) * 0.8:
             recommendations.append(
@@ -280,10 +275,7 @@ class ExecutionLearner:
             )
 
         # Recommendation 5: Quality improvements
-        failed_tasks = [
-            r for r in execution_records.values()
-            if r.outcome == TaskOutcome.FAILURE
-        ]
+        failed_tasks = [r for r in execution_records.values() if r.outcome == TaskOutcome.FAILURE]
         if failed_tasks:
             recommendations.append(
                 f"Investigate {len(failed_tasks)} failed tasks and add preventive measures"
@@ -293,9 +285,7 @@ class ExecutionLearner:
         logger.info(f"Generated {len(recommendations)} recommendations")
         return recommendations
 
-    def store_execution_outcome(
-        self, execution_id: str, metadata: Dict[str, Any]
-    ) -> None:
+    def store_execution_outcome(self, execution_id: str, metadata: Dict[str, Any]) -> None:
         """Store execution outcome for future learning.
 
         Args:

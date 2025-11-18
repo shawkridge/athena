@@ -4,7 +4,6 @@ Phase 5-8 Agent: Analyzes estimation accuracy, discovers task patterns,
 and generates optimization recommendations for weekly/monthly reviews.
 """
 
-from typing import Optional
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from ..integration.analytics import TaskAnalytics
@@ -46,9 +45,7 @@ class AnalyticsAggregatorAgent:
         self.store = ProspectiveStore(db)
         self.monitor = TaskMonitor(db)
 
-    async def analyze_project(
-        self, project_id: int, period: str = "weekly"
-    ) -> AnalyticsSummary:
+    async def analyze_project(self, project_id: int, period: str = "weekly") -> AnalyticsSummary:
         """Analyze project with weekly/monthly metrics.
 
         Args:
@@ -76,18 +73,14 @@ class AnalyticsAggregatorAgent:
         accuracy_score = (
             accuracy_data.accuracy_rate
             if hasattr(accuracy_data, "accuracy_rate")
-            else accuracy_data.get("accuracy_rate", 0)
-            if isinstance(accuracy_data, dict)
-            else 0
+            else accuracy_data.get("accuracy_rate", 0) if isinstance(accuracy_data, dict) else 0
         )
 
         # Extract patterns
         patterns_list = self._extract_patterns(patterns_data)
 
         # Identify improvement areas
-        improvement_areas = self._identify_improvements(
-            accuracy_data, patterns_data, dashboard
-        )
+        improvement_areas = self._identify_improvements(accuracy_data, patterns_data, dashboard)
 
         # Generate recommendations
         recommendations = self._generate_recommendations(
@@ -104,17 +97,15 @@ class AnalyticsAggregatorAgent:
             end_date=end_date.isoformat(),
             completed_tasks=self._count_completed_tasks(project_id, days_back),
             estimation_accuracy=accuracy_score,
-            average_health_score=dashboard.average_health_score
-            if hasattr(dashboard, "average_health_score")
-            else 0,
+            average_health_score=(
+                dashboard.average_health_score if hasattr(dashboard, "average_health_score") else 0
+            ),
             patterns_identified=patterns_list[:5],  # Top 5 patterns
             improvement_areas=improvement_areas[:3],  # Top 3 areas
             recommendations=recommendations[:5],  # Top 5 recommendations
         )
 
-    def _count_completed_tasks(
-        self, project_id: int, days_back: int
-    ) -> int:
+    def _count_completed_tasks(self, project_id: int, days_back: int) -> int:
         """Count completed tasks in timeframe.
 
         Args:
@@ -127,12 +118,7 @@ class AnalyticsAggregatorAgent:
         try:
             cursor = self.db.get_cursor()
             cutoff_time = (
-                int(
-                    (
-                        datetime.utcnow()
-                        - timedelta(days=days_back)
-                    ).timestamp()
-                )
+                int((datetime.utcnow() - timedelta(days=days_back)).timestamp())
                 if days_back > 0
                 else 0
             )
@@ -163,9 +149,7 @@ class AnalyticsAggregatorAgent:
 
         if isinstance(patterns_data, dict):
             if "most_common_priority" in patterns_data:
-                patterns.append(
-                    f"Most tasks are {patterns_data['most_common_priority']} priority"
-                )
+                patterns.append(f"Most tasks are {patterns_data['most_common_priority']} priority")
             if "failure_reason_distribution" in patterns_data:
                 patterns.append(
                     f"Common failure reasons: {patterns_data['failure_reason_distribution']}"
@@ -175,9 +159,7 @@ class AnalyticsAggregatorAgent:
                     f"Average task duration: {patterns_data['average_duration_hours']:.1f} hours"
                 )
         elif hasattr(patterns_data, "most_common_priority"):
-            patterns.append(
-                f"Most tasks are {patterns_data.most_common_priority} priority"
-            )
+            patterns.append(f"Most tasks are {patterns_data.most_common_priority} priority")
             if hasattr(patterns_data, "average_duration_hours"):
                 patterns.append(
                     f"Average task duration: {patterns_data.average_duration_hours:.1f} hours"
@@ -185,9 +167,7 @@ class AnalyticsAggregatorAgent:
 
         return patterns if patterns else ["No clear patterns identified yet"]
 
-    def _identify_improvements(
-        self, accuracy_data, patterns_data, dashboard
-    ) -> list[str]:
+    def _identify_improvements(self, accuracy_data, patterns_data, dashboard) -> list[str]:
         """Identify areas for improvement.
 
         Args:
@@ -204,9 +184,7 @@ class AnalyticsAggregatorAgent:
         accuracy_score = (
             accuracy_data.accuracy_rate
             if hasattr(accuracy_data, "accuracy_rate")
-            else accuracy_data.get("accuracy_rate", 100)
-            if isinstance(accuracy_data, dict)
-            else 100
+            else accuracy_data.get("accuracy_rate", 100) if isinstance(accuracy_data, dict) else 100
         )
 
         if accuracy_score < 70:
@@ -216,9 +194,7 @@ class AnalyticsAggregatorAgent:
 
         # Check health score
         avg_health = (
-            dashboard.average_health_score
-            if hasattr(dashboard, "average_health_score")
-            else 0
+            dashboard.average_health_score if hasattr(dashboard, "average_health_score") else 0
         )
         if avg_health < 0.65:
             improvements.append("Average task health declining - more blockers")
@@ -255,21 +231,15 @@ class AnalyticsAggregatorAgent:
                 "ACTION: Review estimation methodology - consider using historical averages"
             )
         elif accuracy < 85:
-            recommendations.append(
-                "ACTION: Refine estimates using recent completion data"
-            )
+            recommendations.append("ACTION: Refine estimates using recent completion data")
         else:
             recommendations.append("✓ Estimation accuracy is good - maintain approach")
 
         # Quality recommendations
         if "declining" in str(improvements):
-            recommendations.append(
-                "ACTION: Schedule health reviews every 30 min during execution"
-            )
+            recommendations.append("ACTION: Schedule health reviews every 30 min during execution")
         if "blocked" in str(improvements):
-            recommendations.append(
-                "ACTION: Identify and resolve top blocker categories"
-            )
+            recommendations.append("ACTION: Identify and resolve top blocker categories")
         if "failures" in str(improvements):
             recommendations.append(
                 "ACTION: Post-mortem on failed tasks to identify systemic issues"
@@ -277,21 +247,15 @@ class AnalyticsAggregatorAgent:
 
         # Pattern-based recommendations
         if patterns and "Average task duration" in patterns[0]:
-            recommendations.append(
-                "ACTION: Use average duration for future similar tasks"
-            )
+            recommendations.append("ACTION: Use average duration for future similar tasks")
 
         # Default recommendation
         if not recommendations:
-            recommendations.append(
-                "✓ Continue current practices - metrics are positive"
-            )
+            recommendations.append("✓ Continue current practices - metrics are positive")
 
         return recommendations
 
-    async def should_trigger_review(
-        self, project_id: int
-    ) -> tuple[bool, str]:
+    async def should_trigger_review(self, project_id: int) -> tuple[bool, str]:
         """Check if analytics review should be triggered.
 
         Args:
@@ -308,10 +272,7 @@ class AnalyticsAggregatorAgent:
 
             # Check if any critical health issues
             dashboard = await self.monitor.get_project_dashboard(project_id)
-            if (
-                hasattr(dashboard, "average_health_score")
-                and dashboard.average_health_score < 0.5
-            ):
+            if hasattr(dashboard, "average_health_score") and dashboard.average_health_score < 0.5:
                 return (True, "Critical health issues detected")
 
             # Check if estimation accuracy is degrading
@@ -321,9 +282,11 @@ class AnalyticsAggregatorAgent:
             accuracy_score = (
                 accuracy_data.accuracy_rate
                 if hasattr(accuracy_data, "accuracy_rate")
-                else accuracy_data.get("accuracy_rate", 100)
-                if isinstance(accuracy_data, dict)
-                else 100
+                else (
+                    accuracy_data.get("accuracy_rate", 100)
+                    if isinstance(accuracy_data, dict)
+                    else 100
+                )
             )
             if accuracy_score < 65:
                 return (True, "Estimation accuracy below threshold")
@@ -357,25 +320,23 @@ class AnalyticsAggregatorAgent:
             active_count = cursor.fetchone()[0] if cursor.fetchone() else 0
 
             # Estimate completion date based on velocity
-            velocity = (
-                summary.completed_tasks / 7
-            )  # tasks per day
+            velocity = summary.completed_tasks / 7  # tasks per day
             estimated_days = active_count / velocity if velocity > 0 else 0
 
             return {
                 "active_tasks": active_count,
                 "weekly_velocity": velocity,
                 "estimated_completion_days": estimated_days,
-                "completion_confidence": "high"
-                if summary.estimation_accuracy > 80
-                else "medium"
-                if summary.estimation_accuracy > 70
-                else "low",
-                "risk_level": "low"
-                if summary.average_health_score > 0.75
-                else "medium"
-                if summary.average_health_score > 0.5
-                else "high",
+                "completion_confidence": (
+                    "high"
+                    if summary.estimation_accuracy > 80
+                    else "medium" if summary.estimation_accuracy > 70 else "low"
+                ),
+                "risk_level": (
+                    "low"
+                    if summary.average_health_score > 0.75
+                    else "medium" if summary.average_health_score > 0.5 else "high"
+                ),
             }
         except (OSError, ValueError, TypeError, KeyError, IndexError):
             return {

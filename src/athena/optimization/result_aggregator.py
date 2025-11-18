@@ -191,9 +191,7 @@ class ResultAggregator:
 
         # For simple comparisons
         try:
-            if isinstance(cache_value, (list, dict)) and isinstance(
-                fresh_value, (list, dict)
-            ):
+            if isinstance(cache_value, (list, dict)) and isinstance(fresh_value, (list, dict)):
                 cache_size = len(cache_value)
                 fresh_size = len(fresh_value)
 

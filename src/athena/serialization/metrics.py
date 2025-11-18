@@ -176,14 +176,10 @@ class TOONMetricsCollector:
         total_json_bytes = sum(m.json_size_bytes or 0 for m in encodes)
         total_toon_bytes = sum(m.output_size_bytes for m in encodes)
         avg_token_savings = (
-            sum(m.token_savings_percent for m in encodes) / len(encodes)
-            if encodes
-            else 0.0
+            sum(m.token_savings_percent for m in encodes) / len(encodes) if encodes else 0.0
         )
         avg_duration = (
-            sum(m.duration_ms for m in self.metrics) / len(self.metrics)
-            if self.metrics
-            else 0.0
+            sum(m.duration_ms for m in self.metrics) / len(self.metrics) if self.metrics else 0.0
         )
 
         return {
@@ -226,9 +222,7 @@ class TOONMetricsCollector:
             "total_operations": len(schema_metrics),
             "encode_operations": len(encodes),
             "success_count": len(successful),
-            "success_rate": (
-                len(successful) / len(schema_metrics) if schema_metrics else 0.0
-            ),
+            "success_rate": (len(successful) / len(schema_metrics) if schema_metrics else 0.0),
             "avg_duration_ms": (
                 sum(m.duration_ms for m in schema_metrics) / len(schema_metrics)
                 if schema_metrics
@@ -238,9 +232,7 @@ class TOONMetricsCollector:
             "total_toon_bytes": total_toon,
             "compression_ratio": total_toon / total_json if total_json > 0 else 0.0,
             "avg_token_savings_percent": (
-                sum(m.token_savings_percent for m in encodes) / len(encodes)
-                if encodes
-                else 0.0
+                sum(m.token_savings_percent for m in encodes) / len(encodes) if encodes else 0.0
             ),
         }
 

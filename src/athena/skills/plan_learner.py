@@ -7,9 +7,9 @@ Learns from successful and failed task executions to:
 - Identify reusable step sequences
 """
 
-from typing import Optional, List, Dict
+from typing import List, Dict
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from ..core.database import Database
 
 
@@ -118,9 +118,7 @@ class PlanLearner:
 
         return groups
 
-    def _build_template(
-        self, task_type: str, tasks: List
-    ) -> TaskTemplate:
+    def _build_template(self, task_type: str, tasks: List) -> TaskTemplate:
         """Build template from task samples.
 
         Args:
@@ -131,26 +129,18 @@ class PlanLearner:
             TaskTemplate for this type
         """
         # Calculate metrics
-        durations = [
-            t[4] for t in tasks if t[4]
-        ]  # actual_duration_minutes
-        avg_duration = (
-            sum(durations) / len(durations) / 60 if durations else 2.0
-        )
+        durations = [t[4] for t in tasks if t[4]]  # actual_duration_minutes
+        avg_duration = sum(durations) / len(durations) / 60 if durations else 2.0
 
         # Extract common risks
         risks = []
         blockers = [t[5] for t in tasks if t[5]]  # blocker_reason
         if blockers:
-            risks.extend(
-                [f"Blocker: {b}" for b in blockers[:2]]
-            )
+            risks.extend([f"Blocker: {b}" for b in blockers[:2]])
 
         failures = [t[6] for t in tasks if t[6]]  # failure_reason
         if failures:
-            risks.extend(
-                [f"Common failure: {f}" for f in failures[:2]]
-            )
+            risks.extend([f"Common failure: {f}" for f in failures[:2]])
 
         if not risks:
             risks = self._get_default_risks(task_type)
@@ -160,9 +150,7 @@ class PlanLearner:
 
         # Calculate success rate
         success_count = len([t for t in tasks if not t[6]])  # Not failed
-        success_rate = (
-            success_count / len(tasks) if tasks else 0
-        )
+        success_rate = success_count / len(tasks) if tasks else 0
 
         # Get prerequisite knowledge
         prerequisites = self._get_prerequisites(task_type)
@@ -349,9 +337,7 @@ class PlanLearner:
             ["Domain knowledge", "Technical skills", "Testing ability"],
         )
 
-    def build_risk_checklist(
-        self, project_id: int, task_type: str
-    ) -> Dict[str, any]:
+    def build_risk_checklist(self, project_id: int, task_type: str) -> Dict[str, any]:
         """Build risk checklist for task type.
 
         Args:
@@ -366,9 +352,7 @@ class PlanLearner:
 
         if not template:
             # Build default checklist
-            checklist_items = self._get_default_checklist(
-                task_type
-            )
+            checklist_items = self._get_default_checklist(task_type)
         else:
             checklist_items = [
                 {
@@ -383,14 +367,10 @@ class PlanLearner:
             "task_type": task_type,
             "checklist": checklist_items,
             "instructions": f"Before starting {task_type} task, verify all items",
-            "template_confidence": (
-                template.success_rate if template else 0.5
-            ),
+            "template_confidence": (template.success_rate if template else 0.5),
         }
 
-    def _get_default_checklist(
-        self, task_type: str
-    ) -> List[Dict[str, any]]:
+    def _get_default_checklist(self, task_type: str) -> List[Dict[str, any]]:
         """Get default risk checklist.
 
         Args:
@@ -411,9 +391,7 @@ class PlanLearner:
             },
         ]
 
-    async def suggest_execution_approach(
-        self, project_id: int, task_type: str
-    ) -> Dict[str, any]:
+    async def suggest_execution_approach(self, project_id: int, task_type: str) -> Dict[str, any]:
         """Suggest execution approach based on templates.
 
         Args:

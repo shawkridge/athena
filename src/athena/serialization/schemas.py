@@ -222,9 +222,7 @@ def get_schema(schema_name: str) -> Dict:
         KeyError: If schema not found
     """
     if schema_name not in TOON_SCHEMAS:
-        raise KeyError(
-            f"Unknown schema: {schema_name}. Available: {list(TOON_SCHEMAS.keys())}"
-        )
+        raise KeyError(f"Unknown schema: {schema_name}. Available: {list(TOON_SCHEMAS.keys())}")
     return TOON_SCHEMAS[schema_name]
 
 
@@ -263,9 +261,7 @@ def validate_against_schema(data: Dict, schema_name: str) -> bool:
             return all(field in data for field in required_fields)
         elif isinstance(data, list):
             # For arrays, check first element
-            return all(
-                all(field in item for field in required_fields) for item in data[:1]
-            )
+            return all(all(field in item for field in required_fields) for item in data[:1])
 
         return False
     except KeyError:

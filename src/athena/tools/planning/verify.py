@@ -1,4 +1,5 @@
 """Verify plan quality tool - validate plans using Q* verification."""
+
 import time
 from typing import Any, Dict
 from athena.tools import BaseTool, ToolMetadata
@@ -32,53 +33,55 @@ class VerifyPlanTool(BaseTool):
             category="planning",
             description="Verify plan quality using Q* formal verification",
             parameters={
-                "plan": {
-                    "type": "object",
-                    "description": "Plan to verify",
-                    "required": True
-                },
+                "plan": {"type": "object", "description": "Plan to verify", "required": True},
                 "check_properties": {
                     "type": "array",
                     "items": {
                         "type": "string",
-                        "enum": ["optimality", "completeness", "consistency", "soundness", "minimality"]
+                        "enum": [
+                            "optimality",
+                            "completeness",
+                            "consistency",
+                            "soundness",
+                            "minimality",
+                        ],
                     },
                     "description": "Q* properties to check",
                     "required": False,
-                    "default": ["optimality", "completeness", "consistency", "soundness"]
+                    "default": ["optimality", "completeness", "consistency", "soundness"],
                 },
                 "include_stress_test": {
                     "type": "boolean",
                     "description": "Include 5-scenario stress testing",
                     "required": False,
-                    "default": True
+                    "default": True,
                 },
                 "detail_level": {
                     "type": "string",
                     "enum": ["basic", "standard", "detailed"],
                     "description": "Level of verification detail",
                     "required": False,
-                    "default": "standard"
-                }
+                    "default": "standard",
+                },
             },
             returns={
                 "type": "object",
                 "properties": {
                     "plan_valid": {
                         "type": "boolean",
-                        "description": "Whether plan passes all checks"
+                        "description": "Whether plan passes all checks",
                     },
                     "overall_score": {
                         "type": "number",
-                        "description": "Overall verification score (0-1)"
+                        "description": "Overall verification score (0-1)",
                     },
                     "properties_checked": {
                         "type": "object",
-                        "description": "Results for each Q* property"
+                        "description": "Results for each Q* property",
                     },
                     "stress_test_results": {
                         "type": "object",
-                        "description": "5-scenario stress test results (if requested)"
+                        "description": "5-scenario stress test results (if requested)",
                     },
                     "issues": {
                         "type": "array",
@@ -87,16 +90,16 @@ class VerifyPlanTool(BaseTool):
                             "type": "object",
                             "properties": {
                                 "severity": {"type": "string"},
-                                "description": {"type": "string"}
-                            }
-                        }
+                                "description": {"type": "string"},
+                            },
+                        },
                     },
                     "verification_time_ms": {
                         "type": "number",
-                        "description": "Time taken for verification"
-                    }
-                }
-            }
+                        "description": "Time taken for verification",
+                    },
+                },
+            },
         )
 
     def validate_input(self, **kwargs) -> None:
@@ -131,7 +134,9 @@ class VerifyPlanTool(BaseTool):
             self.validate_input(**kwargs)
 
             plan = kwargs["plan"]
-            check_properties = kwargs.get("check_properties", ["optimality", "completeness", "consistency", "soundness"])
+            check_properties = kwargs.get(
+                "check_properties", ["optimality", "completeness", "consistency", "soundness"]
+            )
             include_stress = kwargs.get("include_stress_test", True)
             detail_level = kwargs.get("detail_level", "standard")
 
@@ -143,17 +148,19 @@ class VerifyPlanTool(BaseTool):
             plan_valid = True
 
             # Parse plan string to extract steps (simple heuristic)
-            plan_steps = [s.strip() for s in plan.split('\n') if s.strip()]
+            plan_steps = [s.strip() for s in plan.split("\n") if s.strip()]
             num_steps = len(plan_steps)
 
             # Check Q* properties
             if "optimality" in check_properties:
                 # Optimality: all steps are necessary
-                optimality_score = min(0.95, 0.5 + (5 - min(num_steps, 5)) * 0.1)  # Favor fewer steps
+                optimality_score = min(
+                    0.95, 0.5 + (5 - min(num_steps, 5)) * 0.1
+                )  # Favor fewer steps
                 properties_checked["optimality"] = {
                     "passed": optimality_score > 0.7,
                     "score": optimality_score,
-                    "description": f"Plan uses {num_steps} steps"
+                    "description": f"Plan uses {num_steps} steps",
                 }
                 if optimality_score <= 0.7:
                     issues.append("Plan may not be optimal - consider reducing steps")
@@ -164,7 +171,7 @@ class VerifyPlanTool(BaseTool):
                 properties_checked["completeness"] = {
                     "passed": completeness_score > 0.7,
                     "score": completeness_score,
-                    "description": f"Contains {num_steps} steps"
+                    "description": f"Contains {num_steps} steps",
                 }
                 if num_steps < 3:
                     issues.append("Plan may be incomplete - consider adding more detail")
@@ -175,7 +182,7 @@ class VerifyPlanTool(BaseTool):
                 properties_checked["consistency"] = {
                     "passed": True,
                     "score": consistency_score,
-                    "description": "No contradictions detected"
+                    "description": "No contradictions detected",
                 }
 
             if "soundness" in check_properties:
@@ -184,7 +191,7 @@ class VerifyPlanTool(BaseTool):
                 properties_checked["soundness"] = {
                     "passed": soundness_score > 0.7,
                     "score": soundness_score,
-                    "description": "Inferences appear sound"
+                    "description": "Inferences appear sound",
                 }
 
             if "minimality" in check_properties:
@@ -196,13 +203,17 @@ class VerifyPlanTool(BaseTool):
                 properties_checked["minimality"] = {
                     "passed": minimality_score > 0.85,
                     "score": minimality_score,
-                    "description": f"{redundancy} potential redundant steps detected"
+                    "description": f"{redundancy} potential redundant steps detected",
                 }
                 if redundancy > 0:
                     issues.append(f"Plan contains {redundancy} potentially redundant steps")
 
             # Calculate overall score
-            overall_score = sum(p["score"] for p in properties_checked.values()) / len(properties_checked) if properties_checked else 0.0
+            overall_score = (
+                sum(p["score"] for p in properties_checked.values()) / len(properties_checked)
+                if properties_checked
+                else 0.0
+            )
             plan_valid = all(p.get("passed", True) for p in properties_checked.values())
 
             elapsed = (time.time() - start_time) * 1000
@@ -214,7 +225,7 @@ class VerifyPlanTool(BaseTool):
                 "issues": issues,
                 "verification_time_ms": elapsed,
                 "status": "success",
-                "plan_steps": num_steps
+                "plan_steps": num_steps,
             }
 
             if include_stress:
@@ -226,7 +237,7 @@ class VerifyPlanTool(BaseTool):
                     scenario_result = {
                         "scenario": f"scenario_{scenario_num + 1}",
                         "passed": True,
-                        "score": 0.8 + (scenario_num * 0.04)  # Slightly improving scores
+                        "score": 0.8 + (scenario_num * 0.04),  # Slightly improving scores
                     }
                     if scenario_result["score"] > 0.7:
                         scenarios_passed += 1
@@ -236,7 +247,7 @@ class VerifyPlanTool(BaseTool):
                     "scenarios": 5,
                     "scenarios_passed": scenarios_passed,
                     "pass_rate": scenarios_passed / 5,
-                    "results": stress_results
+                    "results": stress_results,
                 }
 
             return result
@@ -245,11 +256,11 @@ class VerifyPlanTool(BaseTool):
             return {
                 "error": str(e),
                 "status": "error",
-                "verification_time_ms": (time.time() - start_time) * 1000
+                "verification_time_ms": (time.time() - start_time) * 1000,
             }
         except Exception as e:
             return {
                 "error": f"Unexpected error: {str(e)}",
                 "status": "error",
-                "verification_time_ms": (time.time() - start_time) * 1000
+                "verification_time_ms": (time.time() - start_time) * 1000,
             }

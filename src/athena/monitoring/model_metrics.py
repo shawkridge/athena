@@ -1,6 +1,5 @@
 """Performance metrics for local LLM models (embedding + reasoning)."""
 
-import time
 import logging
 from typing import Dict, Optional, List
 from dataclasses import dataclass, asdict
@@ -188,9 +187,7 @@ class ModelPerformanceMonitor:
         Returns:
             CompressionMetrics object
         """
-        compression_ratio = (
-            compressed_tokens / original_tokens if original_tokens > 0 else 1.0
-        )
+        compression_ratio = compressed_tokens / original_tokens if original_tokens > 0 else 1.0
 
         metric = CompressionMetrics(
             timestamp=datetime.utcnow().isoformat(),
@@ -277,8 +274,7 @@ class ModelPerformanceMonitor:
         latencies = [m.latency_ms for m in successful]
         output_tokens_list = [m.output_tokens for m in successful]
         tokens_per_sec_list = [
-            (m.output_tokens / m.latency_ms * 1000) if m.latency_ms > 0 else 0
-            for m in successful
+            (m.output_tokens / m.latency_ms * 1000) if m.latency_ms > 0 else 0 for m in successful
         ]
 
         return {
@@ -327,12 +323,9 @@ class ModelPerformanceMonitor:
             "min_compression_ratio": min(compression_ratios),
             "max_compression_ratio": max(compression_ratios),
             "avg_latency_ms": sum(latencies) / len(latencies),
-            "total_tokens_saved": sum(
-                m.original_tokens - m.compressed_tokens for m in successful
-            ),
+            "total_tokens_saved": sum(m.original_tokens - m.compressed_tokens for m in successful),
             "avg_tokens_saved_per_operation": (
-                sum(m.original_tokens - m.compressed_tokens for m in successful)
-                / len(successful)
+                sum(m.original_tokens - m.compressed_tokens for m in successful) / len(successful)
             ),
         }
 

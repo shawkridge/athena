@@ -1,9 +1,9 @@
 """Hybrid code search engine combining AST, semantic, and spatial ranking."""
 
 import logging
-from typing import List, Optional, Tuple
+from typing import List
 
-from .models import CodeQuery, CodeSearchResult, CodeElement
+from .models import CodeSearchResult, CodeElement
 
 logger = logging.getLogger(__name__)
 
@@ -69,11 +69,13 @@ class CodeSearchEngine:
                     + scores["spatial"] * self.weights["spatial"]
                 )
 
-                scored_results.append({
-                    "element": element,
-                    "scores": scores,
-                    "combined_score": combined_score,
-                })
+                scored_results.append(
+                    {
+                        "element": element,
+                        "scores": scores,
+                        "combined_score": combined_score,
+                    }
+                )
 
             # Phase 3: Sort by combined score
             scored_results.sort(key=lambda x: x["combined_score"], reverse=True)
@@ -95,11 +97,7 @@ class CodeSearchEngine:
                     combined_score=combined_score,
                     rank=rank,
                     context=context,
-                    reasoning=(
-                        self._explain_ranking(scores, element, query)
-                        if explain
-                        else None
-                    ),
+                    reasoning=(self._explain_ranking(scores, element, query) if explain else None),
                 )
 
                 results.append(result)
@@ -148,9 +146,7 @@ class CodeSearchEngine:
             logger.error(f"Error in semantic search: {e}")
             return []
 
-    def _rank_element(
-        self, element: CodeElement, query: str
-    ) -> dict:
+    def _rank_element(self, element: CodeElement, query: str) -> dict:
         """Compute ranking scores for an element.
 
         Args:
@@ -190,16 +186,10 @@ class CodeSearchEngine:
 
             # MVP: Simple keyword matching
             query_lower = query.lower()
-            text = (
-                f"{element.name} {element.docstring or ''}"
-                f" {element.source_code}"
-            ).lower()
+            text = (f"{element.name} {element.docstring or ''}" f" {element.source_code}").lower()
 
             # Count matching keywords
-            matches = sum(
-                1 for word in query_lower.split()
-                if word in text
-            )
+            matches = sum(1 for word in query_lower.split() if word in text)
             max_matches = len(query_lower.split())
 
             score = min(1.0, matches / max_matches) if max_matches > 0 else 0.0
@@ -228,9 +218,7 @@ class CodeSearchEngine:
             # Check docstring match
             if element.docstring:
                 docstring_lower = element.docstring.lower()
-                if any(
-                    word in docstring_lower for word in query_lower.split()
-                ):
+                if any(word in docstring_lower for word in query_lower.split()):
                     return 0.8
 
             # Default moderate score
@@ -298,9 +286,7 @@ class CodeSearchEngine:
 
         return context
 
-    def _explain_ranking(
-        self, scores: dict, element: CodeElement, query: str
-    ) -> str:
+    def _explain_ranking(self, scores: dict, element: CodeElement, query: str) -> str:
         """Generate explanation of ranking for a result.
 
         Args:
@@ -314,16 +300,13 @@ class CodeSearchEngine:
         parts = []
 
         if scores["semantic"] > 0.7:
-            parts.append(
-                f"Strong semantic match (query matches keywords in "
-                f"name/docstring)"
-            )
+            parts.append("Strong semantic match (query matches keywords in " "name/docstring)")
 
         if scores["ast"] > 0.7:
-            parts.append(f"Exact structure match (element type/name matches query)")
+            parts.append("Exact structure match (element type/name matches query)")
 
         if scores["spatial"] > 0.6:
-            parts.append(f"Located in frequently accessed file")
+            parts.append("Located in frequently accessed file")
 
         if not parts:
             parts.append("Moderate relevance to search query")

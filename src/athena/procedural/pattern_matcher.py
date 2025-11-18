@@ -7,7 +7,6 @@ Matches current code against learned patterns and generates suggestions:
 - Architectural improvement suggestions
 """
 
-from typing import Optional
 from dataclasses import dataclass
 
 from ..core.database import Database
@@ -15,9 +14,7 @@ from .code_patterns import (
     RefactoringPattern,
     BugFixPattern,
     CodeSmellPattern,
-    PatternSuggestion,
     PatternType,
-    CodeMetrics,
 )
 from .pattern_store import PatternStore
 
@@ -53,9 +50,7 @@ class PatternMatcher:
         matches = []
 
         # Get all refactoring patterns for this language
-        patterns = self.pattern_store.get_refactoring_patterns(
-            language=language, limit=100
-        )
+        patterns = self.pattern_store.get_refactoring_patterns(language=language, limit=100)
 
         for pattern_dict in patterns:
             pattern = RefactoringPattern(
@@ -112,9 +107,7 @@ class PatternMatcher:
         matches = []
 
         # Get all bug-fix patterns for this language
-        patterns = self.pattern_store.get_bug_fix_patterns(
-            language=language, limit=100
-        )
+        patterns = self.pattern_store.get_bug_fix_patterns(language=language, limit=100)
 
         for pattern_dict in patterns:
             pattern = BugFixPattern(
@@ -215,9 +208,7 @@ class PatternMatcher:
         matches.sort(key=lambda m: m.score, reverse=True)
         return matches[:limit]
 
-    def _match_refactoring_pattern(
-        self, code_content: str, pattern: RefactoringPattern
-    ) -> float:
+    def _match_refactoring_pattern(self, code_content: str, pattern: RefactoringPattern) -> float:
         """Calculate confidence that refactoring pattern applies to code.
 
         Returns 0-1 confidence score.
@@ -242,9 +233,7 @@ class PatternMatcher:
 
         return min(confidence, 1.0)
 
-    def _match_bug_fix_pattern(
-        self, error_description: str, pattern: BugFixPattern
-    ) -> float:
+    def _match_bug_fix_pattern(self, error_description: str, pattern: BugFixPattern) -> float:
         """Calculate confidence that bug-fix pattern applies to error.
 
         Returns 0-1 confidence score.
@@ -263,9 +252,7 @@ class PatternMatcher:
 
         return min(confidence, 1.0)
 
-    def _detect_code_smell(
-        self, code_content: str, pattern: CodeSmellPattern
-    ) -> float:
+    def _detect_code_smell(self, code_content: str, pattern: CodeSmellPattern) -> float:
         """Detect if code contains specific code smell.
 
         Returns 0-1 confidence score.
@@ -298,15 +285,14 @@ class PatternMatcher:
         if "magic_number" in pattern.smell_type:
             # Look for hardcoded numbers
             import re
+
             numbers = re.findall(r"\b\d+\b", code_content)
             if len(numbers) > 5:
                 confidence += 0.3
 
         return min(confidence, 1.0)
 
-    def _estimate_refactoring_impact(
-        self, pattern: RefactoringPattern, code_content: str
-    ) -> str:
+    def _estimate_refactoring_impact(self, pattern: RefactoringPattern, code_content: str) -> str:
         """Estimate impact of applying refactoring pattern.
 
         Returns 'low', 'medium', or 'high'.
@@ -318,9 +304,7 @@ class PatternMatcher:
             return "medium"
         return "low"
 
-    def _estimate_refactoring_effort(
-        self, pattern: RefactoringPattern, code_content: str
-    ) -> str:
+    def _estimate_refactoring_effort(self, pattern: RefactoringPattern, code_content: str) -> str:
         """Estimate effort needed for refactoring.
 
         Returns 'low', 'medium', or 'high'.
@@ -395,20 +379,14 @@ class PatternMatcher:
         effort_score = {"low": 1.0, "medium": 0.7, "high": 0.4}.get(effort, 0.5)
 
         # Composite score: confidence × frequency × effectiveness × impact / effort
-        score = (
-            confidence * freq_score * effectiveness * impact_score * effort_score * 100
-        )
+        score = confidence * freq_score * effectiveness * impact_score * effort_score * 100
 
         return score
 
-    def _explain_refactoring_match(
-        self, pattern: RefactoringPattern, code_content: str
-    ) -> str:
+    def _explain_refactoring_match(self, pattern: RefactoringPattern, code_content: str) -> str:
         """Generate explanation for refactoring pattern match."""
         lines = len(code_content.split("\n"))
-        indent_levels = [
-            len(line) - len(line.lstrip()) for line in code_content.split("\n")
-        ]
+        indent_levels = [len(line) - len(line.lstrip()) for line in code_content.split("\n")]
         max_indent = max(indent_levels) if indent_levels else 0
 
         reasons = []
@@ -425,13 +403,9 @@ class PatternMatcher:
 
         return " • ".join(reasons) if reasons else pattern.description
 
-    def _explain_bug_fix_match(
-        self, pattern: BugFixPattern, error_description: str
-    ) -> str:
+    def _explain_bug_fix_match(self, pattern: BugFixPattern, error_description: str) -> str:
         """Generate explanation for bug-fix pattern match."""
-        matched_symptoms = [
-            s for s in pattern.symptoms if s.lower() in error_description.lower()
-        ]
+        matched_symptoms = [s for s in pattern.symptoms if s.lower() in error_description.lower()]
 
         if matched_symptoms:
             return f"Symptoms match: {', '.join(matched_symptoms[:2])}"

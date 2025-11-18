@@ -8,7 +8,7 @@ Author: Claude Code
 Date: 2025-10-31
 """
 
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 
 from athena.symbols.symbol_models import Symbol, SymbolType
@@ -19,6 +19,7 @@ from athena.symbols.symbol_analyzer import SymbolAnalyzer
 @dataclass
 class PatternApplication:
     """Record of a pattern applied to a symbol."""
+
     symbol_id: int
     symbol_name: str
     pattern_name: str
@@ -50,8 +51,7 @@ class SymbolPatternLinker:
         self.analyzer = analyzer
 
     def link_patterns_to_symbols(
-        self,
-        patterns: List[Dict[str, Any]]
+        self, patterns: List[Dict[str, Any]]
     ) -> Dict[str, List[PatternApplication]]:
         """Link Phase 4 patterns to all symbols in store.
 
@@ -95,9 +95,7 @@ class SymbolPatternLinker:
         return linked
 
     def suggest_refactorings_for_symbol(
-        self,
-        symbol: Symbol,
-        patterns: Optional[List[Dict[str, Any]]] = None
+        self, symbol: Symbol, patterns: Optional[List[Dict[str, Any]]] = None
     ) -> List[Dict[str, Any]]:
         """Generate refactoring suggestions for a symbol based on patterns.
 
@@ -146,44 +144,47 @@ class SymbolPatternLinker:
 
         # Heuristic-based suggestions
         if analysis.cyclomatic_complexity > 8:  # Lowered from 15
-            suggestions.append({
-                "type": "heuristic",
-                "category": "complexity_reduction",
-                "title": "Extract methods",
-                "description": "High cyclomatic complexity detected. Split function into smaller units.",
-                "score": min(1.0, analysis.cyclomatic_complexity / 20),
-                "priority": "high",
-            })
+            suggestions.append(
+                {
+                    "type": "heuristic",
+                    "category": "complexity_reduction",
+                    "title": "Extract methods",
+                    "description": "High cyclomatic complexity detected. Split function into smaller units.",
+                    "score": min(1.0, analysis.cyclomatic_complexity / 20),
+                    "priority": "high",
+                }
+            )
 
         if symbol.metrics and symbol.metrics.lines_of_code > 75:  # Lowered from 150
-            suggestions.append({
-                "type": "heuristic",
-                "category": "size_reduction",
-                "title": "Break into smaller functions",
-                "description": f"Function is {symbol.metrics.lines_of_code} LOC. Extract related logic.",
-                "score": min(1.0, symbol.metrics.lines_of_code / 300),
-                "priority": "medium",
-            })
+            suggestions.append(
+                {
+                    "type": "heuristic",
+                    "category": "size_reduction",
+                    "title": "Break into smaller functions",
+                    "description": f"Function is {symbol.metrics.lines_of_code} LOC. Extract related logic.",
+                    "score": min(1.0, symbol.metrics.lines_of_code / 300),
+                    "priority": "medium",
+                }
+            )
 
         if param_count > 4:  # Lowered from 6
-            suggestions.append({
-                "type": "heuristic",
-                "category": "parameter_reduction",
-                "title": "Use parameter object",
-                "description": f"Function has {param_count} parameters. Group into a class.",
-                "score": min(1.0, param_count / 10),
-                "priority": "medium",
-            })
+            suggestions.append(
+                {
+                    "type": "heuristic",
+                    "category": "parameter_reduction",
+                    "title": "Use parameter object",
+                    "description": f"Function has {param_count} parameters. Group into a class.",
+                    "score": min(1.0, param_count / 10),
+                    "priority": "medium",
+                }
+            )
 
         # Sort by score (highest first)
         suggestions.sort(key=lambda s: s.get("score", 0), reverse=True)
 
         return suggestions
 
-    def measure_pattern_effectiveness_by_symbol(
-        self,
-        pattern_name: str
-    ) -> Dict[str, Any]:
+    def measure_pattern_effectiveness_by_symbol(self, pattern_name: str) -> Dict[str, Any]:
         """Measure which symbols benefit most from a pattern.
 
         Identifies symbols where a specific pattern would be most effective,
@@ -233,16 +234,13 @@ class SymbolPatternLinker:
             "top_symbols": sorted(
                 effectiveness_scores.items(),
                 key=lambda x: x[1]["effectiveness_score"],
-                reverse=True
+                reverse=True,
             )[:5],
-            "symbol_distribution": self._analyze_symbol_distribution(
-                effectiveness_scores
-            ),
+            "symbol_distribution": self._analyze_symbol_distribution(effectiveness_scores),
         }
 
     def compute_pattern_applicability_matrix(
-        self,
-        patterns: List[Dict[str, Any]]
+        self, patterns: List[Dict[str, Any]]
     ) -> Dict[str, Dict[str, float]]:
         """Compute applicability matrix: patterns vs symbol types.
 
@@ -287,11 +285,7 @@ class SymbolPatternLinker:
     # Private Helper Methods
     # =========================================================================
 
-    def _compute_pattern_match_score(
-        self,
-        symbol: Symbol,
-        pattern: Dict[str, Any]
-    ) -> float:
+    def _compute_pattern_match_score(self, symbol: Symbol, pattern: Dict[str, Any]) -> float:
         """Compute how well a pattern matches a symbol (0.0-1.0)."""
         score = 0.0
 
@@ -333,11 +327,7 @@ class SymbolPatternLinker:
 
         return min(1.0, score)
 
-    def _compute_symbol_pattern_effectiveness(
-        self,
-        symbol: Symbol,
-        pattern_name: str
-    ) -> float:
+    def _compute_symbol_pattern_effectiveness(self, symbol: Symbol, pattern_name: str) -> float:
         """Compute effectiveness score: how much would this pattern help?"""
         score = 0.0
 
@@ -366,11 +356,7 @@ class SymbolPatternLinker:
 
         return score
 
-    def _generate_pattern_suggestion(
-        self,
-        symbol: Symbol,
-        pattern: Dict[str, Any]
-    ) -> str:
+    def _generate_pattern_suggestion(self, symbol: Symbol, pattern: Dict[str, Any]) -> str:
         """Generate natural language suggestion for applying a pattern."""
         pattern_name = pattern.get("name", "unknown")
         pattern_description = pattern.get("description", "")
@@ -380,15 +366,13 @@ class SymbolPatternLinker:
         elif symbol.symbol_type == SymbolType.FUNCTION:
             return f"This function would benefit from '{pattern_name}'. {pattern_description}"
         elif symbol.symbol_type == SymbolType.CLASS:
-            return f"Consider applying '{pattern_name}' to this class structure. {pattern_description}"
+            return (
+                f"Consider applying '{pattern_name}' to this class structure. {pattern_description}"
+            )
         else:
             return f"This symbol could use '{pattern_name}'. {pattern_description}"
 
-    def _explain_applicability(
-        self,
-        symbol: Symbol,
-        pattern: Dict[str, Any]
-    ) -> str:
+    def _explain_applicability(self, symbol: Symbol, pattern: Dict[str, Any]) -> str:
         """Explain why a pattern applies to this symbol."""
         analysis = self.analyzer.analyze_symbol(symbol)
         reasons = []
@@ -410,11 +394,7 @@ class SymbolPatternLinker:
         else:
             return "Pattern matches symbol characteristics"
 
-    def _what_would_improve(
-        self,
-        symbol: Symbol,
-        pattern_name: str
-    ) -> List[str]:
+    def _what_would_improve(self, symbol: Symbol, pattern_name: str) -> List[str]:
         """List what would improve if pattern is applied."""
         improvements = []
 
@@ -436,10 +416,7 @@ class SymbolPatternLinker:
 
         return improvements or ["Improve code quality"]
 
-    def _analyze_symbol_distribution(
-        self,
-        effectiveness_scores: Dict[str, Dict]
-    ) -> Dict[str, int]:
+    def _analyze_symbol_distribution(self, effectiveness_scores: Dict[str, Dict]) -> Dict[str, int]:
         """Analyze distribution of symbol types with high effectiveness."""
         distribution = {}
 

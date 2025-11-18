@@ -12,8 +12,8 @@ import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple, Any
-from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Set, Any
+from datetime import datetime
 from collections import OrderedDict
 import hashlib
 
@@ -23,20 +23,20 @@ logger = logging.getLogger(__name__)
 class RetrievalBackend(Enum):
     """Available retrieval backends."""
 
-    SEMANTIC = "semantic"           # Vector/semantic search
-    GRAPH = "graph"                 # Knowledge graph traversal
-    PROCEDURAL = "procedural"       # Procedural memory search
-    TEMPORAL = "temporal"           # Temporal reasoning
-    HYBRID = "hybrid"               # Combine multiple backends
+    SEMANTIC = "semantic"  # Vector/semantic search
+    GRAPH = "graph"  # Knowledge graph traversal
+    PROCEDURAL = "procedural"  # Procedural memory search
+    TEMPORAL = "temporal"  # Temporal reasoning
+    HYBRID = "hybrid"  # Combine multiple backends
 
 
 class RetrievalMode(Enum):
     """Retrieval execution modes."""
 
-    FAST = "fast"                   # Single backend, highest speed
-    BALANCED = "balanced"           # 2-3 backends, good speed/quality
-    THOROUGH = "thorough"           # All applicable backends
-    ADAPTIVE = "adaptive"           # Choose mode based on query
+    FAST = "fast"  # Single backend, highest speed
+    BALANCED = "balanced"  # 2-3 backends, good speed/quality
+    THOROUGH = "thorough"  # All applicable backends
+    ADAPTIVE = "adaptive"  # Choose mode based on query
 
 
 @dataclass
@@ -45,11 +45,11 @@ class RetrievalResult:
 
     query: str
     backend: RetrievalBackend
-    items: List[Dict[str, Any]]    # Retrieved items
-    count: int                       # Number of results
-    score: float                     # Result quality (0-1)
-    latency_ms: float                # Time taken (milliseconds)
-    cached: bool = False             # Whether result was cached
+    items: List[Dict[str, Any]]  # Retrieved items
+    count: int  # Number of results
+    score: float  # Result quality (0-1)
+    latency_ms: float  # Time taken (milliseconds)
+    cached: bool = False  # Whether result was cached
     metadata: Dict = field(default_factory=dict)
 
 
@@ -58,12 +58,12 @@ class MergedResults:
     """Merged results from multiple backends."""
 
     query: str
-    items: List[Dict[str, Any]]    # Merged items
-    total_count: int               # Total unique items
-    sources: Set[str]              # Which backends provided results
-    overall_quality: float         # Quality score (0-1)
-    total_latency_ms: float        # Total time taken
-    deduplication_ratio: float     # % of duplicates removed
+    items: List[Dict[str, Any]]  # Merged items
+    total_count: int  # Total unique items
+    sources: Set[str]  # Which backends provided results
+    overall_quality: float  # Quality score (0-1)
+    total_latency_ms: float  # Total time taken
+    deduplication_ratio: float  # % of duplicates removed
     metadata: Dict = field(default_factory=dict)
 
 
@@ -420,13 +420,13 @@ class RetrievalOptimizer:
             return available_backends[:1]
         elif mode == RetrievalMode.BALANCED:
             # 2-3 backends for good balance
-            return available_backends[:min(2, len(available_backends))]
+            return available_backends[: min(2, len(available_backends))]
         elif mode == RetrievalMode.THOROUGH:
             # All available backends
             return available_backends
         else:  # ADAPTIVE
             # Choose based on query characteristics
-            return available_backends[:min(2, len(available_backends))]
+            return available_backends[: min(2, len(available_backends))]
 
     def _score_backend_results(self, items: List[Dict[str, Any]]) -> float:
         """Score quality of backend results."""
@@ -435,9 +435,7 @@ class RetrievalOptimizer:
 
         # Check for result quality indicators
         has_scores = any("score" in item or "relevance" in item for item in items)
-        has_metadata = any(
-            "metadata" in item or "context" in item for item in items
-        )
+        has_metadata = any("metadata" in item or "context" in item for item in items)
 
         score = 0.5  # Base score
 

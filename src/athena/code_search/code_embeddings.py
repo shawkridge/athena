@@ -1,7 +1,6 @@
 """Code-specific embedding models for semantic search."""
 
 import logging
-import json
 from typing import List, Optional, Dict, Any
 from enum import Enum
 from abc import ABC, abstractmethod
@@ -11,12 +10,13 @@ logger = logging.getLogger(__name__)
 
 class EmbeddingModelType(Enum):
     """Types of embedding models."""
-    CODE_LLAMA = "codellama"          # Code-specific (8B, 34B parameters)
-    STARCODE = "starcode"             # StarCoder models
-    CLAUDE = "claude"                 # Anthropic Claude models
-    GPT = "gpt"                       # OpenAI GPT models
-    GENERAL = "general"               # General-purpose embeddings
-    MOCK = "mock"                     # Mock for testing
+
+    CODE_LLAMA = "codellama"  # Code-specific (8B, 34B parameters)
+    STARCODE = "starcode"  # StarCoder models
+    CLAUDE = "claude"  # Anthropic Claude models
+    GPT = "gpt"  # OpenAI GPT models
+    GENERAL = "general"  # General-purpose embeddings
+    MOCK = "mock"  # Mock for testing
 
 
 class CodeEmbeddingModel(ABC):
@@ -57,6 +57,7 @@ class CodeLlamaEmbedding(CodeEmbeddingModel):
         """Generate embedding using CodeLlama."""
         try:
             import ollama
+
             response = ollama.embeddings(model=self._model_name, prompt=text)
             return response.get("embedding", [])
         except ImportError:
@@ -76,8 +77,10 @@ class CodeLlamaEmbedding(CodeEmbeddingModel):
     def _mock_embedding(self, text: str) -> List[float]:
         """Generate deterministic mock embedding."""
         import hashlib
+
         hash_val = int(hashlib.md5(text.encode()).hexdigest(), 16)
         import random
+
         random.seed(hash_val)
         return [random.uniform(-1, 1) for _ in range(self._embedding_dim)]
 
@@ -104,6 +107,7 @@ class StarCoderEmbedding(CodeEmbeddingModel):
         """Generate embedding using StarCoder."""
         try:
             import ollama
+
             response = ollama.embeddings(model=self._model_name, prompt=text)
             return response.get("embedding", [])
         except ImportError:
@@ -120,8 +124,10 @@ class StarCoderEmbedding(CodeEmbeddingModel):
     def _mock_embedding(self, text: str) -> List[float]:
         """Generate deterministic mock embedding."""
         import hashlib
+
         hash_val = int(hashlib.md5(text.encode()).hexdigest(), 16)
         import random
+
         random.seed(hash_val)
         return [random.uniform(-1, 1) for _ in range(self._embedding_dim)]
 
@@ -142,6 +148,7 @@ class ClaudeEmbedding(CodeEmbeddingModel):
     def __init__(self, model_name: str = "claude-3-5-sonnet-20241022"):
         """Initialize Claude embedding model."""
         from athena.core import config
+
         self._model_name = model_name
         # Use configured embedding dimension (standardized to 768D for compatibility)
         self._embedding_dim = config.CLAUDE_EMBEDDING_DIM
@@ -151,6 +158,7 @@ class ClaudeEmbedding(CodeEmbeddingModel):
         """Generate embedding using Claude."""
         try:
             import anthropic
+
             if self._client is None:
                 self._client = anthropic.Anthropic()
 
@@ -172,8 +180,10 @@ class ClaudeEmbedding(CodeEmbeddingModel):
     def _mock_embedding(self, text: str) -> List[float]:
         """Generate deterministic mock embedding."""
         import hashlib
+
         hash_val = int(hashlib.md5(text.encode()).hexdigest(), 16)
         import random
+
         random.seed(hash_val)
         return [random.uniform(-1, 1) for _ in range(self._embedding_dim)]
 
@@ -202,8 +212,10 @@ class MockEmbedding(CodeEmbeddingModel):
             return self._cache[text]
 
         import hashlib
+
         hash_val = int(hashlib.md5(text.encode()).hexdigest(), 16)
         import random
+
         random.seed(hash_val)
         embedding = [random.uniform(-1, 1) for _ in range(self._embedding_dim)]
 

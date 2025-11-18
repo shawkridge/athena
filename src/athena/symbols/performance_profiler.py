@@ -8,15 +8,14 @@ Provides:
 - Performance trending analysis
 """
 
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, field
+from typing import Dict, List, Optional
+from dataclasses import dataclass
 from enum import Enum
-import time
-import math
 
 
 class PerformanceIssueType(str, Enum):
     """Types of performance issues."""
+
     SLOW_EXECUTION = "slow_execution"
     HIGH_MEMORY = "high_memory"
     INEFFICIENT_ALGORITHM = "inefficient_algorithm"
@@ -27,6 +26,7 @@ class PerformanceIssueType(str, Enum):
 
 class PerfomanceLevel(str, Enum):
     """Performance quality levels."""
+
     EXCELLENT = "excellent"
     GOOD = "good"
     ACCEPTABLE = "acceptable"
@@ -37,6 +37,7 @@ class PerfomanceLevel(str, Enum):
 @dataclass
 class ProfilingData:
     """Performance profiling data for a symbol."""
+
     symbol_name: str
     execution_time_ms: float  # Total execution time in milliseconds
     memory_usage_mb: float  # Memory usage in megabytes
@@ -49,6 +50,7 @@ class ProfilingData:
 @dataclass
 class PerformanceMetric:
     """Single performance metric."""
+
     metric_name: str
     value: float
     unit: str
@@ -59,6 +61,7 @@ class PerformanceMetric:
 @dataclass
 class PerformanceIssue:
     """Identified performance issue."""
+
     symbol_name: str
     issue_type: PerformanceIssueType
     severity: str  # low, medium, high, critical
@@ -72,6 +75,7 @@ class PerformanceIssue:
 @dataclass
 class PerformanceProfile:
     """Complete performance profile for a symbol."""
+
     symbol_name: str
     overall_score: float  # 0-100
     performance_level: str  # excellent, good, acceptable, poor, critical
@@ -127,9 +131,7 @@ class PerformanceProfiler:
         bottlenecks = self._identify_bottlenecks(symbol_data, metrics)
 
         # Calculate improvement potential
-        improvement_potential = self._calculate_improvement_potential(
-            issues, symbol_data
-        )
+        improvement_potential = self._calculate_improvement_potential(issues, symbol_data)
 
         # Generate recommendations
         recommendations = self._generate_recommendations(issues, bottlenecks)
@@ -161,9 +163,9 @@ class PerformanceProfiler:
 
         # Execution time metric
         exec_time = symbol_data.get("execution_time_ms", 0.0)
-        baseline = self.baseline_metrics.get(
-            symbol_data.get("name", ""), {}
-        ).get("execution_time_ms")
+        baseline = self.baseline_metrics.get(symbol_data.get("name", ""), {}).get(
+            "execution_time_ms"
+        )
         variance = self._calculate_variance(exec_time, baseline)
 
         metrics["execution_time"] = PerformanceMetric(
@@ -176,9 +178,7 @@ class PerformanceProfiler:
 
         # Memory usage metric
         memory = symbol_data.get("memory_usage_mb", 0.0)
-        baseline = self.baseline_metrics.get(
-            symbol_data.get("name", ""), {}
-        ).get("memory_usage_mb")
+        baseline = self.baseline_metrics.get(symbol_data.get("name", ""), {}).get("memory_usage_mb")
         variance = self._calculate_variance(memory, baseline)
 
         metrics["memory_usage"] = PerformanceMetric(
@@ -223,9 +223,7 @@ class PerformanceProfiler:
 
         return metrics
 
-    def _calculate_variance(
-        self, current_value: float, baseline: Optional[float]
-    ) -> float:
+    def _calculate_variance(self, current_value: float, baseline: Optional[float]) -> float:
         """Calculate percent variance from baseline.
 
         Args:
@@ -436,24 +434,28 @@ class PerformanceProfiler:
         if calls > 0:
             time_per_call = exec_time / calls
             if time_per_call > 1.0:  # >1ms per call
-                bottlenecks.append({
-                    "name": "High Time Per Call",
-                    "metric": time_per_call,
-                    "unit": "ms",
-                    "severity": "high" if time_per_call > 10 else "medium",
-                })
+                bottlenecks.append(
+                    {
+                        "name": "High Time Per Call",
+                        "metric": time_per_call,
+                        "unit": "ms",
+                        "severity": "high" if time_per_call > 10 else "medium",
+                    }
+                )
 
         # Bottleneck: High memory per call
         memory = metrics["memory_usage"].value
         if calls > 0:
             memory_per_call = memory / calls
             if memory_per_call > 0.1:  # >0.1MB per call
-                bottlenecks.append({
-                    "name": "High Memory Per Call",
-                    "metric": memory_per_call,
-                    "unit": "MB",
-                    "severity": "high",
-                })
+                bottlenecks.append(
+                    {
+                        "name": "High Memory Per Call",
+                        "metric": memory_per_call,
+                        "unit": "MB",
+                        "severity": "high",
+                    }
+                )
 
         # Bottleneck: Instructions per cache miss
         instructions = metrics["instructions"].value
@@ -461,12 +463,14 @@ class PerformanceProfiler:
         if cache_misses > 0:
             instr_per_miss = instructions / cache_misses
             if instr_per_miss < 10:  # <10 instructions per cache miss
-                bottlenecks.append({
-                    "name": "Poor Cache Efficiency",
-                    "metric": instr_per_miss,
-                    "unit": "instr/miss",
-                    "severity": "medium",
-                })
+                bottlenecks.append(
+                    {
+                        "name": "Poor Cache Efficiency",
+                        "metric": instr_per_miss,
+                        "unit": "instr/miss",
+                        "severity": "medium",
+                    }
+                )
 
         return sorted(bottlenecks, key=lambda x: x["severity"], reverse=True)
 
@@ -524,9 +528,7 @@ class PerformanceProfiler:
         # High issues
         high_issues = [i for i in issues if i.severity == "high"]
         if high_issues:
-            recommendations.append(
-                f"Priority: Optimize {high_issues[0].issue_type.value}"
-            )
+            recommendations.append(f"Priority: Optimize {high_issues[0].issue_type.value}")
 
         # Top bottleneck
         if bottlenecks:
@@ -536,13 +538,13 @@ class PerformanceProfiler:
 
         # Generic recommendations
         if not recommendations:
-            recommendations.append("Code is performing well. Consider profiling for further optimization.")
+            recommendations.append(
+                "Code is performing well. Consider profiling for further optimization."
+            )
 
         return recommendations
 
-    def compare_profiles(
-        self, symbol_name1: str, symbol_name2: str
-    ) -> Dict:
+    def compare_profiles(self, symbol_name1: str, symbol_name2: str) -> Dict:
         """Compare performance profiles of two symbols.
 
         Args:
@@ -661,6 +663,10 @@ class PerformanceProfiler:
             "min_score": min(scores) if scores else 0.0,
             "max_score": max(scores) if scores else 100.0,
             "performance_levels": levels,
-            "critical_count": len([p for p in self.profiles.values() if p.performance_level == "critical"]),
-            "excellent_count": len([p for p in self.profiles.values() if p.performance_level == "excellent"]),
+            "critical_count": len(
+                [p for p in self.profiles.values() if p.performance_level == "critical"]
+            ),
+            "excellent_count": len(
+                [p for p in self.profiles.values() if p.performance_level == "excellent"]
+            ),
         }

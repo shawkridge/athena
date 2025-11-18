@@ -114,7 +114,7 @@ class GitCommitCursor(BaseModel):
             "last_commit_sha": self.last_commit_sha,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
             "repo_path": self.repo_path,
-            "source_type": "git_commit"  # For identification
+            "source_type": "git_commit",  # For identification
         }
 
     @classmethod
@@ -131,7 +131,7 @@ class GitCommitCursor(BaseModel):
         return cls(
             last_commit_sha=data.get("last_commit_sha"),
             timestamp=timestamp,
-            repo_path=data.get("repo_path")
+            repo_path=data.get("repo_path"),
         )
 
 
@@ -243,9 +243,7 @@ class APILogCursor(BaseModel):
         """Serialize cursor to dictionary for storage."""
         return {
             "last_log_id": self.last_log_id,
-            "last_timestamp": (
-                self.last_timestamp.isoformat() if self.last_timestamp else None
-            ),
+            "last_timestamp": (self.last_timestamp.isoformat() if self.last_timestamp else None),
         }
 
     @classmethod
@@ -308,11 +306,18 @@ class EventSourceCursor:
         if cursor_schema and data:
             try:
                 # Validate through schema
-                instance = cursor_schema.from_dict(data) if hasattr(cursor_schema, 'from_dict') else cursor_schema(**data)
-                self._data = instance.to_dict() if hasattr(instance, 'to_dict') else instance.model_dump()
+                instance = (
+                    cursor_schema.from_dict(data)
+                    if hasattr(cursor_schema, "from_dict")
+                    else cursor_schema(**data)
+                )
+                self._data = (
+                    instance.to_dict() if hasattr(instance, "to_dict") else instance.model_dump()
+                )
             except Exception as e:
                 # If validation fails, fall back to untyped
                 import logging
+
                 logging.warning(f"Cursor schema validation failed: {e}. Using untyped cursor.")
                 self.cursor_schema = None
 
@@ -332,15 +337,18 @@ class EventSourceCursor:
                 updated_data = {**self._data, **kwargs}
 
                 # Validate through schema
-                if hasattr(self.cursor_schema, 'from_dict'):
+                if hasattr(self.cursor_schema, "from_dict"):
                     instance = self.cursor_schema.from_dict(updated_data)
                 else:
                     instance = self.cursor_schema(**updated_data)
 
                 # Serialize back to dict
-                self._data = instance.to_dict() if hasattr(instance, 'to_dict') else instance.model_dump()
+                self._data = (
+                    instance.to_dict() if hasattr(instance, "to_dict") else instance.model_dump()
+                )
             except Exception as e:
                 import logging
+
                 logging.error(f"Failed to update typed cursor: {e}")
                 raise
         else:
@@ -407,20 +415,24 @@ class CursorManager:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS event_source_cursors (
                 source_id TEXT PRIMARY KEY,
                 cursor_data TEXT NOT NULL,
                 updated_at INTEGER NOT NULL
             )
-        """)
+        """
+        )
 
         # Index for fast lookup by source_id (implicit due to PRIMARY KEY)
         # Index for sorting by update time
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_cursors_updated
             ON event_source_cursors(updated_at DESC)
-        """)
+        """
+        )
 
         # commit handled by cursor context
 
@@ -440,10 +452,13 @@ class CursorManager:
         """
         try:
             cursor = self.db.get_cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT cursor_data FROM event_source_cursors
                 WHERE source_id = ?
-            """, (source_id,))
+            """,
+                (source_id,),
+            )
 
             row = cursor.fetchone()
             if row:
@@ -453,6 +468,7 @@ class CursorManager:
 
         except Exception as e:
             import logging
+
             logging.error(f"Failed to retrieve cursor for {source_id}: {e}")
             return None
 
@@ -479,16 +495,20 @@ class CursorManager:
             # Serialize cursor data to JSON
             cursor_json = json.dumps(cursor_data, default=str)  # default=str handles datetime
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT OR REPLACE INTO event_source_cursors (source_id, cursor_data, updated_at)
                 VALUES (?, ?, ?)
-            """, (source_id, cursor_json, now))
+            """,
+                (source_id, cursor_json, now),
+            )
 
             # commit handled by cursor context
 
         except Exception as e:
             # rollback handled by cursor context
             import logging
+
             logging.error(f"Failed to update cursor for {source_id}: {e}")
             raise
 
@@ -507,10 +527,13 @@ class CursorManager:
         """
         try:
             cursor = self.db.get_cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 DELETE FROM event_source_cursors
                 WHERE source_id = ?
-            """, (source_id,))
+            """,
+                (source_id,),
+            )
 
             deleted = cursor.rowcount > 0
             # commit handled by cursor context
@@ -520,6 +543,7 @@ class CursorManager:
         except Exception as e:
             # rollback handled by cursor context
             import logging
+
             logging.error(f"Failed to delete cursor for {source_id}: {e}")
             return False
 
@@ -539,24 +563,29 @@ class CursorManager:
         """
         try:
             cursor = self.db.get_cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT source_id, cursor_data, updated_at
                 FROM event_source_cursors
                 ORDER BY updated_at DESC
-            """)
+            """
+            )
 
             results = []
             for row in cursor.fetchall():
-                results.append({
-                    "source_id": row[0],
-                    "cursor_data": json.loads(row[1]),
-                    "updated_at": datetime.fromtimestamp(row[2]),
-                })
+                results.append(
+                    {
+                        "source_id": row[0],
+                        "cursor_data": json.loads(row[1]),
+                        "updated_at": datetime.fromtimestamp(row[2]),
+                    }
+                )
 
             return results
 
         except Exception as e:
             import logging
+
             logging.error(f"Failed to list cursors: {e}")
             return []
 
@@ -589,7 +618,7 @@ def example_full_sync():
         processed_files={
             "/home/user/project/file1.py": datetime.now(),
             "/home/user/project/file2.py": datetime.now(),
-        }
+        },
     )
     cursor_mgr.update_cursor(source_id, cursor.to_dict())
 

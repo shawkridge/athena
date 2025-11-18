@@ -38,8 +38,7 @@ class HeuristicPattern:
 
 
 def decide_extraction_approach(
-    cluster: List[EpisodicEvent],
-    use_llm_threshold: float = 0.5
+    cluster: List[EpisodicEvent], use_llm_threshold: float = 0.5
 ) -> ExtractionApproach:
     """
     Decide whether to use System 1 (heuristics) or System 2 (LLM).
@@ -59,10 +58,7 @@ def decide_extraction_approach(
     """
     if not cluster:
         return ExtractionApproach(
-            use_system_1=False,
-            use_system_2=False,
-            uncertainty=1.0,
-            reason="No events in cluster"
+            use_system_1=False, use_system_2=False, uncertainty=1.0, reason="No events in cluster"
         )
 
     # System 1: Try fast heuristics first
@@ -75,7 +71,7 @@ def decide_extraction_approach(
             use_system_1=True,
             use_system_2=False,
             uncertainty=uncertainty,
-            reason=f"System 1 confident (uncertainty: {uncertainty:.2f})"
+            reason=f"System 1 confident (uncertainty: {uncertainty:.2f})",
         )
     else:
         # Uncertain: use both systems
@@ -83,7 +79,7 @@ def decide_extraction_approach(
             use_system_1=True,
             use_system_2=True,
             uncertainty=uncertainty,
-            reason=f"System 2 needed (uncertainty: {uncertainty:.2f})"
+            reason=f"System 2 needed (uncertainty: {uncertainty:.2f})",
         )
 
 
@@ -98,62 +94,71 @@ def _extract_heuristic_patterns(cluster: List[EpisodicEvent]) -> List[HeuristicP
 
     # Pattern 1: TDD workflow (test → code → success)
     if _is_tdd_workflow(sorted_events):
-        patterns.append(HeuristicPattern(
-            description="Test-Driven Development workflow: Write failing test, implement feature, verify tests pass",
-            pattern_type="workflow",
-            confidence=0.85,
-            tags=["tdd", "testing", "workflow"],
-            evidence="Sequence shows test → implementation → success pattern"
-        ))
+        patterns.append(
+            HeuristicPattern(
+                description="Test-Driven Development workflow: Write failing test, implement feature, verify tests pass",
+                pattern_type="workflow",
+                confidence=0.85,
+                tags=["tdd", "testing", "workflow"],
+                evidence="Sequence shows test → implementation → success pattern",
+            )
+        )
 
     # Pattern 2: Error recovery (error → fix → success)
     if _is_error_recovery(sorted_events):
-        patterns.append(HeuristicPattern(
-            description="Error recovery workflow: Encountered error, debugged and fixed issue, verified resolution",
-            pattern_type="workflow",
-            confidence=0.80,
-            tags=["debugging", "error-handling", "workflow"],
-            evidence="Sequence shows error → fix → success pattern"
-        ))
+        patterns.append(
+            HeuristicPattern(
+                description="Error recovery workflow: Encountered error, debugged and fixed issue, verified resolution",
+                pattern_type="workflow",
+                confidence=0.80,
+                tags=["debugging", "error-handling", "workflow"],
+                evidence="Sequence shows error → fix → success pattern",
+            )
+        )
 
     # Pattern 3: Refactoring activity (multiple related file changes)
     if _is_refactoring(sorted_events):
-        patterns.append(HeuristicPattern(
-            description="Refactoring activity: Multiple coordinated changes in related files",
-            pattern_type="pattern",
-            confidence=0.75,
-            tags=["refactoring", "code-quality"],
-            evidence="Multiple file changes in same directory over short time"
-        ))
+        patterns.append(
+            HeuristicPattern(
+                description="Refactoring activity: Multiple coordinated changes in related files",
+                pattern_type="pattern",
+                confidence=0.75,
+                tags=["refactoring", "code-quality"],
+                evidence="Multiple file changes in same directory over short time",
+            )
+        )
 
     # Pattern 4: Explicit decision
     decision_events = [e for e in sorted_events if "decision" in str(e.event_type).lower()]
     if decision_events:
         decision = decision_events[0]
-        patterns.append(HeuristicPattern(
-            description=f"Architectural decision: {decision.content}",
-            pattern_type="decision",
-            confidence=0.90,
-            tags=["architecture", "decision"],
-            evidence="Explicit decision event recorded"
-        ))
+        patterns.append(
+            HeuristicPattern(
+                description=f"Architectural decision: {decision.content}",
+                pattern_type="decision",
+                confidence=0.90,
+                tags=["architecture", "decision"],
+                evidence="Explicit decision event recorded",
+            )
+        )
 
     # Pattern 5: Deployment pattern (multiple events leading to deployment)
     if _is_deployment_pattern(sorted_events):
-        patterns.append(HeuristicPattern(
-            description="Deployment workflow: Code changes tested, reviewed, and deployed to production",
-            pattern_type="workflow",
-            confidence=0.80,
-            tags=["deployment", "production", "workflow"],
-            evidence="Sequence shows development → testing → deployment"
-        ))
+        patterns.append(
+            HeuristicPattern(
+                description="Deployment workflow: Code changes tested, reviewed, and deployed to production",
+                pattern_type="workflow",
+                confidence=0.80,
+                tags=["deployment", "production", "workflow"],
+                evidence="Sequence shows development → testing → deployment",
+            )
+        )
 
     return patterns
 
 
 def _calculate_uncertainty(
-    cluster: List[EpisodicEvent],
-    heuristic_patterns: List[HeuristicPattern]
+    cluster: List[EpisodicEvent], heuristic_patterns: List[HeuristicPattern]
 ) -> float:
     """
     Calculate uncertainty in heuristic pattern extraction.
@@ -195,10 +200,10 @@ def _calculate_uncertainty(
 
     # Composite uncertainty
     uncertainty = (
-        0.3 * size_uncertainty +
-        0.3 * pattern_uncertainty +
-        0.2 * diversity_uncertainty +
-        0.2 * confidence_uncertainty
+        0.3 * size_uncertainty
+        + 0.3 * pattern_uncertainty
+        + 0.2 * diversity_uncertainty
+        + 0.2 * confidence_uncertainty
     )
 
     return min(1.0, max(0.0, uncertainty))
@@ -215,7 +220,7 @@ def _is_tdd_workflow(events: List[EpisodicEvent]) -> bool:
         e1, e2, e3 = events[i], events[i + 1], events[i + 2]
 
         # e1: test event, e2: file change/action, e3: success
-        is_test = ("test" in e1.content.lower() or e1.event_type == EventType.TEST_RUN)
+        is_test = "test" in e1.content.lower() or e1.event_type == EventType.TEST_RUN
         is_change = e2.event_type in [EventType.FILE_CHANGE, EventType.ACTION]
         is_success = e3.outcome == EventOutcome.SUCCESS
 
@@ -278,8 +283,7 @@ def _is_deployment_pattern(events: List[EpisodicEvent]) -> bool:
 
 
 def recommend_system_2_questions(
-    cluster: List[EpisodicEvent],
-    heuristic_patterns: List[HeuristicPattern]
+    cluster: List[EpisodicEvent], heuristic_patterns: List[HeuristicPattern]
 ) -> List[str]:
     """
     Generate questions for System 2 (LLM) to investigate.
@@ -299,7 +303,9 @@ def recommend_system_2_questions(
     # If only one type of pattern, ask for others
     pattern_types = set(p.pattern_type for p in heuristic_patterns)
     if len(pattern_types) == 1:
-        questions.append("Beyond the identified workflow, are there architectural decisions or best practices?")
+        questions.append(
+            "Beyond the identified workflow, are there architectural decisions or best practices?"
+        )
         questions.append("What anti-patterns or risks can be identified?")
 
     # If very few events, ask for implicit patterns

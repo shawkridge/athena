@@ -16,7 +16,7 @@ Key Components:
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -27,12 +27,12 @@ from ..episodic.models import EpisodicEvent
 class EventFeatures:
     """Features extracted from an episodic event for surprise calculation."""
 
-    embedding: np.ndarray          # 384-dim semantic vector
-    entities: List[str]            # Entity types mentioned
-    temporal_delta: float          # Seconds since previous event
-    causal_parents: List[int]      # IDs of causally-prior events
-    event_type: str                # Event classification
-    tags: List[str]                # Semantic tags
+    embedding: np.ndarray  # 384-dim semantic vector
+    entities: List[str]  # Entity types mentioned
+    temporal_delta: float  # Seconds since previous event
+    causal_parents: List[int]  # IDs of causally-prior events
+    event_type: str  # Event classification
+    tags: List[str]  # Semantic tags
     original_event: Optional[EpisodicEvent] = None  # Reference back to source
 
 
@@ -51,8 +51,9 @@ class EventEncoder:
         """
         self.embedding_model = embedding_model
 
-    def encode(self, event: EpisodicEvent,
-               prev_event_time: Optional[float] = None) -> EventFeatures:
+    def encode(
+        self, event: EpisodicEvent, prev_event_time: Optional[float] = None
+    ) -> EventFeatures:
         """Encode event into features for surprise calculation.
 
         Args:
@@ -76,7 +77,7 @@ class EventEncoder:
 
         # Event type and tags
         event_type = event.event_type
-        tags = getattr(event, 'tags', [])
+        tags = getattr(event, "tags", [])
 
         return EventFeatures(
             embedding=embedding,
@@ -85,7 +86,7 @@ class EventEncoder:
             causal_parents=causal_parents,
             event_type=event_type,
             tags=tags,
-            original_event=event
+            original_event=event,
         )
 
     def _get_embedding(self, content: str) -> np.ndarray:
@@ -114,7 +115,7 @@ class EventEncoder:
             List of entity type strings
         """
         # Try to get entities from event metadata
-        if hasattr(event, 'entities'):
+        if hasattr(event, "entities"):
             return event.entities
 
         # Fallback: extract from content (simplified)
@@ -122,17 +123,18 @@ class EventEncoder:
         content = event.content.lower()
 
         # Pattern matching for common entity types
-        if 'error' in content or 'fail' in content:
-            entities.append('error')
-        if 'success' in content or 'complete' in content:
-            entities.append('success')
-        if 'start' in content or 'begin' in content:
-            entities.append('start')
+        if "error" in content or "fail" in content:
+            entities.append("error")
+        if "success" in content or "complete" in content:
+            entities.append("success")
+        if "start" in content or "begin" in content:
+            entities.append("start")
 
         return entities
 
-    def _calculate_temporal_delta(self, event: EpisodicEvent,
-                                  prev_event_time: Optional[float] = None) -> float:
+    def _calculate_temporal_delta(
+        self, event: EpisodicEvent, prev_event_time: Optional[float] = None
+    ) -> float:
         """Calculate time elapsed since previous event.
 
         Args:
@@ -142,10 +144,10 @@ class EventEncoder:
         Returns:
             Time delta in seconds
         """
-        if not hasattr(event, 'timestamp') or prev_event_time is None:
+        if not hasattr(event, "timestamp") or prev_event_time is None:
             return 0.0
 
-        event_time = event.timestamp if hasattr(event, 'timestamp') else 0.0
+        event_time = event.timestamp if hasattr(event, "timestamp") else 0.0
         return max(0.0, event_time - prev_event_time)
 
     def _find_causal_parents(self, event: EpisodicEvent) -> List[int]:
@@ -182,8 +184,9 @@ class BayesianSurpriseCalculator:
         self.window_size = window_size
         self.encoder = EventEncoder(embedding_model)
 
-    def calculate_surprise(self, prior_features: List[EventFeatures],
-                          current_features: EventFeatures) -> float:
+    def calculate_surprise(
+        self, prior_features: List[EventFeatures], current_features: EventFeatures
+    ) -> float:
         """Calculate surprise of current event given prior events.
 
         Args:
@@ -197,29 +200,22 @@ class BayesianSurpriseCalculator:
             return 0.0
 
         # Component 1: Embedding-based surprise (60% weight)
-        kl_embedding = self._kl_divergence_embedding(
-            prior_features, current_features
-        )
+        kl_embedding = self._kl_divergence_embedding(prior_features, current_features)
 
         # Component 2: Entity-based surprise (25% weight)
-        kl_entities = self._kl_divergence_entities(
-            prior_features, current_features
-        )
+        kl_entities = self._kl_divergence_entities(prior_features, current_features)
 
         # Component 3: Temporal surprise (15% weight)
-        kl_temporal = self._kl_divergence_temporal(
-            prior_features, current_features
-        )
+        kl_temporal = self._kl_divergence_temporal(prior_features, current_features)
 
         # Weighted combination
-        surprise = (0.60 * kl_embedding +
-                   0.25 * kl_entities +
-                   0.15 * kl_temporal)
+        surprise = 0.60 * kl_embedding + 0.25 * kl_entities + 0.15 * kl_temporal
 
         return surprise
 
-    def _kl_divergence_embedding(self, prior_features: List[EventFeatures],
-                                current_features: EventFeatures) -> float:
+    def _kl_divergence_embedding(
+        self, prior_features: List[EventFeatures], current_features: EventFeatures
+    ) -> float:
         """K-L divergence based on semantic embeddings.
 
         Uses Gaussian approximation of embedding distributions.
@@ -250,7 +246,7 @@ class BayesianSurpriseCalculator:
         # K-L divergence for Gaussians
         # K-L(P || Q) ≈ Σ [(x_P - x_Q)² / σ_Q²]
         kl_divergence = np.sum(
-            ((current_embedding - predicted_embedding) ** 2) / (sigma_prior ** 2 + 1e-8)
+            ((current_embedding - predicted_embedding) ** 2) / (sigma_prior**2 + 1e-8)
         )
 
         # Normalize by embedding dimension
@@ -285,8 +281,9 @@ class BayesianSurpriseCalculator:
 
         return predicted
 
-    def _kl_divergence_entities(self, prior_features: List[EventFeatures],
-                               current_features: EventFeatures) -> float:
+    def _kl_divergence_entities(
+        self, prior_features: List[EventFeatures], current_features: EventFeatures
+    ) -> float:
         """K-L divergence based on entity types.
 
         Uses Jaccard distance as proxy for K-L divergence.
@@ -321,8 +318,9 @@ class BayesianSurpriseCalculator:
 
         return kl_approx
 
-    def _kl_divergence_temporal(self, prior_features: List[EventFeatures],
-                               current_features: EventFeatures) -> float:
+    def _kl_divergence_temporal(
+        self, prior_features: List[EventFeatures], current_features: EventFeatures
+    ) -> float:
         """K-L divergence based on temporal features.
 
         Measures deviation from expected inter-event timing.
@@ -354,8 +352,9 @@ class BayesianSurpriseCalculator:
 
         return kl_approx
 
-    def calculate_surprise_sequence(self, events: List[EpisodicEvent],
-                                   window_size: Optional[int] = None) -> List[float]:
+    def calculate_surprise_sequence(
+        self, events: List[EpisodicEvent], window_size: Optional[int] = None
+    ) -> List[float]:
         """Calculate surprise values for entire event sequence.
 
         Args:
@@ -376,7 +375,7 @@ class BayesianSurpriseCalculator:
             features = self.encoder.encode(event, prev_time)
             features_list.append(features)
 
-            if hasattr(event, 'timestamp'):
+            if hasattr(event, "timestamp"):
                 prev_time = event.timestamp
 
         # Calculate surprise for each event
@@ -403,14 +402,14 @@ class BayesianSurpriseCalculator:
             Dict with mean, stdev, min, max
         """
         if not surprises:
-            return {'mean': 0.0, 'stdev': 0.0, 'min': 0.0, 'max': 0.0}
+            return {"mean": 0.0, "stdev": 0.0, "min": 0.0, "max": 0.0}
 
         return {
-            'mean': float(np.mean(surprises)),
-            'stdev': float(np.std(surprises)),
-            'min': float(np.min(surprises)),
-            'max': float(np.max(surprises)),
-            'median': float(np.median(surprises))
+            "mean": float(np.mean(surprises)),
+            "stdev": float(np.std(surprises)),
+            "min": float(np.min(surprises)),
+            "max": float(np.max(surprises)),
+            "median": float(np.median(surprises)),
         }
 
 
@@ -420,11 +419,11 @@ class SegmentationResult:
 
     session_id: str
     segments: List[List[EpisodicEvent]]  # Grouped episodes
-    surprises: List[float]               # Surprise per event
-    threshold: float                     # Boundary threshold
-    boundaries: List[int]                # Boundary event indices
-    modularity_score: float              # Community structure quality
-    stats: Dict = None                   # Surprise statistics
+    surprises: List[float]  # Surprise per event
+    threshold: float  # Boundary threshold
+    boundaries: List[int]  # Boundary event indices
+    modularity_score: float  # Community structure quality
+    stats: Dict = None  # Surprise statistics
     created_at: datetime = None
 
     def __post_init__(self):
@@ -442,9 +441,12 @@ class EventSegmenter:
     Refines boundaries using graph-theoretic modularity optimization.
     """
 
-    def __init__(self, surprise_calculator: BayesianSurpriseCalculator,
-                 min_event_size: int = 8,
-                 max_event_size: int = 128):
+    def __init__(
+        self,
+        surprise_calculator: BayesianSurpriseCalculator,
+        min_event_size: int = 8,
+        max_event_size: int = 128,
+    ):
         """Initialize event segmenter.
 
         Args:
@@ -456,9 +458,9 @@ class EventSegmenter:
         self.min_event_size = min_event_size
         self.max_event_size = max_event_size
 
-    def segment_events(self, events: List[EpisodicEvent],
-                      adaptive_gamma: float = 1.0,
-                      session_id: str = "unknown") -> SegmentationResult:
+    def segment_events(
+        self, events: List[EpisodicEvent], adaptive_gamma: float = 1.0, session_id: str = "unknown"
+    ) -> SegmentationResult:
         """Segment events into episodes using Bayesian surprise.
 
         Args:
@@ -477,7 +479,7 @@ class EventSegmenter:
                 threshold=0.0,
                 boundaries=[0, len(events) - 1],
                 modularity_score=1.0,
-                stats={'num_events': len(events)}
+                stats={"num_events": len(events)},
             )
 
         # Stage 1: Calculate surprise for each event
@@ -501,9 +503,9 @@ class EventSegmenter:
 
         # Gather statistics
         stats = self.surprise_calculator.get_surprise_stats(surprises)
-        stats['num_segments'] = len(segments)
-        stats['threshold'] = threshold
-        stats['adaptive_gamma'] = adaptive_gamma
+        stats["num_segments"] = len(segments)
+        stats["threshold"] = threshold
+        stats["adaptive_gamma"] = adaptive_gamma
 
         return SegmentationResult(
             session_id=session_id,
@@ -512,11 +514,10 @@ class EventSegmenter:
             threshold=threshold,
             boundaries=boundaries,
             modularity_score=modularity,
-            stats=stats
+            stats=stats,
         )
 
-    def _calculate_adaptive_threshold(self, surprises: List[float],
-                                     gamma: float = 1.0) -> float:
+    def _calculate_adaptive_threshold(self, surprises: List[float], gamma: float = 1.0) -> float:
         """Calculate adaptive threshold: mean + gamma * stdev.
 
         Args:
@@ -533,8 +534,7 @@ class EventSegmenter:
 
         return float(threshold)
 
-    def _detect_boundaries(self, surprises: List[float],
-                          threshold: float) -> List[int]:
+    def _detect_boundaries(self, surprises: List[float], threshold: float) -> List[int]:
         """Detect event boundaries where surprise exceeds threshold.
 
         Args:
@@ -556,9 +556,9 @@ class EventSegmenter:
 
         return boundaries
 
-    def _refine_with_modularity(self, events: List[EpisodicEvent],
-                               surprises: List[float],
-                               boundaries: List[int]) -> List[int]:
+    def _refine_with_modularity(
+        self, events: List[EpisodicEvent], surprises: List[float], boundaries: List[int]
+    ) -> List[int]:
         """Refine boundaries using graph-theoretic modularity.
 
         Args:
@@ -590,8 +590,7 @@ class EventSegmenter:
 
         return refined_boundaries
 
-    def _greedy_modularity_optimization(self, edges: List[Tuple],
-                                       num_nodes: int) -> List[int]:
+    def _greedy_modularity_optimization(self, edges: List[Tuple], num_nodes: int) -> List[int]:
         """Simple greedy modularity optimization (Louvain approximation).
 
         Args:
@@ -633,8 +632,7 @@ class EventSegmenter:
 
         return communities
 
-    def _calculate_modularity_score(self, communities: List[int],
-                                   edges: List[Tuple]) -> float:
+    def _calculate_modularity_score(self, communities: List[int], edges: List[Tuple]) -> float:
         """Calculate modularity Q for community assignment.
 
         Args:
@@ -648,10 +646,7 @@ class EventSegmenter:
             return 0.0
 
         # Sum edges within communities
-        internal_weight = sum(
-            weight for u, v, weight in edges
-            if communities[u] == communities[v]
-        )
+        internal_weight = sum(weight for u, v, weight in edges if communities[u] == communities[v])
 
         # Total weight
         total_weight = sum(weight for _, _, weight in edges)
@@ -661,9 +656,9 @@ class EventSegmenter:
 
         return internal_weight / total_weight
 
-    def _calculate_modularity(self, events: List[EpisodicEvent],
-                             surprises: List[float],
-                             boundaries: List[int]) -> float:
+    def _calculate_modularity(
+        self, events: List[EpisodicEvent], surprises: List[float], boundaries: List[int]
+    ) -> float:
         """Calculate modularity of final segmentation.
 
         Args:
@@ -704,8 +699,9 @@ class EventSegmenter:
 
         return min(1.0, modularity)  # Clamp to [0, 1]
 
-    def _create_segments(self, events: List[EpisodicEvent],
-                        boundaries: List[int]) -> List[List[EpisodicEvent]]:
+    def _create_segments(
+        self, events: List[EpisodicEvent], boundaries: List[int]
+    ) -> List[List[EpisodicEvent]]:
         """Create event segments from boundaries.
 
         Args:
@@ -726,8 +722,10 @@ class EventSegmenter:
 
         return segments
 
-    def _enforce_size_constraints(self, segments: List[List[EpisodicEvent]],
-                                ) -> List[List[EpisodicEvent]]:
+    def _enforce_size_constraints(
+        self,
+        segments: List[List[EpisodicEvent]],
+    ) -> List[List[EpisodicEvent]]:
         """Enforce min/max size constraints.
 
         Args:
@@ -739,7 +737,7 @@ class EventSegmenter:
         result = []
 
         for segment in segments:
-            token_count = sum(len(e.content.split()) for e in segment if hasattr(e, 'content'))
+            token_count = sum(len(e.content.split()) for e in segment if hasattr(e, "content"))
 
             if token_count < self.min_event_size:
                 # Merge with previous segment

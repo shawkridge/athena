@@ -13,6 +13,7 @@ from datetime import datetime
 
 class CritiqueType(str, Enum):
     """Types of self-critique"""
+
     SUPPORTED = "supported"  # Answer is fully supported by documents
     PARTIALLY_SUPPORTED = "partially_supported"  # Some parts are supported
     NOT_SUPPORTED = "not_supported"  # Answer not supported by documents
@@ -22,6 +23,7 @@ class CritiqueType(str, Enum):
 @dataclass
 class CritiqueResult:
     """Result of self-critique on generated answer"""
+
     answer: str
     critique_type: CritiqueType
     confidence: float  # 0.0-1.0
@@ -56,6 +58,7 @@ class CritiqueResult:
 @dataclass
 class GeneratedAnswer:
     """Generated answer with metadata"""
+
     query: str
     answer: str
     supporting_documents: List[str] = field(default_factory=list)
@@ -158,7 +161,9 @@ class AnswerGenerator:
                 query=query,
                 answer=answer_text,
                 supporting_documents=documents,
-                generation_method=f"regenerated_{regeneration_count}" if regeneration_count > 0 else "baseline",
+                generation_method=(
+                    f"regenerated_{regeneration_count}" if regeneration_count > 0 else "baseline"
+                ),
                 critique_results=critique,
                 confidence=critique.confidence,
             )
@@ -167,7 +172,9 @@ class AnswerGenerator:
             self.generation_history.append(answer)
 
             # Check if quality is acceptable
-            if critique.confidence >= quality_threshold or not critique.should_regenerate(quality_threshold):
+            if critique.confidence >= quality_threshold or not critique.should_regenerate(
+                quality_threshold
+            ):
                 answer.is_final = True
                 break
 
@@ -334,9 +341,7 @@ class AnswerGenerator:
         if not segments:
             return 0.5
 
-        grounded_count = sum(
-            1 for seg in segments if self._is_segment_supported(seg, documents)
-        )
+        grounded_count = sum(1 for seg in segments if self._is_segment_supported(seg, documents))
 
         return min(1.0, grounded_count / len(segments))
 
@@ -388,9 +393,7 @@ class AnswerGenerator:
 
         return min(1.0, coverage * 1.2)  # Slight boost for good coverage
 
-    def _generate_suggestions(
-        self, critique_type: CritiqueType, issues: List[str]
-    ) -> List[str]:
+    def _generate_suggestions(self, critique_type: CritiqueType, issues: List[str]) -> List[str]:
         """Generate suggestions for improvement
 
         Args:

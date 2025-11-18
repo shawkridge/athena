@@ -5,7 +5,7 @@ adaptive replanning to get back on track.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)

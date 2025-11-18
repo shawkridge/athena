@@ -1,4 +1,5 @@
 """Simulate plan scenarios tool - run scenario simulations."""
+
 import time
 from typing import Any, Dict
 from athena.tools import BaseTool, ToolMetadata
@@ -31,17 +32,13 @@ class SimulatePlanTool(BaseTool):
             category="planning",
             description="Simulate plan execution across scenarios",
             parameters={
-                "plan": {
-                    "type": "object",
-                    "description": "Plan to simulate",
-                    "required": True
-                },
+                "plan": {"type": "object", "description": "Plan to simulate", "required": True},
                 "scenario_type": {
                     "type": "string",
                     "enum": ["nominal", "stress", "edge_case", "adversarial", "random"],
                     "description": "Type of scenarios to simulate",
                     "required": False,
-                    "default": "nominal"
+                    "default": "nominal",
                 },
                 "num_simulations": {
                     "type": "integer",
@@ -49,34 +46,34 @@ class SimulatePlanTool(BaseTool):
                     "required": False,
                     "default": 5,
                     "minimum": 1,
-                    "maximum": 100
+                    "maximum": 100,
                 },
                 "track_metrics": {
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "Metrics to track (success_rate, execution_time, resource_usage, etc.)",
                     "required": False,
-                    "default": ["success_rate", "execution_time"]
-                }
+                    "default": ["success_rate", "execution_time"],
+                },
             },
             returns={
                 "type": "object",
                 "properties": {
                     "simulations_run": {
                         "type": "integer",
-                        "description": "Number of simulations completed"
+                        "description": "Number of simulations completed",
                     },
                     "scenario_type": {
                         "type": "string",
-                        "description": "Type of scenarios simulated"
+                        "description": "Type of scenarios simulated",
                     },
                     "success_rate": {
                         "type": "number",
-                        "description": "Overall success rate across simulations"
+                        "description": "Overall success rate across simulations",
                     },
                     "average_execution_time_ms": {
                         "type": "number",
-                        "description": "Average execution time"
+                        "description": "Average execution time",
                     },
                     "simulation_results": {
                         "type": "array",
@@ -88,9 +85,9 @@ class SimulatePlanTool(BaseTool):
                                 "scenario": {"type": "string"},
                                 "success": {"type": "boolean"},
                                 "execution_time_ms": {"type": "number"},
-                                "notes": {"type": "string"}
-                            }
-                        }
+                                "notes": {"type": "string"},
+                            },
+                        },
                     },
                     "anomalies": {
                         "type": "array",
@@ -100,16 +97,16 @@ class SimulatePlanTool(BaseTool):
                             "properties": {
                                 "simulation_id": {"type": "integer"},
                                 "issue": {"type": "string"},
-                                "severity": {"type": "string"}
-                            }
-                        }
+                                "severity": {"type": "string"},
+                            },
+                        },
                     },
                     "simulation_time_ms": {
                         "type": "number",
-                        "description": "Total time for all simulations"
-                    }
-                }
-            }
+                        "description": "Total time for all simulations",
+                    },
+                },
+            },
         )
 
     def validate_input(self, **kwargs) -> None:
@@ -165,11 +162,15 @@ class SimulatePlanTool(BaseTool):
                     success_count += 1
                 else:
                     # Add anomaly
-                    anomalies.append({
-                        "simulation": sim_num + 1,
-                        "type": random.choice(["timeout", "resource_exhaustion", "constraint_violation"]),
-                        "severity": random.choice(["low", "medium", "high"])
-                    })
+                    anomalies.append(
+                        {
+                            "simulation": sim_num + 1,
+                            "type": random.choice(
+                                ["timeout", "resource_exhaustion", "constraint_violation"]
+                            ),
+                            "severity": random.choice(["low", "medium", "high"]),
+                        }
+                    )
 
                 total_time += exec_time
 
@@ -177,14 +178,14 @@ class SimulatePlanTool(BaseTool):
                     "simulation_num": sim_num + 1,
                     "execution_time_ms": exec_time,
                     "success": success,
-                    "scenario": f"{scenario_type}_{sim_num + 1}"
+                    "scenario": f"{scenario_type}_{sim_num + 1}",
                 }
 
                 if track_metrics:
                     sim_result["metrics"] = {
                         "steps_executed": random.randint(5, 15),
                         "resources_used_percent": random.uniform(20, 95),
-                        "errors": random.randint(0, 3)
+                        "errors": random.randint(0, 3),
                     }
 
                 simulation_results.append(sim_result)
@@ -205,7 +206,7 @@ class SimulatePlanTool(BaseTool):
                 "anomalies": anomalies,
                 "tracked_metrics": track_metrics,
                 "simulation_time_ms": elapsed,
-                "status": "success"
+                "status": "success",
             }
 
             return result
@@ -214,11 +215,11 @@ class SimulatePlanTool(BaseTool):
             return {
                 "error": str(e),
                 "status": "error",
-                "simulation_time_ms": (time.time() - start_time) * 1000
+                "simulation_time_ms": (time.time() - start_time) * 1000,
             }
         except Exception as e:
             return {
                 "error": f"Unexpected error: {str(e)}",
                 "status": "error",
-                "simulation_time_ms": (time.time() - start_time) * 1000
+                "simulation_time_ms": (time.time() - start_time) * 1000,
             }

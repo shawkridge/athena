@@ -8,7 +8,7 @@ import logging
 import time
 import json
 import hashlib
-from typing import Any, Dict, Optional, List, Tuple
+from typing import Any, Dict, Optional, List
 from dataclasses import dataclass
 from collections import OrderedDict
 from enum import Enum
@@ -19,16 +19,18 @@ logger = logging.getLogger(__name__)
 
 class CacheStrategy(Enum):
     """Cache strategies for different use cases."""
-    LRU = "lru"              # Least recently used
-    LFU = "lfu"              # Least frequently used
-    TTL = "ttl"              # Time-to-live based expiration
-    FIFO = "fifo"            # First in, first out
-    ARC = "arc"              # Adaptive replacement cache
+
+    LRU = "lru"  # Least recently used
+    LFU = "lfu"  # Least frequently used
+    TTL = "ttl"  # Time-to-live based expiration
+    FIFO = "fifo"  # First in, first out
+    ARC = "arc"  # Adaptive replacement cache
 
 
 @dataclass
 class CacheEntry:
     """Represents a single cache entry."""
+
     key: str
     value: Any
     timestamp: float
@@ -94,7 +96,7 @@ class BaseCache(ABC):
         """Estimate object size in bytes."""
         try:
             if isinstance(obj, str):
-                return len(obj.encode('utf-8'))
+                return len(obj.encode("utf-8"))
             elif isinstance(obj, (dict, list)):
                 return len(json.dumps(obj))
             else:
@@ -193,10 +195,7 @@ class TTLCache(BaseCache):
 
         # Evict oldest if over capacity
         if len(self.entries) > self.max_size:
-            oldest_key = min(
-                self.entries.keys(),
-                key=lambda k: self.entries[k].timestamp
-            )
+            oldest_key = min(self.entries.keys(), key=lambda k: self.entries[k].timestamp)
             del self.entries[oldest_key]
 
     def delete(self, key: str) -> bool:
@@ -235,12 +234,16 @@ class EmbeddingCache(LRUCache):
 class QueryCache(LRUCache):
     """Specialized cache for search query results."""
 
-    def get_results(self, query_text: str, strategy: str = "hybrid", top_k: int = 10) -> Optional[List[Any]]:
+    def get_results(
+        self, query_text: str, strategy: str = "hybrid", top_k: int = 10
+    ) -> Optional[List[Any]]:
         """Get cached search results."""
         key = self._make_key(query_text, strategy, top_k)
         return self.get(key)
 
-    def set_results(self, query_text: str, results: List[Any], strategy: str = "hybrid", top_k: int = 10) -> None:
+    def set_results(
+        self, query_text: str, results: List[Any], strategy: str = "hybrid", top_k: int = 10
+    ) -> None:
         """Cache search results."""
         key = self._make_key(query_text, strategy, top_k)
         self.set(key, results)
@@ -259,7 +262,9 @@ class GraphCache(LRUCache):
         key = f"graph:related:{entity_name}:{max_depth}"
         return self.get(key)
 
-    def set_related_entities(self, entity_name: str, entities: List[str], max_depth: int = 2) -> None:
+    def set_related_entities(
+        self, entity_name: str, entities: List[str], max_depth: int = 2
+    ) -> None:
         """Cache related entities."""
         key = f"graph:related:{entity_name}:{max_depth}"
         self.set(key, entities)
@@ -293,7 +298,9 @@ class PatternCache(LRUCache):
         key = f"pattern:{pattern_type}:{entity_name}"
         return self.get(key)
 
-    def set_patterns(self, entity_name: str, patterns: List[Dict], pattern_type: str = "all") -> None:
+    def set_patterns(
+        self, entity_name: str, patterns: List[Dict], pattern_type: str = "all"
+    ) -> None:
         """Cache patterns."""
         key = f"pattern:{pattern_type}:{entity_name}"
         self.set(key, patterns)

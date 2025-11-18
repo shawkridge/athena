@@ -48,4 +48,3 @@ def recall(query: str, limit: int = 10, min_score: float = 0.5):
         return results
     except Exception as e:
         raise RuntimeError(f"Memory recall failed: {str(e)}") from e
-

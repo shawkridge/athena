@@ -120,6 +120,7 @@ class AgentEvent(BaseModel):
 
     class Config:
         """Pydantic config."""
+
         use_enum_values = False
 
     def __str__(self) -> str:

@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 class IssueSeverity(Enum):
     """Issue severity levels."""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -21,6 +22,7 @@ class IssueSeverity(Enum):
 @dataclass
 class ReviewIssue:
     """A review issue found by a reviewer."""
+
     issue_id: str
     severity: IssueSeverity
     title: str
@@ -33,6 +35,7 @@ class ReviewIssue:
 @dataclass
 class ReviewResult:
     """Result of a review."""
+
     reviewer_name: str
     issues: List[ReviewIssue]
     summary: str
@@ -126,7 +129,7 @@ class StyleReviewAgent(ReviewAgent):
                     IssueSeverity.MEDIUM,
                     "Missing docstrings",
                     "Functions should have docstrings",
-                    suggestion='Add docstrings describing function purpose',
+                    suggestion="Add docstrings describing function purpose",
                 )
             )
 
@@ -175,9 +178,21 @@ class SecurityReviewAgent(ReviewAgent):
             "eval(": ("Use of eval()", "eval() can execute arbitrary code", IssueSeverity.CRITICAL),
             "exec(": ("Use of exec()", "exec() can execute arbitrary code", IssueSeverity.CRITICAL),
             "pickle": ("Use of pickle", "Pickle is unsafe with untrusted data", IssueSeverity.HIGH),
-            "TODO: validate": ("Missing validation", "User input must be validated", IssueSeverity.HIGH),
-            "password": ("Hardcoded credential", "Credentials should not be in code", IssueSeverity.CRITICAL),
-            "sql_query = f": ("SQL injection risk", "Use parameterized queries", IssueSeverity.CRITICAL),
+            "TODO: validate": (
+                "Missing validation",
+                "User input must be validated",
+                IssueSeverity.HIGH,
+            ),
+            "password": (
+                "Hardcoded credential",
+                "Credentials should not be in code",
+                IssueSeverity.CRITICAL,
+            ),
+            "sql_query = f": (
+                "SQL injection risk",
+                "Use parameterized queries",
+                IssueSeverity.CRITICAL,
+            ),
         }
 
         for pattern, (title, desc, severity) in security_patterns.items():

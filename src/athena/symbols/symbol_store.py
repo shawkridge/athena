@@ -14,11 +14,13 @@ Date: 2025-10-31
 """
 
 from typing import Optional, List, Dict, Any
-from dataclasses import asdict
 import logging
 
 from athena.symbols.symbol_models import (
-    Symbol, SymbolType, RelationType, SymbolMetrics, SymbolDependency
+    Symbol,
+    RelationType,
+    SymbolMetrics,
+    SymbolDependency,
 )
 from athena.core.database_factory import get_database
 
@@ -39,7 +41,7 @@ class SymbolStore:
             db_path: Ignored (kept for backwards compatibility). Uses PostgreSQL.
         """
         logger.info("Initializing SymbolStore with PostgreSQL backend")
-        self.db = get_database(backend='postgres')
+        self.db = get_database(backend="postgres")
         self._ensure_schema()
 
     def _ensure_schema(self) -> None:

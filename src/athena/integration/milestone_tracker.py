@@ -1,14 +1,12 @@
 """Milestone progress tracking and delay detection."""
 
 import logging
-from datetime import datetime
 from typing import Optional
 
 from ..core.database import Database
 from ..episodic.models import EpisodicEvent, EventContext, EventOutcome, EventType
 from ..episodic.store import EpisodicStore
-from ..prospective.milestones import Milestone, MilestoneProgress
-from ..prospective.models import TaskPhase
+from ..prospective.milestones import Milestone
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +228,7 @@ class MilestoneTracker:
                 estimated = milestone.estimated_minutes
                 if milestone.is_delayed:
                     # Add delay_percent to the estimate
-                    estimated *= (1 + milestone.delay_percent / 100)
+                    estimated *= 1 + milestone.delay_percent / 100
                 remaining += estimated
 
         return remaining

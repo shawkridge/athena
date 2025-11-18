@@ -109,9 +109,7 @@ class ExecutionFeedbackService:
             logger.error(f"Error capturing task completion feedback: {e}", exc_info=True)
             return {"error": str(e)}
 
-    async def _update_task_completion(
-        self, task: Any, feedback: Dict[str, Any]
-    ) -> None:
+    async def _update_task_completion(self, task: Any, feedback: Dict[str, Any]) -> None:
         """Update task with completion information.
 
         Args:
@@ -123,9 +121,7 @@ class ExecutionFeedbackService:
             task.completed_at = datetime.now()
             task.lessons_learned = feedback.get("lessons_learned")
             task.blocked_reason = (
-                "; ".join(feedback.get("blockers", []))
-                if feedback.get("blockers")
-                else None
+                "; ".join(feedback.get("blockers", [])) if feedback.get("blockers") else None
             )
             task.actual_duration_minutes = feedback["actual_duration_minutes"]
 
@@ -138,9 +134,7 @@ class ExecutionFeedbackService:
         except Exception as e:
             logger.error(f"Error updating task completion: {e}")
 
-    async def _trigger_learning(
-        self, task: Any, feedback: Dict[str, Any]
-    ) -> None:
+    async def _trigger_learning(self, task: Any, feedback: Dict[str, Any]) -> None:
         """Trigger downstream learning systems.
 
         Updates:
@@ -192,9 +186,7 @@ class ExecutionFeedbackService:
         except Exception as e:
             logger.error(f"Error triggering learning systems: {e}")
 
-    async def _analyze_blockers(
-        self, task: Any, blockers: List[str]
-    ) -> None:
+    async def _analyze_blockers(self, task: Any, blockers: List[str]) -> None:
         """Analyze blocker patterns for future prevention.
 
         Args:
@@ -212,9 +204,7 @@ class ExecutionFeedbackService:
         except Exception as e:
             logger.error(f"Error analyzing blockers: {e}")
 
-    async def _record_completion_event(
-        self, task: Any, feedback: Dict[str, Any]
-    ) -> None:
+    async def _record_completion_event(self, task: Any, feedback: Dict[str, Any]) -> None:
         """Record completion event to episodic memory.
 
         Args:
@@ -258,9 +248,7 @@ class ExecutionFeedbackService:
         except Exception as e:
             logger.error(f"Error recording completion event: {e}")
 
-    async def get_task_feedback_summary(
-        self, task_id: int
-    ) -> Dict[str, Any]:
+    async def get_task_feedback_summary(self, task_id: int) -> Dict[str, Any]:
         """Get feedback summary for a task.
 
         Args:
@@ -279,7 +267,11 @@ class ExecutionFeedbackService:
                 "status": getattr(task, "status", "unknown"),
                 "actual_duration_minutes": getattr(task, "actual_duration_minutes"),
                 "lessons_learned": getattr(task, "lessons_learned"),
-                "blockers": getattr(task, "blocked_reason", "").split(";") if getattr(task, "blocked_reason") else [],
+                "blockers": (
+                    getattr(task, "blocked_reason", "").split(";")
+                    if getattr(task, "blocked_reason")
+                    else []
+                ),
                 "completed_at": getattr(task, "completed_at"),
             }
 

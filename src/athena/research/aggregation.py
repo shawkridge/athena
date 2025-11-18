@@ -191,15 +191,14 @@ class FindingCrossValidator:
 
         for finding in findings:
             # Get credibility for primary source
-            primary_cred = self.source_credibility_map.get(
-                finding.primary_source, 0.5
-            )
+            primary_cred = self.source_credibility_map.get(finding.primary_source, 0.5)
             finding.base_credibility = primary_cred
 
             # Boost if found in multiple sources
             if finding.secondary_sources:
                 validated_sources = [
-                    s for s in finding.secondary_sources
+                    s
+                    for s in finding.secondary_sources
                     if self.source_credibility_map.get(s, 0) >= 0.7
                 ]
                 if validated_sources:

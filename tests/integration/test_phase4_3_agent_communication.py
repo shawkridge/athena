@@ -11,24 +11,18 @@ Tests verify that:
 import pytest
 import asyncio
 import sys
-import os
-from typing import Dict, Any
 
 # Add src to path
-sys.path.insert(0, '/home/user/.work/athena/src')
+sys.path.insert(0, "/home/user/.work/athena/src")
 
 from athena.agents.agent_events import (
     AgentEvent,
     AgentEventType,
-    AgentEventPriority,
-    EventSubscription,
 )
-from athena.agents.event_bus import initialize_event_bus, get_event_bus, EventBus
+from athena.agents.event_bus import initialize_event_bus, get_event_bus
 from athena.agents.agent_discovery import (
     initialize_discovery,
-    get_discovery,
     AgentCapability,
-    AgentProfile,
 )
 
 
@@ -85,9 +79,7 @@ class TestEventBusBasics:
         )
 
         # Get from history
-        events = await self.event_bus.get_events(
-            event_type=AgentEventType.FINDING_IDENTIFIED
-        )
+        events = await self.event_bus.get_events(event_type=AgentEventType.FINDING_IDENTIFIED)
 
         assert len(events) > 0
         assert events[0].agent_id == "analyzer"

@@ -58,9 +58,9 @@ except ImportError:
     SlackEventSource = None
 
 __all__ = [
-    'BaseEventSource',
-    'EventSourceFactory',
-    'FileSystemEventSource',
-    'GitHubEventSource',
-    'SlackEventSource',
+    "BaseEventSource",
+    "EventSourceFactory",
+    "FileSystemEventSource",
+    "GitHubEventSource",
+    "SlackEventSource",
 ]

@@ -28,11 +28,7 @@ class TaskLearningIntegration:
         self.pattern_store = TaskPatternStore(db)
         self.validator = PatternValidator() if ENABLE_LLM_FEATURES else None
 
-    def on_task_completed(
-        self,
-        task: ProspectiveTask,
-        project_id: Optional[int] = None
-    ) -> bool:
+    def on_task_completed(self, task: ProspectiveTask, project_id: Optional[int] = None) -> bool:
         """Called when a task completes (in any phase).
 
         Captures execution metrics and optionally triggers pattern extraction.
@@ -85,18 +81,14 @@ class TaskLearningIntegration:
         try:
             # Get estimated and actual times
             estimated_minutes = (
-                task.plan.estimated_duration_minutes
-                if task.plan
-                else 30  # Default estimate
+                task.plan.estimated_duration_minutes if task.plan else 30  # Default estimate
             )
 
             if not task.completed_at or not task.created_at:
                 return None
 
             # Total time: from creation to completion
-            total_actual_minutes = (
-                task.completed_at - task.created_at
-            ).total_seconds() / 60
+            total_actual_minutes = (task.completed_at - task.created_at).total_seconds() / 60
 
             # Phase times: extract from phase_metrics if available
             planning_minutes = 0
@@ -128,9 +120,7 @@ class TaskLearningIntegration:
             priority = "medium"
             if task.priority:
                 priority = (
-                    task.priority.value
-                    if hasattr(task.priority, "value")
-                    else str(task.priority)
+                    task.priority.value if hasattr(task.priority, "value") else str(task.priority)
                 )
 
             metrics = TaskExecutionMetrics(
@@ -209,9 +199,7 @@ class TaskLearningIntegration:
             logger.info(f"Triggering pattern extraction for project {project_id}")
 
             # Get recent metrics
-            metrics_list = self.pattern_store.get_recent_metrics(
-                project_id or 0, limit=1000
-            )
+            metrics_list = self.pattern_store.get_recent_metrics(project_id or 0, limit=1000)
 
             if not metrics_list:
                 logger.warning(f"No metrics found for project {project_id}")
@@ -278,9 +266,7 @@ class TaskLearningIntegration:
                 existing = []
 
             # Validate batch
-            validation_results = self.validator.validate_patterns_batch(
-                patterns, existing
-            )
+            validation_results = self.validator.validate_patterns_batch(patterns, existing)
 
             # Apply validation results to patterns
             for pattern in patterns:
@@ -299,11 +285,7 @@ class TaskLearningIntegration:
             logger.warning("Proceeding with System 1 patterns only")
             return patterns
 
-    def get_task_history(
-        self,
-        project_id: Optional[int],
-        limit: int = 100
-    ) -> list:
+    def get_task_history(self, project_id: Optional[int], limit: int = 100) -> list:
         """Get task execution history for a project.
 
         Args:
@@ -333,18 +315,20 @@ class TaskLearningIntegration:
 
             results = []
             for row in cursor.fetchall():
-                results.append({
-                    "task_id": row[0],
-                    "task_content": row[1],
-                    "priority": row[2],
-                    "status": row[3],
-                    "estimated_minutes": row[4],
-                    "actual_minutes": row[5],
-                    "error_percent": row[6],
-                    "success": row[7],
-                    "failure_mode": row[8],
-                    "completed_at": datetime.fromtimestamp(row[9] / 1000) if row[9] else None,
-                })
+                results.append(
+                    {
+                        "task_id": row[0],
+                        "task_content": row[1],
+                        "priority": row[2],
+                        "status": row[3],
+                        "estimated_minutes": row[4],
+                        "actual_minutes": row[5],
+                        "error_percent": row[6],
+                        "success": row[7],
+                        "failure_mode": row[8],
+                        "completed_at": datetime.fromtimestamp(row[9] / 1000) if row[9] else None,
+                    }
+                )
 
             return results
 

@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Any, Optional
 
 from ..core.database import Database
-from ..core.base_store import BaseStore
 from .models import Conversation, ConversationTurn, Message, MessageRole
 
 
@@ -19,9 +18,12 @@ class ConversationStore:
             db: Database instance
         """
         self.db = db
+
     # ==================== HELPER METHODS ====================
 
-    def execute(self, query: str, params: tuple = (), fetch_one: bool = False, fetch_all: bool = False) -> Any:
+    def execute(
+        self, query: str, params: tuple = (), fetch_one: bool = False, fetch_all: bool = False
+    ) -> Any:
         """Execute SQL query with consistent error handling.
 
         Args:
@@ -48,7 +50,7 @@ class ConversationStore:
             else:
                 return cursor
 
-        except Exception as e:
+        except Exception:
             # rollback handled by cursor context
             raise
 
@@ -214,9 +216,7 @@ class ConversationStore:
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_turns_conversation ON conversation_turns(conversation_id)"
         )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_messages_role ON messages(role)"
-        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_role ON messages(role)")
 
         # commit handled by cursor context
 
@@ -361,7 +361,7 @@ class ConversationStore:
         )
 
         turns = []
-        for row in (rows or []):
+        for row in rows or []:
             (
                 turn_id,
                 turn_number,
@@ -490,9 +490,7 @@ class ConversationStore:
         self.commit()
         return turn_id
 
-    def _store_message(
-        self, cursor, message: Message
-    ) -> int:
+    def _store_message(self, cursor, message: Message) -> int:
         """Store message in database.
 
         Args:
@@ -506,7 +504,7 @@ class ConversationStore:
         timestamp = int(message.timestamp.timestamp())
 
         # Handle role as enum or string (Pydantic uses_enum_values = True)
-        role_value = message.role.value if hasattr(message.role, 'value') else message.role
+        role_value = message.role.value if hasattr(message.role, "value") else message.role
 
         cursor.execute(
             """
@@ -526,9 +524,7 @@ class ConversationStore:
 
         return cursor.lastrowid
 
-    def search_conversations(
-        self, project_id: int, query: str, limit: int = 20
-    ) -> list[dict]:
+    def search_conversations(self, project_id: int, query: str, limit: int = 20) -> list[dict]:
         """Search conversations by content.
 
         Args:
@@ -567,7 +563,7 @@ class ConversationStore:
         rows = self.execute(sql, params + [limit], fetch_all=True)
 
         results = []
-        for row in (rows or []):
+        for row in rows or []:
             conv_id, thread_id, title, created_at, status = row
             results.append(
                 {
@@ -581,9 +577,7 @@ class ConversationStore:
 
         return results
 
-    def get_recent_conversations(
-        self, project_id: int, limit: int = 10
-    ) -> list[dict]:
+    def get_recent_conversations(self, project_id: int, limit: int = 10) -> list[dict]:
         """Get recent conversations.
 
         Args:
@@ -606,7 +600,7 @@ class ConversationStore:
         )
 
         results = []
-        for row in (rows or []):
+        for row in rows or []:
             conv_id, thread_id, title, created_at, status, total_tokens = row
             results.append(
                 {
@@ -658,7 +652,7 @@ class ConversationStore:
         )
 
         results = []
-        for row in (rows or []):
+        for row in rows or []:
             conv_id, thread_id, title, created_at, status, total_tokens = row
             results.append(
                 {
@@ -726,7 +720,7 @@ class SessionResumptionManager:
             cursor = self.db.get_cursor()
             cursor.execute(
                 "SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY created_at",
-                (conversation_id,)
+                (conversation_id,),
             )
             messages = cursor.fetchall()
             message_count = len(messages) if messages else 0
@@ -735,13 +729,17 @@ class SessionResumptionManager:
             return {
                 "status": "resumed",
                 "messages_loaded": message_count,
-                "conversation_title": convo.get("title", "Untitled") if isinstance(convo, dict) else getattr(convo, "title", "Untitled"),
-                "recovery_success": message_count > 0
+                "conversation_title": (
+                    convo.get("title", "Untitled")
+                    if isinstance(convo, dict)
+                    else getattr(convo, "title", "Untitled")
+                ),
+                "recovery_success": message_count > 0,
             }
         except Exception as e:
             return {
                 "status": "error",
                 "error": str(e),
                 "messages_loaded": 0,
-                "recovery_success": False
+                "recovery_success": False,
             }

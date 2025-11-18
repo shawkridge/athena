@@ -13,9 +13,8 @@ Runs automatically on research task completion.
 
 import logging
 import time
-import json
 from typing import Optional, List, Dict, Any, Tuple
-from statistics import mean, stdev
+from statistics import mean
 
 from ..core.database import Database
 from ..procedural.store import ProceduralStore
@@ -138,9 +137,7 @@ class ResearchConsolidationSystem:
             self._learn_quality_thresholds(findings, inferred_domain)
 
             # Create search strategies from patterns
-            strategies_created = self._create_strategies_from_patterns(
-                patterns, inferred_domain
-            )
+            strategies_created = self._create_strategies_from_patterns(patterns, inferred_domain)
             run.strategy_improvements = strategies_created
             logger.info(f"Created {strategies_created} search strategies")
 
@@ -167,7 +164,9 @@ class ResearchConsolidationSystem:
             run.completed_at = int(time.time())
             self.consolidation_store.update_consolidation_run(run)
 
-            logger.info(f"Completed consolidation for task {task_id}: {run.patterns_extracted} patterns, {run.procedures_created} procedures")
+            logger.info(
+                f"Completed consolidation for task {task_id}: {run.patterns_extracted} patterns, {run.procedures_created} procedures"
+            )
             return run
 
         except Exception as e:
@@ -350,9 +349,7 @@ Single-source findings: {single_avg:.3f} avg ({len(single_source)} findings)
 Multi-source findings: {multi_avg:.3f} avg ({len(multi_source)} findings)
 Confidence boost: +{boost_pct:.1f}%"""
 
-        confidence = min(
-            1.0, min(len(single_source), len(multi_source)) / 10.0
-        )
+        confidence = min(1.0, min(len(single_source), len(multi_source)) / 10.0)
 
         return ResearchPattern(
             pattern_type=ResearchPatternType.CROSS_VALIDATION,
@@ -412,7 +409,9 @@ Confidence boost: +{boost_pct:.1f}%"""
             finding_count=len(findings),
         )
 
-    def _extract_quality_distribution_pattern(self, findings: List[Any]) -> Optional[ResearchPattern]:
+    def _extract_quality_distribution_pattern(
+        self, findings: List[Any]
+    ) -> Optional[ResearchPattern]:
         """Extract QUALITY_DISTRIBUTION pattern.
 
         Analyzes distribution of credibility scores (histogram).
@@ -428,7 +427,7 @@ Confidence boost: +{boost_pct:.1f}%"""
         bins = {i * 0.1: 0 for i in range(11)}
         for score in scores:
             bin_idx = int(min(score * 10, 9))
-            bin_key = (bin_idx * 0.1)
+            bin_key = bin_idx * 0.1
             bins[bin_key] += 1
 
         # Find peaks
@@ -450,7 +449,9 @@ Confidence boost: +{boost_pct:.1f}%"""
             finding_count=len(findings),
         )
 
-    def _extract_coverage_completeness_pattern(self, findings: List[Any]) -> Optional[ResearchPattern]:
+    def _extract_coverage_completeness_pattern(
+        self, findings: List[Any]
+    ) -> Optional[ResearchPattern]:
         """Extract COVERAGE_COMPLETENESS pattern.
 
         Analyzes which topics/domains are covered.
@@ -517,13 +518,11 @@ Confidence boost: +{boost_pct:.1f}%"""
                 continue
 
             # Calculate average credibility for this agent's findings
-            agent_findings = [f for f in findings
-                            if getattr(f, "agent_name", None) == agent_name]
+            agent_findings = [f for f in findings if getattr(f, "agent_name", None) == agent_name]
             if not agent_findings:
                 continue
 
-            avg_credibility = mean([getattr(f, "credibility_score", 0.5)
-                                   for f in agent_findings])
+            avg_credibility = mean([getattr(f, "credibility_score", 0.5) for f in agent_findings])
 
             expertise = AgentDomainExpertise(
                 agent_name=agent_name,
@@ -567,14 +566,10 @@ Confidence boost: +{boost_pct:.1f}%"""
             if not source_findings:
                 continue
 
-            avg_credibility = mean([getattr(f, "credibility_score", 0.5)
-                                   for f in source_findings])
+            avg_credibility = mean([getattr(f, "credibility_score", 0.5) for f in source_findings])
 
             # Calculate cross-validation rate
-            cross_validated = sum(
-                1 for f in source_findings
-                if getattr(f, "secondary_sources", [])
-            )
+            cross_validated = sum(1 for f in source_findings if getattr(f, "secondary_sources", []))
             cross_val_rate = cross_validated / len(source_findings) if source_findings else 0
 
             credibility_obj = SourceDomainCredibility(
@@ -604,13 +599,12 @@ Confidence boost: +{boost_pct:.1f}%"""
         if not findings or len(findings) < 10:
             return None  # Need sufficient sample size
 
-        credibilities = sorted([getattr(f, "credibility_score", 0.5)
-                               for f in findings])
+        credibilities = sorted([getattr(f, "credibility_score", 0.5) for f in findings])
 
         # Percentile-based thresholds
         n = len(credibilities)
         optimal_idx = int(n * 0.10)  # 90th percentile
-        strict_idx = int(n * 0.50)   # 50th percentile
+        strict_idx = int(n * 0.50)  # 50th percentile
         lenient_idx = int(n * 0.05)  # 95th percentile
 
         threshold = QualityThreshold(
@@ -662,8 +656,7 @@ Confidence boost: +{boost_pct:.1f}%"""
                 description=f"Optimized search strategy for {domain}",
                 recommended_sources=recommended_sources,
                 excluded_sources=excluded_sources,
-                expected_quality=mean([s[1].get("avg_credibility", 0)
-                                      for s in sources_ranked[:3]]),
+                expected_quality=mean([s[1].get("avg_credibility", 0) for s in sources_ranked[:3]]),
                 confidence=min(1.0, len(sources_ranked) / 5.0),
                 created_from_patterns=[p.id for p in patterns if p.id],
             )
@@ -740,7 +733,10 @@ Confidence boost: +{boost_pct:.1f}%"""
         return entities, relations
 
     def _update_knowledge_graph(
-        self, entities: List[ResearchGraphEntity], relations: List[ResearchGraphRelation], task_id: int
+        self,
+        entities: List[ResearchGraphEntity],
+        relations: List[ResearchGraphRelation],
+        task_id: int,
     ) -> None:
         """Update knowledge graph with findings.
 

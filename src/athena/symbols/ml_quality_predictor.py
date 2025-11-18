@@ -16,15 +16,17 @@ import math
 
 class ConfidenceLevel(str, Enum):
     """Confidence levels for ML predictions."""
-    VERY_LOW = "very_low"      # <0.5
-    LOW = "low"                 # 0.5-0.65
-    MEDIUM = "medium"           # 0.65-0.8
-    HIGH = "high"               # 0.8-0.9
-    VERY_HIGH = "very_high"    # >0.9
+
+    VERY_LOW = "very_low"  # <0.5
+    LOW = "low"  # 0.5-0.65
+    MEDIUM = "medium"  # 0.65-0.8
+    HIGH = "high"  # 0.8-0.9
+    VERY_HIGH = "very_high"  # >0.9
 
 
 class QualityTrend(str, Enum):
     """Quality trend directions."""
+
     IMPROVING = "improving"
     STABLE = "stable"
     DECLINING = "declining"
@@ -33,6 +35,7 @@ class QualityTrend(str, Enum):
 @dataclass
 class FeatureVector:
     """Extracted features from a symbol."""
+
     symbol_name: str
     cyclomatic_complexity: float
     cognitive_complexity: float
@@ -52,6 +55,7 @@ class FeatureVector:
 @dataclass
 class Prediction:
     """ML prediction for quality."""
+
     symbol_name: str
     predicted_quality_score: float  # 0-100
     predicted_category: str  # excellent, good, fair, poor, critical
@@ -64,6 +68,7 @@ class Prediction:
 @dataclass
 class PredictionMetric:
     """Metrics for a prediction."""
+
     predicted_value: float
     actual_value: Optional[float] = None
     error: Optional[float] = None  # actual - predicted
@@ -74,6 +79,7 @@ class PredictionMetric:
 @dataclass
 class ModelPerformance:
     """Performance metrics for the model."""
+
     total_predictions: int = 0
     correct_predictions: int = 0
     accuracy: float = 0.0  # correct/total
@@ -150,12 +156,8 @@ class MLQualityPredictor:
         normalized = {}
 
         # Normalize complexity scores (lower is better, scale 1-50)
-        normalized["cyclomatic_complexity"] = min(
-            1.0, features.cyclomatic_complexity / 50.0
-        )
-        normalized["cognitive_complexity"] = min(
-            1.0, features.cognitive_complexity / 50.0
-        )
+        normalized["cyclomatic_complexity"] = min(1.0, features.cyclomatic_complexity / 50.0)
+        normalized["cognitive_complexity"] = min(1.0, features.cognitive_complexity / 50.0)
 
         # Normalize LOC (scale 1-1000)
         normalized["lines_of_code"] = min(1.0, features.lines_of_code / 1000.0)
@@ -170,9 +172,7 @@ class MLQualityPredictor:
 
         # Normalize dependency counts (scale 0-20)
         normalized["dependency_count"] = min(1.0, features.dependency_count / 20.0)
-        normalized["incoming_dependencies"] = min(
-            1.0, features.incoming_dependencies / 20.0
-        )
+        normalized["incoming_dependencies"] = min(1.0, features.incoming_dependencies / 20.0)
 
         # Normalize pattern/smell counts (scale 0-10)
         normalized["detected_patterns"] = min(1.0, features.detected_patterns / 10.0)
@@ -226,9 +226,7 @@ class MLQualityPredictor:
         confidence_level = self._get_confidence_level(confidence)
 
         # Calculate feature importance for this prediction
-        feature_importance = self._calculate_feature_importance(
-            normalized, features
-        )
+        feature_importance = self._calculate_feature_importance(normalized, features)
 
         # Generate reasoning
         reasoning = self._generate_reasoning(
@@ -292,7 +290,7 @@ class MLQualityPredictor:
 
         # Boost confidence if good metrics are consistent (many high values)
         high_values = sum(1 for v in normalized.values() if v > 0.75)
-        confidence += (high_values * 0.02)  # 2% per high-quality metric
+        confidence += high_values * 0.02  # 2% per high-quality metric
 
         # Reduce confidence for high complexity
         if features.cyclomatic_complexity > 30:
@@ -379,8 +377,7 @@ class MLQualityPredictor:
         for feature_name, importance in positive_factors:
             if importance > 0.1:
                 reasoning.append(
-                    f"Positive: {feature_name.replace('_', ' ')} "
-                    f"(importance: {importance:.2f})"
+                    f"Positive: {feature_name.replace('_', ' ')} " f"(importance: {importance:.2f})"
                 )
 
         # Top negative factors
@@ -393,8 +390,7 @@ class MLQualityPredictor:
         for feature_name, importance in negative_factors:
             if importance > 0.1:
                 reasoning.append(
-                    f"Concern: {feature_name.replace('_', ' ')} "
-                    f"(importance: {importance:.2f})"
+                    f"Concern: {feature_name.replace('_', ' ')} " f"(importance: {importance:.2f})"
                 )
 
         # Confidence statement
@@ -405,9 +401,7 @@ class MLQualityPredictor:
 
         return reasoning
 
-    def train_on_data(
-        self, symbol_data_list: List[Dict], actual_scores: List[float]
-    ) -> None:
+    def train_on_data(self, symbol_data_list: List[Dict], actual_scores: List[float]) -> None:
         """Train model on historical data.
 
         Args:
@@ -420,9 +414,7 @@ class MLQualityPredictor:
             normalized_score = actual_score / 100.0
             self.training_data.append((features, normalized_score))
 
-    def evaluate_predictions(
-        self, actual_scores: Dict[str, float]
-    ) -> ModelPerformance:
+    def evaluate_predictions(self, actual_scores: Dict[str, float]) -> ModelPerformance:
         """Evaluate model predictions against actual scores.
 
         Args:
@@ -444,7 +436,7 @@ class MLQualityPredictor:
                 # Calculate errors
                 error = actual_score - predicted_score
                 abs_error = abs(error)
-                squared_errors.append(error ** 2)
+                squared_errors.append(error**2)
 
                 # Check if within tolerance (5 points)
                 is_correct = abs_error <= 5.0
@@ -466,35 +458,25 @@ class MLQualityPredictor:
 
         # Calculate aggregate metrics
         if performance.total_predictions > 0:
-            performance.accuracy = (
-                performance.correct_predictions / performance.total_predictions
-            )
+            performance.accuracy = performance.correct_predictions / performance.total_predictions
 
         if squared_errors:
             performance.mean_squared_error = sum(squared_errors) / len(squared_errors)
-            performance.mean_absolute_error = math.sqrt(
-                performance.mean_squared_error
-            )
+            performance.mean_absolute_error = math.sqrt(performance.mean_squared_error)
 
         # Calculate per-category metrics
         for category, metrics in category_metrics.items():
             performance.precision_by_category[category] = (
-                metrics["correct"] / metrics["total"]
-                if metrics["total"] > 0
-                else 0.0
+                metrics["correct"] / metrics["total"] if metrics["total"] > 0 else 0.0
             )
             performance.recall_by_category[category] = (
-                metrics["correct"] / metrics["total"]
-                if metrics["total"] > 0
-                else 0.0
+                metrics["correct"] / metrics["total"] if metrics["total"] > 0 else 0.0
             )
 
         self.performance = performance
         return performance
 
-    def predict_refactoring_impact(
-        self, current_metrics: Dict, refactoring_changes: Dict
-    ) -> Dict:
+    def predict_refactoring_impact(self, current_metrics: Dict, refactoring_changes: Dict) -> Dict:
         """Predict quality improvement from refactoring.
 
         Args:

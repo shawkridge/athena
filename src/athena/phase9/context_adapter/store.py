@@ -4,12 +4,9 @@ from typing import Optional
 
 from athena.core.database import Database
 from athena.phase9.context_adapter.models import (
-    ExportedInsight,
     ExternalDataMapping,
-    ExternalDataSnapshot,
     ExternalSourceConnection,
     ImportedData,
-    SyncConflict,
     SyncLog,
 )
 
@@ -20,6 +17,7 @@ class ContextAdapterStore:
     def __init__(self, db: Database):
         """Initialize store with database connection."""
         self.db = db
+
     def _ensure_schema(self):
         """Create tables on first use."""
         cursor = self.db.get_cursor()
@@ -192,9 +190,7 @@ class ContextAdapterStore:
 
         # commit handled by cursor context
 
-    def create_connection(
-        self, connection: ExternalSourceConnection
-    ) -> ExternalSourceConnection:
+    def create_connection(self, connection: ExternalSourceConnection) -> ExternalSourceConnection:
         """Create external source connection."""
         from datetime import datetime
 
@@ -233,7 +229,6 @@ class ContextAdapterStore:
 
     def get_connection(self, id: int) -> Optional[ExternalSourceConnection]:
         """Get connection by ID."""
-        import json
 
         cursor = self.db.get_cursor()
         cursor.execute(
@@ -245,9 +240,10 @@ class ContextAdapterStore:
             return None
         return self._parse_connection_row(row)
 
-    def list_connections(self, project_id: int, enabled_only: bool = True) -> list[ExternalSourceConnection]:
+    def list_connections(
+        self, project_id: int, enabled_only: bool = True
+    ) -> list[ExternalSourceConnection]:
         """List connections for project."""
-        import json
 
         cursor = self.db.get_cursor()
         if enabled_only:
@@ -263,9 +259,7 @@ class ContextAdapterStore:
         rows = cursor.fetchall()
         return [self._parse_connection_row(row) for row in rows]
 
-    def create_data_mapping(
-        self, mapping: ExternalDataMapping
-    ) -> ExternalDataMapping:
+    def create_data_mapping(self, mapping: ExternalDataMapping) -> ExternalDataMapping:
         """Create external data mapping."""
         from datetime import datetime
 
@@ -348,7 +342,6 @@ class ContextAdapterStore:
 
     def list_imported_data(self, source_id: int, limit: int = 100) -> list[ImportedData]:
         """List imported data from source."""
-        import json
 
         cursor = self.db.get_cursor()
         cursor.execute(
@@ -396,7 +389,6 @@ class ContextAdapterStore:
 
     def get_sync_history(self, source_id: int, limit: int = 50) -> list[SyncLog]:
         """Get sync history for source."""
-        import json
 
         cursor = self.db.get_cursor()
         cursor.execute(

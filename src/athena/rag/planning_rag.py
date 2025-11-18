@@ -263,10 +263,7 @@ class PatternRecommender:
 
         # Combine scores
         confidence = (
-            base_score * 0.4 +
-            complexity_score * 0.2 +
-            domain_score * 0.2 +
-            semantic_score * 0.2
+            base_score * 0.4 + complexity_score * 0.2 + domain_score * 0.2 + semantic_score * 0.2
         )
 
         # Count similar past tasks (execution_count as proxy)

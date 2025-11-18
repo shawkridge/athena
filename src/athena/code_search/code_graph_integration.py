@@ -10,13 +10,14 @@ from dataclasses import dataclass
 from enum import Enum
 
 from src.athena.code_search.symbol_extractor import Symbol, SymbolType, SymbolIndex
-from src.athena.code_search.code_chunker import Chunk, CodeChunker
+from src.athena.code_search.code_chunker import Chunk
 
 logger = logging.getLogger(__name__)
 
 
 class CodeEntityType(Enum):
     """Types of code entities in the knowledge graph."""
+
     FUNCTION = "Function"
     CLASS = "Component"
     MODULE = "Module"
@@ -31,6 +32,7 @@ class CodeEntityType(Enum):
 
 class CodeRelationType(Enum):
     """Types of relationships between code entities."""
+
     CALLS = "calls"
     CALLS_FROM = "called_by"
     IMPORTS = "imports"
@@ -52,6 +54,7 @@ class CodeRelationType(Enum):
 @dataclass
 class CodeEntity:
     """Represents a code entity in the knowledge graph."""
+
     name: str
     entity_type: CodeEntityType
     file_path: str
@@ -83,6 +86,7 @@ class CodeEntity:
 @dataclass
 class CodeRelationship:
     """Represents a relationship between code entities."""
+
     source: str  # Source entity name
     target: str  # Target entity name
     relation_type: CodeRelationType
@@ -205,9 +209,7 @@ class CodeGraphBuilder:
                 strength=0.7,
             )
 
-    def add_containment_relationship(
-        self, container: str, contained: str, direct: bool = True
-    ):
+    def add_containment_relationship(self, container: str, contained: str, direct: bool = True):
         """Add containment relationship (e.g., class contains method)."""
         strength = 0.95 if direct else 0.5
         self.add_relationship(
@@ -246,9 +248,7 @@ class CodeGraphBuilder:
             for class_sym in classes:
                 for method_sym in methods:
                     if method_sym.line_number > class_sym.line_number:
-                        self.add_containment_relationship(
-                            class_sym.name, method_sym.name
-                        )
+                        self.add_containment_relationship(class_sym.name, method_sym.name)
 
         # Add dependency relationships from symbol metadata
         for symbol in symbols:
@@ -339,11 +339,7 @@ class CodeGraphAnalyzer:
 
     def find_high_complexity_entities(self, threshold: int = 5) -> List[CodeEntity]:
         """Find entities with high cyclomatic complexity."""
-        return [
-            entity
-            for entity in self.graph.entities.values()
-            if entity.complexity >= threshold
-        ]
+        return [entity for entity in self.graph.entities.values() if entity.complexity >= threshold]
 
     def find_heavily_used_entities(self, min_relationships: int = 3) -> List[str]:
         """Find entities that are heavily used (many incoming dependencies)."""
@@ -365,19 +361,13 @@ class CodeGraphAnalyzer:
             related_entities.add(rel.source)
             related_entities.add(rel.target)
 
-        return [
-            name
-            for name in self.graph.entities.keys()
-            if name not in related_entities
-        ]
+        return [name for name in self.graph.entities.keys() if name not in related_entities]
 
     def find_coupling_issues(self, max_dependencies: int = 5) -> Dict[str, List[str]]:
         """Find entities with excessive dependencies."""
         issues = {}
         for entity_name in self.graph.entities.keys():
-            dependencies = self.graph.get_related_entities(
-                entity_name, CodeRelationType.DEPENDS_ON
-            )
+            dependencies = self.graph.get_related_entities(entity_name, CodeRelationType.DEPENDS_ON)
             if len(dependencies) > max_dependencies:
                 issues[entity_name] = dependencies
 
@@ -390,9 +380,7 @@ class CodeGraphAnalyzer:
         for entity_name in self.graph.entities.keys():
             outgoing = len(self.graph.get_relationships_from(entity_name))
             incoming = len(self.graph.get_relationships_to(entity_name))
-            centrality[entity_name] = (outgoing + incoming) / (
-                len(self.graph.relationships) + 1
-            )
+            centrality[entity_name] = (outgoing + incoming) / (len(self.graph.relationships) + 1)
 
         return centrality
 
@@ -414,9 +402,7 @@ class CodeGraphAnalyzer:
             visited.add(node)
             path.append(node)
 
-            related = self.graph.get_related_entities(
-                node, CodeRelationType.DEPENDS_ON
-            )
+            related = self.graph.get_related_entities(node, CodeRelationType.DEPENDS_ON)
             for neighbor in related:
                 if dfs(neighbor, path.copy()):
                     break

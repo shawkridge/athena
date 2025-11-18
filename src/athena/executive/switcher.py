@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 
 from ..core.database import Database
-from .models import Goal, TaskSwitch
+from .models import TaskSwitch
 
 
 class TaskSwitcher:
@@ -87,9 +87,7 @@ class TaskSwitcher:
                 context_snapshot=context_json,
             )
 
-    def _calculate_switch_cost(
-        self, from_goal_id: Optional[int], to_goal_id: int
-    ) -> int:
+    def _calculate_switch_cost(self, from_goal_id: Optional[int], to_goal_id: int) -> int:
         """Calculate switch cost using quadratic model.
 
         Cost model: cost_ms = BASE + (priority_delta / 10)² × SCALING
@@ -171,9 +169,7 @@ class TaskSwitcher:
         except json.JSONDecodeError:
             return {}
 
-    def get_switch_history(
-        self, project_id: int, limit: int = 100
-    ) -> List[TaskSwitch]:
+    def get_switch_history(self, project_id: int, limit: int = 100) -> List[TaskSwitch]:
         """Get switching history for a project.
 
         Args:

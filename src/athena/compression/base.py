@@ -6,7 +6,6 @@ Defines common interface and utilities for all compression operations.
 import re
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Optional
 
 from .models import CompressedMemory, CompressionLevel
 
@@ -103,14 +102,14 @@ class TemporalDecayCompressor(BaseCompressor):
         - > 90 days: Level 3 (95% compression)
         """
         # Validate input
-        if not memory or 'content' not in memory:
+        if not memory or "content" not in memory:
             raise ValueError("Memory must have 'content' field")
-        if 'created_at' not in memory:
+        if "created_at" not in memory:
             raise ValueError("Memory must have 'created_at' field")
 
-        content = memory['content']
-        created_at = memory['created_at']
-        memory_id = memory.get('id', 0)
+        content = memory["content"]
+        created_at = memory["created_at"]
+        memory_id = memory.get("id", 0)
 
         # Calculate age in days
         if isinstance(created_at, str):
@@ -151,7 +150,9 @@ class TemporalDecayCompressor(BaseCompressor):
         return CompressedMemory(
             memory_id=memory_id,
             content_full=content,
-            content_compressed=compressed_content if compression_level != CompressionLevel.NONE else None,
+            content_compressed=(
+                compressed_content if compression_level != CompressionLevel.NONE else None
+            ),
             compression_level=compression_level,
             compression_timestamp=datetime.now(),
             tokens_original=tokens_original,
@@ -186,14 +187,14 @@ class TemporalDecayCompressor(BaseCompressor):
 
         # Extract key actions and entities from middle
         if len(sentences) > 2:
-            middle_text = ' '.join(sentences[1:-1])
+            middle_text = " ".join(sentences[1:-1])
             key_actions = self._extract_key_actions(middle_text)
             if key_actions:
                 summary_parts.append(key_actions)
 
         summary_parts.append(sentences[-1])
 
-        return ' '.join(summary_parts)
+        return " ".join(summary_parts)
 
     def _compress_to_gist(self, content: str) -> str:
         """
@@ -233,9 +234,9 @@ class TemporalDecayCompressor(BaseCompressor):
 
         Format: "Memory #{id} ({created_at}): {extracted_topic}"
         """
-        memory_id = memory.get('id', '?')
-        created_at = memory.get('created_at', 'unknown')
-        content = memory.get('content', '')
+        memory_id = memory.get("id", "?")
+        created_at = memory.get("created_at", "unknown")
+        content = memory.get("content", "")
 
         # Extract topic (first 5-8 words as topic hint)
         topic = self._extract_topic(content)
@@ -249,7 +250,7 @@ class TemporalDecayCompressor(BaseCompressor):
             return []
 
         # Simple sentence splitting on . ! ?
-        sentences = re.split(r'[.!?]+', text)
+        sentences = re.split(r"[.!?]+", text)
 
         # Clean and filter
         sentences = [s.strip() for s in sentences if s.strip()]
@@ -267,10 +268,27 @@ class TemporalDecayCompressor(BaseCompressor):
 
         # List of common action verbs in memory contexts
         action_keywords = [
-            'implement', 'fix', 'add', 'remove', 'create', 'update',
-            'test', 'deploy', 'configure', 'integrate', 'refactor',
-            'optimize', 'analyze', 'improve', 'resolve', 'verify',
-            'migrate', 'validate', 'debug', 'enhance', 'support'
+            "implement",
+            "fix",
+            "add",
+            "remove",
+            "create",
+            "update",
+            "test",
+            "deploy",
+            "configure",
+            "integrate",
+            "refactor",
+            "optimize",
+            "analyze",
+            "improve",
+            "resolve",
+            "verify",
+            "migrate",
+            "validate",
+            "debug",
+            "enhance",
+            "support",
         ]
 
         # Look for action keywords in text
@@ -278,7 +296,7 @@ class TemporalDecayCompressor(BaseCompressor):
         for keyword in action_keywords:
             if keyword in text.lower():
                 # Find the phrase containing this action
-                pattern = rf'\b{keyword}\w*[^.!?]*'
+                pattern = rf"\b{keyword}\w*[^.!?]*"
                 match = re.search(pattern, text, re.IGNORECASE)
                 if match:
                     phrase = match.group(0).strip()
@@ -289,7 +307,7 @@ class TemporalDecayCompressor(BaseCompressor):
 
         if found_actions:
             # Return first 2 actions joined
-            return ', '.join(found_actions[:2])
+            return ", ".join(found_actions[:2])
 
         # Fallback: return first 50 chars of middle text
         return text[:50].strip()
@@ -305,10 +323,10 @@ class TemporalDecayCompressor(BaseCompressor):
             return "unknown"
 
         words = text.split()[:max_words]
-        topic = ' '.join(words)
+        topic = " ".join(words)
 
         # Clean up (remove trailing punctuation)
-        topic = re.sub(r'[.!?:,;]+$', '', topic)
+        topic = re.sub(r"[.!?:,;]+$", "", topic)
 
         return topic
 
@@ -343,12 +361,12 @@ class ImportanceWeightedBudgeter(BaseCompressor):
             Importance score (0.0-1.0)
         """
         # Extract fields with defaults
-        usefulness = memory.get('usefulness_score', 0.5)
-        access_count = memory.get('access_count', 0)
-        entity_type = memory.get('entity_type', 'fact')
+        usefulness = memory.get("usefulness_score", 0.5)
+        access_count = memory.get("access_count", 0)
+        entity_type = memory.get("entity_type", "fact")
 
         # Parse created_at if string
-        created_at = memory.get('created_at')
+        created_at = memory.get("created_at")
         if isinstance(created_at, str):
             created_at = datetime.fromisoformat(created_at)
 
@@ -363,14 +381,12 @@ class ImportanceWeightedBudgeter(BaseCompressor):
             usefulness=usefulness,
             age_days=age_days,
             access_count=access_count,
-            entity_type=entity_type
+            entity_type=entity_type,
         )
 
         return score
 
-    def retrieve_within_budget(self,
-                              memories: list,
-                              token_budget: int = 2000) -> tuple:
+    def retrieve_within_budget(self, memories: list, token_budget: int = 2000) -> tuple:
         """
         Select highest-value memories within token budget.
 
@@ -394,26 +410,28 @@ class ImportanceWeightedBudgeter(BaseCompressor):
                 continue
 
             # Estimate tokens
-            content = memory.get('content', '')
+            content = memory.get("content", "")
             tokens = self.estimate_tokens(content)
 
-            scored_memories.append({
-                'memory': memory,
-                'score': score,
-                'tokens': tokens,
-            })
+            scored_memories.append(
+                {
+                    "memory": memory,
+                    "score": score,
+                    "tokens": tokens,
+                }
+            )
 
         # Sort by importance score (descending)
-        scored_memories.sort(key=lambda x: x['score'], reverse=True)
+        scored_memories.sort(key=lambda x: x["score"], reverse=True)
 
         # Select memories within budget
         selected = []
         tokens_used = 0
 
         for item in scored_memories:
-            memory_tokens = item['tokens']
+            memory_tokens = item["tokens"]
             if tokens_used + memory_tokens <= token_budget:
-                selected.append(item['memory'])
+                selected.append(item["memory"])
                 tokens_used += memory_tokens
             else:
                 # Check if we can fit a partial memory (at least half the budget remaining)
@@ -425,9 +443,7 @@ class ImportanceWeightedBudgeter(BaseCompressor):
 
         return selected, tokens_used
 
-    def select_best_within_budget(self,
-                                 memories: list,
-                                 token_budget: int = 2000) -> list:
+    def select_best_within_budget(self, memories: list, token_budget: int = 2000) -> list:
         """
         Convenience method - returns only selected memories.
 
@@ -441,9 +457,7 @@ class ImportanceWeightedBudgeter(BaseCompressor):
         selected, _ = self.retrieve_within_budget(memories, token_budget)
         return selected
 
-    def get_budget_summary(self,
-                          memories: list,
-                          token_budget: int = 2000) -> dict:
+    def get_budget_summary(self, memories: list, token_budget: int = 2000) -> dict:
         """
         Get summary of budget-constrained selection.
 
@@ -457,17 +471,13 @@ class ImportanceWeightedBudgeter(BaseCompressor):
         selected, tokens_used = self.retrieve_within_budget(memories, token_budget)
 
         return {
-            'total_candidates': len(memories),
-            'selected_count': len(selected),
-            'tokens_budget': token_budget,
-            'tokens_used': tokens_used,
-            'tokens_remaining': token_budget - tokens_used,
-            'coverage_percentage': (
-                (len(selected) / len(memories) * 100) if memories else 0
-            ),
-            'selection_efficiency': (
-                (tokens_used / token_budget) if token_budget > 0 else 0
-            ),
+            "total_candidates": len(memories),
+            "selected_count": len(selected),
+            "tokens_budget": token_budget,
+            "tokens_used": tokens_used,
+            "tokens_remaining": token_budget - tokens_used,
+            "coverage_percentage": ((len(selected) / len(memories) * 100) if memories else 0),
+            "selection_efficiency": ((tokens_used / token_budget) if token_budget > 0 else 0),
         }
 
 
@@ -487,14 +497,14 @@ class ConsolidationCompressor(BaseCompressor):
             CompressedMemory with executive summary
         """
         # Validate input
-        if not memory or 'content' not in memory:
+        if not memory or "content" not in memory:
             raise ValueError("Memory must have 'content' field")
-        if 'created_at' not in memory:
+        if "created_at" not in memory:
             raise ValueError("Memory must have 'created_at' field")
 
-        content = memory['content']
-        created_at = memory['created_at']
-        memory_id = memory.get('id', 0)
+        content = memory["content"]
+        created_at = memory["created_at"]
+        memory_id = memory.get("id", 0)
 
         # Generate executive summary
         executive_summary = self.extract_executive_summary(content)
@@ -591,13 +601,13 @@ class ConsolidationCompressor(BaseCompressor):
         if len(summary) > max_chars:
             # Truncate at word boundary
             summary = summary[:max_chars]
-            last_space = summary.rfind(' ')
+            last_space = summary.rfind(" ")
             if last_space > 50:  # Ensure minimum content (12-13 tokens)
                 summary = summary[:last_space].strip()
 
         # Ensure proper ending
-        if summary and not summary.endswith(('.', '!', '?')):
-            summary += '.'
+        if summary and not summary.endswith((".", "!", "?")):
+            summary += "."
 
         return summary.strip()
 
@@ -611,11 +621,32 @@ class ConsolidationCompressor(BaseCompressor):
             return []
 
         action_keywords = [
-            'implement', 'fix', 'add', 'remove', 'create', 'update',
-            'test', 'deploy', 'configure', 'integrate', 'refactor',
-            'optimize', 'analyze', 'improve', 'resolve', 'verify',
-            'migrate', 'validate', 'debug', 'enhance', 'support',
-            'compress', 'extract', 'design', 'build', 'develop',
+            "implement",
+            "fix",
+            "add",
+            "remove",
+            "create",
+            "update",
+            "test",
+            "deploy",
+            "configure",
+            "integrate",
+            "refactor",
+            "optimize",
+            "analyze",
+            "improve",
+            "resolve",
+            "verify",
+            "migrate",
+            "validate",
+            "debug",
+            "enhance",
+            "support",
+            "compress",
+            "extract",
+            "design",
+            "build",
+            "develop",
         ]
 
         found_actions = []
@@ -637,7 +668,7 @@ class ConsolidationCompressor(BaseCompressor):
 
                     # Clean up phrase (remove leading/trailing incomplete words)
                     if phrase_start > 0:
-                        first_space = phrase.find(' ')
+                        first_space = phrase.find(" ")
                         if first_space > 0:
                             phrase = phrase[first_space:].strip()
 
@@ -665,7 +696,7 @@ class ConsolidationCompressor(BaseCompressor):
             return []
 
         # Split on sentence boundaries
-        sentences = re.split(r'[.!?]+', text)
+        sentences = re.split(r"[.!?]+", text)
 
         # Clean and filter
         sentences = [s.strip() for s in sentences if s.strip()]
@@ -681,10 +712,9 @@ class CompressionValidator:
     """Validates compression operations and results."""
 
     @staticmethod
-    def validate_compression(original: str,
-                            compressed: str,
-                            target_ratio: float = 0.1,
-                            min_fidelity: float = 0.85) -> bool:
+    def validate_compression(
+        original: str, compressed: str, target_ratio: float = 0.1, min_fidelity: float = 0.85
+    ) -> bool:
         """
         Validate compressed content.
 
@@ -700,9 +730,7 @@ class CompressionValidator:
         if not original or not compressed:
             return False
 
-        ratio = BaseCompressor.calculate_compression_ratio(
-            len(original), len(compressed)
-        )
+        ratio = BaseCompressor.calculate_compression_ratio(len(original), len(compressed))
 
         # Compression should reduce size
         if ratio >= 1.0:
@@ -729,7 +757,7 @@ class CompressionValidator:
         Returns:
             True if memory has required fields
         """
-        required_fields = ['id', 'content', 'created_at']
+        required_fields = ["id", "content", "created_at"]
         return all(field in memory for field in required_fields)
 
 
@@ -744,11 +772,13 @@ class CompressionMetricsCollector:
         self.total_tokens_compressed = 0
         self.compression_operations = []
 
-    def record_compression(self,
-                          memory_id: int,
-                          original_tokens: int,
-                          compressed_tokens: int,
-                          compression_level: CompressionLevel):
+    def record_compression(
+        self,
+        memory_id: int,
+        original_tokens: int,
+        compressed_tokens: int,
+        compression_level: CompressionLevel,
+    ):
         """Record a compression operation."""
         self.total_memories += 1
         if compression_level != CompressionLevel.NONE:
@@ -757,30 +787,34 @@ class CompressionMetricsCollector:
         self.total_tokens_original += original_tokens
         self.total_tokens_compressed += compressed_tokens
 
-        self.compression_operations.append({
-            'memory_id': memory_id,
-            'original_tokens': original_tokens,
-            'compressed_tokens': compressed_tokens,
-            'compression_level': compression_level,
-            'timestamp': datetime.now(),
-        })
+        self.compression_operations.append(
+            {
+                "memory_id": memory_id,
+                "original_tokens": original_tokens,
+                "compressed_tokens": compressed_tokens,
+                "compression_level": compression_level,
+                "timestamp": datetime.now(),
+            }
+        )
 
     def get_summary(self) -> dict:
         """Get compression metrics summary."""
         total_saved = self.total_tokens_original - self.total_tokens_compressed
 
         return {
-            'total_memories': self.total_memories,
-            'compressed_memories': self.compressed_memories,
-            'total_tokens_original': self.total_tokens_original,
-            'total_tokens_compressed': self.total_tokens_compressed,
-            'total_tokens_saved': total_saved,
-            'overall_ratio': (
+            "total_memories": self.total_memories,
+            "compressed_memories": self.compressed_memories,
+            "total_tokens_original": self.total_tokens_original,
+            "total_tokens_compressed": self.total_tokens_compressed,
+            "total_tokens_saved": total_saved,
+            "overall_ratio": (
                 self.total_tokens_compressed / self.total_tokens_original
-                if self.total_tokens_original > 0 else 0.0
+                if self.total_tokens_original > 0
+                else 0.0
             ),
-            'compression_percentage': (
+            "compression_percentage": (
                 (self.compressed_memories / self.total_memories * 100)
-                if self.total_memories > 0 else 0.0
+                if self.total_memories > 0
+                else 0.0
             ),
         }

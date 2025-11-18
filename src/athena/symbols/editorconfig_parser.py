@@ -12,7 +12,7 @@ Supports:
 """
 
 import re
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict
 from .symbol_models import Symbol, SymbolType, create_symbol
 
 
@@ -31,13 +31,13 @@ class EditorConfigParser:
         """
         if code is None:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     code = f.read()
             except (IOError, UnicodeDecodeError):
                 return []
 
         symbols = []
-        lines = code.split('\n')
+        lines = code.split("\n")
 
         current_section = None
         section_settings = {}
@@ -46,24 +46,26 @@ class EditorConfigParser:
         for line_num, line in enumerate(lines, 1):
             # Skip comments and empty lines
             line = line.strip()
-            if not line or line.startswith(';') or line.startswith('#'):
+            if not line or line.startswith(";") or line.startswith("#"):
                 continue
 
             # Parse section (file pattern)
-            section_match = re.match(r'^\[([^\]]+)\]$', line)
+            section_match = re.match(r"^\[([^\]]+)\]$", line)
             if section_match:
                 # Process previous section
                 if current_section:
-                    symbols.extend(self._create_symbols_from_section(
-                        current_section, section_settings, file_path, line_num
-                    ))
+                    symbols.extend(
+                        self._create_symbols_from_section(
+                            current_section, section_settings, file_path, line_num
+                        )
+                    )
 
                 current_section = section_match.group(1)
                 section_settings = {}
                 continue
 
             # Parse key = value setting
-            kv_match = re.match(r'^(\w+)\s*=\s*(.+)$', line)
+            kv_match = re.match(r"^(\w+)\s*=\s*(.+)$", line)
             if kv_match:
                 key = kv_match.group(1).strip()
                 value = kv_match.group(2).strip()
@@ -80,9 +82,11 @@ class EditorConfigParser:
 
         # Process final section
         if current_section:
-            symbols.extend(self._create_symbols_from_section(
-                current_section, section_settings, file_path, len(lines)
-            ))
+            symbols.extend(
+                self._create_symbols_from_section(
+                    current_section, section_settings, file_path, len(lines)
+                )
+            )
 
         return symbols
 
@@ -104,7 +108,7 @@ class EditorConfigParser:
                 code="",
                 docstring=f"EditorConfig root setting: {key}",
                 language="editorconfig",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -128,7 +132,7 @@ class EditorConfigParser:
             code="",
             docstring=f"File pattern: {pattern}",
             language="editorconfig",
-            visibility="public"
+            visibility="public",
         )
         symbols.append(symbol)
 
@@ -145,7 +149,7 @@ class EditorConfigParser:
                 code="",
                 docstring=f"EditorConfig {setting_key}: {setting_value}",
                 language="editorconfig",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 

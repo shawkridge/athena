@@ -89,9 +89,7 @@ class GoalToProspectiveConverter:
             logger.info(f"Integrating decomposed goal: {goal.title}")
 
             # Step 1: Create prospective task for the goal itself
-            goal_task = await self._create_goal_task(
-                decomposed_goal, goal, project_id, assignee
-            )
+            goal_task = await self._create_goal_task(decomposed_goal, goal, project_id, assignee)
 
             # Step 2: Convert TaskNodes to ProspectiveTasks
             task_mapping, prospective_tasks = await self._convert_task_nodes(
@@ -106,9 +104,7 @@ class GoalToProspectiveConverter:
             created_task_ids = [task.id for task in prospective_tasks if task.id]
             created_task_ids.insert(0, goal_task.id)
 
-            logger.info(
-                f"Created {len(created_task_ids)} prospective tasks from decomposition"
-            )
+            logger.info(f"Created {len(created_task_ids)} prospective tasks from decomposition")
 
             # Step 4: Create dependency relationships
             dependencies_created = await self._create_dependencies(
@@ -268,9 +264,11 @@ class GoalToProspectiveConverter:
         plan = self._create_plan_from_task_node(task_node, decomposed_goal)
 
         # Calculate due date
-        due_date = self._calculate_due_date(
-            task_node.estimated_effort_minutes
-        ) if task_node.estimated_effort_minutes else None
+        due_date = (
+            self._calculate_due_date(task_node.estimated_effort_minutes)
+            if task_node.estimated_effort_minutes
+            else None
+        )
 
         task = ProspectiveTask(
             project_id=project_id,
@@ -443,16 +441,12 @@ class GoalToProspectiveConverter:
             )
 
         if decomposed_goal.clarity_score < 0.7:
-            warnings.append(
-                f"Low decomposition clarity: {decomposed_goal.clarity_score:.2%}"
-            )
+            warnings.append(f"Low decomposition clarity: {decomposed_goal.clarity_score:.2%}")
 
         return warnings
 
     @staticmethod
-    def _infer_priority(
-        complexity: int, original_priority: int, is_critical: bool
-    ) -> TaskPriority:
+    def _infer_priority(complexity: int, original_priority: int, is_critical: bool) -> TaskPriority:
         """Infer task priority from decomposition metrics.
 
         Args:
@@ -473,9 +467,7 @@ class GoalToProspectiveConverter:
             return TaskPriority.LOW
 
     @staticmethod
-    def _create_plan_from_task_node(
-        task_node: TaskNode, decomposed_goal: DecomposedGoal
-    ) -> Plan:
+    def _create_plan_from_task_node(task_node: TaskNode, decomposed_goal: DecomposedGoal) -> Plan:
         """Create a Plan from a TaskNode.
 
         Args:

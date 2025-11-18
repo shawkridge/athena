@@ -35,12 +35,14 @@ class ActionCycleStore:
             db: Database instance
         """
         self.db = db
+
     def _ensure_schema(self) -> None:
         """Create tables if they don't exist."""
         cursor = self.db.get_cursor()
 
         # Action cycles table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS action_cycles (
                 id SERIAL PRIMARY KEY,
                 goal_id TEXT,
@@ -68,10 +70,12 @@ class ActionCycleStore:
                 consolidation_status TEXT DEFAULT 'unconsolidated',
                 consolidated_at INTEGER
             )
-        """)
+        """
+        )
 
         # Executions table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS cycle_executions (
                 id SERIAL PRIMARY KEY,
                 cycle_id INTEGER NOT NULL,
@@ -86,28 +90,37 @@ class ActionCycleStore:
                 created_at INTEGER NOT NULL,
                 FOREIGN KEY (cycle_id) REFERENCES action_cycles(id)
             )
-        """)
+        """
+        )
 
         # Indexes
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_action_cycles_goal
             ON action_cycles(goal_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_action_cycles_status
             ON action_cycles(status)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_action_cycles_session
             ON action_cycles(session_id, created_at DESC)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_cycle_executions_cycle
             ON cycle_executions(cycle_id, attempt_number DESC)
-        """)
+        """
+        )
 
         # commit handled by cursor context
 
@@ -145,23 +158,26 @@ class ActionCycleStore:
         if plan_assumptions:
             assumptions_json = json.dumps([a.dict() for a in plan_assumptions])
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO action_cycles
             (goal_id, goal_description, goal_priority, plan_description, plan_quality,
              plan_assumptions_json, max_attempts, session_id, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            goal_id,
-            goal_description,
-            goal_priority,
-            plan_description,
-            plan_quality,
-            assumptions_json,
-            max_attempts,
-            session_id,
-            CycleStatus.PLANNING.value,
-            now,
-        ))
+        """,
+            (
+                goal_id,
+                goal_description,
+                goal_priority,
+                plan_description,
+                plan_quality,
+                assumptions_json,
+                max_attempts,
+                session_id,
+                CycleStatus.PLANNING.value,
+                now,
+            ),
+        )
 
         # commit handled by cursor context
         return cursor.lastrowid
@@ -196,7 +212,7 @@ class ActionCycleStore:
             """SELECT * FROM action_cycles
                WHERE goal_id = ? AND status IN ('planning', 'executing', 'learning')
                ORDER BY created_at DESC LIMIT 1""",
-            (goal_id,)
+            (goal_id,),
         )
         row = cursor.fetchone()
         if not row:
@@ -214,8 +230,7 @@ class ActionCycleStore:
         """
         cursor = self.db.get_cursor()
         cursor.execute(
-            "SELECT * FROM action_cycles WHERE goal_id = ? ORDER BY created_at DESC",
-            (goal_id,)
+            "SELECT * FROM action_cycles WHERE goal_id = ? ORDER BY created_at DESC", (goal_id,)
         )
         return [self._row_to_cycle(row) for row in cursor.fetchall()]
 
@@ -227,11 +242,14 @@ class ActionCycleStore:
         """
         cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE action_cycles
             SET status = ?, started_execution_at = ?
             WHERE id = ?
-        """, (CycleStatus.EXECUTING.value, now, cycle_id))
+        """,
+            (CycleStatus.EXECUTING.value, now, cycle_id),
+        )
         # commit handled by cursor context
 
     def record_execution_result(
@@ -268,23 +286,26 @@ class ActionCycleStore:
             lessons_json = json.dumps(lessons_from_attempt)
 
         # Record execution
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO cycle_executions
             (cycle_id, attempt_number, execution_id, outcome, duration_seconds,
              code_changes_count, errors_encountered, lessons_json, timestamp, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            cycle_id,
-            attempt_number,
-            execution_id,
-            outcome,
-            duration_seconds,
-            code_changes_count,
-            errors_encountered,
-            lessons_json,
-            now,
-            now,
-        ))
+        """,
+            (
+                cycle_id,
+                attempt_number,
+                execution_id,
+                outcome,
+                duration_seconds,
+                code_changes_count,
+                errors_encountered,
+                lessons_json,
+                now,
+                now,
+            ),
+        )
 
         exec_id = cursor.lastrowid
 
@@ -298,21 +319,24 @@ class ActionCycleStore:
             new_partial = cycle.partial_executions + (1 if outcome == "partial" else 0)
             new_success_rate = new_successful / new_total if new_total > 0 else 0.0
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE action_cycles
                 SET total_executions = ?, successful_executions = ?,
                     failed_executions = ?, partial_executions = ?,
                     success_rate = ?, current_attempt = ?
                 WHERE id = ?
-            """, (
-                new_total,
-                new_successful,
-                new_failed,
-                new_partial,
-                new_success_rate,
-                attempt_number + 1,
-                cycle_id,
-            ))
+            """,
+                (
+                    new_total,
+                    new_successful,
+                    new_failed,
+                    new_partial,
+                    new_success_rate,
+                    attempt_number + 1,
+                    cycle_id,
+                ),
+            )
 
         # commit handled by cursor context
         return exec_id
@@ -340,7 +364,7 @@ class ActionCycleStore:
         cursor = self.db.get_cursor()
         cursor.execute(
             "SELECT outcome FROM cycle_executions WHERE cycle_id = ? ORDER BY attempt_number DESC LIMIT 1",
-            (cycle_id,)
+            (cycle_id,),
         )
         last_result = cursor.fetchone()
 
@@ -360,10 +384,13 @@ class ActionCycleStore:
 
         # 3. Two consecutive failures
         if cycle.total_executions >= 2:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT outcome FROM cycle_executions
                 WHERE cycle_id = ? ORDER BY attempt_number DESC LIMIT 2
-            """, (cycle_id,))
+            """,
+                (cycle_id,),
+            )
             last_two = cursor.fetchall()
             if len(last_two) == 2 and last_two[0][0] == "failure" and last_two[1][0] == "failure":
                 return True
@@ -403,18 +430,21 @@ class ActionCycleStore:
         new_adjustments = cycle.plan_adjustments + [adjustment]
         adjustments_json = json.dumps([a.dict() for a in new_adjustments])
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE action_cycles
             SET plan_description = ?, plan_quality = ?,
                 plan_adjustments_json = ?, replanning_count = ?
             WHERE id = ?
-        """, (
-            new_plan_description,
-            new_plan_quality,
-            adjustments_json,
-            cycle.replanning_count + 1,
-            cycle_id,
-        ))
+        """,
+            (
+                new_plan_description,
+                new_plan_quality,
+                adjustments_json,
+                cycle.replanning_count + 1,
+                cycle_id,
+            ),
+        )
 
         # commit handled by cursor context
 
@@ -454,8 +484,7 @@ class ActionCycleStore:
 
         cursor = self.db.get_cursor()
         cursor.execute(
-            "UPDATE action_cycles SET lessons_json = ? WHERE id = ?",
-            (lessons_json, cycle_id)
+            "UPDATE action_cycles SET lessons_json = ? WHERE id = ?", (lessons_json, cycle_id)
         )
         # commit handled by cursor context
 
@@ -475,11 +504,14 @@ class ActionCycleStore:
         cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE action_cycles
             SET status = ?, completed_at = ?, reason_abandoned = ?
             WHERE id = ?
-        """, (final_status, now, reason_if_abandoned, cycle_id))
+        """,
+            (final_status, now, reason_if_abandoned, cycle_id),
+        )
 
         # commit handled by cursor context
 
@@ -530,11 +562,14 @@ class ActionCycleStore:
             List of active ActionCycles
         """
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM action_cycles
             WHERE session_id = ? AND status IN ('planning', 'executing', 'learning')
             ORDER BY created_at DESC
-        """, (session_id,))
+        """,
+            (session_id,),
+        )
         return [self._row_to_cycle(row) for row in cursor.fetchall()]
 
     def mark_consolidated(self, cycle_id: int) -> None:
@@ -545,11 +580,14 @@ class ActionCycleStore:
         """
         cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE action_cycles
             SET consolidation_status = 'consolidated', consolidated_at = ?
             WHERE id = ?
-        """, (now, cycle_id))
+        """,
+            (now, cycle_id),
+        )
         # commit handled by cursor context
 
     def get_unconsolidated_cycles(self, limit: int = 100) -> list[ActionCycle]:
@@ -562,12 +600,15 @@ class ActionCycleStore:
             List of unconsolidated ActionCycles
         """
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM action_cycles
             WHERE consolidation_status = 'unconsolidated'
             ORDER BY created_at ASC
             LIMIT ?
-        """, (limit,))
+        """,
+            (limit,),
+        )
         return [self._row_to_cycle(row) for row in cursor.fetchall()]
 
     def _row_to_cycle(self, row: tuple) -> ActionCycle:
@@ -627,31 +668,45 @@ class ActionCycleStore:
 
         # Get executions for this cycle
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT attempt_number, execution_id, outcome, duration_seconds,
                    code_changes_count, errors_encountered, lessons_json, timestamp
             FROM cycle_executions
             WHERE cycle_id = ? ORDER BY attempt_number ASC
-        """, (id_,))
+        """,
+            (id_,),
+        )
 
         executions = []
         for exec_row in cursor.fetchall():
-            attempt_num, exec_id, outcome, duration, changes, errors, exec_lessons_json, timestamp = exec_row
+            (
+                attempt_num,
+                exec_id,
+                outcome,
+                duration,
+                changes,
+                errors,
+                exec_lessons_json,
+                timestamp,
+            ) = exec_row
 
             exec_lessons = []
             if exec_lessons_json:
                 exec_lessons = json.loads(exec_lessons_json)
 
-            executions.append(ExecutionSummary(
-                attempt_number=attempt_num,
-                execution_id=exec_id,
-                outcome=outcome,
-                duration_seconds=duration,
-                code_changes_count=changes,
-                errors_encountered=errors,
-                lessons_from_attempt=exec_lessons,
-                timestamp=datetime.fromtimestamp(timestamp / 1000),
-            ))
+            executions.append(
+                ExecutionSummary(
+                    attempt_number=attempt_num,
+                    execution_id=exec_id,
+                    outcome=outcome,
+                    duration_seconds=duration,
+                    code_changes_count=changes,
+                    errors_encountered=errors,
+                    lessons_from_attempt=exec_lessons,
+                    timestamp=datetime.fromtimestamp(timestamp / 1000),
+                )
+            )
 
         return ActionCycle(
             id=id_,
@@ -676,8 +731,14 @@ class ActionCycleStore:
             reason_abandoned=reason_abandoned,
             session_id=session_id,
             created_at=datetime.fromtimestamp(created_at / 1000),
-            started_execution_at=datetime.fromtimestamp(started_execution_at / 1000) if started_execution_at else None,
+            started_execution_at=(
+                datetime.fromtimestamp(started_execution_at / 1000)
+                if started_execution_at
+                else None
+            ),
             completed_at=datetime.fromtimestamp(completed_at / 1000) if completed_at else None,
             consolidation_status=consolidation_status,
-            consolidated_at=datetime.fromtimestamp(consolidated_at / 1000) if consolidated_at else None,
+            consolidated_at=(
+                datetime.fromtimestamp(consolidated_at / 1000) if consolidated_at else None
+            ),
         )

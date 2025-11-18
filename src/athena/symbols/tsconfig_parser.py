@@ -29,7 +29,7 @@ class TsConfigParser:
         """
         if code is None:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     code = f.read()
             except (IOError, UnicodeDecodeError):
                 return []
@@ -88,7 +88,7 @@ class TsConfigParser:
                 code="",
                 docstring=f"Compiler option: {option_name}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -111,7 +111,7 @@ class TsConfigParser:
                 code="",
                 docstring=f"Extended configuration: {data['extends']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -131,7 +131,7 @@ class TsConfigParser:
                         code="",
                         docstring=f"Type acquisition: {key}",
                         language="json",
-                        visibility="public"
+                        visibility="public",
                     )
                     symbols.append(symbol)
 
@@ -148,7 +148,7 @@ class TsConfigParser:
                 code="",
                 docstring="Watch configuration for file changes",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -173,7 +173,7 @@ class TsConfigParser:
                     code="",
                     docstring=f"Include pattern: {pattern}",
                     language="json",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
@@ -192,7 +192,7 @@ class TsConfigParser:
                     code="",
                     docstring=f"Exclude pattern: {pattern}",
                     language="json",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
@@ -216,7 +216,7 @@ class TsConfigParser:
                 code="",
                 docstring=f"Base URL for module resolution: {base_url}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -241,7 +241,7 @@ class TsConfigParser:
                         code="",
                         docstring=f"Path mapping for alias '{alias}'",
                         language="json",
-                        visibility="public"
+                        visibility="public",
                     )
                     symbols.append(symbol)
 
@@ -267,7 +267,7 @@ class TsConfigParser:
                         code="",
                         docstring=f"Project reference: {path}",
                         language="json",
-                        visibility="public"
+                        visibility="public",
                     )
                     symbols.append(symbol)
 

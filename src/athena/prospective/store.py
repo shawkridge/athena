@@ -33,6 +33,7 @@ class ProspectiveStore(BaseStore):
         """
         super().__init__(db)
         # Ensure phase tracking schema is present
+
     def _row_to_model(self, row: Dict[str, Any]) -> ProspectiveTask:
         """Convert database row to ProspectiveTask model.
 
@@ -48,15 +49,19 @@ class ProspectiveStore(BaseStore):
         """Ensure prospective memory tables exist."""
 
         # For PostgreSQL async databases, skip sync schema initialization
-        if not hasattr(self.db, 'conn'):
+        if not hasattr(self.db, "conn"):
             import logging
+
             logger = logging.getLogger(__name__)
-            logger.debug(f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema().")
+            logger.debug(
+                f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema()."
+            )
             return
         cursor = self.db.get_cursor()
 
         # Tasks table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS prospective_tasks (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER,
@@ -87,7 +92,8 @@ class ProspectiveStore(BaseStore):
 
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Add missing columns if they don't exist (for backward compatibility)
         try:
@@ -146,7 +152,8 @@ class ProspectiveStore(BaseStore):
             pass
 
         # Task triggers
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS task_triggers (
                 id SERIAL PRIMARY KEY,
                 task_id INTEGER NOT NULL,
@@ -156,10 +163,12 @@ class ProspectiveStore(BaseStore):
                 fired_at INTEGER,
                 FOREIGN KEY (task_id) REFERENCES prospective_tasks(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Task dependencies
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS task_dependencies (
                 task_id INTEGER NOT NULL,
                 depends_on_task_id INTEGER NOT NULL,
@@ -168,10 +177,12 @@ class ProspectiveStore(BaseStore):
                 FOREIGN KEY (task_id) REFERENCES prospective_tasks(id) ON DELETE CASCADE,
                 FOREIGN KEY (depends_on_task_id) REFERENCES prospective_tasks(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Task phases/milestones
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS phases (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -185,12 +196,17 @@ class ProspectiveStore(BaseStore):
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
                 FOREIGN KEY (task_id) REFERENCES prospective_tasks(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         # Indices
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_tasks_project ON prospective_tasks(project_id)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tasks_project ON prospective_tasks(project_id)"
+        )
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_tasks_status ON prospective_tasks(status)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_tasks_priority ON prospective_tasks(priority)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tasks_priority ON prospective_tasks(priority)"
+        )
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_triggers_task ON task_triggers(task_id)")
 
         # commit handled by cursor context
@@ -205,7 +221,9 @@ class ProspectiveStore(BaseStore):
             ID of created task
         """
         status_str = task.status.value if isinstance(task.status, TaskStatus) else task.status
-        priority_str = task.priority.value if isinstance(task.priority, TaskPriority) else task.priority
+        priority_str = (
+            task.priority.value if isinstance(task.priority, TaskPriority) else task.priority
+        )
         phase_str = task.phase.value if isinstance(task.phase, TaskPhase) else task.phase
         plan_json = self.serialize_json(task.plan.dict()) if task.plan else None
 
@@ -251,16 +269,16 @@ class ProspectiveStore(BaseStore):
         Returns:
             Task if found, None otherwise
         """
-        row = self.execute("SELECT * FROM prospective_tasks WHERE id = %s", (task_id,), fetch_one=True)
+        row = self.execute(
+            "SELECT * FROM prospective_tasks WHERE id = %s", (task_id,), fetch_one=True
+        )
 
         if not row:
             return None
 
         return self._row_to_task(row if isinstance(row, dict) else dict(row))
 
-    def update_task_status(
-        self, task_id: int, status: TaskStatus, reason: Optional[str] = None
-    ):
+    def update_task_status(self, task_id: int, status: TaskStatus, reason: Optional[str] = None):
         """Update task status.
 
         Args:
@@ -301,11 +319,12 @@ class ProspectiveStore(BaseStore):
         if status == TaskStatus.COMPLETED:
             try:
                 from .consolidation_hook import ConsolidationHook
+
                 hook = ConsolidationHook(self.db)
 
                 # Get task to check if it has a learned_pattern_id
                 task = self.get_task(task_id)
-                if task and hasattr(task, 'learned_pattern_id') and task.learned_pattern_id:
+                if task and hasattr(task, "learned_pattern_id") and task.learned_pattern_id:
                     # Success if status is COMPLETED
                     hook.on_task_completed_with_pattern(
                         task_id=task_id,
@@ -319,6 +338,7 @@ class ProspectiveStore(BaseStore):
             except Exception as e:
                 # Log but don't fail on consolidation errors
                 import logging
+
                 logging.warning(f"Failed to consolidate task {task_id}: {e}")
 
     def update_task_phase(
@@ -453,8 +473,8 @@ class ProspectiveStore(BaseStore):
         # Serialize and persist (use model_dump with mode='json' for proper datetime serialization)
         plan_data = plan.dict()
         # Convert datetime to ISO string for JSON serialization
-        if 'created_at' in plan_data and isinstance(plan_data['created_at'], datetime):
-            plan_data['created_at'] = plan_data['created_at'].isoformat()
+        if "created_at" in plan_data and isinstance(plan_data["created_at"], datetime):
+            plan_data["created_at"] = plan_data["created_at"].isoformat()
         plan_json = self.serialize_json(plan_data)
 
         self.execute(
@@ -559,11 +579,11 @@ class ProspectiveStore(BaseStore):
         params.append(limit)
 
         rows = self.execute(sql, tuple(params), fetch_all=True)
-        return [self._row_to_task(row if isinstance(row, dict) else dict(row)) for row in (rows or [])]
+        return [
+            self._row_to_task(row if isinstance(row, dict) else dict(row)) for row in (rows or [])
+        ]
 
-    def get_tasks_by_project(
-        self, project_id: int, limit: int = 100
-    ) -> list[ProspectiveTask]:
+    def get_tasks_by_project(self, project_id: int, limit: int = 100) -> list[ProspectiveTask]:
         """Get all tasks in a project.
 
         Args:
@@ -576,9 +596,11 @@ class ProspectiveStore(BaseStore):
         rows = self.execute(
             "SELECT * FROM prospective_tasks WHERE project_id = %s ORDER BY created_at DESC LIMIT %s",
             (project_id, limit),
-            fetch_all=True
+            fetch_all=True,
         )
-        return [self._row_to_task(row if isinstance(row, dict) else dict(row)) for row in (rows or [])]
+        return [
+            self._row_to_task(row if isinstance(row, dict) else dict(row)) for row in (rows or [])
+        ]
 
     def list_tasks(
         self,
@@ -618,7 +640,9 @@ class ProspectiveStore(BaseStore):
         params.append(limit)
 
         rows = self.execute(sql, tuple(params), fetch_all=True)
-        return [self._row_to_task(row if isinstance(row, dict) else dict(row)) for row in (rows or [])]
+        return [
+            self._row_to_task(row if isinstance(row, dict) else dict(row)) for row in (rows or [])
+        ]
 
     def get_ready_tasks(self, project_id: Optional[int] = None) -> list[ProspectiveTask]:
         """Get tasks that are ready to work on (pending with no blocking dependencies).
@@ -647,7 +671,9 @@ class ProspectiveStore(BaseStore):
         sql += " ORDER BY t.priority DESC, t.created_at ASC"
 
         rows = self.execute(sql, tuple(params) if params else None, fetch_all=True)
-        return [self._row_to_task(row if isinstance(row, dict) else dict(row)) for row in (rows or [])]
+        return [
+            self._row_to_task(row if isinstance(row, dict) else dict(row)) for row in (rows or [])
+        ]
 
     def add_trigger(self, trigger: TaskTrigger) -> int:
         """Add a trigger to a task.
@@ -689,10 +715,12 @@ class ProspectiveStore(BaseStore):
         Returns:
             List of triggers
         """
-        rows = self.execute("SELECT * FROM task_triggers WHERE task_id = %s", (task_id,), fetch_all=True)
+        rows = self.execute(
+            "SELECT * FROM task_triggers WHERE task_id = %s", (task_id,), fetch_all=True
+        )
 
         triggers = []
-        for row in (rows or []):
+        for row in rows or []:
             row_dict = row if isinstance(row, dict) else dict(row)
             triggers.append(
                 TaskTrigger(
@@ -701,7 +729,11 @@ class ProspectiveStore(BaseStore):
                     trigger_type=TriggerType(row_dict.get("trigger_type")),
                     trigger_condition=self._safe_json_loads(row_dict.get("trigger_condition"), {}),
                     fired=bool(row_dict.get("fired")),
-                    fired_at=datetime.fromtimestamp(row_dict.get("fired_at")) if row_dict.get("fired_at") else None,
+                    fired_at=(
+                        datetime.fromtimestamp(row_dict.get("fired_at"))
+                        if row_dict.get("fired_at")
+                        else None
+                    ),
                 )
             )
 
@@ -733,14 +765,17 @@ class ProspectiveStore(BaseStore):
             List of (task, trigger) tuples that should fire
         """
         # Get all unfired triggers for pending tasks
-        rows = self.execute("""
+        rows = self.execute(
+            """
             SELECT t.*, tr.* FROM task_triggers tr
             JOIN prospective_tasks t ON tr.task_id = t.id
             WHERE tr.fired = 0 AND t.status = 'pending'
-        """, fetch_all=True)
+        """,
+            fetch_all=True,
+        )
 
         fired_tasks = []
-        for row in (rows or []):
+        for row in rows or []:
             row_dict = row if isinstance(row, dict) else dict(row)
             trigger = TaskTrigger(
                 id=row_dict.get("id"),
@@ -821,10 +856,12 @@ class ProspectiveStore(BaseStore):
             WHERE d.task_id = %s
         """,
             (task_id,),
-            fetch_all=True
+            fetch_all=True,
         )
 
-        return [self._row_to_task(row if isinstance(row, dict) else dict(row)) for row in (rows or [])]
+        return [
+            self._row_to_task(row if isinstance(row, dict) else dict(row)) for row in (rows or [])
+        ]
 
     def find_similar_tasks(
         self,
@@ -860,7 +897,9 @@ class ProspectiveStore(BaseStore):
         params.append(limit)
 
         rows = self.execute(sql, tuple(params), fetch_all=True)
-        return [self._row_to_task(row if isinstance(row, dict) else dict(row)) for row in (rows or [])]
+        return [
+            self._row_to_task(row if isinstance(row, dict) else dict(row)) for row in (rows or [])
+        ]
 
     def find_recent_completed_tasks(
         self,
@@ -894,7 +933,9 @@ class ProspectiveStore(BaseStore):
         params.append(limit)
 
         rows = self.execute(sql, tuple(params), fetch_all=True)
-        return [self._row_to_task(row if isinstance(row, dict) else dict(row)) for row in (rows or [])]
+        return [
+            self._row_to_task(row if isinstance(row, dict) else dict(row)) for row in (rows or [])
+        ]
 
     def detect_task_patterns(
         self,
@@ -951,6 +992,7 @@ class ProspectiveStore(BaseStore):
             return default
         try:
             from athena.core.error_handling import safe_json_loads
+
             return safe_json_loads(data, default)
         except (ImportError, AttributeError):
             return default
@@ -965,7 +1007,7 @@ class ProspectiveStore(BaseStore):
             ProspectiveTask instance
         """
         # Convert psycopg Record to dict if needed
-        if hasattr(row, 'keys'):
+        if hasattr(row, "keys"):
             # Row-like object, convert to dict
             row_dict = dict(row)
         else:

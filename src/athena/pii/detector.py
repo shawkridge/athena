@@ -16,15 +16,17 @@ logger = logging.getLogger(__name__)
 class PIIDetection:
     """Result of detecting PII in text."""
 
-    type: str               # 'email', 'path', 'credential', 'ssn', etc.
-    value: str              # The detected PII value
-    start_pos: int          # Position in original text
-    end_pos: int            # End position
-    confidence: float       # Confidence score (0-1)
-    field_name: str         # Which field it was found in
+    type: str  # 'email', 'path', 'credential', 'ssn', etc.
+    value: str  # The detected PII value
+    start_pos: int  # Position in original text
+    end_pos: int  # End position
+    confidence: float  # Confidence score (0-1)
+    field_name: str  # Which field it was found in
 
     def __repr__(self) -> str:
-        return f"PIIDetection(type={self.type}, field={self.field_name}, conf={self.confidence:.2f})"
+        return (
+            f"PIIDetection(type={self.type}, field={self.field_name}, conf={self.confidence:.2f})"
+        )
 
 
 class PIIDetector:
@@ -42,46 +44,34 @@ class PIIDetector:
 
     # Standard PII detection patterns
     PATTERNS = {
-        'email': (
-            r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
-            0.95  # High confidence for explicit email format
+        "email": (
+            r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+            0.95,  # High confidence for explicit email format
         ),
-        'absolute_path': (
-            r'(?:/home/[a-zA-Z0-9._-]+|/Users/[a-zA-Z0-9._-]+|C:\\Users\\[a-zA-Z0-9._-]+)',
-            0.90  # User home directory paths
+        "absolute_path": (
+            r"(?:/home/[a-zA-Z0-9._-]+|/Users/[a-zA-Z0-9._-]+|C:\\Users\\[a-zA-Z0-9._-]+)",
+            0.90,  # User home directory paths
         ),
-        'api_key': (
-            r'(?:[sS][kK][-_]?[a-zA-Z0-9]{20,}|key[-_]?[a-zA-Z0-9]{20,})',
-            0.85  # API keys like sk-*, key-*
+        "api_key": (
+            r"(?:[sS][kK][-_]?[a-zA-Z0-9]{20,}|key[-_]?[a-zA-Z0-9]{20,})",
+            0.85,  # API keys like sk-*, key-*
         ),
-        'aws_key': (
-            r'AKIA[0-9A-Z]{16}',
-            0.95  # AWS Access Key ID pattern
+        "aws_key": (r"AKIA[0-9A-Z]{16}", 0.95),  # AWS Access Key ID pattern
+        "private_key": (
+            r"-----BEGIN (?:RSA|OPENSSH|DSA|EC|PGP) PRIVATE KEY-----",
+            0.99,  # Private key headers
         ),
-        'private_key': (
-            r'-----BEGIN (?:RSA|OPENSSH|DSA|EC|PGP) PRIVATE KEY-----',
-            0.99  # Private key headers
+        "ssn": (r"\b\d{3}-\d{2}-\d{4}\b", 0.90),  # Social Security Number XXX-XX-XXXX
+        "credit_card": (
+            r"\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b",
+            0.85,  # 16-digit credit card
         ),
-        'ssn': (
-            r'\b\d{3}-\d{2}-\d{4}\b',
-            0.90  # Social Security Number XXX-XX-XXXX
+        "phone": (
+            r"\b(?:\+?1[-.]?)?\(?([0-9]{3})\)?[-.]?([0-9]{3})[-.]?([0-9]{4})\b",
+            0.80,  # Phone numbers with various formats
         ),
-        'credit_card': (
-            r'\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b',
-            0.85  # 16-digit credit card
-        ),
-        'phone': (
-            r'\b(?:\+?1[-.]?)?\(?([0-9]{3})\)?[-.]?([0-9]{3})[-.]?([0-9]{4})\b',
-            0.80  # Phone numbers with various formats
-        ),
-        'github_token': (
-            r'ghp_[a-zA-Z0-9]{36}',
-            0.99  # GitHub Personal Access Token
-        ),
-        'jwt': (
-            r'eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[\w-]*',
-            0.85  # JWT format
-        ),
+        "github_token": (r"ghp_[a-zA-Z0-9]{36}", 0.99),  # GitHub Personal Access Token
+        "jwt": (r"eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[\w-]*", 0.85),  # JWT format
     }
 
     def __init__(self, custom_patterns: Optional[Dict[str, str]] = None):
@@ -98,10 +88,7 @@ class PIIDetector:
                 self.patterns[name] = (pattern, 0.75)  # Default confidence for custom
 
     def detect(
-        self,
-        text: str,
-        field_name: str = 'unknown',
-        confidence_threshold: float = 0.7
+        self, text: str, field_name: str = "unknown", confidence_threshold: float = 0.7
     ) -> List[PIIDetection]:
         """Detect PII in text.
 
@@ -131,7 +118,7 @@ class PIIDetector:
                         start_pos=match.start(),
                         end_pos=match.end(),
                         confidence=confidence,
-                        field_name=field_name
+                        field_name=field_name,
                     )
                     detections.append(detection)
                     logger.debug(f"Detected {pii_type} in {field_name}: {detection}")
@@ -140,7 +127,7 @@ class PIIDetector:
 
         return detections
 
-    def detect_in_event(self, event: 'EpisodicEvent') -> Dict[str, List[PIIDetection]]:
+    def detect_in_event(self, event: "EpisodicEvent") -> Dict[str, List[PIIDetection]]:
         """Scan episodic event for PII in all text fields.
 
         Args:
@@ -153,19 +140,19 @@ class PIIDetector:
 
         # Check text fields that commonly contain PII
         fields_to_check = {
-            'content': event.content,
-            'git_author': event.git_author,
-            'file_path': event.file_path,
-            'diff': event.diff,
-            'stack_trace': event.stack_trace,
+            "content": event.content,
+            "git_author": event.git_author,
+            "file_path": event.file_path,
+            "diff": event.diff,
+            "stack_trace": event.stack_trace,
         }
 
         # Check nested context fields
         if event.context:
-            fields_to_check['context.cwd'] = event.context.cwd
-            fields_to_check['context.task'] = event.context.task
+            fields_to_check["context.cwd"] = event.context.cwd
+            fields_to_check["context.task"] = event.context.task
             if event.context.files:
-                fields_to_check['context.files'] = ' '.join(event.context.files)
+                fields_to_check["context.files"] = " ".join(event.context.files)
 
         # Scan each field
         for field_name, field_value in fields_to_check.items():
@@ -176,7 +163,7 @@ class PIIDetector:
 
         return detections_by_field
 
-    def has_pii(self, event: 'EpisodicEvent') -> bool:
+    def has_pii(self, event: "EpisodicEvent") -> bool:
         """Quick check if event contains any PII.
 
         Args:
@@ -205,7 +192,7 @@ class PIIDetector:
             for d in detections:
                 types[d.type] = types.get(d.type, 0) + 1
 
-            type_str = ', '.join(f"{k}:{v}" for k, v in types.items())
+            type_str = ", ".join(f"{k}:{v}" for k, v in types.items())
             lines.append(f"{field_name} [{type_str}]")
 
         return "PII: " + ", ".join(lines)

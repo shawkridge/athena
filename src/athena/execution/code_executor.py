@@ -10,7 +10,7 @@ import inspect
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional, Callable
+from typing import Any, Dict, Optional
 from dataclasses import dataclass
 import traceback
 
@@ -18,6 +18,7 @@ import traceback
 @dataclass
 class ExecutionResult:
     """Result of code execution."""
+
     success: bool
     result: Any
     error: Optional[str] = None
@@ -65,6 +66,7 @@ class CodeExecutor:
             ExecutionResult with success/failure info
         """
         import time
+
         start_time = time.time()
 
         try:
@@ -78,7 +80,7 @@ class CodeExecutor:
                     result=None,
                     error=f"Function '{function_name}' not found in module",
                     error_type="FunctionNotFound",
-                    execution_time_ms=(time.time() - start_time) * 1000
+                    execution_time_ms=(time.time() - start_time) * 1000,
                 )
 
             func = getattr(module, function_name)
@@ -104,9 +106,7 @@ class CodeExecutor:
                 result = func(**merged_kwargs)
 
             return ExecutionResult(
-                success=True,
-                result=result,
-                execution_time_ms=(time.time() - start_time) * 1000
+                success=True, result=result, execution_time_ms=(time.time() - start_time) * 1000
             )
 
         except Exception as e:
@@ -116,7 +116,7 @@ class CodeExecutor:
                 error=str(e),
                 error_type=type(e).__name__,
                 traceback_str=traceback.format_exc(),
-                execution_time_ms=(time.time() - start_time) * 1000
+                execution_time_ms=(time.time() - start_time) * 1000,
             )
 
     def _load_module(self, module_path: str):
@@ -144,10 +144,7 @@ class CodeExecutor:
             raise FileNotFoundError(f"Module not found: {full_path}")
 
         # Load module
-        spec = importlib.util.spec_from_file_location(
-            full_path.stem,
-            full_path
-        )
+        spec = importlib.util.spec_from_file_location(full_path.stem, full_path)
         if spec is None or spec.loader is None:
             raise ImportError(f"Failed to load module spec: {full_path}")
 
@@ -160,7 +157,9 @@ class CodeExecutor:
 
         return module
 
-    def get_module_signature(self, module_path: str, function_name: str) -> Optional[Dict[str, Any]]:
+    def get_module_signature(
+        self, module_path: str, function_name: str
+    ) -> Optional[Dict[str, Any]]:
         """
         Get function signature for introspection.
 
@@ -176,19 +175,18 @@ class CodeExecutor:
                 "parameters": {
                     name: {
                         "annotation": str(param.annotation),
-                        "default": str(param.default) if param.default != inspect.Parameter.empty else None,
-                        "kind": str(param.kind)
+                        "default": (
+                            str(param.default) if param.default != inspect.Parameter.empty else None
+                        ),
+                        "kind": str(param.kind),
                     }
                     for name, param in sig.parameters.items()
                 },
                 "return_annotation": str(sig.return_annotation),
-                "docstring": inspect.getdoc(func)
+                "docstring": inspect.getdoc(func),
             }
         except Exception as e:
-            return {
-                "error": str(e),
-                "error_type": type(e).__name__
-            }
+            return {"error": str(e), "error_type": type(e).__name__}
 
     def clear_cache(self):
         """Clear the module cache."""
@@ -211,14 +209,14 @@ class ResultFormatter:
                 "status": "error",
                 "error": result.error,
                 "error_type": result.error_type,
-                "execution_time_ms": result.execution_time_ms
+                "execution_time_ms": result.execution_time_ms,
             }
 
         # Summarize the result (not include full data)
         return {
             "status": "success",
             "result": result.result,
-            "execution_time_ms": result.execution_time_ms
+            "execution_time_ms": result.execution_time_ms,
         }
 
     @staticmethod

@@ -4,7 +4,7 @@ import logging
 import json
 import asyncio
 import re
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 class VulnerabilitySeverity(Enum):
     """Vulnerability severity levels."""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -24,6 +25,7 @@ class VulnerabilitySeverity(Enum):
 @dataclass
 class DependencyVersion:
     """Information about a dependency version."""
+
     name: str
     current_version: str
     latest_version: Optional[str] = None
@@ -43,6 +45,7 @@ class DependencyVersion:
 @dataclass
 class LibraryCapabilities:
     """Documented capabilities of a library."""
+
     name: str
     description: str
     main_features: List[str]
@@ -55,6 +58,7 @@ class LibraryCapabilities:
 @dataclass
 class LibraryAnalysis:
     """Complete analysis of a library."""
+
     name: str
     version: str
     latest_version: Optional[str]
@@ -105,21 +109,19 @@ class LibraryDependencyAnalyzer:
             # Get capabilities
             capabilities = await self._extract_capabilities(
                 library_name,
-                metadata.get("version", current_version) or current_version or "unknown"
+                metadata.get("version", current_version) or current_version or "unknown",
             )
 
             # Get dependencies
             dependencies = await self._analyze_dependencies(
-                library_name,
-                metadata.get("version", current_version)
+                library_name, metadata.get("version", current_version)
             )
 
             # Check vulnerabilities
             vulnerabilities = []
             if check_vulnerabilities:
                 vulnerabilities = await self._check_vulnerabilities(
-                    library_name,
-                    metadata.get("version", current_version)
+                    library_name, metadata.get("version", current_version)
                 )
 
             # Get latest version
@@ -130,15 +132,14 @@ class LibraryDependencyAnalyzer:
                 is_outdated = (
                     latest_version is not None
                     and self._compare_versions(
-                        current_version or metadata.get("version", "0.0.0"),
-                        latest_version
-                    ) < 0
+                        current_version or metadata.get("version", "0.0.0"), latest_version
+                    )
+                    < 0
                 )
 
             # Get compatibility matrix
             compatibility = self._get_compatibility_matrix(
-                library_name,
-                metadata.get("version", current_version)
+                library_name, metadata.get("version", current_version)
             )
 
             # Get alternatives
@@ -211,13 +212,11 @@ class LibraryDependencyAnalyzer:
             # Try PyPI API
             try:
                 from . import WebFetch
+
                 web_fetch = WebFetch()
 
                 url = f"https://pypi.org/pypi/{library_name}/json"
-                content = await asyncio.wait_for(
-                    web_fetch.fetch(url),
-                    timeout=5.0
-                )
+                content = await asyncio.wait_for(web_fetch.fetch(url), timeout=5.0)
 
                 # Parse JSON response
                 metadata = json.loads(content) if isinstance(content, str) else content
@@ -394,6 +393,7 @@ class LibraryDependencyAnalyzer:
             # Try to fetch from vulnerability database
             try:
                 from . import WebFetch
+
                 web_fetch = WebFetch()
 
                 # Check common vulnerability sources
@@ -405,16 +405,15 @@ class LibraryDependencyAnalyzer:
                 vulnerabilities = []
                 for source in vuln_sources:
                     try:
-                        content = await asyncio.wait_for(
-                            web_fetch.fetch(source),
-                            timeout=3.0
-                        )
+                        content = await asyncio.wait_for(web_fetch.fetch(source), timeout=3.0)
                         # Parse vulnerability data
                         if content:
-                            vulnerabilities.append({
-                                "source": source,
-                                "found": True,
-                            })
+                            vulnerabilities.append(
+                                {
+                                    "source": source,
+                                    "found": True,
+                                }
+                            )
                     except asyncio.TimeoutError:
                         continue
                     except (json.JSONDecodeError, ValueError, TypeError, KeyError, AttributeError):
@@ -574,6 +573,7 @@ class LibraryDependencyAnalyzer:
         """
         try:
             from packaging import version
+
             v1 = version.parse(version1)
             v2 = version.parse(version2)
 

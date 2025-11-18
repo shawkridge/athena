@@ -6,7 +6,7 @@ for research agents. Supports multi-turn refinement with feedback threading.
 
 import logging
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 
 from .models import ResearchFeedback, FeedbackType
@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class QueryRefinement:
     """Result of query refinement process."""
+
     original_query: str
     refined_query: str
     excluded_sources: List[str] = field(default_factory=list)
@@ -103,8 +104,7 @@ class QueryRefinementEngine:
             try:
                 if feedback.feedback_type == FeedbackType.QUERY_REFINEMENT:
                     refinement.refined_query = self._refine_query(
-                        refinement.refined_query,
-                        feedback.content
+                        refinement.refined_query, feedback.content
                     )
                     applied_feedback_ids.append(feedback.id or 0)
 
@@ -145,21 +145,27 @@ class QueryRefinementEngine:
         refined = current_query
 
         # Detect time constraints
-        time_match = re.search(r'(20\d{2}|last \w+|recent|past \d+ \w+)', refinement_instruction.lower())
+        time_match = re.search(
+            r"(20\d{2}|last \w+|recent|past \d+ \w+)", refinement_instruction.lower()
+        )
         if time_match:
             time_constraint = time_match.group(1)
             if time_constraint not in refined:
                 refined += f" {time_constraint}"
 
         # Detect include patterns
-        include_match = re.search(r'(?:include|focus on|add|about)\s+([^.,]+)', refinement_instruction.lower())
+        include_match = re.search(
+            r"(?:include|focus on|add|about)\s+([^.,]+)", refinement_instruction.lower()
+        )
         if include_match:
             include_term = include_match.group(1).strip()
             if include_term not in refined.lower():
                 refined += f" {include_term}"
 
         # Detect exclude patterns
-        exclude_match = re.search(r'(?:remove|exclude|without|ignore)\s+([^.,]+)', refinement_instruction.lower())
+        exclude_match = re.search(
+            r"(?:remove|exclude|without|ignore)\s+([^.,]+)", refinement_instruction.lower()
+        )
         if exclude_match:
             exclude_term = exclude_match.group(1).strip()
             # Add NOT operator
@@ -179,7 +185,7 @@ class QueryRefinementEngine:
                         refinement.excluded_sources.append(source_key)
 
         # Also check for direct mentions like "exclude github"
-        match = re.search(r'(?:exclude|block|remove)\s+(\w+)', content_lower)
+        match = re.search(r"(?:exclude|block|remove)\s+(\w+)", content_lower)
         if match:
             source = match.group(1)
             if source not in refinement.excluded_sources:
@@ -196,7 +202,7 @@ class QueryRefinementEngine:
                         refinement.focused_sources.append(focus_type)
 
         # Check for direct mentions
-        match = re.search(r'(?:focus|use|prefer)\s+(?:only\s+)?(\w+)', content_lower)
+        match = re.search(r"(?:focus|use|prefer)\s+(?:only\s+)?(\w+)", content_lower)
         if match:
             source = match.group(1)
             if source not in refinement.focused_sources:
@@ -217,7 +223,7 @@ class QueryRefinementEngine:
     def _apply_quality_threshold(self, refinement: QueryRefinement, content: str) -> None:
         """Apply quality threshold refinement."""
         # Extract numeric threshold like "quality >= 0.8" or "high quality"
-        match = re.search(r'(\d+\.?\d*)', content)
+        match = re.search(r"(\d+\.?\d*)", content)
         if match:
             threshold = float(match.group(1))
             # Normalize to 0-1 range

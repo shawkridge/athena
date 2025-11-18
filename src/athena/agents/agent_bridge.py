@@ -249,9 +249,7 @@ class AgentBridge:
             # Suggest adaptations if degradation detected
             adaptations = {}
             if degradation:
-                adaptations = run_async_in_thread(
-                    agent.suggest_adaptations(degradation)
-                )
+                adaptations = run_async_in_thread(agent.suggest_adaptations(degradation))
 
                 adaptations_str = json.dumps(adaptations)
                 run_async_in_thread(

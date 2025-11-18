@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import tiktoken
+
     TIKTOKEN_AVAILABLE = True
 except ImportError:
     TIKTOKEN_AVAILABLE = False
@@ -122,9 +123,7 @@ class ContextOptimizer:
                 # Add summarized version
                 summarized = self._summarize_memory(mem)
                 compressed.append(summarized)
-                summary_tokens = self.token_counter.count_tokens(
-                    self._extract_text(summarized)
-                )
+                summary_tokens = self.token_counter.count_tokens(self._extract_text(summarized))
                 current_tokens += summary_tokens
             # else: skip low-priority memories
 
@@ -190,9 +189,7 @@ class ContextOptimizer:
                 {
                     "memory": mem,
                     "score": combined_score,
-                    "tokens": self.token_counter.count_tokens(
-                        self._extract_text(mem)
-                    ),
+                    "tokens": self.token_counter.count_tokens(self._extract_text(mem)),
                 }
             )
 
@@ -212,8 +209,7 @@ class ContextOptimizer:
                 current_tokens += tokens
 
         compressed_tokens = sum(
-            self.token_counter.count_tokens(self._extract_text(m))
-            for m in compressed
+            self.token_counter.count_tokens(self._extract_text(m)) for m in compressed
         )
         original_tokens = sum(item["tokens"] for item in weighted_memories)
         savings = (
@@ -232,9 +228,7 @@ class ContextOptimizer:
 
         return compressed, stats
 
-    def _score_memories(
-        self, memories: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+    def _score_memories(self, memories: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Score memories based on salience, recency, and relevance.
 
         Args:
@@ -382,9 +376,7 @@ class AdaptiveCompression:
         """
         # Count original tokens
         memory_texts = [m.get("content", "") for m in memories]
-        original_tokens = sum(
-            self.token_counter.count_tokens(t) for t in memory_texts
-        )
+        original_tokens = sum(self.token_counter.count_tokens(t) for t in memory_texts)
 
         # Calculate max tokens for budget
         # Assume 1000 output tokens per request

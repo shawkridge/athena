@@ -33,8 +33,10 @@ logger = logging.getLogger(__name__)
 # STATUS & PRIORITY MAPPINGS
 # ============================================================================
 
+
 class TodoWriteStatus(str, Enum):
     """TodoWrite uses 3 states."""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -42,6 +44,7 @@ class TodoWriteStatus(str, Enum):
 
 class AthenaTaskStatus(str, Enum):
     """Athena planning uses richer status."""
+
     PENDING = "pending"
     PLANNING = "planning"
     READY = "ready"
@@ -55,6 +58,7 @@ class AthenaTaskStatus(str, Enum):
 # Priority mapping: TodoWrite doesn't have explicit priority, Athena uses 1-10
 class PriorityLevel(int, Enum):
     """Unified priority scale (1-10)."""
+
     CRITICAL = 10
     VERY_HIGH = 9
     HIGH = 8
@@ -68,6 +72,7 @@ class PriorityLevel(int, Enum):
 # ============================================================================
 # CONVERSION FUNCTIONS
 # ============================================================================
+
 
 async def convert_todo_to_plan(
     todo_item: Dict[str, Any],
@@ -157,6 +162,7 @@ def convert_plan_to_todo(plan: Dict[str, Any]) -> Dict[str, Any]:
 # STATUS MAPPING FUNCTIONS
 # ============================================================================
 
+
 def _map_todowrite_to_athena_status(todo_status: str) -> str:
     """Map TodoWrite status to Athena status.
 
@@ -203,6 +209,7 @@ def _map_athena_to_todowrite_status(athena_status: str) -> str:
 # PHASE DETERMINATION
 # ============================================================================
 
+
 def _determine_phase_from_todo_status(todo_status: str) -> int:
     """Determine Athena planning phase from TodoWrite status.
 
@@ -231,6 +238,7 @@ def _determine_phase_from_todo_status(todo_status: str) -> int:
 # ============================================================================
 # PRIORITY EXTRACTION
 # ============================================================================
+
 
 def _extract_priority_hint(content: str) -> int:
     """Extract priority hints from todo content.
@@ -265,6 +273,7 @@ def _extract_priority_hint(content: str) -> int:
 # ============================================================================
 # DEFAULT STEP GENERATION
 # ============================================================================
+
 
 def _generate_default_steps(content: str, phase: int) -> List[Dict[str, Any]]:
     """Generate default steps based on todo content and phase.
@@ -302,6 +311,7 @@ def _generate_default_steps(content: str, phase: int) -> List[Dict[str, Any]]:
 # ============================================================================
 # BATCH CONVERSION
 # ============================================================================
+
 
 async def convert_todo_list_to_plans(
     todos: List[Dict[str, Any]],
@@ -353,6 +363,7 @@ def convert_plan_list_to_todos(plans: List[Dict[str, Any]]) -> List[Dict[str, An
 # SYNC STATE TRACKING
 # ============================================================================
 
+
 class SyncMetadata:
     """Metadata about sync state between TodoWrite and Athena."""
 
@@ -397,6 +408,7 @@ def get_sync_metadata() -> SyncMetadata:
 # CONFLICT RESOLUTION
 # ============================================================================
 
+
 def detect_sync_conflict(
     todo: Dict[str, Any],
     plan: Dict[str, Any],
@@ -420,7 +432,7 @@ def detect_sync_conflict(
     if todo_content != plan_goal:
         if len(todo_content) > 0 and len(plan_goal) > 0:
             if todo_content not in plan_goal and plan_goal not in todo_content:
-                return True, f"Content mismatch: todo != plan goal"
+                return True, "Content mismatch: todo != plan goal"
 
     return False, None
 
@@ -459,6 +471,7 @@ async def resolve_sync_conflict(
 # ============================================================================
 # SUMMARY STATISTICS
 # ============================================================================
+
 
 async def get_sync_statistics() -> Dict[str, Any]:
     """Get statistics about the TodoWrite ↔ Athena sync system.

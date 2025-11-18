@@ -9,6 +9,7 @@ from enum import Enum
 
 class ContentType(str, Enum):
     """Types of content in working memory."""
+
     VERBAL = "verbal"
     SPATIAL = "spatial"
     EPISODIC = "episodic"
@@ -17,6 +18,7 @@ class ContentType(str, Enum):
 
 class Component(str, Enum):
     """Baddeley's working memory components."""
+
     PHONOLOGICAL = "phonological"
     VISUOSPATIAL = "visuospatial"
     EPISODIC_BUFFER = "episodic_buffer"
@@ -25,6 +27,7 @@ class Component(str, Enum):
 
 class GoalType(str, Enum):
     """Types of goals."""
+
     PRIMARY = "primary"
     SUBGOAL = "subgoal"
     MAINTENANCE = "maintenance"
@@ -32,6 +35,7 @@ class GoalType(str, Enum):
 
 class GoalStatus(str, Enum):
     """Goal status states."""
+
     ACTIVE = "active"
     IN_PROGRESS = "in_progress"
     SUSPENDED = "suspended"
@@ -42,6 +46,7 @@ class GoalStatus(str, Enum):
 
 class TargetLayer(str, Enum):
     """Target layers for consolidation."""
+
     SEMANTIC = "semantic"
     EPISODIC = "episodic"
     PROCEDURAL = "procedural"
@@ -73,8 +78,8 @@ class WorkingMemoryItem:
         Returns cached value from database view if available,
         otherwise calculates on the fly.
         """
-        if self.metadata and 'current_activation' in self.metadata:
-            return self.metadata['current_activation']
+        if self.metadata and "current_activation" in self.metadata:
+            return self.metadata["current_activation"]
         return self.calculate_current_activation()
 
     def calculate_current_activation(self) -> float:
@@ -98,7 +103,7 @@ class WorkingMemoryItem:
         self.last_accessed = datetime.now()
 
     @classmethod
-    def from_db_row(cls, row: Dict[str, Any]) -> 'WorkingMemoryItem':
+    def from_db_row(cls, row: Dict[str, Any]) -> "WorkingMemoryItem":
         """Create WorkingMemoryItem from database row.
 
         Args:
@@ -107,21 +112,21 @@ class WorkingMemoryItem:
         Returns:
             WorkingMemoryItem instance
         """
-        metadata = json.loads(row['metadata']) if row['metadata'] else {}
+        metadata = json.loads(row["metadata"]) if row["metadata"] else {}
 
         return cls(
-            id=row['id'],
-            project_id=row['project_id'],
-            content=row['content'],
-            content_type=ContentType(row['content_type']),
-            component=Component(row['component']),
-            activation_level=row['activation_level'],
-            created_at=datetime.fromisoformat(row['created_at']),
-            last_accessed=datetime.fromisoformat(row['last_accessed']),
-            decay_rate=row['decay_rate'],
-            importance_score=row['importance_score'],
-            embedding=row['embedding'],
-            metadata=metadata
+            id=row["id"],
+            project_id=row["project_id"],
+            content=row["content"],
+            content_type=ContentType(row["content_type"]),
+            component=Component(row["component"]),
+            activation_level=row["activation_level"],
+            created_at=datetime.fromisoformat(row["created_at"]),
+            last_accessed=datetime.fromisoformat(row["last_accessed"]),
+            decay_rate=row["decay_rate"],
+            importance_score=row["importance_score"],
+            embedding=row["embedding"],
+            metadata=metadata,
         )
 
 

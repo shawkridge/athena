@@ -14,9 +14,9 @@ from collections import defaultdict
 class SharingLevel(str, Enum):
     """Levels of memory sharing between projects."""
 
-    ISOLATED = "isolated"          # No sharing
-    REFERENCE = "reference"        # Can reference but not modify
-    SHARED = "shared"              # Can reference and use
+    ISOLATED = "isolated"  # No sharing
+    REFERENCE = "reference"  # Can reference but not modify
+    SHARED = "shared"  # Can reference and use
     SYNCHRONIZED = "synchronized"  # Real-time sync
 
 
@@ -206,7 +206,9 @@ class DistributedMemoryManager:
         return ref
 
     def get_cross_project_references(
-        self, target_project_id: Optional[int] = None, memory_layer: Optional[MemoryLayerType] = None
+        self,
+        target_project_id: Optional[int] = None,
+        memory_layer: Optional[MemoryLayerType] = None,
     ) -> List[CrossProjectReference]:
         """Get cross-project references filtered by criteria.
 
@@ -319,9 +321,7 @@ class DistributedMemoryManager:
             SharingLevel.SYNCHRONIZED,
         )
 
-    def can_export_to_project(
-        self, target_project_id: int, memory_layer: MemoryLayerType
-    ) -> bool:
+    def can_export_to_project(self, target_project_id: int, memory_layer: MemoryLayerType) -> bool:
         """Check if current project can export to another.
 
         Args:
@@ -351,9 +351,7 @@ class DistributedMemoryManager:
             SharingLevel.SYNCHRONIZED,
         )
 
-    def set_project_boundary(
-        self, boundary: ProjectMemoryBoundary
-    ) -> None:
+    def set_project_boundary(self, boundary: ProjectMemoryBoundary) -> None:
         """Set memory isolation boundary for a project.
 
         Args:
@@ -436,7 +434,9 @@ class DistributedMemoryManager:
         return True
 
     def get_sync_history(
-        self, target_project_id: Optional[int] = None, memory_layer: Optional[MemoryLayerType] = None
+        self,
+        target_project_id: Optional[int] = None,
+        memory_layer: Optional[MemoryLayerType] = None,
     ) -> List[MemorySyncRecord]:
         """Get sync operation history.
 
@@ -468,9 +468,7 @@ class DistributedMemoryManager:
         # Add all references
         for ref in self.cross_project_refs.values():
             if ref.is_active:
-                sharing_graph[ref.from_project_id].append(
-                    (ref.to_project_id, ref.sharing_level)
-                )
+                sharing_graph[ref.from_project_id].append((ref.to_project_id, ref.sharing_level))
 
         # Add shared knowledge bases
         for kb in self.shared_kbs.values():
@@ -570,7 +568,9 @@ class DistributedMemoryManager:
         """
         # Count shared references
         my_refs = self.get_cross_project_references(target_project_id=other_project_id)
-        other_refs = [r for r in self.get_cross_project_references() if r.to_project_id == self.project_id]
+        other_refs = [
+            r for r in self.get_cross_project_references() if r.to_project_id == self.project_id
+        ]
 
         if not my_refs and not other_refs:
             return 0.0
@@ -579,4 +579,3 @@ class DistributedMemoryManager:
         total = len(my_refs) + len(other_refs)
 
         return shared / total if total > 0 else 0.0
-

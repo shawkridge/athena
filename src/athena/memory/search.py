@@ -6,7 +6,7 @@ import logging
 from typing import Optional
 
 from ..core.embeddings import EmbeddingModel
-from ..core.models import Memory, MemorySearchResult, MemoryType
+from ..core.models import MemorySearchResult, MemoryType
 from ..core.database_postgres import PostgresDatabase
 from ..core.config import (
     RAG_QUERY_EXPANSION_ENABLED,
@@ -49,7 +49,9 @@ class SemanticSearch:
                     logger.info("Initialized QueryExpander with local llamacpp LLM")
                 except Exception as e:
                     logger.warning(f"Local LLM unavailable: {e}")
-                    logger.info("Query expansion will be disabled - continuing with basic semantic search")
+                    logger.info(
+                        "Query expansion will be disabled - continuing with basic semantic search"
+                    )
                     llm_client = None
 
                 if llm_client:
@@ -61,7 +63,9 @@ class SemanticSearch:
                         cache_size=RAG_QUERY_EXPANSION_CACHE_SIZE,
                     )
                     self._query_expander = QueryExpander(llm_client, config)
-                    logger.info(f"Query expansion enabled ({RAG_QUERY_EXPANSION_VARIANTS} variants)")
+                    logger.info(
+                        f"Query expansion enabled ({RAG_QUERY_EXPANSION_VARIANTS} variants)"
+                    )
 
             except ImportError as e:
                 logger.warning(f"Query expansion unavailable (missing dependencies): {e}")
@@ -104,9 +108,7 @@ class SemanticSearch:
                 expanded = self._query_expander.expand(query)
                 expansion_time = time.time() - start_time
 
-                logger.info(
-                    f"Query expansion: {len(expanded)} variants in {expansion_time:.2f}s"
-                )
+                logger.info(f"Query expansion: {len(expanded)} variants in {expansion_time:.2f}s")
 
                 # Execute parallel searches for all variants
                 # Request more results per variant (k*2) to increase recall
@@ -358,6 +360,7 @@ class SemanticSearch:
 
         # Calculate composite scores
         from datetime import datetime
+
         now = datetime.now()
         rescored = []
 
@@ -415,9 +418,7 @@ class SemanticSearch:
         query_embedding = self.embedder.embed(query)
 
         # Use PostgreSQL (always available per __init__)
-        return self._search_across_projects_postgres(
-            query_embedding, query, exclude_project_id, k
-        )
+        return self._search_across_projects_postgres(query_embedding, query, exclude_project_id, k)
 
     def _search_across_projects_postgres(
         self,
@@ -512,7 +513,6 @@ class SemanticSearch:
         return results
 
 
-
 def diversify_by_type(results: list[MemorySearchResult], k: int) -> list[MemorySearchResult]:
     """Ensure diversity of memory types in results.
 
@@ -570,11 +570,7 @@ class EmbeddingDriftDetector:
         self.embedder = embedder
         self.current_version = embedder.get_version()
 
-    def detect_drift(
-        self,
-        project_id: int,
-        limit: int = 1000
-    ) -> dict:
+    def detect_drift(self, project_id: int, limit: int = 1000) -> dict:
         """Detect embeddings that don't match current model version.
 
         Scans memory embeddings and identifies those from different embedding
@@ -605,7 +601,7 @@ class EmbeddingDriftDetector:
                 LIMIT %s
                 """,
                 (project_id, limit),
-                fetch_all=True
+                fetch_all=True,
             )
 
             if not rows:
@@ -626,10 +622,12 @@ class EmbeddingDriftDetector:
             # For now, mark as potentially stale if created more than 30 days ago
             # (when embedder would likely have been updated)
             from datetime import datetime, timedelta
+
             thirty_days_ago = datetime.now() - timedelta(days=30)
 
             stale_count = sum(
-                1 for row in rows
+                1
+                for row in rows
                 if row[1] and datetime.fromisoformat(str(row[1])) < thirty_days_ago
             )
 
@@ -662,9 +660,7 @@ class EmbeddingDriftDetector:
             }
 
     def estimate_refresh_cost(
-        self,
-        stale_memory_count: int,
-        avg_embedding_time_ms: float = 50.0
+        self, stale_memory_count: int, avg_embedding_time_ms: float = 50.0
     ) -> dict:
         """Estimate cost of refreshing stale embeddings.
 
@@ -705,11 +701,7 @@ class EmbeddingDriftDetector:
             "notes": notes,
         }
 
-    def get_embedding_health_report(
-        self,
-        project_id: int,
-        limit: int = 1000
-    ) -> dict:
+    def get_embedding_health_report(self, project_id: int, limit: int = 1000) -> dict:
         """Generate comprehensive embedding health report.
 
         Combines drift detection, aging analysis, and refresh recommendations
@@ -728,9 +720,7 @@ class EmbeddingDriftDetector:
             - summary: Human-readable summary
         """
         drift_info = self.detect_drift(project_id, limit)
-        refresh_cost = self.estimate_refresh_cost(
-            drift_info.get("stale_memories", 0)
-        )
+        refresh_cost = self.estimate_refresh_cost(drift_info.get("stale_memories", 0))
 
         # Determine health status
         stale_ratio = drift_info.get("stale_ratio", 0)
@@ -765,5 +755,5 @@ class EmbeddingDriftDetector:
             "drift_info": drift_info,
             "refresh_cost": refresh_cost,
             "action_plan": action_plan,
-            "timestamp": datetime.now().isoformat() if 'datetime' in dir() else None,
+            "timestamp": datetime.now().isoformat() if "datetime" in dir() else None,
         }

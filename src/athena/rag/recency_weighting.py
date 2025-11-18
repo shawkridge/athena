@@ -13,7 +13,7 @@ Reference:
 import math
 import logging
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from ..memory.search import MemorySearchResult
 from ..core.models import Memory
@@ -95,9 +95,7 @@ class RecencyWeightedRetriever:
             logger.warning(f"Failed to calculate recency score: {e}")
             return 0.5
 
-    def calculate_combined_score(
-        self, memory: Memory, semantic_score: float
-    ) -> float:
+    def calculate_combined_score(self, memory: Memory, semantic_score: float) -> float:
         """Calculate combined score balancing semantic + recency.
 
         Args:
@@ -144,9 +142,7 @@ class RecencyWeightedRetriever:
             semantic_score = getattr(result, "score", 0.5) or 0.5
 
             # Calculate combined score using the memory object
-            combined_score = self.calculate_combined_score(
-                result.memory, semantic_score
-            )
+            combined_score = self.calculate_combined_score(result.memory, semantic_score)
 
             scored_memories.append(
                 {
@@ -158,9 +154,7 @@ class RecencyWeightedRetriever:
             )
 
         # Sort by combined score (descending)
-        scored_memories.sort(
-            key=lambda x: x["combined_score"], reverse=True
-        )
+        scored_memories.sort(key=lambda x: x["combined_score"], reverse=True)
 
         # Return top-k results
         return [item["result"] for item in scored_memories[:k]]

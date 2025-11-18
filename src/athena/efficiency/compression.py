@@ -26,10 +26,9 @@ Target Metrics:
 - Speed: <1 second for typical prompts
 """
 
-import re
 import logging
 from dataclasses import dataclass
-from typing import List, Dict, Set, Tuple, Optional
+from typing import List, Dict, Set, Optional
 from collections import Counter
 
 logger = logging.getLogger(__name__)
@@ -87,9 +86,7 @@ class TokenImportanceScorer:
         self.config = config
         self._cache = {}
 
-    def score_tokens(
-        self, prompt: str, query: Optional[str] = None
-    ) -> TokenScores:
+    def score_tokens(self, prompt: str, query: Optional[str] = None) -> TokenScores:
         """Score importance of each token.
 
         Args:
@@ -103,7 +100,9 @@ class TokenImportanceScorer:
         tokens = self._tokenize(prompt)
 
         if not tokens:
-            return TokenScores(tokens=[], importance_scores=[], removal_order=[], preserved_indices=set())
+            return TokenScores(
+                tokens=[], importance_scores=[], removal_order=[], preserved_indices=set()
+            )
 
         # Calculate component scores
         tf_idf_scores = self._score_tf_idf(tokens, prompt)
@@ -127,8 +126,7 @@ class TokenImportanceScorer:
 
         # Create removal order (sort by importance, lowest first)
         removal_order = sorted(
-            range(len(tokens)),
-            key=lambda i: (i in preserved_indices, importance_scores[i])
+            range(len(tokens)), key=lambda i: (i in preserved_indices, importance_scores[i])
         )
 
         return TokenScores(
@@ -206,7 +204,7 @@ class TokenImportanceScorer:
 
                 # Peaks at start and end
                 score = max(dist_from_start, dist_from_end)
-                score = score ** 0.5  # Make it less extreme
+                score = score**0.5  # Make it less extreme
 
             scores.append(min(1.0, score))
 
@@ -272,11 +270,54 @@ class TokenImportanceScorer:
             True if content word, False if stopword
         """
         stopwords = {
-            "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
-            "of", "with", "by", "from", "as", "is", "are", "was", "were", "be",
-            "been", "being", "have", "has", "had", "do", "does", "did", "will",
-            "would", "could", "should", "may", "might", "must", "can", "this",
-            "that", "these", "those", "i", "you", "he", "she", "it", "we", "they",
+            "the",
+            "a",
+            "an",
+            "and",
+            "or",
+            "but",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "of",
+            "with",
+            "by",
+            "from",
+            "as",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "can",
+            "this",
+            "that",
+            "these",
+            "those",
+            "i",
+            "you",
+            "he",
+            "she",
+            "it",
+            "we",
+            "they",
         }
 
         token_lower = token.lower().strip(".,!?;:")
@@ -375,9 +416,7 @@ class PromptCompressor:
 
         # Reconstruct prompt maintaining order
         compressed_tokens = [
-            original_tokens[i]
-            for i in sorted(keep_indices)
-            if i < len(original_tokens)
+            original_tokens[i] for i in sorted(keep_indices) if i < len(original_tokens)
         ]
 
         compressed_prompt = " ".join(compressed_tokens)
@@ -430,8 +469,7 @@ class PromptCompressor:
             if len(comp_indices) > 1:
                 # Check if indices are monotonically increasing
                 is_ordered = all(
-                    comp_indices[i] < comp_indices[i + 1]
-                    for i in range(len(comp_indices) - 1)
+                    comp_indices[i] < comp_indices[i + 1] for i in range(len(comp_indices) - 1)
                 )
                 order_preservation = 1.0 if is_ordered else 0.7
             else:
@@ -487,7 +525,9 @@ class CompressionValidator:
         compressed_words = set(compressed.lower().split())
 
         if original_words:
-            jaccard = len(original_words & compressed_words) / len(original_words | compressed_words)
+            jaccard = len(original_words & compressed_words) / len(
+                original_words | compressed_words
+            )
         else:
             jaccard = 1.0
 
@@ -520,7 +560,7 @@ class CompressionValidator:
 
         # Check for broken sentences
         has_period = "." in compressed
-        has_incomplete = tokens and tokens[-1] not in {".","!","?",""}
+        has_incomplete = tokens and tokens[-1] not in {".", "!", "?", ""}
 
         # Check for orphaned punctuation
         orphaned_punct = 0

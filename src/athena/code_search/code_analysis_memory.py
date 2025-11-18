@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Any
 from uuid import uuid4
 
 from ..episodic.models import EpisodicEvent, EventType, CodeEventType, EventOutcome, EventContext
-from ..graph.models import Entity, Relation, Observation
+from ..graph.models import Entity
 
 logger = logging.getLogger(__name__)
 
@@ -86,11 +86,13 @@ class CodeAnalysisMemory:
                 timestamp=datetime.now(),
                 event_type=EventType.ACTION,
                 code_event_type=CodeEventType.CODE_REVIEW,
-                content=json.dumps({
-                    "repo_path": str(repo_path),
-                    "summary": summary,
-                    "analysis_results": analysis_results,
-                }),
+                content=json.dumps(
+                    {
+                        "repo_path": str(repo_path),
+                        "summary": summary,
+                        "analysis_results": analysis_results,
+                    }
+                ),
                 outcome=EventOutcome.SUCCESS,
                 context=EventContext(
                     cwd=str(repo_path),
@@ -250,10 +252,12 @@ class CodeAnalysisMemory:
                 timestamp=datetime.now(),
                 event_type=EventType.ACTION,
                 code_event_type=CodeEventType.PERFORMANCE_PROFILE,
-                content=json.dumps({
-                    "repo_path": str(repo_path),
-                    "metrics": metrics,
-                }),
+                content=json.dumps(
+                    {
+                        "repo_path": str(repo_path),
+                        "metrics": metrics,
+                    }
+                ),
                 outcome=EventOutcome.SUCCESS,
                 context=EventContext(
                     cwd=str(repo_path),
@@ -322,8 +326,7 @@ class CodeAnalysisMemory:
         complexity = analysis_results.get("complexity_avg", 0)
 
         return (
-            f"Code Quality: {quality:.2%}, Issues: {issues}, "
-            f"Avg Complexity: {complexity:.2f}"
+            f"Code Quality: {quality:.2%}, Issues: {issues}, " f"Avg Complexity: {complexity:.2f}"
         )
 
     def _extract_learnings(self, analysis_results: Dict[str, Any]) -> str:

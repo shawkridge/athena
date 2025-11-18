@@ -47,9 +47,7 @@ class SkillLibrary:
             TypeError: If db is not PostgresDatabase
         """
         if not isinstance(db, PostgresDatabase):
-            raise TypeError(
-                f"SkillLibrary requires PostgresDatabase, got {type(db)}"
-            )
+            raise TypeError(f"SkillLibrary requires PostgresDatabase, got {type(db)}")
 
         self.db = db
         self.storage_dir = Path(storage_dir) if storage_dir else None
@@ -138,7 +136,7 @@ class SkillLibrary:
                 skill.metadata.quality_score,
                 skill.metadata.times_used,
                 skill.metadata.success_rate,
-                ','.join(skill.metadata.tags),
+                ",".join(skill.metadata.tags),
                 skill.metadata.created_at.isoformat(),
                 skill.metadata.updated_at.isoformat(),
             )
@@ -188,11 +186,7 @@ class SkillLibrary:
             logger.error(f"Failed to retrieve skill {skill_id}: {e}")
             return None
 
-    async def list_all(
-        self,
-        domain: Optional[SkillDomain] = None,
-        limit: int = 100
-    ) -> List[Skill]:
+    async def list_all(self, domain: Optional[SkillDomain] = None, limit: int = 100) -> List[Skill]:
         """List all skills with optional filtering.
 
         Args:
@@ -207,15 +201,11 @@ class SkillLibrary:
         try:
             if domain:
                 select_sql = (
-                    "SELECT * FROM skills WHERE domain = %s "
-                    "ORDER BY quality_score DESC LIMIT %s"
+                    "SELECT * FROM skills WHERE domain = %s " "ORDER BY quality_score DESC LIMIT %s"
                 )
                 params = (domain.value, limit)
             else:
-                select_sql = (
-                    "SELECT * FROM skills "
-                    "ORDER BY quality_score DESC LIMIT %s"
-                )
+                select_sql = "SELECT * FROM skills " "ORDER BY quality_score DESC LIMIT %s"
                 params = (limit,)
 
             async with self.db.get_connection() as conn:
@@ -349,21 +339,21 @@ class SkillLibrary:
                     num_domains = (await cur.fetchone())[0]
 
             return {
-                'total_skills': total_skills,
-                'avg_quality': round(avg_quality, 3),
-                'total_uses': total_uses,
-                'avg_success_rate': round(avg_success_rate, 3),
-                'domains': num_domains,
+                "total_skills": total_skills,
+                "avg_quality": round(avg_quality, 3),
+                "total_uses": total_uses,
+                "avg_success_rate": round(avg_success_rate, 3),
+                "domains": num_domains,
             }
 
         except Exception as e:
             logger.error(f"Failed to get stats: {e}")
             return {
-                'total_skills': 0,
-                'avg_quality': 0.0,
-                'total_uses': 0,
-                'avg_success_rate': 0.0,
-                'domains': 0,
+                "total_skills": 0,
+                "avg_quality": 0.0,
+                "total_uses": 0,
+                "avg_success_rate": 0.0,
+                "domains": 0,
             }
 
     def _row_to_skill(self, row: Any) -> Skill:
@@ -404,7 +394,7 @@ class SkillLibrary:
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         code_file = self.storage_dir / f"{skill.id}.py"
 
-        with open(code_file, 'w') as f:
+        with open(code_file, "w") as f:
             f.write(skill.code)
 
         logger.debug(f"Saved skill code: {code_file}")

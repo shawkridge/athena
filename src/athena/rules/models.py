@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class RuleCategory(str, Enum):
     """Rule categories for organization."""
+
     CODING_STANDARD = "coding_standard"
     PROCESS = "process"
     SECURITY = "security"
@@ -19,25 +20,28 @@ class RuleCategory(str, Enum):
 
 class SeverityLevel(str, Enum):
     """Rule violation severity."""
-    INFO = "info"           # Suggestion only
-    WARNING = "warning"     # Should comply, not required
-    ERROR = "error"         # Must comply, blocks execution
-    CRITICAL = "critical"   # Must comply, requires escalation
+
+    INFO = "info"  # Suggestion only
+    WARNING = "warning"  # Should comply, not required
+    ERROR = "error"  # Must comply, blocks execution
+    CRITICAL = "critical"  # Must comply, requires escalation
 
 
 class RuleType(str, Enum):
     """Types of rules."""
-    CONSTRAINT = "constraint"      # Must/must not do something
-    PATTERN = "pattern"            # Should follow pattern
-    THRESHOLD = "threshold"        # Numeric limit
-    APPROVAL = "approval"          # Requires sign-off
-    SCHEDULE = "schedule"          # Time-based constraint
-    DEPENDENCY = "dependency"      # Must depend on/avoid
-    CUSTOM = "custom"              # Custom validation logic
+
+    CONSTRAINT = "constraint"  # Must/must not do something
+    PATTERN = "pattern"  # Should follow pattern
+    THRESHOLD = "threshold"  # Numeric limit
+    APPROVAL = "approval"  # Requires sign-off
+    SCHEDULE = "schedule"  # Time-based constraint
+    DEPENDENCY = "dependency"  # Must depend on/avoid
+    CUSTOM = "custom"  # Custom validation logic
 
 
 class Rule(BaseModel):
     """Represents a single project rule."""
+
     id: Optional[int] = None
     project_id: int
 
@@ -72,6 +76,7 @@ class Rule(BaseModel):
 
 class RuleTemplate(BaseModel):
     """Reusable rule templates for onboarding projects."""
+
     id: Optional[int] = None
 
     name: str  # e.g., "DataProcessingPipeline", "WebService"
@@ -87,6 +92,7 @@ class RuleTemplate(BaseModel):
 
 class RuleValidationResult(BaseModel):
     """Result of validating task against rules."""
+
     task_id: int
     project_id: int
     timestamp: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
@@ -99,19 +105,17 @@ class RuleValidationResult(BaseModel):
     # Detailed violations
     violations: List[Dict[str, Any]] = Field(
         default_factory=list,
-        description="List of {rule_id, rule_name, severity, message, suggestion}"
+        description="List of {rule_id, rule_name, severity, message, suggestion}",
     )
 
     # Suggestions
     suggestions: List[str] = Field(
-        default_factory=list,
-        description="Suggestions to make task compliant"
+        default_factory=list, description="Suggestions to make task compliant"
     )
 
     # Blocks
     blocking_violations: List[int] = Field(
-        default_factory=list,
-        description="Rule IDs that block execution"
+        default_factory=list, description="Rule IDs that block execution"
     )
 
     model_config = ConfigDict(use_enum_values=True)
@@ -119,6 +123,7 @@ class RuleValidationResult(BaseModel):
 
 class RuleOverride(BaseModel):
     """Record of rule override with justification."""
+
     id: Optional[int] = None
     project_id: int
     rule_id: int
@@ -138,6 +143,7 @@ class RuleOverride(BaseModel):
 
 class ProjectRuleConfig(BaseModel):
     """Project-level rule configuration."""
+
     id: Optional[int] = None
     project_id: int
 

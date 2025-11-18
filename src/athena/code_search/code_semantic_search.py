@@ -5,7 +5,7 @@ semantic code search, enabling users to express complex search intents in natura
 """
 
 import logging
-from typing import List, Dict, Optional, Set, Any, Tuple
+from typing import List, Dict, Optional, Any, Tuple
 from dataclasses import dataclass, field as dataclass_field
 from enum import Enum
 from collections import OrderedDict
@@ -15,31 +15,34 @@ logger = logging.getLogger(__name__)
 
 class QueryType(Enum):
     """Types of semantic search queries."""
-    SIMPLE = "simple"           # Single keyword (e.g., "process_data")
-    PHRASE = "phrase"           # Multi-word phrase (e.g., "data processing")
-    INTENT = "intent"           # Intentional query (e.g., "find functions that validate input")
-    FILTER = "filter"           # Filter-based (e.g., "classes in utils.py with high complexity")
-    BOOLEAN = "boolean"         # Boolean operators (e.g., "authentication AND validation")
-    PATTERN = "pattern"         # Pattern-based (e.g., "singleton pattern")
-    COMPOSITE = "composite"     # Combination of above
+
+    SIMPLE = "simple"  # Single keyword (e.g., "process_data")
+    PHRASE = "phrase"  # Multi-word phrase (e.g., "data processing")
+    INTENT = "intent"  # Intentional query (e.g., "find functions that validate input")
+    FILTER = "filter"  # Filter-based (e.g., "classes in utils.py with high complexity")
+    BOOLEAN = "boolean"  # Boolean operators (e.g., "authentication AND validation")
+    PATTERN = "pattern"  # Pattern-based (e.g., "singleton pattern")
+    COMPOSITE = "composite"  # Combination of above
 
 
 class QueryStrategy(Enum):
     """Search strategies for different query types."""
-    SEMANTIC = "semantic"       # Pure semantic similarity
-    SYNTACTIC = "syntactic"     # Syntax/pattern matching
-    GRAPH = "graph"             # Graph-based traversal
-    TEMPORAL = "temporal"       # Recency-focused
-    HYBRID = "hybrid"           # Combination of above
+
+    SEMANTIC = "semantic"  # Pure semantic similarity
+    SYNTACTIC = "syntactic"  # Syntax/pattern matching
+    GRAPH = "graph"  # Graph-based traversal
+    TEMPORAL = "temporal"  # Recency-focused
+    HYBRID = "hybrid"  # Combination of above
 
 
 @dataclass
 class QueryTerm:
     """Represents a single search term with metadata."""
+
     text: str
-    weight: float = 1.0          # Importance weight (0-2)
-    is_negation: bool = False    # True if preceded by NOT
-    is_phrase: bool = False      # True if part of multi-word phrase
+    weight: float = 1.0  # Importance weight (0-2)
+    is_negation: bool = False  # True if preceded by NOT
+    is_phrase: bool = False  # True if part of multi-word phrase
     target_field: Optional[str] = None  # Target field: name, type, file, etc.
     variants: List[str] = dataclass_field(default_factory=list)  # Synonym/related terms
 
@@ -47,6 +50,7 @@ class QueryTerm:
 @dataclass
 class ParsedQuery:
     """Represents a parsed semantic search query."""
+
     original: str
     query_type: QueryType
     strategy: QueryStrategy
@@ -60,6 +64,7 @@ class ParsedQuery:
 @dataclass
 class SearchMetrics:
     """Metrics about a search execution."""
+
     query: str
     query_type: QueryType
     terms_used: int
@@ -121,7 +126,9 @@ class QueryParser:
             return QueryType.BOOLEAN
 
         # Check for intentional patterns
-        if any(marker in query_lower for markers in self.INTENT_PATTERNS.values() for marker in markers):
+        if any(
+            marker in query_lower for markers in self.INTENT_PATTERNS.values() for marker in markers
+        ):
             return QueryType.INTENT
 
         # Check for filter patterns
@@ -129,10 +136,21 @@ class QueryParser:
             return QueryType.FILTER
 
         # Check for design patterns
-        if any(pattern in query_lower for pattern in [
-            "pattern", "singleton", "factory", "observer", "decorator",
-            "strategy", "adapter", "bridge", "composite", "facade"
-        ]):
+        if any(
+            pattern in query_lower
+            for pattern in [
+                "pattern",
+                "singleton",
+                "factory",
+                "observer",
+                "decorator",
+                "strategy",
+                "adapter",
+                "bridge",
+                "composite",
+                "facade",
+            ]
+        ):
             return QueryType.PATTERN
 
         # Check for phrase (multiple words with natural language flow)
@@ -176,7 +194,7 @@ class QueryParser:
                 continue
 
             # Create term
-            if word and not word_lower in ["find", "search", "look"]:
+            if word and word_lower not in ["find", "search", "look"]:
                 term = QueryTerm(
                     text=word.lower(),
                     weight=1.0 if i == 0 else 0.8,  # First term weighted higher
@@ -220,7 +238,9 @@ class QueryParser:
 
         return filters
 
-    def _select_strategy(self, query_type: QueryType, term_count: int, has_filters: bool) -> QueryStrategy:
+    def _select_strategy(
+        self, query_type: QueryType, term_count: int, has_filters: bool
+    ) -> QueryStrategy:
         """Select optimal search strategy based on query characteristics."""
         if query_type == QueryType.PATTERN:
             return QueryStrategy.SYNTACTIC
@@ -274,11 +294,13 @@ class QueryExpander:
                 # Also add as separate lower-weight terms for some strategies
                 if query.strategy in [QueryStrategy.HYBRID, QueryStrategy.SEMANTIC]:
                     for variant in variants:
-                        expanded_terms.append(QueryTerm(
-                            text=variant,
-                            weight=term.weight * 0.6,  # Variants have lower weight
-                            variants=[],
-                        ))
+                        expanded_terms.append(
+                            QueryTerm(
+                                text=variant,
+                                weight=term.weight * 0.6,  # Variants have lower weight
+                                variants=[],
+                            )
+                        )
 
         query.primary_terms = expanded_terms
         return query
@@ -317,7 +339,8 @@ class QueryOptimizer:
         """Optimize query for better performance and relevance."""
         # Remove stop words that don't add value
         query.primary_terms = [
-            t for t in query.primary_terms
+            t
+            for t in query.primary_terms
             if t.text not in ["code", "function", "class", "file", "module"]
         ]
 
@@ -457,6 +480,7 @@ class SemanticSearchEngine:
     def search(self, query_text: str, top_k: int = 10) -> List[Any]:
         """Execute semantic search on query."""
         import time
+
         start_time = time.time()
 
         # Check cache first
@@ -490,7 +514,11 @@ class SemanticSearchEngine:
             cache_hit=False,
             execution_time_ms=execution_time,
             result_count=len(results),
-            top_score=results[0].combined_score if results and hasattr(results[0], 'combined_score') else 0.0,
+            top_score=(
+                results[0].combined_score
+                if results and hasattr(results[0], "combined_score")
+                else 0.0
+            ),
         )
         self.search_history.append(metrics)
         self.optimizer.record_query(query_text, metrics)
@@ -508,6 +536,7 @@ class SemanticSearchEngine:
         # Execute appropriate search based on strategy
         if parsed.strategy == QueryStrategy.SEMANTIC:
             from .code_rag_integration import SearchQuery, SearchStrategy
+
             query = SearchQuery(
                 query_text=search_text,
                 strategy=SearchStrategy.SEMANTIC,
@@ -521,16 +550,14 @@ class SemanticSearchEngine:
 
         elif parsed.strategy == QueryStrategy.HYBRID:
             from .code_rag_integration import SearchQuery
+
             query = SearchQuery(
                 query_text=search_text,
                 strategy="hybrid",
                 top_k=top_k,
                 filters=parsed.filters,
             )
-            return self.rag_pipeline.execute_advanced_query(
-                search_text,
-                **parsed.filters
-            )
+            return self.rag_pipeline.execute_advanced_query(search_text, **parsed.filters)
 
         else:
             # Fallback to basic search
@@ -583,7 +610,7 @@ class SemanticSearchEngine:
 
         # Cache stats
         cache_stats = analytics["cache_stats"]
-        report += f"Cache Performance:\n"
+        report += "Cache Performance:\n"
         report += f"  Hit Rate: {cache_stats['hit_rate']:.1%}\n"
         report += f"  Size: {cache_stats['size']}/{cache_stats['max_size']}\n\n"
 

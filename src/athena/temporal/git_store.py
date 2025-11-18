@@ -11,7 +11,6 @@ from ..core.database import Database
 from .git_models import (
     AuthorMetrics,
     BranchMetrics,
-    GitChangeType,
     GitCommitEvent,
     GitFileChange,
     GitMetadata,
@@ -27,6 +26,7 @@ class GitStore:
     def __init__(self, db: Database):
         """Initialize git store with database connection."""
         self.db = db
+
     def _ensure_schema(self):
         """Create git-aware tables if they don't exist."""
         cursor = self.db.get_cursor()
@@ -222,9 +222,7 @@ class GitStore:
 
         # commit handled by cursor context
 
-    def create_commit(
-        self, git_metadata: GitMetadata, event_id: Optional[int] = None
-    ) -> int:
+    def create_commit(self, git_metadata: GitMetadata, event_id: Optional[int] = None) -> int:
         """Insert a git commit and return its ID."""
         cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
@@ -257,9 +255,7 @@ class GitStore:
         # commit handled by cursor context
         return cursor.lastrowid
 
-    def add_file_change(
-        self, commit_id: int, file_change: GitFileChange
-    ) -> int:
+    def add_file_change(self, commit_id: int, file_change: GitFileChange) -> int:
         """Add a file change to a commit."""
         cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
@@ -286,13 +282,9 @@ class GitStore:
         # commit handled by cursor context
         return cursor.lastrowid
 
-    def create_commit_event(
-        self, commit_event: GitCommitEvent
-    ) -> tuple[int, list[int]]:
+    def create_commit_event(self, commit_event: GitCommitEvent) -> tuple[int, list[int]]:
         """Create a full commit event with file changes. Returns (commit_id, file_change_ids)."""
-        commit_id = self.create_commit(
-            commit_event.git_metadata, commit_event.event_id
-        )
+        commit_id = self.create_commit(commit_event.git_metadata, commit_event.event_id)
 
         file_change_ids = []
         for file_change in commit_event.file_changes:
@@ -419,9 +411,7 @@ class GitStore:
             for row in cursor.fetchall()
         ]
 
-    def record_regression(
-        self, regression: RegressionAnalysis
-    ) -> int:
+    def record_regression(self, regression: RegressionAnalysis) -> int:
         """Record a regression analysis."""
         cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
@@ -489,9 +479,7 @@ class GitStore:
             for row in cursor.fetchall()
         ]
 
-    def get_regressions_by_commit(
-        self, commit_hash: str
-    ) -> list[dict]:
+    def get_regressions_by_commit(self, commit_hash: str) -> list[dict]:
         """Get all regressions introduced by a commit."""
         cursor = self.db.get_cursor()
         cursor.execute(
@@ -520,9 +508,7 @@ class GitStore:
             for row in cursor.fetchall()
         ]
 
-    def update_author_metrics(
-        self, metrics: AuthorMetrics
-    ) -> int:
+    def update_author_metrics(self, metrics: AuthorMetrics) -> int:
         """Update or create author metrics."""
         cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
@@ -551,9 +537,11 @@ class GitStore:
                 metrics.regressions_fixed,
                 metrics.avg_commit_size,
                 metrics.specialization,
-                int(metrics.last_commit_timestamp.timestamp())
-                if metrics.last_commit_timestamp
-                else None,
+                (
+                    int(metrics.last_commit_timestamp.timestamp())
+                    if metrics.last_commit_timestamp
+                    else None
+                ),
                 "|".join(metrics.most_frequent_file_patterns),
                 now,
                 now,
@@ -594,17 +582,11 @@ class GitStore:
             "regressions_fixed": row[9],
             "avg_commit_size": row[10],
             "specialization": row[11],
-            "last_commit_timestamp": (
-                datetime.fromtimestamp(row[12]) if row[12] else None
-            ),
-            "most_frequent_file_patterns": (
-                row[13].split("|") if row[13] else []
-            ),
+            "last_commit_timestamp": (datetime.fromtimestamp(row[12]) if row[12] else None),
+            "most_frequent_file_patterns": (row[13].split("|") if row[13] else []),
         }
 
-    def create_temporal_relation(
-        self, relation: GitTemporalRelation
-    ) -> int:
+    def create_temporal_relation(self, relation: GitTemporalRelation) -> int:
         """Create a git temporal relation between commits."""
         cursor = self.db.get_cursor()
 
@@ -630,9 +612,7 @@ class GitStore:
         # commit handled by cursor context
         return cursor.lastrowid
 
-    def get_temporal_relations_from(
-        self, commit_hash: str
-    ) -> list[dict]:
+    def get_temporal_relations_from(self, commit_hash: str) -> list[dict]:
         """Get all temporal relations from a commit."""
         cursor = self.db.get_cursor()
         cursor.execute(
@@ -657,9 +637,7 @@ class GitStore:
             for row in cursor.fetchall()
         ]
 
-    def update_branch_metrics(
-        self, metrics: BranchMetrics
-    ) -> int:
+    def update_branch_metrics(self, metrics: BranchMetrics) -> int:
         """Update or create branch metrics."""
         cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
@@ -679,9 +657,11 @@ class GitStore:
                 int(metrics.is_main),
                 int(metrics.is_protected),
                 int(metrics.created_timestamp.timestamp()),
-                int(metrics.last_commit_timestamp.timestamp())
-                if metrics.last_commit_timestamp
-                else None,
+                (
+                    int(metrics.last_commit_timestamp.timestamp())
+                    if metrics.last_commit_timestamp
+                    else None
+                ),
                 metrics.commits_ahead_of_main,
                 metrics.commits_behind_main,
                 metrics.merge_commits_on_branch,
@@ -717,9 +697,7 @@ class GitStore:
             "is_main": bool(row[2]),
             "is_protected": bool(row[3]),
             "created_timestamp": datetime.fromtimestamp(row[4]),
-            "last_commit_timestamp": (
-                datetime.fromtimestamp(row[5]) if row[5] else None
-            ),
+            "last_commit_timestamp": (datetime.fromtimestamp(row[5]) if row[5] else None),
             "commits_ahead_of_main": row[6],
             "commits_behind_main": row[7],
             "merge_commits_on_branch": row[8],

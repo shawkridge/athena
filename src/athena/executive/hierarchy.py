@@ -1,7 +1,7 @@
 """Goal hierarchy management - organize goals in parent-child relationships."""
 
 from datetime import datetime, timedelta
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Dict
 
 from ..core.database import Database
 from .models import Goal, GoalType, GoalStatus
@@ -125,7 +125,11 @@ class GoalHierarchy:
                 estimated_hours=result["estimated_hours"],
                 actual_hours=result["actual_hours"],
                 deadline=datetime.fromisoformat(result["deadline"]) if result["deadline"] else None,
-                completed_at=datetime.fromisoformat(result["completed_at"]) if result["completed_at"] else None,
+                completed_at=(
+                    datetime.fromisoformat(result["completed_at"])
+                    if result["completed_at"]
+                    else None
+                ),
             )
 
     def get_active_goals(self, project_id: int, include_subgoals: bool = True) -> List[Goal]:
@@ -171,8 +175,14 @@ class GoalHierarchy:
                         parent_goal_id=row["parent_goal_id"],
                         estimated_hours=row["estimated_hours"],
                         actual_hours=row["actual_hours"],
-                        deadline=datetime.fromisoformat(row["deadline"]) if row["deadline"] else None,
-                        completed_at=datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None,
+                        deadline=(
+                            datetime.fromisoformat(row["deadline"]) if row["deadline"] else None
+                        ),
+                        completed_at=(
+                            datetime.fromisoformat(row["completed_at"])
+                            if row["completed_at"]
+                            else None
+                        ),
                     )
                 )
 

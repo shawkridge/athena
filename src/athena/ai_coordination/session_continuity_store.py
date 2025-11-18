@@ -1,6 +1,5 @@
 """Storage for session snapshots and resumption support."""
 
-import json
 import time
 from datetime import datetime
 from typing import Any, Dict, Optional
@@ -41,6 +40,7 @@ class SessionContinuityStore(BaseStore[SessionSnapshot]):
             db: Database instance
         """
         super().__init__(db)
+
     def _row_to_model(self, row: Dict[str, Any]) -> SessionSnapshot:
         """Convert database row to SessionSnapshot model.
 
@@ -54,15 +54,21 @@ class SessionContinuityStore(BaseStore[SessionSnapshot]):
         project_snapshot = ProjectContextSnapshot.model_validate_json(row["project_snapshot_json"])
         active_cycle = None
         if row.get("active_cycle_snapshot_json"):
-            active_cycle = ActionCycleSnapshot.model_validate_json(row["active_cycle_snapshot_json"])
+            active_cycle = ActionCycleSnapshot.model_validate_json(
+                row["active_cycle_snapshot_json"]
+            )
         code_context = None
         if row.get("code_context_snapshot_json"):
-            code_context = CodeContextSnapshot.model_validate_json(row["code_context_snapshot_json"])
+            code_context = CodeContextSnapshot.model_validate_json(
+                row["code_context_snapshot_json"]
+            )
         executions = []
         if row.get("recent_executions_json"):
             exec_dicts = self.deserialize_json(row["recent_executions_json"], [])
             executions = [ExecutionTraceSnapshot.model_validate(e) for e in exec_dicts]
-        recommendation = ResumptionRecommendation.model_validate_json(row["resumption_recommendation_json"])
+        recommendation = ResumptionRecommendation.model_validate_json(
+            row["resumption_recommendation_json"]
+        )
         goals = self.deserialize_json(row.get("goals_at_snapshot_time_json"), [])
 
         return SessionSnapshot(
@@ -88,7 +94,8 @@ class SessionContinuityStore(BaseStore[SessionSnapshot]):
         cursor = self.db.get_cursor()
 
         # Session snapshots table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS session_snapshots (
                 id SERIAL PRIMARY KEY,
                 snapshot_id TEXT UNIQUE NOT NULL,
@@ -108,10 +115,12 @@ class SessionContinuityStore(BaseStore[SessionSnapshot]):
                 notes TEXT,
                 consolidated_at INTEGER
             )
-        """)
+        """
+        )
 
         # Session metadata table (for quick lookup)
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS session_metadata (
                 id SERIAL PRIMARY KEY,
                 snapshot_id TEXT UNIQUE NOT NULL,
@@ -125,28 +134,37 @@ class SessionContinuityStore(BaseStore[SessionSnapshot]):
                 time_since_last_activity_minutes INTEGER DEFAULT 0,
                 FOREIGN KEY (snapshot_id) REFERENCES session_snapshots(snapshot_id)
             )
-        """)
+        """
+        )
 
         # Indexes
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_session_snapshots_snapshot_id
             ON session_snapshots(snapshot_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_session_snapshots_session_id
             ON session_snapshots(session_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_session_metadata_project_id
             ON session_metadata(project_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_session_metadata_created_at
             ON session_metadata(created_at DESC)
-        """)
+        """
+        )
 
         # commit handled by cursor context
 
@@ -290,7 +308,7 @@ class SessionContinuityStore(BaseStore[SessionSnapshot]):
             FROM session_snapshots WHERE snapshot_id = ?
             """,
             (snapshot_id,),
-            fetch_one=True
+            fetch_one=True,
         )
         if not row:
             return None
@@ -313,7 +331,7 @@ class SessionContinuityStore(BaseStore[SessionSnapshot]):
             WHERE snapshot_id = ?
             """,
             (snapshot_id,),
-            fetch_one=True
+            fetch_one=True,
         )
         if not row or not row[0]:
             return None
@@ -345,7 +363,7 @@ class SessionContinuityStore(BaseStore[SessionSnapshot]):
                 LIMIT ?
                 """,
                 (project_id, limit),
-                fetch_all=True
+                fetch_all=True,
             )
         else:
             rows = self.execute(
@@ -359,7 +377,7 @@ class SessionContinuityStore(BaseStore[SessionSnapshot]):
                 LIMIT ?
                 """,
                 (limit,),
-                fetch_all=True
+                fetch_all=True,
             )
 
         results = []
@@ -397,7 +415,7 @@ class SessionContinuityStore(BaseStore[SessionSnapshot]):
             LIMIT 1
             """,
             (session_id,),
-            fetch_one=True
+            fetch_one=True,
         )
         if not row:
             return None

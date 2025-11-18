@@ -15,7 +15,7 @@ from ..episodic.models import EpisodicEvent
 
 def _get_event_type_str(event_type) -> str:
     """Safely get event type as string, handling both enum and string types."""
-    return event_type.value if hasattr(event_type, 'value') else str(event_type)
+    return event_type.value if hasattr(event_type, "value") else str(event_type)
 
 
 @dataclass
@@ -36,7 +36,7 @@ class EventCluster:
 def cluster_events_by_context(
     events: List[EpisodicEvent],
     max_time_gap_minutes: int = 60,
-    spatial_similarity_threshold: float = 0.7
+    spatial_similarity_threshold: float = 0.7,
 ) -> List[List[EpisodicEvent]]:
     """
     Cluster events by session ID and spatial context.
@@ -70,14 +70,12 @@ def cluster_events_by_context(
 
     for session_id, session_events in session_clusters.items():
         spatial_subclusters = _cluster_by_spatial_proximity(
-            session_events,
-            similarity_threshold=spatial_similarity_threshold
+            session_events, similarity_threshold=spatial_similarity_threshold
         )
 
         # Step 3: Merge temporally adjacent clusters
         temporal_clusters = _merge_temporally_adjacent(
-            spatial_subclusters,
-            max_gap_minutes=max_time_gap_minutes
+            spatial_subclusters, max_gap_minutes=max_time_gap_minutes
         )
 
         final_clusters.extend(temporal_clusters)
@@ -86,9 +84,7 @@ def cluster_events_by_context(
 
 
 def cluster_events_by_surprise(
-    events: List[EpisodicEvent],
-    surprise_threshold: float = 3.5,
-    max_time_gap_minutes: int = 60
+    events: List[EpisodicEvent], surprise_threshold: float = 3.5, max_time_gap_minutes: int = 60
 ) -> List[List[EpisodicEvent]]:
     """
     Cluster events using Bayesian surprise as primary signal.
@@ -122,13 +118,15 @@ def cluster_events_by_surprise(
     for event in sorted_events:
         # Check if event has surprise metadata (would be stored in store)
         # For now, we estimate based on event type patterns
-        if hasattr(event, '_surprise_score') and event._surprise_score is not None:
+        if hasattr(event, "_surprise_score") and event._surprise_score is not None:
             if event._surprise_score >= surprise_threshold:
                 high_surprise_events.append(event)
         else:
             # Heuristic: error and decision events are often high-surprise
-            event_type_str = event.event_type.value if hasattr(event.event_type, 'value') else event.event_type
-            if event_type_str in ('error', 'decision', 'test_run'):
+            event_type_str = (
+                event.event_type.value if hasattr(event.event_type, "value") else event.event_type
+            )
+            if event_type_str in ("error", "decision", "test_run"):
                 high_surprise_events.append(event)
 
     # If no high-surprise events, fall back to standard clustering
@@ -146,7 +144,7 @@ def cluster_events_by_surprise(
         # Find nearest high-surprise event
         nearest = min(
             high_surprise_events,
-            key=lambda hs: abs((event.timestamp - hs.timestamp).total_seconds())
+            key=lambda hs: abs((event.timestamp - hs.timestamp).total_seconds()),
         )
 
         cluster_map[nearest].append(event)
@@ -162,8 +160,7 @@ def cluster_events_by_surprise(
 
 
 def _cluster_by_spatial_proximity(
-    events: List[EpisodicEvent],
-    similarity_threshold: float
+    events: List[EpisodicEvent], similarity_threshold: float
 ) -> List[List[EpisodicEvent]]:
     """
     Cluster events by spatial proximity (shared file paths).
@@ -186,7 +183,7 @@ def _cluster_by_spatial_proximity(
         assigned.add(i)
 
         # Find spatially similar events
-        for j, event2 in enumerate(events[i+1:], start=i+1):
+        for j, event2 in enumerate(events[i + 1 :], start=i + 1):
             if j in assigned:
                 continue
 
@@ -219,8 +216,8 @@ def _calculate_spatial_similarity(event1: EpisodicEvent, event2: EpisodicEvent) 
     # CWD similarity (50% weight)
     if event1.context and event2.context:
         if event1.context.cwd and event2.context.cwd:
-            cwd1_parts = event1.context.cwd.split('/')
-            cwd2_parts = event2.context.cwd.split('/')
+            cwd1_parts = event1.context.cwd.split("/")
+            cwd2_parts = event2.context.cwd.split("/")
 
             # Calculate shared path depth
             shared_depth = 0
@@ -273,8 +270,7 @@ def _calculate_spatial_similarity(event1: EpisodicEvent, event2: EpisodicEvent) 
 
 
 def _merge_temporally_adjacent(
-    clusters: List[List[EpisodicEvent]],
-    max_gap_minutes: int
+    clusters: List[List[EpisodicEvent]], max_gap_minutes: int
 ) -> List[List[EpisodicEvent]]:
     """
     Merge clusters that are temporally adjacent.
@@ -285,10 +281,7 @@ def _merge_temporally_adjacent(
         return clusters
 
     # Sort clusters by earliest event
-    sorted_clusters = sorted(
-        clusters,
-        key=lambda c: min(e.timestamp for e in c)
-    )
+    sorted_clusters = sorted(clusters, key=lambda c: min(e.timestamp for e in c))
 
     merged = []
     current_cluster = sorted_clusters[0]
@@ -325,10 +318,10 @@ def analyze_cluster_quality(cluster: List[EpisodicEvent]) -> dict:
     """
     if not cluster:
         return {
-            'size': 0,
-            'temporal_span_minutes': 0,
-            'spatial_cohesion': 0.0,
-            'has_causal_chain': False
+            "size": 0,
+            "temporal_span_minutes": 0,
+            "spatial_cohesion": 0.0,
+            "has_causal_chain": False,
         }
 
     # Temporal span
@@ -338,7 +331,7 @@ def analyze_cluster_quality(cluster: List[EpisodicEvent]) -> dict:
     # Spatial cohesion (average pairwise similarity)
     similarities = []
     for i, event1 in enumerate(cluster):
-        for event2 in cluster[i+1:]:
+        for event2 in cluster[i + 1 :]:
             sim = _calculate_spatial_similarity(event1, event2)
             similarities.append(sim)
 
@@ -348,14 +341,13 @@ def analyze_cluster_quality(cluster: List[EpisodicEvent]) -> dict:
     has_causal_chain = _detect_causal_chain(cluster)
 
     return {
-        'size': len(cluster),
-        'temporal_span_minutes': temporal_span,
-        'spatial_cohesion': spatial_cohesion,
-        'has_causal_chain': has_causal_chain,
-        'event_types': [
-            e.event_type.value if hasattr(e.event_type, 'value') else e.event_type
-            for e in cluster
-        ]
+        "size": len(cluster),
+        "temporal_span_minutes": temporal_span,
+        "spatial_cohesion": spatial_cohesion,
+        "has_causal_chain": has_causal_chain,
+        "event_types": [
+            e.event_type.value if hasattr(e.event_type, "value") else e.event_type for e in cluster
+        ],
     }
 
 
@@ -376,7 +368,7 @@ def _detect_causal_chain(cluster: List[EpisodicEvent]) -> bool:
 
         # Error → Fix pattern
         current_type = _get_event_type_str(current.event_type)
-        if current_type == 'error' and next_event.outcome == 'success':
+        if current_type == "error" and next_event.outcome == "success":
             return True
 
         # Test failure → Fix → Success pattern
@@ -384,9 +376,13 @@ def _detect_causal_chain(cluster: List[EpisodicEvent]) -> bool:
             third = sorted_cluster[i + 2]
             next_type = _get_event_type_str(next_event.event_type)
             third_type = _get_event_type_str(third.event_type)
-            if (current_type == 'test_run' and current.outcome == 'failure'
-                and next_type == 'file_change'
-                and third_type == 'test_run' and third.outcome == 'success'):
+            if (
+                current_type == "test_run"
+                and current.outcome == "failure"
+                and next_type == "file_change"
+                and third_type == "test_run"
+                and third.outcome == "success"
+            ):
                 return True
 
     return False

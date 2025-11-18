@@ -8,7 +8,7 @@ Provides:
 - Cross-language type inference
 """
 
-from typing import Dict, List, Set, Optional, Tuple
+from typing import Dict, List, Optional
 from dataclasses import dataclass
 from enum import Enum
 
@@ -17,6 +17,7 @@ from .symbol_models import Symbol, SymbolType
 
 class TypeCategory(str, Enum):
     """Categories of inferred types."""
+
     PRIMITIVE = "primitive"  # int, str, bool, float
     COLLECTION = "collection"  # list, dict, set, tuple
     OBJECT = "object"  # class instances
@@ -28,6 +29,7 @@ class TypeCategory(str, Enum):
 @dataclass
 class TypeHint:
     """A type hint suggestion."""
+
     symbol: Symbol
     parameter_name: Optional[str]  # None for return type
     inferred_type: str
@@ -44,6 +46,7 @@ class TypeHint:
 @dataclass
 class TypeAnnotationSuggestion:
     """A suggestion for type annotation."""
+
     symbol: Symbol
     parameter_suggestions: Dict[str, TypeHint]
     return_type_suggestion: Optional[TypeHint]
@@ -90,7 +93,11 @@ class TypeInferenceAnalyzer:
         Returns:
             TypeHint for return type, or None
         """
-        if symbol.symbol_type not in [SymbolType.FUNCTION, SymbolType.METHOD, SymbolType.ASYNC_FUNCTION]:
+        if symbol.symbol_type not in [
+            SymbolType.FUNCTION,
+            SymbolType.METHOD,
+            SymbolType.ASYNC_FUNCTION,
+        ]:
             return None
 
         # Extract return statements
@@ -116,7 +123,7 @@ class TypeInferenceAnalyzer:
             confidence=confidence,
             evidence_count=len(return_types),
             type_category=self._categorize_type(most_common_type),
-            alternative_types=alternative_types
+            alternative_types=alternative_types,
         )
 
     def _extract_parameters(self, symbol: Symbol) -> List[str]:
@@ -139,11 +146,13 @@ class TypeInferenceAnalyzer:
 
         return params
 
-    def _analyze_parameter_usage(self, symbol: Symbol, code: str, param_name: str) -> Optional[TypeHint]:
+    def _analyze_parameter_usage(
+        self, symbol: Symbol, code: str, param_name: str
+    ) -> Optional[TypeHint]:
         """Analyze how a parameter is used to infer its type."""
         inferred_types: Dict[str, int] = {}
 
-        lines = code.split('\n')
+        lines = code.split("\n")
         for line in lines:
             # Look for parameter usage
             if param_name not in line:
@@ -161,7 +170,7 @@ class TypeInferenceAnalyzer:
                 inferred_types["indexable"] = inferred_types.get("indexable", 0) + 1
 
             # Detect type from iteration
-            if f"for " in line and f" in {param_name}" in line:
+            if "for " in line and f" in {param_name}" in line:
                 inferred_types["iterable"] = inferred_types.get("iterable", 0) + 1
 
             # Detect type from numeric operations
@@ -184,20 +193,20 @@ class TypeInferenceAnalyzer:
             confidence=confidence,
             evidence_count=total_uses,
             type_category=self._categorize_type(most_common_type),
-            alternative_types=alternative_types
+            alternative_types=alternative_types,
         )
 
     def _analyze_return_statements(self, code: str) -> List[str]:
         """Extract return value types from code."""
         return_types = []
-        lines = code.split('\n')
+        lines = code.split("\n")
 
         for line in lines:
-            if 'return' not in line:
+            if "return" not in line:
                 continue
 
             line = line.strip()
-            if not line.startswith('return'):
+            if not line.startswith("return"):
                 continue
 
             # Extract what's being returned
@@ -221,7 +230,7 @@ class TypeInferenceAnalyzer:
         start = line.find(pattern) + len(pattern)
         # Find method name (until '(' or whitespace)
         end = start
-        while end < len(line) and line[end] not in ('(', ' ', '\n'):
+        while end < len(line) and line[end] not in ("(", " ", "\n"):
             end += 1
 
         if end > start:
@@ -233,19 +242,19 @@ class TypeInferenceAnalyzer:
     def _infer_type_from_method(self, method: str) -> str:
         """Infer type from method name."""
         # Common string methods
-        if method in ['upper', 'lower', 'strip', 'split', 'replace', 'format']:
+        if method in ["upper", "lower", "strip", "split", "replace", "format"]:
             return "str"
 
         # Common list methods
-        if method in ['append', 'pop', 'extend', 'remove', 'insert', 'sort']:
+        if method in ["append", "pop", "extend", "remove", "insert", "sort"]:
             return "list"
 
         # Common dict methods
-        if method in ['keys', 'values', 'items', 'get', 'update', 'pop']:
+        if method in ["keys", "values", "items", "get", "update", "pop"]:
             return "dict"
 
         # Common set methods
-        if method in ['add', 'remove', 'union', 'intersection', 'difference']:
+        if method in ["add", "remove", "union", "intersection", "difference"]:
             return "set"
 
         # Default
@@ -258,20 +267,20 @@ class TypeInferenceAnalyzer:
         # Literals
         if value.startswith('"') or value.startswith("'"):
             return "str"
-        if value.startswith('['):
+        if value.startswith("["):
             return "list"
-        if value.startswith('{'):
+        if value.startswith("{"):
             return "dict"
-        if value.startswith('('):
+        if value.startswith("("):
             return "tuple"
-        if value in ['True', 'False']:
+        if value in ["True", "False"]:
             return "bool"
-        if value == 'None':
+        if value == "None":
             return "None"
 
         # Numeric
         try:
-            if '.' in value:
+            if "." in value:
                 float(value)
                 return "float"
             else:
@@ -287,15 +296,15 @@ class TypeInferenceAnalyzer:
         """Categorize a type string."""
         type_str = type_str.lower()
 
-        if type_str in ['int', 'float', 'str', 'bool', 'bytes', 'none']:
+        if type_str in ["int", "float", "str", "bool", "bytes", "none"]:
             return TypeCategory.PRIMITIVE
-        elif type_str in ['list', 'dict', 'set', 'tuple']:
+        elif type_str in ["list", "dict", "set", "tuple"]:
             return TypeCategory.COLLECTION
-        elif type_str == 'callable':
+        elif type_str == "callable":
             return TypeCategory.FUNCTION
-        elif type_str == 'union':
+        elif type_str == "union":
             return TypeCategory.UNION
-        elif type_str in ['indexable', 'iterable', 'numeric']:
+        elif type_str in ["indexable", "iterable", "numeric"]:
             return TypeCategory.PRIMITIVE
         else:
             return TypeCategory.OBJECT
@@ -313,7 +322,11 @@ class TypeInferenceAnalyzer:
         parameter_suggestions = {}
         return_type_suggestion = None
 
-        if symbol.symbol_type in [SymbolType.FUNCTION, SymbolType.METHOD, SymbolType.ASYNC_FUNCTION]:
+        if symbol.symbol_type in [
+            SymbolType.FUNCTION,
+            SymbolType.METHOD,
+            SymbolType.ASYNC_FUNCTION,
+        ]:
             # Infer parameter types
             param_types = self.infer_parameter_types(symbol, code)
             parameter_suggestions = param_types
@@ -332,13 +345,15 @@ class TypeInferenceAnalyzer:
             symbol=symbol,
             parameter_suggestions=parameter_suggestions,
             return_type_suggestion=return_type_suggestion,
-            confidence_score=avg_confidence
+            confidence_score=avg_confidence,
         )
 
         self.inferred_types[symbol.full_qualified_name or symbol.name] = suggestion
         return suggestion
 
-    def get_high_confidence_suggestions(self, threshold: float = 0.7) -> List[TypeAnnotationSuggestion]:
+    def get_high_confidence_suggestions(
+        self, threshold: float = 0.7
+    ) -> List[TypeAnnotationSuggestion]:
         """Get type suggestions with high confidence.
 
         Args:
@@ -348,7 +363,8 @@ class TypeInferenceAnalyzer:
             List of suggestions above threshold
         """
         return [
-            suggestion for suggestion in self.inferred_types.values()
+            suggestion
+            for suggestion in self.inferred_types.values()
             if suggestion.confidence_score >= threshold
         ]
 
@@ -395,7 +411,9 @@ class TypeInferenceAnalyzer:
 
                 if suggestion.return_type_suggestion:
                     hint = suggestion.return_type_suggestion
-                    report += f"  Return Type: {hint.inferred_type} (confidence: {hint.confidence:.2f})\n"
+                    report += (
+                        f"  Return Type: {hint.inferred_type} (confidence: {hint.confidence:.2f})\n"
+                    )
 
         return report
 
@@ -420,7 +438,10 @@ class TypeInferenceAnalyzer:
                 annotations.append(f"{param_name}: {hint.inferred_type}")
 
         # Return annotation
-        if suggestions.return_type_suggestion and suggestions.return_type_suggestion.confidence >= 0.6:
+        if (
+            suggestions.return_type_suggestion
+            and suggestions.return_type_suggestion.confidence >= 0.6
+        ):
             hint = suggestions.return_type_suggestion
             annotations.append(f"-> {hint.inferred_type}")
 

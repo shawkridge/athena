@@ -2,7 +2,6 @@
 
 import logging
 import asyncio
-import json
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
@@ -13,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 class PrototypePhase(Enum):
     """Phases of prototype lifecycle."""
+
     CONCEPTION = "conception"  # Idea and planning
     GENERATION = "generation"  # Prototype code/artifact generation
     EXECUTION = "execution"  # Running the prototype
@@ -23,6 +23,7 @@ class PrototypePhase(Enum):
 
 class FeedbackType(Enum):
     """Types of feedback on prototype."""
+
     TECHNICAL = "technical"  # Technical feasibility
     UX = "ux"  # User experience
     PERFORMANCE = "performance"  # Performance characteristics
@@ -33,6 +34,7 @@ class FeedbackType(Enum):
 @dataclass
 class PrototypeFeedback:
     """Feedback on a prototype."""
+
     feedback_id: str
     type: FeedbackType
     severity: str  # "critical", "high", "medium", "low"
@@ -45,6 +47,7 @@ class PrototypeFeedback:
 @dataclass
 class PrototypeArtifact:
     """A prototype artifact (code, design, documentation)."""
+
     artifact_id: str
     type: str  # "code", "design", "documentation", "config"
     content: str
@@ -55,6 +58,7 @@ class PrototypeArtifact:
 @dataclass
 class Prototype:
     """A vibe prototype for testing an idea."""
+
     prototype_id: str
     idea_description: str
     phase: PrototypePhase
@@ -192,9 +196,7 @@ class PrototypeEngine:
                 else:
                     results["errors"].append(f"Criteria not met: {criteria}")
 
-            results["success_rate"] = success_count / max(
-                len(prototype.success_criteria), 1
-            )
+            results["success_rate"] = success_count / max(len(prototype.success_criteria), 1)
             prototype.execution_results = results
             prototype.phase = PrototypePhase.VALIDATION
 
@@ -282,9 +284,7 @@ class PrototypeEngine:
         prototype.phase = PrototypePhase.REFINEMENT
         prototype.updated_at = datetime.utcnow().isoformat()
 
-        logger.info(
-            f"Refining prototype {prototype_id} with {len(improvements)} improvements"
-        )
+        logger.info(f"Refining prototype {prototype_id} with {len(improvements)} improvements")
 
         # Store refinements in metadata
         if "refinements" not in prototype.metadata:
@@ -346,8 +346,7 @@ class PrototypeEngine:
         await asyncio.sleep(0.01)
         # Mock: assume success if criterion contains positive keywords
         return any(
-            word in criterion.lower()
-            for word in ["works", "success", "valid", "correct", "ok"]
+            word in criterion.lower() for word in ["works", "success", "valid", "correct", "ok"]
         )
 
     async def _validate_technical(self, prototype: Prototype) -> List[PrototypeFeedback]:

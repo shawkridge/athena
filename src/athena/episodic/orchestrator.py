@@ -89,7 +89,6 @@ import asyncio
 import logging
 import time
 from typing import Dict, List, Any, Optional
-from datetime import datetime, timedelta
 
 from .pipeline import EventProcessingPipeline
 from .cursor import CursorManager
@@ -169,9 +168,7 @@ class EventIngestionOrchestrator:
     # ========================================================================
 
     async def ingest_from_source(
-        self,
-        source: BaseEventSource,
-        retry_count: int = 0
+        self, source: BaseEventSource, retry_count: int = 0
     ) -> Dict[str, Any]:
         """Ingest events from a single source with batching and cursor management.
 
@@ -299,16 +296,18 @@ class EventIngestionOrchestrator:
             duration_ms = (time.time() - start_time) * 1000
             throughput = total_events / (duration_ms / 1000) if duration_ms > 0 else 0.0
 
-            stats.update({
-                "total": total_events,
-                "inserted": total_inserted,
-                "skipped_duplicate": total_skipped_duplicate,
-                "skipped_existing": total_skipped_existing,
-                "errors": total_errors,
-                "duration_ms": duration_ms,
-                "throughput": throughput,
-                "cursor_saved": cursor_saved,
-            })
+            stats.update(
+                {
+                    "total": total_events,
+                    "inserted": total_inserted,
+                    "skipped_duplicate": total_skipped_duplicate,
+                    "skipped_existing": total_skipped_existing,
+                    "errors": total_errors,
+                    "duration_ms": duration_ms,
+                    "throughput": throughput,
+                    "cursor_saved": cursor_saved,
+                }
+            )
 
             # Update global stats
             self._total_sources_processed += 1
@@ -333,7 +332,7 @@ class EventIngestionOrchestrator:
 
             if should_retry:
                 # Exponential backoff
-                backoff_ms = min(1000 * (2 ** retry_count), 10000)  # Max 10s
+                backoff_ms = min(1000 * (2**retry_count), 10000)  # Max 10s
                 logger.info(
                     f"Retrying '{source_id}' after {backoff_ms}ms backoff "
                     f"(attempt {retry_count + 2}/{self.max_retries + 1})"
@@ -358,8 +357,7 @@ class EventIngestionOrchestrator:
     # ========================================================================
 
     async def ingest_from_multiple_sources(
-        self,
-        sources: List[BaseEventSource]
+        self, sources: List[BaseEventSource]
     ) -> Dict[str, Dict[str, Any]]:
         """Ingest events from multiple sources concurrently.
 
@@ -419,10 +417,7 @@ class EventIngestionOrchestrator:
         # Create ingestion tasks
         if self.enable_parallel:
             # Concurrent ingestion
-            tasks = [
-                self.ingest_from_source(source)
-                for source in sources
-            ]
+            tasks = [self.ingest_from_source(source) for source in sources]
 
             # Gather results (exceptions are caught per-source)
             results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -434,10 +429,7 @@ class EventIngestionOrchestrator:
 
                 if isinstance(result, Exception):
                     # Unexpected exception - create error stats
-                    logger.error(
-                        f"Unexpected error for '{source_id}': {result}",
-                        exc_info=result
-                    )
+                    logger.error(f"Unexpected error for '{source_id}': {result}", exc_info=result)
                     source_stats[source_id] = {
                         "source_id": source_id,
                         "source_type": source.source_type,
@@ -457,10 +449,7 @@ class EventIngestionOrchestrator:
                     stats = await self.ingest_from_source(source)
                     source_stats[source.source_id] = stats
                 except Exception as e:
-                    logger.error(
-                        f"Unexpected error for '{source.source_id}': {e}",
-                        exc_info=True
-                    )
+                    logger.error(f"Unexpected error for '{source.source_id}': {e}", exc_info=True)
                     source_stats[source.source_id] = {
                         "source_id": source.source_id,
                         "source_type": source.source_type,
@@ -492,10 +481,7 @@ class EventIngestionOrchestrator:
     # ========================================================================
 
     async def run_scheduled_ingest(
-        self,
-        sources: List[BaseEventSource],
-        schedule: str,
-        max_iterations: Optional[int] = None
+        self, sources: List[BaseEventSource], schedule: str, max_iterations: Optional[int] = None
     ) -> Dict[str, Any]:
         """Run scheduled ingestion with cron-style or interval-based triggers.
 
@@ -540,8 +526,7 @@ class EventIngestionOrchestrator:
             Use Ctrl+C or asyncio cancellation to stop.
         """
         logger.info(
-            f"Starting scheduled ingestion: {len(sources)} sources, "
-            f"schedule='{schedule}'"
+            f"Starting scheduled ingestion: {len(sources)} sources, " f"schedule='{schedule}'"
         )
 
         # Parse schedule
@@ -589,9 +574,7 @@ class EventIngestionOrchestrator:
 
                 # Check if we've reached max iterations
                 if max_iterations and total_cycles >= max_iterations:
-                    logger.info(
-                        f"Reached max iterations ({max_iterations}), stopping"
-                    )
+                    logger.info(f"Reached max iterations ({max_iterations}), stopping")
                     break
 
                 # Sleep until next cycle
@@ -656,11 +639,7 @@ class EventIngestionOrchestrator:
 
         return False
 
-    async def _process_batch(
-        self,
-        batch: List[EpisodicEvent],
-        source_id: str
-    ) -> Dict[str, Any]:
+    async def _process_batch(self, batch: List[EpisodicEvent], source_id: str) -> Dict[str, Any]:
         """Process a batch of events through the pipeline.
 
         Args:
@@ -688,10 +667,7 @@ class EventIngestionOrchestrator:
             return stats
 
         except Exception as e:
-            logger.error(
-                f"Batch processing failed for '{source_id}': {e}",
-                exc_info=True
-            )
+            logger.error(f"Batch processing failed for '{source_id}': {e}", exc_info=True)
             return {
                 "total": len(batch),
                 "inserted": 0,
@@ -740,10 +716,7 @@ class EventIngestionOrchestrator:
             return True
 
         except Exception as e:
-            logger.error(
-                f"Failed to persist cursor for '{source.source_id}': {e}",
-                exc_info=True
-            )
+            logger.error(f"Failed to persist cursor for '{source.source_id}': {e}", exc_info=True)
             return False
 
     def _format_cursor_summary(self, cursor_data: Dict[str, Any]) -> str:
@@ -823,13 +796,13 @@ class EventIngestionOrchestrator:
             300.0  # Every 5 minutes (cron format)
         """
         # Interval format: "5m", "1h", "30s"
-        if schedule.endswith('s'):
+        if schedule.endswith("s"):
             return float(schedule[:-1])
-        elif schedule.endswith('m'):
+        elif schedule.endswith("m"):
             return float(schedule[:-1]) * 60
-        elif schedule.endswith('h'):
+        elif schedule.endswith("h"):
             return float(schedule[:-1]) * 3600
-        elif schedule.endswith('d'):
+        elif schedule.endswith("d"):
             return float(schedule[:-1]) * 86400
 
         # Cron format (simplified): "*/N * * * *" = every N minutes
@@ -910,19 +883,16 @@ async def example_single_source():
     # Create pipeline and orchestrator
     pipeline = EventProcessingPipeline(store, embedder, hasher)
     orchestrator = EventIngestionOrchestrator(
-        pipeline=pipeline,
-        cursor_manager=cursor_mgr,
-        batch_size=64,
-        max_batch_latency_ms=200
+        pipeline=pipeline, cursor_manager=cursor_mgr, batch_size=64, max_batch_latency_ms=200
     )
 
     # Create event source
     factory = EventSourceFactory(cursor_store=cursor_mgr)
     source = await factory.create_source(
-        source_type='filesystem',
-        source_id='athena-codebase',
+        source_type="filesystem",
+        source_id="athena-codebase",
         credentials={},
-        config={'root_dir': '/home/user/.work/athena'}
+        config={"root_dir": "/home/user/.work/athena"},
     )
 
     # Ingest events
@@ -956,33 +926,28 @@ async def example_multi_source():
     # Create pipeline and orchestrator
     pipeline = EventProcessingPipeline(store, embedder, hasher)
     orchestrator = EventIngestionOrchestrator(
-        pipeline=pipeline,
-        cursor_manager=cursor_mgr,
-        enable_parallel=True  # Concurrent ingestion
+        pipeline=pipeline, cursor_manager=cursor_mgr, enable_parallel=True  # Concurrent ingestion
     )
 
     # Create multiple sources
     factory = EventSourceFactory(cursor_store=cursor_mgr)
 
     github_source = await factory.create_source(
-        source_type='github',
-        source_id='athena-repo',
-        credentials={'token': 'ghp_xxx'},
-        config={'owner': 'user', 'repo': 'athena'}
+        source_type="github",
+        source_id="athena-repo",
+        credentials={"token": "ghp_xxx"},
+        config={"owner": "user", "repo": "athena"},
     )
 
     slack_source = await factory.create_source(
-        source_type='slack',
-        source_id='dev-channel',
-        credentials={'bot_token': 'xoxb-xxx'},
-        config={'channel_id': 'C123456'}
+        source_type="slack",
+        source_id="dev-channel",
+        credentials={"bot_token": "xoxb-xxx"},
+        config={"channel_id": "C123456"},
     )
 
     # Ingest from all sources concurrently
-    results = await orchestrator.ingest_from_multiple_sources([
-        github_source,
-        slack_source
-    ])
+    results = await orchestrator.ingest_from_multiple_sources([github_source, slack_source])
 
     # Print per-source results
     for source_id, stats in results.items():
@@ -993,7 +958,7 @@ async def example_multi_source():
 
     # Print global stats
     global_stats = orchestrator.get_global_stats()
-    print(f"\nGlobal stats:")
+    print("\nGlobal stats:")
     print(f"  Total events: {global_stats['total_events_ingested']}")
     print(f"  Success rate: {global_stats['success_rate']:.1f}%")
 
@@ -1015,16 +980,13 @@ async def example_scheduled_ingestion():
 
     # Create pipeline and orchestrator
     pipeline = EventProcessingPipeline(store, embedder, hasher)
-    orchestrator = EventIngestionOrchestrator(
-        pipeline=pipeline,
-        cursor_manager=cursor_mgr
-    )
+    orchestrator = EventIngestionOrchestrator(pipeline=pipeline, cursor_manager=cursor_mgr)
 
     # Create sources
     factory = EventSourceFactory(cursor_store=cursor_mgr)
     sources = [
-        await factory.create_source('github', 'athena-repo', {...}, {...}),
-        await factory.create_source('slack', 'dev-channel', {...}, {...}),
+        await factory.create_source("github", "athena-repo", {...}, {...}),
+        await factory.create_source("slack", "dev-channel", {...}, {...}),
     ]
 
     # Run scheduled ingestion (every 5 minutes)
@@ -1032,11 +994,11 @@ async def example_scheduled_ingestion():
     try:
         stats = await orchestrator.run_scheduled_ingest(
             sources=sources,
-            schedule='5m',  # Every 5 minutes
-            max_iterations=10  # For testing (remove for production)
+            schedule="5m",  # Every 5 minutes
+            max_iterations=10,  # For testing (remove for production)
         )
 
-        print(f"Scheduled ingestion complete:")
+        print("Scheduled ingestion complete:")
         print(f"  Total cycles: {stats['total_cycles']}")
         print(f"  Total events: {stats['total_events']}")
         print(f"  Success rate: {stats['success_rate']:.1f}%")

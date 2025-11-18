@@ -16,7 +16,7 @@ import asyncio
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class CircuitBreaker:
@@ -26,10 +26,7 @@ class CircuitBreaker:
     """
 
     def __init__(
-        self,
-        service_name: str,
-        failure_threshold: int = 5,
-        recovery_timeout_seconds: int = 60
+        self, service_name: str, failure_threshold: int = 5, recovery_timeout_seconds: int = 60
     ):
         """Initialize circuit breaker.
 
@@ -59,7 +56,9 @@ class CircuitBreaker:
         self.last_failure_time = datetime.now()
 
         if self.failure_count >= self.failure_threshold:
-            logger.warning(f"Circuit {self.service_name} opened after {self.failure_count} failures")
+            logger.warning(
+                f"Circuit {self.service_name} opened after {self.failure_count} failures"
+            )
             self.state = "OPEN"
 
     def is_available(self) -> bool:
@@ -90,7 +89,9 @@ class ResilientLearningBridge:
     def __init__(self):
         """Initialize resilient bridge."""
         # Circuit breakers for different services
-        self.db_breaker = CircuitBreaker("database", failure_threshold=3, recovery_timeout_seconds=30)
+        self.db_breaker = CircuitBreaker(
+            "database", failure_threshold=3, recovery_timeout_seconds=30
+        )
         self.llm_breaker = CircuitBreaker("llm", failure_threshold=5, recovery_timeout_seconds=60)
 
         # In-memory fallback storage
@@ -104,7 +105,7 @@ class ResilientLearningBridge:
         outcome: str,
         success_rate: float,
         execution_time_ms: float = 0.0,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Track outcome with fallback to local storage if database unavailable.
 
@@ -136,15 +137,11 @@ class ResilientLearningBridge:
                         outcome=outcome,
                         success_rate=success_rate,
                         execution_time_ms=execution_time_ms,
-                        context=context or {}
+                        context=context or {},
                     )
 
                     self.db_breaker.record_success()
-                    return {
-                        "status": "success",
-                        "outcome_id": outcome_id,
-                        "stored_in": "database"
-                    }
+                    return {"status": "success", "outcome_id": outcome_id, "stored_in": "database"}
 
                 except Exception as e:
                     logger.warning(f"Database tracking failed: {e}")
@@ -157,33 +154,33 @@ class ResilientLearningBridge:
         # Fallback: store locally
         try:
             local_id = len(self._local_outcomes)
-            self._local_outcomes.append({
-                "id": local_id,
-                "agent_name": agent_name,
-                "decision": decision,
-                "outcome": outcome,
-                "success_rate": success_rate,
-                "execution_time_ms": execution_time_ms,
-                "context": context,
-                "timestamp": datetime.now().isoformat()
-            })
+            self._local_outcomes.append(
+                {
+                    "id": local_id,
+                    "agent_name": agent_name,
+                    "decision": decision,
+                    "outcome": outcome,
+                    "success_rate": success_rate,
+                    "execution_time_ms": execution_time_ms,
+                    "context": context,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
 
-            logger.info(f"Outcome stored locally (ID: {local_id}) - will sync when database available")
+            logger.info(
+                f"Outcome stored locally (ID: {local_id}) - will sync when database available"
+            )
 
             return {
                 "status": "fallback",
                 "outcome_id": local_id,
                 "stored_in": "local_cache",
-                "will_sync": True
+                "will_sync": True,
             }
 
         except Exception as e:
             logger.error(f"Even local storage failed: {e}")
-            return {
-                "status": "error",
-                "error": str(e),
-                "fallback_failed": True
-            }
+            return {"status": "error", "error": str(e), "fallback_failed": True}
 
     async def analyze_outcome_resilient(
         self,
@@ -191,7 +188,7 @@ class ResilientLearningBridge:
         events_processed: int,
         patterns_extracted: int,
         execution_time_ms: float,
-        strategy: str = "balanced"
+        strategy: str = "balanced",
     ) -> Dict[str, Any]:
         """Analyze outcome with LLM, fallback to heuristic if unavailable.
 
@@ -216,15 +213,11 @@ class ResilientLearningBridge:
                     events_processed=events_processed,
                     patterns_extracted=patterns_extracted,
                     execution_time_ms=execution_time_ms,
-                    strategy=strategy
+                    strategy=strategy,
                 )
 
                 self.llm_breaker.record_success()
-                return {
-                    "status": "success",
-                    "analysis": analysis,
-                    "reasoning_type": "llm-based"
-                }
+                return {"status": "success", "analysis": analysis, "reasoning_type": "llm-based"}
 
             except Exception as e:
                 logger.warning(f"LLM analysis failed: {e}")
@@ -236,21 +229,18 @@ class ResilientLearningBridge:
                 success_rate=success_rate,
                 events_processed=events_processed,
                 patterns_extracted=patterns_extracted,
-                execution_time_ms=execution_time_ms
+                execution_time_ms=execution_time_ms,
             )
 
             return {
                 "status": "fallback",
                 "analysis": heuristic_analysis,
-                "reasoning_type": "heuristic"
+                "reasoning_type": "heuristic",
             }
 
         except Exception as e:
             logger.error(f"Even heuristic analysis failed: {e}")
-            return {
-                "status": "error",
-                "error": str(e)
-            }
+            return {"status": "error", "error": str(e)}
 
     def get_local_outcomes(self) -> list:
         """Get outcomes stored in local cache.
@@ -278,17 +268,17 @@ class ResilientLearningBridge:
             "database": {
                 "state": self.db_breaker.state,
                 "failures": self.db_breaker.failure_count,
-                "available": self.db_breaker.is_available()
+                "available": self.db_breaker.is_available(),
             },
             "llm": {
                 "state": self.llm_breaker.state,
                 "failures": self.llm_breaker.failure_count,
-                "available": self.llm_breaker.is_available()
+                "available": self.llm_breaker.is_available(),
             },
             "local_cache": {
                 "items": len(self._local_outcomes),
-                "status": "active" if self._local_outcomes else "empty"
-            }
+                "status": "active" if self._local_outcomes else "empty",
+            },
         }
 
     # Private methods
@@ -298,7 +288,7 @@ class ResilientLearningBridge:
         success_rate: float,
         events_processed: int,
         patterns_extracted: int,
-        execution_time_ms: float
+        execution_time_ms: float,
     ) -> Dict[str, Any]:
         """Generate heuristic analysis without LLM.
 
@@ -326,8 +316,8 @@ class ResilientLearningBridge:
             "confidence": 0.6,  # Lower confidence for heuristic
             "recommendations": [
                 "Monitor this metric over time",
-                "Use heuristic until LLM services recover"
-            ]
+                "Use heuristic until LLM services recover",
+            ],
         }
 
 
@@ -335,7 +325,7 @@ async def with_retry(
     func: Callable[..., T],
     max_attempts: int = 3,
     backoff_factor: float = 2.0,
-    initial_delay_ms: float = 100.0
+    initial_delay_ms: float = 100.0,
 ) -> T:
     """Execute function with exponential backoff retry.
 
@@ -363,8 +353,7 @@ async def with_retry(
             if attempt < max_attempts - 1:
                 delay_seconds = delay_ms / 1000.0
                 logger.warning(
-                    f"Attempt {attempt + 1} failed: {e}. "
-                    f"Retrying in {delay_seconds:.1f}s..."
+                    f"Attempt {attempt + 1} failed: {e}. " f"Retrying in {delay_seconds:.1f}s..."
                 )
                 await asyncio.sleep(delay_seconds)
                 delay_ms *= backoff_factor
@@ -374,12 +363,7 @@ async def with_retry(
         raise last_exception
 
 
-def validate_outcome(
-    agent_name: str,
-    decision: str,
-    outcome: str,
-    success_rate: float
-) -> bool:
+def validate_outcome(agent_name: str, decision: str, outcome: str, success_rate: float) -> bool:
     """Validate outcome data before storing.
 
     Args:
@@ -399,7 +383,7 @@ def validate_outcome(
         logger.error("Invalid decision")
         return False
 
-    if outcome not in ('success', 'failure', 'partial', 'error'):
+    if outcome not in ("success", "failure", "partial", "error"):
         logger.error(f"Invalid outcome: {outcome}")
         return False
 

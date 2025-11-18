@@ -2,10 +2,9 @@
 
 import json
 from datetime import datetime
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional
 
 from ..core.database import Database
-from ..core.base_store import BaseStore
 from .models import (
     DecompositionStrategy,
     ExecutionFeedback,
@@ -25,9 +24,12 @@ class PlanningStore:
             db: Database instance
         """
         self.db = db
+
     # ==================== HELPER METHODS ====================
 
-    def execute(self, query: str, params: tuple = (), fetch_one: bool = False, fetch_all: bool = False) -> Any:
+    def execute(
+        self, query: str, params: tuple = (), fetch_one: bool = False, fetch_all: bool = False
+    ) -> Any:
         """Execute SQL query with consistent error handling.
 
         Args:
@@ -54,7 +56,7 @@ class PlanningStore:
             else:
                 return cursor
 
-        except Exception as e:
+        except Exception:
             # rollback handled by cursor context
             raise
 
@@ -119,15 +121,19 @@ class PlanningStore:
         """Ensure planning memory tables exist."""
 
         # For PostgreSQL async databases, skip sync schema initialization
-        if not hasattr(self.db, 'conn'):
+        if not hasattr(self.db, "conn"):
             import logging
+
             logger = logging.getLogger(__name__)
-            logger.debug(f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema().")
+            logger.debug(
+                f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema()."
+            )
             return
         cursor = self.db.get_cursor()
 
         # Planning patterns table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS planning_patterns (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -150,10 +156,12 @@ class PlanningStore:
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
                 UNIQUE(project_id, name)
             )
-        """)
+        """
+        )
 
         # Decomposition strategies table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS decomposition_strategies (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -175,10 +183,12 @@ class PlanningStore:
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
                 UNIQUE(project_id, strategy_name)
             )
-        """)
+        """
+        )
 
         # Orchestrator patterns table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS orchestrator_patterns (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -200,10 +210,12 @@ class PlanningStore:
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
                 UNIQUE(project_id, pattern_name)
             )
-        """)
+        """
+        )
 
         # Validation rules table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS validation_rules (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -227,10 +239,12 @@ class PlanningStore:
                 FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
                 UNIQUE(project_id, rule_name)
             )
-        """)
+        """
+        )
 
         # Execution feedback table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS execution_feedback (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -255,37 +269,52 @@ class PlanningStore:
                 FOREIGN KEY (pattern_id) REFERENCES planning_patterns(id) ON DELETE SET NULL,
                 FOREIGN KEY (orchestration_pattern_id) REFERENCES orchestrator_patterns(id) ON DELETE SET NULL
             )
-        """)
+        """
+        )
 
         # Indices for efficient querying
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_patterns_project_type
             ON planning_patterns(project_id, pattern_type)
-        """)
-        cursor.execute("""
+        """
+        )
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_patterns_success
             ON planning_patterns(project_id, success_rate DESC)
-        """)
-        cursor.execute("""
+        """
+        )
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_strategies_project
             ON decomposition_strategies(project_id, success_rate DESC)
-        """)
-        cursor.execute("""
+        """
+        )
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_orchestration_project
             ON orchestrator_patterns(project_id, speedup_factor DESC)
-        """)
-        cursor.execute("""
+        """
+        )
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_rules_project_risk
             ON validation_rules(project_id, risk_level)
-        """)
-        cursor.execute("""
+        """
+        )
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_feedback_pattern
             ON execution_feedback(pattern_id, execution_outcome)
-        """)
-        cursor.execute("""
+        """
+        )
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_feedback_created
             ON execution_feedback(project_id, created_at DESC)
-        """)
+        """
+        )
 
         # commit handled by cursor context
 
@@ -386,7 +415,7 @@ class PlanningStore:
         )
 
         patterns = []
-        for row in (rows or []):
+        for row in rows or []:
             pattern = self._row_to_planning_pattern(row)
             if pattern:
                 patterns.append(pattern)
@@ -419,7 +448,7 @@ class PlanningStore:
         )
 
         patterns = []
-        for row in (rows or []):
+        for row in rows or []:
             pattern = self._row_to_planning_pattern(row)
             if pattern:
                 patterns.append(pattern)
@@ -558,7 +587,7 @@ class PlanningStore:
         )
 
         strategies = []
-        for row in (rows or []):
+        for row in rows or []:
             strategy = self._row_to_decomposition_strategy(row)
             if strategy:
                 strategies.append(strategy)
@@ -678,7 +707,7 @@ class PlanningStore:
             )
 
         patterns = []
-        for row in (rows or []):
+        for row in rows or []:
             pattern = self._row_to_orchestrator_pattern(row)
             if pattern:
                 patterns.append(pattern)
@@ -696,9 +725,7 @@ class PlanningStore:
         Returns:
             ID of created rule
         """
-        rule_type_str = (
-            rule.rule_type.value if hasattr(rule.rule_type, "value") else rule.rule_type
-        )
+        rule_type_str = rule.rule_type.value if hasattr(rule.rule_type, "value") else rule.rule_type
 
         cursor = self.execute(
             """
@@ -743,7 +770,9 @@ class PlanningStore:
         Returns:
             ValidationRule or None if not found
         """
-        row = self.execute("SELECT * FROM validation_rules WHERE id = ?", (rule_id,), fetch_one=True)
+        row = self.execute(
+            "SELECT * FROM validation_rules WHERE id = ?", (rule_id,), fetch_one=True
+        )
 
         if not row:
             return None
@@ -776,7 +805,7 @@ class PlanningStore:
         )
 
         rules = []
-        for row in (rows or []):
+        for row in rows or []:
             rule = self._row_to_validation_rule(row)
             if rule:
                 rules.append(rule)
@@ -809,7 +838,7 @@ class PlanningStore:
         )
 
         rules = []
-        for row in (rows or []):
+        for row in rows or []:
             rule = self._row_to_validation_rule(row)
             if rule:
                 rules.append(rule)
@@ -895,9 +924,7 @@ class PlanningStore:
 
         return self._row_to_execution_feedback(row)
 
-    def get_feedback_for_pattern(
-        self, pattern_id: int, limit: int = 10
-    ) -> List[ExecutionFeedback]:
+    def get_feedback_for_pattern(self, pattern_id: int, limit: int = 10) -> List[ExecutionFeedback]:
         """Get execution feedback for a specific pattern.
 
         Args:
@@ -919,7 +946,7 @@ class PlanningStore:
         )
 
         feedback_list = []
-        for row in (rows or []):
+        for row in rows or []:
             feedback = self._row_to_execution_feedback(row)
             if feedback:
                 feedback_list.append(feedback)
@@ -1142,9 +1169,7 @@ class PlanningStore:
             "status": "pending",
         }
 
-    async def list_plans(
-        self, limit: int = 20, status: str | None = None
-    ) -> list[dict]:
+    async def list_plans(self, limit: int = 20, status: str | None = None) -> list[dict]:
         """List plans (async wrapper for find_patterns_by_task_type).
 
         Args:
@@ -1155,9 +1180,7 @@ class PlanningStore:
             List of plan dicts
         """
         # Query by 'hierarchical' pattern type (most common for planning)
-        patterns = self.find_patterns_by_task_type(
-            project_id=1, task_type="general", limit=limit
-        )
+        patterns = self.find_patterns_by_task_type(project_id=1, task_type="general", limit=limit)
         if not patterns:
             return []
 
@@ -1191,9 +1214,7 @@ class PlanningStore:
             return {"valid": False, "error": "Plan not found"}
 
         # Get validation rules and apply them
-        rules = self.find_validation_rules_by_task_type(
-            project_id=1, task_type="general"
-        )
+        rules = self.find_validation_rules_by_task_type(project_id=1, task_type="general")
 
         return {
             "valid": len(rules) == 0 or pattern.quality_score > 0.5,
@@ -1227,9 +1248,7 @@ class PlanningStore:
             "unit": "minutes",
         }
 
-    async def update_plan_status(
-        self, plan_id: int | str, status: str
-    ) -> bool:
+    async def update_plan_status(self, plan_id: int | str, status: str) -> bool:
         """Update plan status (async wrapper).
 
         Args:

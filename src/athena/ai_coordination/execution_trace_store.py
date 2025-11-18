@@ -34,12 +34,14 @@ class ExecutionTraceStore:
             db: Database instance
         """
         self.db = db
+
     def _ensure_schema(self) -> None:
         """Create tables if they don't exist."""
         cursor = self.db.get_cursor()
 
         # Execution traces table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS execution_traces (
                 id SERIAL PRIMARY KEY,
                 goal_id TEXT,
@@ -62,28 +64,37 @@ class ExecutionTraceStore:
                 consolidated_at INTEGER,
                 created_at INTEGER NOT NULL
             )
-        """)
+        """
+        )
 
         # Indexes for common queries
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_execution_traces_goal
             ON execution_traces(goal_id, outcome)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_execution_traces_task
             ON execution_traces(task_id, outcome)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_execution_traces_session
             ON execution_traces(session_id, timestamp DESC)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_execution_traces_outcome
             ON execution_traces(outcome, created_at DESC)
-        """)
+        """
+        )
 
         # commit handled by cursor context
 
@@ -100,33 +111,36 @@ class ExecutionTraceStore:
         now = int(time.time() * 1000)  # Milliseconds
 
         # Get outcome value (handles both enum and string)
-        outcome_value = trace.outcome.value if hasattr(trace.outcome, 'value') else trace.outcome
+        outcome_value = trace.outcome.value if hasattr(trace.outcome, "value") else trace.outcome
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO execution_traces
             (goal_id, task_id, plan_id, session_id, timestamp, action_type, description,
              outcome, code_changes_json, errors_json, decisions_json, lessons_json,
              quality_json, duration_seconds, ai_model_used, tokens_used, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            trace.goal_id,
-            trace.task_id,
-            trace.plan_id,
-            trace.session_id,
-            int(trace.timestamp.timestamp() * 1000),
-            trace.action_type,
-            trace.description,
-            outcome_value,
-            json.dumps([c.dict() for c in trace.code_changes]),
-            json.dumps([e.dict() for e in trace.errors]),
-            json.dumps([d.dict() for d in trace.decisions]),
-            json.dumps([l.dict() for l in trace.lessons]),
-            json.dumps(trace.quality_assessment.dict()) if trace.quality_assessment else None,
-            trace.duration_seconds,
-            trace.ai_model_used,
-            trace.tokens_used,
-            now
-        ))
+        """,
+            (
+                trace.goal_id,
+                trace.task_id,
+                trace.plan_id,
+                trace.session_id,
+                int(trace.timestamp.timestamp() * 1000),
+                trace.action_type,
+                trace.description,
+                outcome_value,
+                json.dumps([c.dict() for c in trace.code_changes]),
+                json.dumps([e.dict() for e in trace.errors]),
+                json.dumps([d.dict() for d in trace.decisions]),
+                json.dumps([l.dict() for l in trace.lessons]),
+                json.dumps(trace.quality_assessment.dict()) if trace.quality_assessment else None,
+                trace.duration_seconds,
+                trace.ai_model_used,
+                trace.tokens_used,
+                now,
+            ),
+        )
 
         # commit handled by cursor context
         return cursor.lastrowid
@@ -141,10 +155,7 @@ class ExecutionTraceStore:
             ExecutionTrace or None if not found
         """
         cursor = self.db.get_cursor()
-        cursor.execute(
-            "SELECT * FROM execution_traces WHERE id = ?",
-            (execution_id,)
-        )
+        cursor.execute("SELECT * FROM execution_traces WHERE id = ?", (execution_id,))
         row = cursor.fetchone()
         return self._row_to_execution(row) if row else None
 
@@ -158,11 +169,14 @@ class ExecutionTraceStore:
             List of ExecutionTrace instances
         """
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM execution_traces
             WHERE goal_id = ?
             ORDER BY timestamp DESC
-        """, (goal_id,))
+        """,
+            (goal_id,),
+        )
 
         return [self._row_to_execution(row) for row in cursor.fetchall()]
 
@@ -176,15 +190,20 @@ class ExecutionTraceStore:
             List of ExecutionTrace instances
         """
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM execution_traces
             WHERE task_id = ?
             ORDER BY timestamp DESC
-        """, (task_id,))
+        """,
+            (task_id,),
+        )
 
         return [self._row_to_execution(row) for row in cursor.fetchall()]
 
-    def get_executions_by_outcome(self, goal_id: str, outcome: ExecutionOutcome) -> list[ExecutionTrace]:
+    def get_executions_by_outcome(
+        self, goal_id: str, outcome: ExecutionOutcome
+    ) -> list[ExecutionTrace]:
         """Get executions by outcome for a goal.
 
         Args:
@@ -196,13 +215,16 @@ class ExecutionTraceStore:
         """
         cursor = self.db.get_cursor()
         # Get outcome value (handles both enum and string)
-        outcome_value = outcome.value if hasattr(outcome, 'value') else outcome
+        outcome_value = outcome.value if hasattr(outcome, "value") else outcome
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM execution_traces
             WHERE goal_id = ? AND outcome = ?
             ORDER BY timestamp DESC
-        """, (goal_id, outcome_value))
+        """,
+            (goal_id, outcome_value),
+        )
 
         return [self._row_to_execution(row) for row in cursor.fetchall()]
 
@@ -238,11 +260,14 @@ class ExecutionTraceStore:
             List of ExecutionTrace instances
         """
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM execution_traces
             ORDER BY timestamp DESC
             LIMIT ?
-        """, (limit,))
+        """,
+            (limit,),
+        )
 
         return [self._row_to_execution(row) for row in cursor.fetchall()]
 
@@ -258,21 +283,22 @@ class ExecutionTraceStore:
         cursor = self.db.get_cursor()
 
         # Total executions
-        cursor.execute(
-            "SELECT COUNT(*) FROM execution_traces WHERE goal_id = ?",
-            (goal_id,)
-        )
+        cursor.execute("SELECT COUNT(*) FROM execution_traces WHERE goal_id = ?", (goal_id,))
         total = cursor.fetchone()[0]
 
         if total == 0:
             return 0.0
 
         # Successful executions
-        success_value = ExecutionOutcome.SUCCESS.value if hasattr(ExecutionOutcome.SUCCESS, 'value') else ExecutionOutcome.SUCCESS
+        success_value = (
+            ExecutionOutcome.SUCCESS.value
+            if hasattr(ExecutionOutcome.SUCCESS, "value")
+            else ExecutionOutcome.SUCCESS
+        )
 
         cursor.execute(
             "SELECT COUNT(*) FROM execution_traces WHERE goal_id = ? AND outcome = ?",
-            (goal_id, success_value)
+            (goal_id, success_value),
         )
         successful = cursor.fetchone()[0]
 
@@ -309,10 +335,14 @@ class ExecutionTraceStore:
             }
 
         return {
-            "code_quality": sum(e.quality_assessment.code_quality for e in with_quality) / len(with_quality),
-            "approach_quality": sum(e.quality_assessment.approach_quality for e in with_quality) / len(with_quality),
-            "efficiency": sum(e.quality_assessment.efficiency for e in with_quality) / len(with_quality),
-            "correctness": sum(e.quality_assessment.correctness for e in with_quality) / len(with_quality),
+            "code_quality": sum(e.quality_assessment.code_quality for e in with_quality)
+            / len(with_quality),
+            "approach_quality": sum(e.quality_assessment.approach_quality for e in with_quality)
+            / len(with_quality),
+            "efficiency": sum(e.quality_assessment.efficiency for e in with_quality)
+            / len(with_quality),
+            "correctness": sum(e.quality_assessment.correctness for e in with_quality)
+            / len(with_quality),
         }
 
     def get_common_errors(self, goal_id: str) -> dict:
@@ -362,11 +392,14 @@ class ExecutionTraceStore:
         cursor = self.db.get_cursor()
         now = int(time.time() * 1000)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE execution_traces
             SET consolidation_status = ?, consolidated_at = ?
             WHERE id = ?
-        """, ("consolidated", now, execution_id))
+        """,
+            ("consolidated", now, execution_id),
+        )
 
         # commit handled by cursor context
 
@@ -380,11 +413,14 @@ class ExecutionTraceStore:
             List of unconsolidated ExecutionTrace instances
         """
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM execution_traces
             WHERE goal_id = ? AND consolidation_status = 'unconsolidated'
             ORDER BY timestamp DESC
-        """, (goal_id,))
+        """,
+            (goal_id,),
+        )
 
         return [self._row_to_execution(row) for row in cursor.fetchall()]
 

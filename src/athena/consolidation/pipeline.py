@@ -21,7 +21,6 @@ from typing import List, Optional
 from .clustering import cluster_events_by_context
 from .pattern_extraction import extract_patterns, Pattern
 from .run_history import ConsolidationRunHistory, ConsolidationRunMetrics, ConsolidationStatus
-from ..episodic.models import EpisodicEvent
 from ..episodic.store import EpisodicStore
 from ..memory.store import MemoryStore
 from ..graph.store import GraphStore
@@ -72,7 +71,7 @@ def consolidate_episodic_to_semantic(
     time_window_hours: int = 24,
     min_pattern_confidence: float = 0.7,
     dry_run: bool = False,
-    database: Optional[object] = None  # Optional Database instance for run tracking
+    database: Optional[object] = None,  # Optional Database instance for run tracking
 ) -> ConsolidationReport:
     """
     Consolidate episodic events into semantic patterns and update knowledge graph.
@@ -119,6 +118,7 @@ def consolidate_episodic_to_semantic(
             run_id = run_history.create_run(project_id)
         except Exception as e:
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning(f"Failed to create consolidation run record: {e}")
 
@@ -128,7 +128,7 @@ def consolidate_episodic_to_semantic(
         project_id=project_id,
         start=cutoff_time,
         end=datetime.now(),
-        consolidation_status='unconsolidated'
+        consolidation_status="unconsolidated",
     )
 
     if not events:
@@ -144,7 +144,7 @@ def consolidate_episodic_to_semantic(
             quality_before=0.0,
             quality_after=0.0,
             quality_improvement=0.0,
-            patterns=[]
+            patterns=[],
         )
 
     # Step 2: Cluster related events
@@ -160,9 +160,7 @@ def consolidate_episodic_to_semantic(
 
         try:
             patterns = extract_patterns(
-                event_cluster=cluster,
-                use_llm=True,
-                min_confidence=min_pattern_confidence
+                event_cluster=cluster, use_llm=True, min_confidence=min_pattern_confidence
             )
 
             all_patterns.extend(patterns)
@@ -183,15 +181,15 @@ def consolidate_episodic_to_semantic(
             try:
                 # Add consolidation metadata as tags
                 enriched_tags = (pattern.tags or []) + [
-                    'consolidation',
-                    f'confidence:{pattern.confidence:.2f}'
+                    "consolidation",
+                    f"confidence:{pattern.confidence:.2f}",
                 ]
 
                 memory_id = semantic_store.remember(
                     content=pattern.description,
                     memory_type=pattern.type,
                     project_id=project_id,
-                    tags=enriched_tags
+                    tags=enriched_tags,
                 )
                 stored_pattern_ids.append(memory_id)
 
@@ -203,8 +201,7 @@ def consolidate_episodic_to_semantic(
     if not dry_run:
         for event in events:
             episodic_store.mark_event_consolidated(
-                event_id=event.id,
-                consolidated_at=datetime.now()
+                event_id=event.id, consolidated_at=datetime.now()
             )
 
     # Step 6.5: Synthesize Temporal Knowledge Graph (create relations from episodic events)
@@ -216,7 +213,7 @@ def consolidate_episodic_to_semantic(
                 graph_store=graph_store,
                 causality_threshold=0.5,
                 recency_decay_hours=1.0,
-                frequency_threshold=10
+                frequency_threshold=10,
             )
 
             # Get first event's session ID to synthesize that session
@@ -249,16 +246,21 @@ def consolidate_episodic_to_semantic(
                 events_processed=len(events),
                 events_consolidated=len(events),
                 patterns_extracted=len(stored_pattern_ids),
-                patterns_validated=len([p for p in all_patterns if p.confidence >= min_pattern_confidence]),
+                patterns_validated=len(
+                    [p for p in all_patterns if p.confidence >= min_pattern_confidence]
+                ),
                 memories_created=len(stored_pattern_ids),
                 quality_before=quality_before,
                 quality_after=quality_after,
-                throughput_events_per_sec=len(events) / max(completed_at.timestamp() - started_at.timestamp(), 0.001),
-                avg_pattern_confidence=sum(p.confidence for p in all_patterns) / max(len(all_patterns), 1),
+                throughput_events_per_sec=len(events)
+                / max(completed_at.timestamp() - started_at.timestamp(), 0.001),
+                avg_pattern_confidence=sum(p.confidence for p in all_patterns)
+                / max(len(all_patterns), 1),
             )
             run_history.update_run(run_id, metrics)
         except Exception as e:
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning(f"Failed to update consolidation run {run_id} with metrics: {e}")
 
@@ -273,7 +275,7 @@ def consolidate_episodic_to_semantic(
         quality_before=quality_before,
         quality_after=quality_after,
         quality_improvement=quality_improvement,
-        patterns=all_patterns
+        patterns=all_patterns,
     )
 
 
@@ -316,11 +318,7 @@ def _calculate_memory_quality(semantic_store: MemoryStore, project_id: int) -> f
         coverage_score = min(1.0, len(all_tags) / 20)  # Target: 20+ diverse tags
 
         # Composite quality score
-        quality = (
-            0.5 * avg_usefulness +
-            0.3 * avg_recency +
-            0.2 * coverage_score
-        )
+        quality = 0.5 * avg_usefulness + 0.3 * avg_recency + 0.2 * coverage_score
 
         return quality
 
@@ -330,10 +328,9 @@ def _calculate_memory_quality(semantic_store: MemoryStore, project_id: int) -> f
 
 # Background consolidation daemon
 
+
 async def consolidation_daemon(
-    episodic_store: EpisodicStore,
-    semantic_store: MemoryStore,
-    interval_hours: int = 24
+    episodic_store: EpisodicStore, semantic_store: MemoryStore, interval_hours: int = 24
 ):
     """
     Background service that runs consolidation periodically.
@@ -358,7 +355,7 @@ async def consolidation_daemon(
                         project_id=project.id,
                         episodic_store=episodic_store,
                         semantic_store=semantic_store,
-                        time_window_hours=24
+                        time_window_hours=24,
                     )
 
                     print(f"Consolidated {project.name}: {report}")

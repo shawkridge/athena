@@ -13,7 +13,7 @@ import logging
 import statistics
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional, Callable, Tuple
+from typing import List, Dict, Any, Callable
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class BenchmarkType(Enum):
     """Types of benchmarks."""
+
     LATENCY = "latency"  # Time to complete operation
     THROUGHPUT = "throughput"  # Operations per second
     QUALITY = "quality"  # Accuracy/reliability of results
@@ -32,6 +33,7 @@ class BenchmarkType(Enum):
 @dataclass
 class BenchmarkResult:
     """Result of a single benchmark measurement."""
+
     name: str
     benchmark_type: BenchmarkType
     value: float  # The measured value
@@ -47,6 +49,7 @@ class BenchmarkResult:
 @dataclass
 class BenchmarkStats:
     """Statistical summary of benchmark results."""
+
     name: str
     benchmark_type: BenchmarkType
     unit: str
@@ -59,7 +62,7 @@ class BenchmarkStats:
     percentile_95: float
     percentile_99: float
 
-    def improvement_pct(self, baseline: 'BenchmarkStats') -> float:
+    def improvement_pct(self, baseline: "BenchmarkStats") -> float:
         """Calculate improvement vs baseline (for latency, lower is better).
 
         Args:
@@ -186,6 +189,7 @@ class PerformanceBenchmark:
         Returns:
             BenchmarkStats in milliseconds
         """
+
         def wrapped_fn():
             start = time.time()
             fn()
@@ -240,6 +244,7 @@ class PerformanceBenchmark:
         Returns:
             BenchmarkStats as percentage
         """
+
         def wrapped_fn():
             return fn() * 100  # Convert to percentage
 
@@ -347,6 +352,7 @@ class TierSelectionBenchmark:
         Returns:
             Dictionary of baseline and improved stats
         """
+
         # Baseline: complexity-only tier selection
         def baseline_recall():
             return self.manager.recall(
@@ -462,7 +468,6 @@ class ReplanningBenchmark:
         from athena.execution.adaptive_replanning import (
             AdaptiveReplanningOrchestrator,
         )
-        from datetime import timedelta
 
         orchestrator = AdaptiveReplanningOrchestrator()
 

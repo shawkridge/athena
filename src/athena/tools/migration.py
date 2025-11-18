@@ -3,9 +3,9 @@
 Provides utilities for systematically migrating MCP tools from the
 monolithic handlers.py into modular, lazy-loaded tool files.
 """
+
 import ast
-import re
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Any
 from pathlib import Path
 import logging
 
@@ -204,7 +204,7 @@ class {class_name}(BaseTool):
         # Convert tool name to module name
         module_name = tool_name.replace("_", "_")  # Keep underscores
         if module_name.startswith(f"{category}_"):
-            module_name = module_name[len(category) + 1:]
+            module_name = module_name[len(category) + 1 :]
 
         # Create category directory if needed
         category_dir = self.tools_base_dir / category
@@ -224,7 +224,7 @@ class {class_name}(BaseTool):
             class_name=class_name,
             tool_name=tool_name.replace("_", "-"),  # Convert to kebab-case for display
             category=category,
-            description=description
+            description=description,
         )
 
         # Write file
@@ -295,7 +295,7 @@ class {class_name}(BaseTool):
             "migrated_tools": migrated_count,
             "remaining_tools": len(tools) - migrated_count,
             "categories": categories,
-            "migration_percentage": (migrated_count / len(tools) * 100) if tools else 0
+            "migration_percentage": (migrated_count / len(tools) * 100) if tools else 0,
         }
 
 
@@ -353,10 +353,7 @@ def handle_{tool_name}(**kwargs):
         """
         self.compat_dir.mkdir(parents=True, exist_ok=True)
 
-        content = self.COMPATIBILITY_WRAPPER.format(
-            tool_name=tool_name,
-            tool_key=tool_key
-        )
+        content = self.COMPATIBILITY_WRAPPER.format(tool_name=tool_name, tool_key=tool_key)
 
         wrapper_file = self.compat_dir / f"{tool_name}_compat.py"
         wrapper_file.write_text(content)

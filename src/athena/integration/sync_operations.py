@@ -13,18 +13,15 @@ Functions handle:
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from .todowrite_sync import (
     convert_todo_to_plan,
     convert_plan_to_todo,
-    detect_sync_conflict,
     resolve_sync_conflict,
     get_sync_metadata,
-    AthenaTaskStatus,
 )
-from .database_sync import TodoWritePlanStore, get_store
+from .database_sync import get_store
 
 logger = logging.getLogger(__name__)
 
@@ -262,12 +259,15 @@ async def get_active_plans(
         # Get in_progress and pending plans, ordered by updated_at
         cursor = store.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM todowrite_plans
             WHERE project_id = %s AND status IN ('in_progress', 'ready', 'planning')
             ORDER BY updated_at DESC
             LIMIT %s
-        """, (project_id, limit))
+        """,
+            (project_id, limit),
+        )
 
         rows = cursor.fetchall()
         cursor.close()
@@ -352,13 +352,17 @@ async def cleanup_completed_plans(
 
         # Calculate cutoff timestamp
         import time
+
         now = int(time.time())
         cutoff = now - (days_old * 24 * 60 * 60)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             DELETE FROM todowrite_plans
             WHERE project_id = %s AND status = 'completed' AND created_at < %s
-        """, (project_id, cutoff))
+        """,
+            (project_id, cutoff),
+        )
 
         deleted = cursor.rowcount
         cursor.close()
@@ -392,17 +396,23 @@ async def export_plans_as_todos(
         cursor = store.db.get_cursor()
 
         if status_filter:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM todowrite_plans
                 WHERE project_id = %s AND status = %s
                 ORDER BY created_at DESC
-            """, (project_id, status_filter))
+            """,
+                (project_id, status_filter),
+            )
         else:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM todowrite_plans
                 WHERE project_id = %s
                 ORDER BY created_at DESC
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
 
         rows = cursor.fetchall()
         cursor.close()

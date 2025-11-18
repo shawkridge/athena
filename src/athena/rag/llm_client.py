@@ -13,9 +13,7 @@ class LLMClient(ABC):
     """Abstract LLM client for RAG operations."""
 
     @abstractmethod
-    def generate(
-        self, prompt: str, max_tokens: int = 500, temperature: float = 0.7
-    ) -> str:
+    def generate(self, prompt: str, max_tokens: int = 500, temperature: float = 0.7) -> str:
         """Generate text from prompt.
 
         Args:
@@ -49,9 +47,7 @@ class MockLLMClient(LLMClient):
         """Initialize mock client."""
         logger.info("Initialized MockLLMClient (testing/no external service)")
 
-    def generate(
-        self, prompt: str, max_tokens: int = 500, temperature: float = 0.7
-    ) -> str:
+    def generate(self, prompt: str, max_tokens: int = 500, temperature: float = 0.7) -> str:
         """Generate mock response.
 
         Args:
@@ -101,9 +97,7 @@ class ClaudeLLMClient(LLMClient):
         self.model = model
         logger.info(f"Initialized Claude client with model: {model}")
 
-    def generate(
-        self, prompt: str, max_tokens: int = 500, temperature: float = 0.7
-    ) -> str:
+    def generate(self, prompt: str, max_tokens: int = 500, temperature: float = 0.7) -> str:
         """Generate using Claude API.
 
         Args:
@@ -196,9 +190,7 @@ class LocalLLMClientSync(LLMClient):
         )
         logger.info(f"Initialized LocalLLMClientSync with reasoning at {reasoning_url}")
 
-    def generate(
-        self, prompt: str, max_tokens: int = 500, temperature: float = 0.7
-    ) -> str:
+    def generate(self, prompt: str, max_tokens: int = 500, temperature: float = 0.7) -> str:
         """Generate text using local reasoning service.
 
         Args:
@@ -296,14 +288,14 @@ class OllamaLLMClient(LLMClient):
             base_url: Ollama server URL (defaults to config.OLLAMA_BASE_URL)
         """
         from athena.core.config import OLLAMA_LLM_MODEL, OLLAMA_BASE_URL
+
         model = model or OLLAMA_LLM_MODEL
         base_url = base_url or OLLAMA_BASE_URL
         try:
             import ollama
         except ImportError:
             raise ImportError(
-                "ollama package required for Ollama client. "
-                "Install with: pip install ollama"
+                "ollama package required for Ollama client. " "Install with: pip install ollama"
             )
 
         self.client = ollama.Client(host=base_url) if base_url else ollama
@@ -313,14 +305,10 @@ class OllamaLLMClient(LLMClient):
         # Verify model exists
         try:
             self.client.show(model)
-        except Exception as e:
-            logger.warning(
-                f"Model {model} not found. Pull it with: ollama pull {model}"
-            )
+        except Exception:
+            logger.warning(f"Model {model} not found. Pull it with: ollama pull {model}")
 
-    def generate(
-        self, prompt: str, max_tokens: int = 500, temperature: float = 0.7
-    ) -> str:
+    def generate(self, prompt: str, max_tokens: int = 500, temperature: float = 0.7) -> str:
         """Generate using Ollama.
 
         Args:

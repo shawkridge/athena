@@ -12,16 +12,17 @@ Date: 2025-10-31
 """
 
 import re
-from typing import List, Dict, Any, Optional, Set
+from typing import List, Dict, Optional
 from dataclasses import dataclass
 
-from athena.symbols.symbol_models import Symbol, SymbolMetrics, RelationType
+from athena.symbols.symbol_models import Symbol, SymbolMetrics
 from athena.symbols.symbol_store import SymbolStore
 
 
 @dataclass
 class ComplexityAnalysis:
     """Analysis results for a symbol."""
+
     symbol_id: int
     cyclomatic_complexity: int
     cognitive_complexity: int
@@ -36,13 +37,35 @@ class SymbolAnalyzer:
 
     # Complexity indicators
     BRANCH_KEYWORDS = {
-        "if", "elif", "else", "for", "while", "except", "case",
-        "switch", "catch", "finally", "ternary"
+        "if",
+        "elif",
+        "else",
+        "for",
+        "while",
+        "except",
+        "case",
+        "switch",
+        "catch",
+        "finally",
+        "ternary",
     }
 
     COGNITIVE_OPERATORS = {
-        "if", "else", "elif", "for", "while", "switch", "case",
-        "catch", "&&", "||", "?", "?.", "throw", "try", "except"
+        "if",
+        "else",
+        "elif",
+        "for",
+        "while",
+        "switch",
+        "case",
+        "catch",
+        "&&",
+        "||",
+        "?",
+        "?.",
+        "throw",
+        "try",
+        "except",
     }
 
     def __init__(self, store: SymbolStore):
@@ -162,15 +185,18 @@ class SymbolAnalyzer:
                     complexity += 1 + (level // 2)
 
                 # Boolean operators
-                if "&&" in stripped or "||" in stripped or " and " in stripped or " or " in stripped:
+                if (
+                    "&&" in stripped
+                    or "||" in stripped
+                    or " and " in stripped
+                    or " or " in stripped
+                ):
                     complexity += level  # More cognitive load at higher nesting
 
         return max(1, complexity)
 
     def compute_maintainability_index(
-        self,
-        symbol: Symbol,
-        cyclomatic_complexity: Optional[int] = None
+        self, symbol: Symbol, cyclomatic_complexity: Optional[int] = None
     ) -> float:
         """Compute maintainability index (0-100 scale).
 
@@ -190,7 +216,9 @@ class SymbolAnalyzer:
         if cyclomatic_complexity is None:
             cyclomatic_complexity = self.compute_cyclomatic_complexity(symbol)
 
-        loc = symbol.metrics.lines_of_code if symbol.metrics else len((symbol.code or "").split("\n"))
+        loc = (
+            symbol.metrics.lines_of_code if symbol.metrics else len((symbol.code or "").split("\n"))
+        )
 
         # Start with base score
         score = 100.0
@@ -277,11 +305,7 @@ class SymbolAnalyzer:
             maintainability_index=maintainability,
         )
 
-    def link_symbol_to_patterns(
-        self,
-        symbol: Symbol,
-        pattern_names: List[str]
-    ) -> Dict[str, float]:
+    def link_symbol_to_patterns(self, symbol: Symbol, pattern_names: List[str]) -> Dict[str, float]:
         """Link symbol to procedural patterns (Phase 4 integration).
 
         Scores how well this symbol matches known patterns from Phase 4.
@@ -306,12 +330,7 @@ class SymbolAnalyzer:
     # Private Helper Methods
     # =========================================================================
 
-    def _detect_quality_issues(
-        self,
-        symbol: Symbol,
-        cyclomatic: int,
-        cognitive: int
-    ) -> List[str]:
+    def _detect_quality_issues(self, symbol: Symbol, cyclomatic: int, cognitive: int) -> List[str]:
         """Detect quality issues in a symbol.
 
         Args:

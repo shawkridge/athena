@@ -71,6 +71,7 @@ class WebSearchResearcher(WebResearchAgent):
         # Import here to handle optional dependency
         try:
             from ..tools import WebSearch
+
             self.web_search = WebSearch()
             self.available = True
         except ImportError:
@@ -104,9 +105,7 @@ class WebSearchResearcher(WebResearchAgent):
                 # Calculate relevance based on position and search ranking
                 relevance = max(0.5, 1.0 - (i * 0.15))
 
-                findings.append(
-                    self.format_finding(title, summary, url, relevance)
-                )
+                findings.append(self.format_finding(title, summary, url, relevance))
 
             await asyncio.sleep(0.05)  # Simulate processing time
 
@@ -134,6 +133,7 @@ class GitHubCodeResearcher(WebResearchAgent):
         findings = []
         try:
             from . import WebFetch
+
             web_fetch = WebFetch()
 
             # Search GitHub repositories via web search

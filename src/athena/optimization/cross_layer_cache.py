@@ -18,8 +18,8 @@ import json
 import logging
 import time
 from collections import OrderedDict
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -307,8 +307,7 @@ class CrossLayerCache:
         self.total_bytes_cached -= entry.size_bytes
 
         logger.debug(
-            f"Cache EVICT (LRU): {key_to_evict[:16]}... "
-            f"freed {entry.size_bytes} bytes"
+            f"Cache EVICT (LRU): {key_to_evict[:16]}... " f"freed {entry.size_bytes} bytes"
         )
 
     def _record_hit(self, cache_key: str, entry: CrossLayerCacheEntry) -> None:

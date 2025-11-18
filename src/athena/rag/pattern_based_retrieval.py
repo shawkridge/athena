@@ -33,11 +33,7 @@ class PatternBasedRetrieval:
         self._strategy_stats = {}  # Track which strategies work
 
     async def retrieve_with_patterns(
-        self,
-        query: str,
-        agent_name: str,
-        limit: int = 10,
-        time_window_days: int = 30
+        self, query: str, agent_name: str, limit: int = 10, time_window_days: int = 30
     ) -> List[Dict[str, Any]]:
         """Retrieve memories using learned patterns from agent history.
 
@@ -62,8 +58,7 @@ class PatternBasedRetrieval:
 
         # Extract patterns: what decisions led to success?
         successful_patterns = self._extract_success_patterns(
-            history,
-            time_window_days=time_window_days
+            history, time_window_days=time_window_days
         )
 
         # Expand query with successful patterns
@@ -84,16 +79,14 @@ class PatternBasedRetrieval:
             context={
                 "query": query,
                 "expanded_with": len(successful_patterns),
-                "results_count": len(ranked)
-            }
+                "results_count": len(ranked),
+            },
         )
 
         return ranked
 
     def _extract_success_patterns(
-        self,
-        history: List,
-        time_window_days: int = 30
+        self, history: List, time_window_days: int = 30
     ) -> List[Dict[str, Any]]:
         """Extract patterns from successful decisions.
 
@@ -109,7 +102,7 @@ class PatternBasedRetrieval:
 
         for outcome in history:
             # Only look at successes
-            if outcome.outcome != 'success':
+            if outcome.outcome != "success":
                 continue
 
             # Only recent
@@ -118,44 +111,42 @@ class PatternBasedRetrieval:
 
             # Extract decision as a pattern
             pattern = {
-                'decision': outcome.decision,
-                'success_rate': outcome.success_rate,
-                'context': outcome.context,
-                'frequency': 1  # Will aggregate
+                "decision": outcome.decision,
+                "success_rate": outcome.success_rate,
+                "context": outcome.context,
+                "frequency": 1,  # Will aggregate
             }
             patterns.append(pattern)
 
         # Aggregate: count frequency of each decision
         aggregated = {}
         for p in patterns:
-            decision = p['decision']
+            decision = p["decision"]
             if decision not in aggregated:
                 aggregated[decision] = {
-                    'decision': decision,
-                    'avg_success_rate': 0.0,
-                    'frequency': 0,
-                    'contexts': []
+                    "decision": decision,
+                    "avg_success_rate": 0.0,
+                    "frequency": 0,
+                    "contexts": [],
                 }
-            aggregated[decision]['frequency'] += 1
-            aggregated[decision]['contexts'].append(p['context'])
+            aggregated[decision]["frequency"] += 1
+            aggregated[decision]["contexts"].append(p["context"])
 
         # Calculate averages
         result = []
         for decision, data in aggregated.items():
-            result.append({
-                'pattern': decision,
-                'success_rate': data['avg_success_rate'] / max(data['frequency'], 1),
-                'frequency': data['frequency'],
-                'examples': data['contexts'][:3]  # Keep top 3 examples
-            })
+            result.append(
+                {
+                    "pattern": decision,
+                    "success_rate": data["avg_success_rate"] / max(data["frequency"], 1),
+                    "frequency": data["frequency"],
+                    "examples": data["contexts"][:3],  # Keep top 3 examples
+                }
+            )
 
-        return sorted(result, key=lambda x: x['success_rate'], reverse=True)
+        return sorted(result, key=lambda x: x["success_rate"], reverse=True)
 
-    def _expand_query(
-        self,
-        query: str,
-        patterns: List[Dict[str, Any]]
-    ) -> str:
+    def _expand_query(self, query: str, patterns: List[Dict[str, Any]]) -> str:
         """Expand query with learned patterns.
 
         Args:
@@ -171,16 +162,14 @@ class PatternBasedRetrieval:
         # Use top 3 patterns for expansion
         pattern_keywords = []
         for p in patterns[:3]:
-            pattern_keywords.append(p['pattern'])
+            pattern_keywords.append(p["pattern"])
 
         # Create expanded query
         expanded = f"{query} OR ({' OR '.join(pattern_keywords)})"
         return expanded
 
     def _rerank_by_patterns(
-        self,
-        results: List[Dict[str, Any]],
-        patterns: List[Dict[str, Any]]
+        self, results: List[Dict[str, Any]], patterns: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """Re-rank results by similarity to learned patterns.
 
@@ -201,11 +190,11 @@ class PatternBasedRetrieval:
             match_count = 0
 
             # Check if result content matches any pattern
-            result_text = str(result.get('content', '')).lower()
+            result_text = str(result.get("content", "")).lower()
 
             for pattern in patterns:
-                if pattern['pattern'].lower() in result_text:
-                    pattern_score += pattern['success_rate']
+                if pattern["pattern"].lower() in result_text:
+                    pattern_score += pattern["success_rate"]
                     match_count += 1
 
             # Average pattern score
@@ -214,17 +203,13 @@ class PatternBasedRetrieval:
             else:
                 pattern_score = 0.5  # Default if no match
 
-            result['pattern_score'] = pattern_score
+            result["pattern_score"] = pattern_score
             scored.append(result)
 
         # Sort by pattern score (descending)
-        return sorted(scored, key=lambda x: x.get('pattern_score', 0), reverse=True)
+        return sorted(scored, key=lambda x: x.get("pattern_score", 0), reverse=True)
 
-    async def _retrieve_base(
-        self,
-        query: str,
-        limit: int
-    ) -> List[Dict[str, Any]]:
+    async def _retrieve_base(self, query: str, limit: int) -> List[Dict[str, Any]]:
         """Base retrieval (would call actual RAG in production).
 
         Args:
@@ -243,7 +228,7 @@ class PatternBasedRetrieval:
         agent_name: str,
         strategy: str,
         results_count: int,
-        user_feedback: Optional[float] = None
+        user_feedback: Optional[float] = None,
     ):
         """Learn which retrieval strategies work best.
 
@@ -256,18 +241,18 @@ class PatternBasedRetrieval:
         # Evaluate success: got results?
         if results_count == 0:
             success_rate = 0.1
-            outcome = 'failure'
+            outcome = "failure"
         elif results_count < 3:
             success_rate = 0.5
-            outcome = 'partial'
+            outcome = "partial"
         else:
             success_rate = 0.9
-            outcome = 'success'
+            outcome = "success"
 
         # If user gave feedback, use it
         if user_feedback is not None:
             success_rate = user_feedback
-            outcome = 'success' if user_feedback > 0.5 else 'failure'
+            outcome = "success" if user_feedback > 0.5 else "failure"
 
         # Track this
         await self.tracker.track_outcome(
@@ -275,7 +260,7 @@ class PatternBasedRetrieval:
             decision=strategy,
             outcome=outcome,
             success_rate=success_rate,
-            context={'results_count': results_count}
+            context={"results_count": results_count},
         )
 
     def get_best_strategy(self, agent_name: str) -> str:
@@ -289,8 +274,7 @@ class PatternBasedRetrieval:
         """
         # Query learning tracker for this agent's retrieval stats
         success_rate = self.tracker.get_success_rate(
-            f"{agent_name}-retrieval",
-            time_window_hours=24
+            f"{agent_name}-retrieval", time_window_hours=24
         )
 
         # For now, return default

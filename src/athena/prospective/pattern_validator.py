@@ -114,10 +114,7 @@ class PatternValidator:
         results = {}
 
         # Filter patterns that need validation
-        to_validate = [
-            p for p in patterns
-            if p.confidence_score < self.CONFIDENCE_THRESHOLD
-        ]
+        to_validate = [p for p in patterns if p.confidence_score < self.CONFIDENCE_THRESHOLD]
 
         if not to_validate:
             logger.info("All patterns already high confidence, skipping validation")

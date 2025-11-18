@@ -37,10 +37,10 @@ class TemporalDecayConfig:
     # Age thresholds for each compression level (in days)
     decay_schedule: Dict[str, int] = field(
         default_factory=lambda: {
-            'recent': 7,  # < 7 days: no compression
-            'detailed': 30,  # 7-30 days: 50% compression
-            'gist': 90,  # 30-90 days: 80% compression
-            'reference': 999,  # > 90 days: 95% compression
+            "recent": 7,  # < 7 days: no compression
+            "detailed": 30,  # 7-30 days: 50% compression
+            "gist": 90,  # 30-90 days: 80% compression
+            "reference": 999,  # > 90 days: 95% compression
         }
     )
 
@@ -58,11 +58,11 @@ class TemporalDecayConfig:
         Returns:
             CompressionLevel (0-3)
         """
-        if age_days < self.decay_schedule['recent']:
+        if age_days < self.decay_schedule["recent"]:
             return CompressionLevel.NONE
-        elif age_days < self.decay_schedule['detailed']:
+        elif age_days < self.decay_schedule["detailed"]:
             return CompressionLevel.SUMMARY
-        elif age_days < self.decay_schedule['gist']:
+        elif age_days < self.decay_schedule["gist"]:
             return CompressionLevel.GIST
         else:
             return CompressionLevel.REFERENCE
@@ -101,20 +101,20 @@ class ImportanceWeightedBudgetConfig:
     # Must sum to 1.0
     weights: Dict[str, float] = field(
         default_factory=lambda: {
-            'usefulness': 0.40,  # usefulness_score field
-            'recency': 0.30,  # exponential decay of age
-            'frequency': 0.20,  # access_count field
-            'domain': 0.10,  # entity_type based weights
+            "usefulness": 0.40,  # usefulness_score field
+            "recency": 0.30,  # exponential decay of age
+            "frequency": 0.20,  # access_count field
+            "domain": 0.10,  # entity_type based weights
         }
     )
 
     # Domain type weights
     domain_weights: Dict[str, float] = field(
         default_factory=lambda: {
-            'decision': 1.0,  # Highest value
-            'pattern': 0.9,
-            'fact': 0.8,
-            'context': 0.6,  # Lowest value
+            "decision": 1.0,  # Highest value
+            "pattern": 0.9,
+            "fact": 0.8,
+            "context": 0.6,  # Lowest value
         }
     )
 
@@ -127,11 +127,9 @@ class ImportanceWeightedBudgetConfig:
         total = sum(self.weights.values())
         assert abs(total - 1.0) < 0.01, f"Weights must sum to 1.0, got {total}"
 
-    def calculate_value_score(self,
-                            usefulness: float,
-                            age_days: int,
-                            access_count: int,
-                            entity_type: str = 'fact') -> float:
+    def calculate_value_score(
+        self, usefulness: float, age_days: int, access_count: int, entity_type: str = "fact"
+    ) -> float:
         """
         Calculate importance score for a memory.
 
@@ -155,10 +153,10 @@ class ImportanceWeightedBudgetConfig:
 
         # Weighted combination
         score = (
-            self.weights['usefulness'] * usefulness +
-            self.weights['recency'] * recency_boost +
-            self.weights['frequency'] * normalized_freq +
-            self.weights['domain'] * domain_weight
+            self.weights["usefulness"] * usefulness
+            + self.weights["recency"] * recency_boost
+            + self.weights["frequency"] * normalized_freq
+            + self.weights["domain"] * domain_weight
         )
 
         return score
@@ -260,25 +258,25 @@ class CompressionConfig:
     def to_dict(self) -> Dict:
         """Export configuration as dictionary."""
         return {
-            'temporal_decay': {
-                'enable': self.temporal_decay.enable,
-                'decay_schedule': self.temporal_decay.decay_schedule,
-                'min_fidelity': self.temporal_decay.min_fidelity,
+            "temporal_decay": {
+                "enable": self.temporal_decay.enable,
+                "decay_schedule": self.temporal_decay.decay_schedule,
+                "min_fidelity": self.temporal_decay.min_fidelity,
             },
-            'importance_budgeting': {
-                'enable': self.importance_budgeting.enable,
-                'weights': self.importance_budgeting.weights,
-                'domain_weights': self.importance_budgeting.domain_weights,
+            "importance_budgeting": {
+                "enable": self.importance_budgeting.enable,
+                "weights": self.importance_budgeting.weights,
+                "domain_weights": self.importance_budgeting.domain_weights,
             },
-            'consolidation_compression': {
-                'enable': self.consolidation_compression.enable,
-                'generate_executive_summary': self.consolidation_compression.generate_executive_summary,
-                'target_compression_ratio': self.consolidation_compression.target_compression_ratio,
+            "consolidation_compression": {
+                "enable": self.consolidation_compression.enable,
+                "generate_executive_summary": self.consolidation_compression.generate_executive_summary,
+                "target_compression_ratio": self.consolidation_compression.target_compression_ratio,
             },
-            'global': {
-                'enable_all': self.enable_all,
-                'default_min_fidelity': self.default_min_fidelity,
-                'enable_caching': self.enable_caching,
+            "global": {
+                "enable_all": self.enable_all,
+                "default_min_fidelity": self.default_min_fidelity,
+                "enable_caching": self.enable_caching,
             },
         }
 

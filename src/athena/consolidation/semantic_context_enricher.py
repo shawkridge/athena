@@ -7,10 +7,8 @@ This module enriches episodic events with:
 4. Related memories finding
 """
 
-import json
 import logging
 from typing import Optional, List, Dict, Any
-from datetime import datetime
 import requests
 
 logger = logging.getLogger(__name__)
@@ -41,7 +39,7 @@ class SemanticContextEnricher:
             response = requests.post(
                 f"{self.embeddings_url}/embeddings",
                 json={"input": "test", "model": "nomic-embed-text"},
-                timeout=5
+                timeout=5,
             )
             if response.status_code == 200:
                 logger.info("✓ Embeddings service (nomic-embed-text) available")
@@ -74,7 +72,7 @@ class SemanticContextEnricher:
             response = requests.post(
                 f"{self.embeddings_url}/embeddings",
                 json={"input": text, "model": "nomic-embed-text"},
-                timeout=10
+                timeout=10,
             )
 
             if response.status_code == 200:
@@ -89,11 +87,7 @@ class SemanticContextEnricher:
         return None
 
     def score_importance_with_llm(
-        self,
-        event_type: str,
-        content: str,
-        outcome: str,
-        project_goal: Optional[str] = None
+        self, event_type: str, content: str, outcome: str, project_goal: Optional[str] = None
     ) -> float:
         """Score importance using LLM reasoning + heuristics.
 
@@ -152,11 +146,7 @@ class SemanticContextEnricher:
         return min(1.0, max(0.0, score))
 
     def _llm_importance_score(
-        self,
-        event_type: str,
-        content: str,
-        outcome: str,
-        project_goal: Optional[str] = None
+        self, event_type: str, content: str, outcome: str, project_goal: Optional[str] = None
     ) -> Optional[float]:
         """Use reasoning model to score importance.
 
@@ -187,7 +177,7 @@ Respond with ONLY a number between 0.0 and 1.0, nothing else."""
                     "max_tokens": 10,
                     "temperature": 0.3,
                 },
-                timeout=15
+                timeout=15,
             )
 
             if response.status_code == 200:
@@ -209,7 +199,7 @@ Respond with ONLY a number between 0.0 and 1.0, nothing else."""
         conn,
         project_id: int,
         similarity_threshold: float = 0.7,
-        limit: int = 5
+        limit: int = 5,
     ) -> List[Dict[str, Any]]:
         """Find related discoveries using semantic similarity.
 
@@ -239,18 +229,20 @@ Respond with ONLY a number between 0.0 and 1.0, nothing else."""
                 ORDER BY similarity DESC
                 LIMIT %s
                 """,
-                (embedding_str, project_id, embedding_str, similarity_threshold, limit)
+                (embedding_str, project_id, embedding_str, similarity_threshold, limit),
             )
 
             results = []
             for row in cursor.fetchall():
-                results.append({
-                    "id": row[0],
-                    "content": row[1],
-                    "type": row[2],
-                    "timestamp": row[3],
-                    "similarity": float(row[4]) if row[4] else 0.0,
-                })
+                results.append(
+                    {
+                        "id": row[0],
+                        "content": row[1],
+                        "type": row[2],
+                        "timestamp": row[3],
+                        "similarity": float(row[4]) if row[4] else 0.0,
+                    }
+                )
 
             return results
         except Exception as e:
@@ -263,7 +255,7 @@ Respond with ONLY a number between 0.0 and 1.0, nothing else."""
         conn,
         current_project_id: int,
         similarity_threshold: float = 0.8,
-        limit: int = 3
+        limit: int = 3,
     ) -> List[Dict[str, Any]]:
         """Find related discoveries in other projects.
 
@@ -294,20 +286,22 @@ Respond with ONLY a number between 0.0 and 1.0, nothing else."""
                 ORDER BY similarity DESC
                 LIMIT %s
                 """,
-                (embedding_str, current_project_id, embedding_str, similarity_threshold, limit)
+                (embedding_str, current_project_id, embedding_str, similarity_threshold, limit),
             )
 
             results = []
             for row in cursor.fetchall():
-                results.append({
-                    "id": row[0],
-                    "from_project_id": row[1],
-                    "from_project": row[2],
-                    "content": row[3],
-                    "type": row[4],
-                    "timestamp": row[5],
-                    "similarity": float(row[6]) if row[6] else 0.0,
-                })
+                results.append(
+                    {
+                        "id": row[0],
+                        "from_project_id": row[1],
+                        "from_project": row[2],
+                        "content": row[3],
+                        "type": row[4],
+                        "timestamp": row[5],
+                        "similarity": float(row[6]) if row[6] else 0.0,
+                    }
+                )
 
             return results
         except Exception as e:
@@ -315,10 +309,7 @@ Respond with ONLY a number between 0.0 and 1.0, nothing else."""
             return []
 
     def link_related_discoveries(
-        self,
-        conn,
-        event_id: int,
-        related_discoveries: List[Dict[str, Any]]
+        self, conn, event_id: int, related_discoveries: List[Dict[str, Any]]
     ) -> int:
         """Create links between related discoveries.
 
@@ -348,7 +339,7 @@ Respond with ONLY a number between 0.0 and 1.0, nothing else."""
                         ON CONFLICT (from_event_id, to_event_id) DO UPDATE
                         SET strength = GREATEST(strength, EXCLUDED.strength)
                         """,
-                        (event_id, related["id"], related.get("similarity", 0.7))
+                        (event_id, related["id"], related.get("similarity", 0.7)),
                     )
                     links_created += 1
 
@@ -362,7 +353,7 @@ Respond with ONLY a number between 0.0 and 1.0, nothing else."""
                             ON CONFLICT (from_event_id, to_event_id) DO UPDATE
                             SET strength = GREATEST(strength, EXCLUDED.strength)
                             """,
-                            (related["id"], event_id, related.get("similarity", 0.7))
+                            (related["id"], event_id, related.get("similarity", 0.7)),
                         )
                 except Exception as e:
                     logger.warning(f"Failed to link discovery {related['id']}: {e}")
@@ -381,7 +372,7 @@ Respond with ONLY a number between 0.0 and 1.0, nothing else."""
         event_type: str,
         content: str,
         outcome: Optional[str] = None,
-        project_goal: Optional[str] = None
+        project_goal: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Fully enrich an event with semantic information.
 
@@ -416,14 +407,11 @@ Respond with ONLY a number between 0.0 and 1.0, nothing else."""
                 # Store embedding in database
                 cursor = conn.cursor()
                 cursor.execute(
-                    "UPDATE episodic_events SET embedding = %s WHERE id = %s",
-                    (embedding, event_id)
+                    "UPDATE episodic_events SET embedding = %s WHERE id = %s", (embedding, event_id)
                 )
 
                 # Find related discoveries
-                related = self.find_related_discoveries(
-                    embedding, conn, project_id, limit=5
-                )
+                related = self.find_related_discoveries(embedding, conn, project_id, limit=5)
                 if related:
                     results["related_found"] = len(related)
 
@@ -435,19 +423,15 @@ Respond with ONLY a number between 0.0 and 1.0, nothing else."""
 
                     # Link all related discoveries
                     all_related = related + cross
-                    links = self.link_related_discoveries(
-                        conn, event_id, all_related
-                    )
+                    links = self.link_related_discoveries(conn, event_id, all_related)
                     results["links_created"] = links
 
             # Score importance with LLM
-            importance = self.score_importance_with_llm(
-                event_type, content, outcome, project_goal
-            )
+            importance = self.score_importance_with_llm(event_type, content, outcome, project_goal)
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE episodic_events SET importance_score = %s WHERE id = %s",
-                (importance, event_id)
+                (importance, event_id),
             )
             results["importance_scored"] = True
             results["importance_score"] = importance

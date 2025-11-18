@@ -7,6 +7,7 @@ Returns summary statistics, not full event timelines.
 
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
+
 try:
     import psycopg
     from psycopg import AsyncConnection
@@ -23,7 +24,7 @@ async def get_event_timeline(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     event_type: Optional[str] = None,
-    bucket_by: str = "day"
+    bucket_by: str = "day",
 ) -> Dict[str, Any]:
     """
     Get temporal distribution of events (not the events themselves).
@@ -45,7 +46,9 @@ async def get_event_timeline(
         Timeline summary with event counts per bucket
     """
     try:
-        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
+        conn = await AsyncConnection.connect(
+            host, port=port, dbname=dbname, user=user, password=password
+        )
         cursor = conn.cursor()
 
         # Build query
@@ -54,17 +57,17 @@ async def get_event_timeline(
         param_count = 1
 
         if start_date:
-            where_clauses.append(f"timestamp >= %s")
+            where_clauses.append("timestamp >= %s")
             params.append(start_date)
             param_count += 1
 
         if end_date:
-            where_clauses.append(f"timestamp <= %s")
+            where_clauses.append("timestamp <= %s")
             params.append(end_date)
             param_count += 1
 
         if event_type:
-            where_clauses.append(f"event_type = %s")
+            where_clauses.append("event_type = %s")
             params.append(event_type)
             param_count += 1
 
@@ -72,19 +75,14 @@ async def get_event_timeline(
 
         # Get data for bucketing
         await cursor.execute(
-            f"SELECT timestamp, event_type FROM episodic_events WHERE {where_clause}",
-            params
+            f"SELECT timestamp, event_type FROM episodic_events WHERE {where_clause}", params
         )
 
         events = await cursor.fetchall()
         await conn.close()
 
         if not events:
-            return {
-                "empty": True,
-                "total_events": 0,
-                "date_range": None
-            }
+            return {"empty": True, "total_events": 0, "date_range": None}
 
         # Bucket events by time
         buckets = _bucket_by_time(events, bucket_by)
@@ -97,20 +95,17 @@ async def get_event_timeline(
             "date_range": {
                 "start": min(timestamps).isoformat(),
                 "end": max(timestamps).isoformat(),
-                "days_span": (max(timestamps) - min(timestamps)).days
+                "days_span": (max(timestamps) - min(timestamps)).days,
             },
             "bucket_type": bucket_by,
             "bucket_count": len(buckets),
             "buckets": buckets,
             "busiest_bucket": max(buckets.items(), key=lambda x: x[1])[0] if buckets else None,
-            "avg_events_per_bucket": len(events) / len(buckets) if buckets else 0
+            "avg_events_per_bucket": len(events) / len(buckets) if buckets else 0,
         }
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "error_type": type(e).__name__
-        }
+        return {"error": str(e), "error_type": type(e).__name__}
 
 
 async def get_event_causality(
@@ -120,7 +115,7 @@ async def get_event_causality(
     user: str,
     password: str,
     event_id: str,
-    window_minutes: int = 30
+    window_minutes: int = 30,
 ) -> Dict[str, Any]:
     """
     Find events that might be causally related (temporally close).
@@ -140,14 +135,13 @@ async def get_event_causality(
         Summary of causally-nearby events
     """
     try:
-        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
+        conn = await AsyncConnection.connect(
+            host, port=port, dbname=dbname, user=user, password=password
+        )
         cursor = conn.cursor()
 
         # Get target event timestamp
-        await cursor.execute(
-            "SELECT timestamp FROM episodic_events WHERE id = %s",
-            (event_id,)
-        )
+        await cursor.execute("SELECT timestamp FROM episodic_events WHERE id = %s", (event_id,))
         target_row = await cursor.fetchone()
         if not target_row:
             return {"error": f"Event not found: {event_id}"}
@@ -166,7 +160,7 @@ async def get_event_causality(
             ORDER BY ABS(EXTRACT(EPOCH FROM (timestamp - %s)))
             LIMIT 10
             """,
-            (window_start.isoformat(), window_end.isoformat(), event_id, target_time.isoformat())
+            (window_start.isoformat(), window_end.isoformat(), event_id, target_time.isoformat()),
         )
 
         nearby = [dict(row) for row in await cursor.fetchall()]
@@ -184,14 +178,11 @@ async def get_event_causality(
             "total_nearby": len(nearby),
             "nearby_event_types": _count_types([e["event_type"] for e in nearby]),
             "before_outcomes": _count_outcomes([e["outcome"] for e in before]),
-            "after_outcomes": _count_outcomes([e["outcome"] for e in after])
+            "after_outcomes": _count_outcomes([e["outcome"] for e in after]),
         }
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "error_type": type(e).__name__
-        }
+        return {"error": str(e), "error_type": type(e).__name__}
 
 
 def _bucket_by_time(events: List, bucket_by: str) -> Dict[str, int]:

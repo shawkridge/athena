@@ -121,7 +121,7 @@ class AutoContextRecovery:
                 SELECT MAX(timestamp) FROM episodic_events
                 WHERE session_id = ?
                 """,
-                (session_id,)
+                (session_id,),
             )
             last_activity_ts = cursor.fetchone()[0]
         else:
@@ -159,7 +159,7 @@ class AutoContextRecovery:
             ORDER BY timestamp DESC
             LIMIT 10
             """,
-            (session_id,)
+            (session_id,),
         )
 
         conversation_events = cursor.fetchall()
@@ -178,7 +178,7 @@ class AutoContextRecovery:
             ORDER BY timestamp DESC
             LIMIT 10
             """,
-            (cutoff_ts,)
+            (cutoff_ts,),
         )
 
         recent_files = [row[0] for row in cursor.fetchall() if row[0]]
@@ -194,7 +194,7 @@ class AutoContextRecovery:
             ORDER BY timestamp DESC
             LIMIT 5
             """,
-            (session_id,)
+            (session_id,),
         )
 
         task_results = cursor.fetchall()
@@ -223,7 +223,7 @@ class AutoContextRecovery:
                 "conversation_events": len(conversation_events),
                 "recent_files_modified": len(recent_files),
                 "time_since_last_activity": self._format_time_delta(last_activity),
-            }
+            },
         }
 
     def _build_conversation_summary(self, conversation_events: list) -> str:
@@ -241,7 +241,9 @@ class AutoContextRecovery:
         # Build summary from last 3 most recent events (reverse chronological)
         summary_lines = ["Recent conversation:"]
 
-        for event_id, timestamp, content, task, phase, learned, confidence in conversation_events[:3]:
+        for event_id, timestamp, content, task, phase, learned, confidence in conversation_events[
+            :3
+        ]:
             ts = datetime.fromtimestamp(timestamp)
             # Truncate long content
             content_preview = content[:150] + "..." if len(content) > 150 else content
@@ -255,7 +257,7 @@ class AutoContextRecovery:
         active_task: Optional[str],
         phase: Optional[str],
         conversation_summary: str,
-        recent_files: list[str]
+        recent_files: list[str],
     ) -> str:
         """Build human-readable recovery recommendation.
 

@@ -111,9 +111,7 @@ class HebbianLearner:
         for i, access_pre in enumerate(accesses):
             for access_post in accesses[i + 1 :]:
                 # Calculate time difference
-                time_diff = (
-                    access_post.accessed_at - access_pre.accessed_at
-                ).total_seconds()
+                time_diff = (access_post.accessed_at - access_pre.accessed_at).total_seconds()
 
                 if time_diff > self.window_seconds:
                     break  # Outside co-occurrence window
@@ -226,6 +224,7 @@ class HebbianLearner:
             Number of access records cleared
         """
         from datetime import timezone
+
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
         with self.db.get_connection() as conn:
@@ -239,9 +238,7 @@ class HebbianLearner:
             conn.commit()
             return cursor.rowcount
 
-    def _get_recent_accesses(
-        self, project_id: int, limit: int = 100
-    ) -> List[AccessRecord]:
+    def _get_recent_accesses(self, project_id: int, limit: int = 100) -> List[AccessRecord]:
         """Get recent memory accesses within co-occurrence window.
 
         Args:
@@ -252,9 +249,10 @@ class HebbianLearner:
             List of access records sorted by time (ascending)
         """
         from datetime import timezone
+
         cutoff = datetime.now(timezone.utc) - timedelta(seconds=self.window_seconds)
         # Normalize to SQLite format (space instead of T, no timezone)
-        cutoff_str = cutoff.isoformat().replace('T', ' ').split('+')[0]
+        cutoff_str = cutoff.isoformat().replace("T", " ").split("+")[0]
 
         with self.db.get_connection() as conn:
             cursor = conn.execute(
@@ -351,10 +349,7 @@ class HebbianLearner:
             else:
                 # Create new link
                 initial_strength = (
-                    self.learning_rate
-                    * activation_pre
-                    * activation_post
-                    * temporal_factor
+                    self.learning_rate * activation_pre * activation_post * temporal_factor
                 )
                 self.network.create_link(
                     project_id=project_id,
@@ -368,9 +363,7 @@ class HebbianLearner:
 
             conn.commit()
 
-    def _update_stats(
-        self, project_id: int, access_count: int, strengthened_count: int
-    ) -> None:
+    def _update_stats(self, project_id: int, access_count: int, strengthened_count: int) -> None:
         """Update Hebbian learning statistics.
 
         Args:

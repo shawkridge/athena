@@ -49,7 +49,9 @@ class CodeEntity(BaseModel):
     is_deprecated: bool = Field(default=False, description="Is this entity deprecated?")
 
     # Relationships
-    parent_entity_id: Optional[int] = Field(None, description="ID of parent entity (class for methods)")
+    parent_entity_id: Optional[int] = Field(
+        None, description="ID of parent entity (class for methods)"
+    )
     module_id: Optional[int] = Field(None, description="ID of containing module")
 
     # Metrics
@@ -112,7 +114,9 @@ class Dependency(BaseModel):
     file_path: str = Field(..., description="File where dependency is declared")
 
     # External dependencies
-    external_module: Optional[str] = Field(None, description="External module name if depends on external")
+    external_module: Optional[str] = Field(
+        None, description="External module name if depends on external"
+    )
     external_entity: Optional[str] = Field(None, description="External entity name")
 
     created_at: datetime = Field(default_factory=datetime.now)
@@ -178,9 +182,7 @@ class CodeDiff(BaseModel):
     file_path: str = Field(..., description="Path to changed file")
 
     # Change details
-    change_type: str = Field(
-        default="modified", description="added, modified, deleted, renamed"
-    )
+    change_type: str = Field(default="modified", description="added, modified, deleted, renamed")
 
     # Diff content
     old_content: Optional[str] = Field(None, description="Previous content")

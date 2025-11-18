@@ -129,7 +129,8 @@ class SessionContextManager:
         cursor = self.db.get_cursor()
 
         # Session contexts table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS session_contexts (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -141,10 +142,12 @@ class SessionContextManager:
 
                 FOREIGN KEY (project_id) REFERENCES projects(id)
             )
-        """)
+        """
+        )
 
         # Session context events table (audit trail)
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS session_context_events (
                 id SERIAL PRIMARY KEY,
                 session_id TEXT NOT NULL,
@@ -155,7 +158,8 @@ class SessionContextManager:
                 FOREIGN KEY (session_id) REFERENCES session_contexts(session_id)
                     ON DELETE CASCADE
             )
-        """)
+        """
+        )
 
         self.db.commit()
 
@@ -207,8 +211,7 @@ class SessionContextManager:
         )
 
         logger.debug(
-            f"Started session {session_id} (project={project_id}, "
-            f"task={task}, phase={phase})"
+            f"Started session {session_id} (project={project_id}, " f"task={task}, phase={phase})"
         )
         return self._current_session
 
@@ -221,9 +224,7 @@ class SessionContextManager:
         Returns:
             True if ended successfully, False otherwise
         """
-        end_id = session_id or (
-            self._current_session.session_id if self._current_session else None
-        )
+        end_id = session_id or (self._current_session.session_id if self._current_session else None)
         if not end_id:
             logger.warning("No session to end")
             return False
@@ -292,9 +293,7 @@ class SessionContextManager:
         event_id = cursor.lastrowid
         self.db.commit()
 
-        logger.debug(
-            f"Recorded {event_type} event in session {session_id} (id={event_id})"
-        )
+        logger.debug(f"Recorded {event_type} event in session {session_id} (id={event_id})")
         return event_id
 
     def record_consolidation(
@@ -379,9 +378,7 @@ class SessionContextManager:
         )
 
         self.db.commit()
-        logger.debug(
-            f"Updated session context: task={task}, phase={phase}"
-        )
+        logger.debug(f"Updated session context: task={task}, phase={phase}")
 
     # ===== Context Recovery =====
 
@@ -412,7 +409,15 @@ class SessionContextManager:
 
         # Default recovery patterns if not provided
         if not recovery_patterns:
-            recovery_patterns = ["task:", "phase:", "working on", "currently", "debugging", "testing", "developing"]
+            recovery_patterns = [
+                "task:",
+                "phase:",
+                "working on",
+                "currently",
+                "debugging",
+                "testing",
+                "developing",
+            ]
 
         try:
             cursor = self.db.get_cursor()
@@ -425,7 +430,7 @@ class SessionContextManager:
                 ORDER BY created_at DESC
                 LIMIT 20
                 """,
-                (self._current_session.session_id,)
+                (self._current_session.session_id,),
             )
 
             recent_events = cursor.fetchall()
@@ -439,7 +444,9 @@ class SessionContextManager:
                     continue
 
                 try:
-                    event_data = json.loads(event_row[0]) if isinstance(event_row[0], str) else event_row[0]
+                    event_data = (
+                        json.loads(event_row[0]) if isinstance(event_row[0], str) else event_row[0]
+                    )
                     event_content = json.dumps(event_data).lower()
 
                     # Search for patterns in event content
@@ -468,7 +475,9 @@ class SessionContextManager:
                 self._current_session.current_phase = recovered_phase
 
             if recovered_task or recovered_phase:
-                logger.info(f"Context recovery successful: task={recovered_task}, phase={recovered_phase}")
+                logger.info(
+                    f"Context recovery successful: task={recovered_task}, phase={recovered_phase}"
+                )
 
         except Exception as e:
             logger.warning(f"Context recovery failed: {e}")
@@ -509,9 +518,7 @@ class SessionContextManager:
         phase: Optional[str] = None,
     ) -> SessionContext:
         """Async version of start_session."""
-        return await run_async(
-            self.start_session, session_id, project_id, task, phase
-        )
+        return await run_async(self.start_session, session_id, project_id, task, phase)
 
     async def end_session_async(self, session_id: Optional[str] = None) -> bool:
         """Async version of end_session."""
@@ -524,9 +531,7 @@ class SessionContextManager:
         event_data: Dict[str, Any],
     ) -> int:
         """Async version of record_event."""
-        return await run_async(
-            self.record_event, session_id, event_type, event_data
-        )
+        return await run_async(self.record_event, session_id, event_type, event_data)
 
     async def update_context_async(
         self,

@@ -65,7 +65,7 @@ except ImportError:
     aiohttp = None  # Optional dependency
 
 from ._base import BaseEventSource
-from ..models import EpisodicEvent, EventType, EventOutcome, EventContext
+from ..models import EpisodicEvent, EventType, EventContext
 
 
 logger = logging.getLogger(__name__)
@@ -198,8 +198,7 @@ class GitHubEventSource(BaseEventSource):
         # Check aiohttp dependency
         if aiohttp is None:
             raise ValueError(
-                "aiohttp is required for GitHub event source. "
-                "Install with: pip install aiohttp"
+                "aiohttp is required for GitHub event source. " "Install with: pip install aiohttp"
             )
 
         # Validate credentials
@@ -335,7 +334,8 @@ class GitHubEventSource(BaseEventSource):
             Cursor dict with last event timestamp and processing stats
         """
         return {
-            "last_event_timestamp": self._last_event_timestamp or datetime.utcnow().isoformat() + "Z",
+            "last_event_timestamp": self._last_event_timestamp
+            or datetime.utcnow().isoformat() + "Z",
             "events_processed": self._events_generated,
             "events_failed": self._events_failed,
         }
@@ -488,7 +488,9 @@ class GitHubEventSource(BaseEventSource):
             commit_data = commit["commit"]
             author = commit_data["author"]["name"]
             message = commit_data["message"]
-            timestamp = datetime.fromisoformat(commit_data["committer"]["date"].replace("Z", "+00:00"))
+            timestamp = datetime.fromisoformat(
+                commit_data["committer"]["date"].replace("Z", "+00:00")
+            )
 
             # Extract files changed from commit
             files_changed = []
@@ -690,7 +692,7 @@ class GitHubEventSource(BaseEventSource):
 
                     # Check if there's a next page
                     link_header = resp.headers.get("link", "")
-                    if "rel=\"next\"" not in link_header:
+                    if 'rel="next"' not in link_header:
                         break
 
                     page += 1
@@ -715,4 +717,5 @@ class GitHubEventSource(BaseEventSource):
 
 # Register GitHubEventSource with the factory on module import
 from .factory import EventSourceFactory
+
 EventSourceFactory.register_source("github", GitHubEventSource)

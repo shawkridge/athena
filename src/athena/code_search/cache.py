@@ -1,7 +1,6 @@
 """Caching layer for code search results."""
 
-from typing import Dict, List, Optional, Tuple
-from functools import lru_cache
+from typing import Dict, List, Optional
 import hashlib
 import logging
 

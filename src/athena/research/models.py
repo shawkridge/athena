@@ -3,12 +3,12 @@
 from pydantic import BaseModel, Field, ConfigDict
 from enum import Enum
 from typing import Optional
-from datetime import datetime
 import time
 
 
 class ResearchStatus(str, Enum):
     """Status of a research task."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -18,6 +18,7 @@ class ResearchStatus(str, Enum):
 
 class AgentStatus(str, Enum):
     """Status of an individual research agent."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -78,6 +79,7 @@ class AgentProgress(BaseModel):
 
 class FeedbackType(str, Enum):
     """Types of research feedback."""
+
     QUERY_REFINEMENT = "query_refinement"
     SOURCE_EXCLUSION = "source_exclusion"
     SOURCE_FOCUS = "source_focus"
@@ -109,6 +111,7 @@ class ResearchFeedback(BaseModel):
 
 class ResearchPatternType(str, Enum):
     """Types of research patterns extracted from findings."""
+
     SOURCE_CREDIBILITY = "source_credibility"
     AGENT_EXPERTISE = "agent_expertise"
     CROSS_VALIDATION = "cross_validation"

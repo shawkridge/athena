@@ -6,7 +6,7 @@ and circuit breaker-like patterns for resilient operations.
 
 import time
 import logging
-from typing import Any, Callable, List, Optional, TypeVar, Union
+from typing import Callable, List, Optional, TypeVar
 from dataclasses import dataclass
 from enum import Enum
 from functools import wraps
@@ -48,7 +48,7 @@ class RetryPolicy:
         elif self.strategy == RetryStrategy.LINEAR:
             delay = self.initial_delay + (attempt * self.multiplier)
         elif self.strategy == RetryStrategy.EXPONENTIAL:
-            delay = self.initial_delay * (self.multiplier ** attempt)
+            delay = self.initial_delay * (self.multiplier**attempt)
         elif self.strategy == RetryStrategy.FIBONACCI:
             delay = self.initial_delay * self._fibonacci(attempt)
         else:
@@ -135,7 +135,7 @@ class FallbackChain:
                     # This handler doesn't handle this exception type
                     raise
                 logger.warning(
-                    f"Fallback failed",
+                    "Fallback failed",
                     extra={
                         "fallback": handler.name,
                         "error": str(e),
@@ -316,15 +316,13 @@ class CircuitBreaker:
                     f"Circuit {self.name} entering HALF_OPEN state",
                 )
             else:
-                raise CircuitBreakerOpen(
-                    f"Circuit {self.name} is OPEN, failing fast"
-                )
+                raise CircuitBreakerOpen(f"Circuit {self.name} is OPEN, failing fast")
 
         try:
             result = func(*args, **kwargs)
             self._on_success()
             return result
-        except Exception as e:
+        except Exception:
             self._on_failure()
             raise
 

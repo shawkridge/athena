@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Any, Optional
 
 from athena.core.database import Database
-from athena.core.base_store import BaseStore
 
 from .models import (
     CodeDependencyGraph,
@@ -26,9 +25,12 @@ class CodeArtifactStore:
     def __init__(self, db: Database):
         """Initialize store with database connection."""
         self.db = db
+
     # ==================== HELPER METHODS ====================
 
-    def execute(self, query: str, params: tuple = (), fetch_one: bool = False, fetch_all: bool = False) -> Any:
+    def execute(
+        self, query: str, params: tuple = (), fetch_one: bool = False, fetch_all: bool = False
+    ) -> Any:
         """Execute SQL query with consistent error handling.
 
         Args:
@@ -55,7 +57,7 @@ class CodeArtifactStore:
             else:
                 return cursor
 
-        except Exception as e:
+        except Exception:
             # rollback handled by cursor context
             raise
 
@@ -315,15 +317,23 @@ class CodeArtifactStore:
         )
 
         # Create indexes for common queries
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_entities_project ON code_entities(project_id)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_entities_project ON code_entities(project_id)"
+        )
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_entities_file ON code_entities(file_path)")
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_dependencies_from ON dependencies(from_entity_id)"
         )
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_dependencies_to ON dependencies(to_entity_id)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_dependencies_to ON dependencies(to_entity_id)"
+        )
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_diffs_entity ON code_diffs(entity_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_issues_project ON code_quality_issues(project_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_issues_severity ON code_quality_issues(severity)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_issues_project ON code_quality_issues(project_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_issues_severity ON code_quality_issues(severity)"
+        )
 
         # commit handled by cursor context
 
@@ -465,7 +475,9 @@ class CodeArtifactStore:
 
     def get_type_signature(self, entity_id: int) -> Optional[TypeSignature]:
         """Get type signature for entity."""
-        row = self.execute("SELECT * FROM type_signatures WHERE entity_id = ?", (entity_id,), fetch_one=True)
+        row = self.execute(
+            "SELECT * FROM type_signatures WHERE entity_id = ?", (entity_id,), fetch_one=True
+        )
         return self._row_to_type_signature(row) if row else None
 
     # Dependency operations
@@ -555,7 +567,9 @@ class CodeArtifactStore:
 
     def get_complexity_metrics(self, entity_id: int) -> Optional[ComplexityMetrics]:
         """Get complexity metrics for entity."""
-        row = self.execute("SELECT * FROM complexity_metrics WHERE entity_id = ?", (entity_id,), fetch_one=True)
+        row = self.execute(
+            "SELECT * FROM complexity_metrics WHERE entity_id = ?", (entity_id,), fetch_one=True
+        )
         return self._row_to_complexity_metrics(row) if row else None
 
     # Code diff operations
@@ -722,7 +736,9 @@ class CodeArtifactStore:
 
     def get_test_coverage(self, entity_id: int) -> Optional[TestCoverage]:
         """Get test coverage for entity."""
-        row = self.execute("SELECT * FROM test_coverage WHERE entity_id = ?", (entity_id,), fetch_one=True)
+        row = self.execute(
+            "SELECT * FROM test_coverage WHERE entity_id = ?", (entity_id,), fetch_one=True
+        )
         return self._row_to_test_coverage(row) if row else None
 
     # Code quality issues operations
@@ -759,7 +775,9 @@ class CodeArtifactStore:
         issue.id = cursor.lastrowid
         return issue
 
-    def get_quality_issues_for_entity(self, entity_id: int, resolved: Optional[bool] = None) -> list[CodeQualityIssue]:
+    def get_quality_issues_for_entity(
+        self, entity_id: int, resolved: Optional[bool] = None
+    ) -> list[CodeQualityIssue]:
         """Get quality issues for entity."""
         if resolved is None:
             rows = self.execute(

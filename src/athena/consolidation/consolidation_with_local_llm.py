@@ -27,7 +27,7 @@ Usage:
 
 import asyncio
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import List, Optional
 
@@ -42,14 +42,6 @@ from .pipeline import (
     _calculate_memory_quality,
 )
 from ..core.llm_client import LocalLLMClient
-from ..core.config import (
-    COMPRESSION_ENABLED,
-    PROMPT_CACHING_ENABLED,
-    CLAUDE_COST_PER_1K_INPUT,
-    CLAUDE_COST_PER_1K_CACHED_INPUT,
-    CLAUDE_COST_PER_1K_OUTPUT,
-)
-from ..episodic.models import EpisodicEvent
 from ..episodic.store import EpisodicStore
 from ..memory.store import MemoryStore
 from ..graph.store import GraphStore
@@ -57,7 +49,6 @@ from ..monitoring.model_metrics import get_monitor
 from ..temporal.kg_synthesis import TemporalKGSynthesis
 from ..evaluation.token_tracking import (
     ConsolidationTokenMetrics,
-    TokenMetricsAggregator,
 )
 
 logger = logging.getLogger(__name__)
@@ -96,7 +87,9 @@ class EnhancedConsolidationReport(ConsolidationReport):
 
             # Add token metrics if available
             if self.token_metrics:
-                parts.append(f" | tokens: {self.token_metrics.compression_percentage:.1f}% compression")
+                parts.append(
+                    f" | tokens: {self.token_metrics.compression_percentage:.1f}% compression"
+                )
                 if self.token_metrics.cache_result:
                     cache_str = "HIT" if self.token_metrics.cache_result.cache_hit else "MISS"
                     parts.append(f", cache {cache_str}")
@@ -328,9 +321,7 @@ async def consolidate_with_local_reasoning(
     )
 
     estimated_savings = (
-        int(total_compression_savings / max(dual_process_count, 1))
-        if dual_process_count > 0
-        else 0
+        int(total_compression_savings / max(dual_process_count, 1)) if dual_process_count > 0 else 0
     )
 
     completed_at = datetime.now()
@@ -355,9 +346,7 @@ async def consolidate_with_local_reasoning(
         dual_process_confidence=avg_dual_confidence,
         used_claude_validation=use_claude_validation,
         estimated_claude_tokens_saved=estimated_savings,
-        cost_savings_percent=(estimated_savings / 10000) * 100
-        if estimated_savings > 0
-        else 0.0,
+        cost_savings_percent=(estimated_savings / 10000) * 100 if estimated_savings > 0 else 0.0,
     )
 
     logger.info(f"Consolidation complete: {report}")

@@ -8,7 +8,6 @@ from .models import (
     ApprovalRequest,
     ApprovalStatus,
     AuditEntry,
-    ChangeRecommendation,
     ChangeRiskLevel,
     ChangeType,
     CodeSnapshot,
@@ -66,9 +65,7 @@ class SafetyEvaluator:
         )
 
         # Make decision
-        decision = self._make_decision(
-            policy, risk_level, confidence_score, requires_approval
-        )
+        decision = self._make_decision(policy, risk_level, confidence_score, requires_approval)
 
         return {
             "decision": decision,  # "auto_approve" | "require_approval" | "auto_reject"
@@ -131,18 +128,14 @@ class SafetyEvaluator:
         if not requires_approval and confidence_score >= policy.auto_approve_threshold:
             request.status = ApprovalStatus.APPROVED
             request.auto_approved = True
-            request.auto_approved_reason = (
-                f"Auto-approved: confidence {confidence_score:.2f} >= threshold {policy.auto_approve_threshold}"
-            )
+            request.auto_approved_reason = f"Auto-approved: confidence {confidence_score:.2f} >= threshold {policy.auto_approve_threshold}"
             request.approved_by = "system:auto"
             request.approved_at = datetime.now()
 
         # Auto-reject if confidence too low
         elif confidence_score < policy.auto_reject_threshold:
             request.status = ApprovalStatus.REJECTED
-            request.rejection_reason = (
-                f"Auto-rejected: confidence {confidence_score:.2f} < threshold {policy.auto_reject_threshold}"
-            )
+            request.rejection_reason = f"Auto-rejected: confidence {confidence_score:.2f} < threshold {policy.auto_reject_threshold}"
 
         return self.store.create_approval_request(request)
 
@@ -193,17 +186,20 @@ class SafetyEvaluator:
             "confidence_score": confidence_score,
             "severity_multiplier": severity_multiplier,
             "scope_multiplier": scope_multiplier,
-            "severity_factors": [
-                "delete_file",
-                "database_changes",
-                "auth_changes",
-            ]
-            if change_type in [
-                ChangeType.DELETE_FILE,
-                ChangeType.DATABASE_CHANGE,
-                ChangeType.AUTH_CHANGE,
-            ]
-            else [],
+            "severity_factors": (
+                [
+                    "delete_file",
+                    "database_changes",
+                    "auth_changes",
+                ]
+                if change_type
+                in [
+                    ChangeType.DELETE_FILE,
+                    ChangeType.DATABASE_CHANGE,
+                    ChangeType.AUTH_CHANGE,
+                ]
+                else []
+            ),
             "scope_factors": ["many_files"] if affected_file_count > 10 else [],
         }
 
@@ -405,7 +401,11 @@ class SafetyEvaluator:
         return "require_approval"
 
     def _explain_decision(
-        self, decision: str, policy: SafetyPolicy, risk_level: ChangeRiskLevel, confidence_score: float
+        self,
+        decision: str,
+        policy: SafetyPolicy,
+        risk_level: ChangeRiskLevel,
+        confidence_score: float,
     ) -> str:
         """Explain the decision rationale.
 

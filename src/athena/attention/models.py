@@ -8,6 +8,7 @@ from typing import Optional
 
 class AttentionType(str, Enum):
     """Type of attention focus."""
+
     PRIMARY = "primary"
     SECONDARY = "secondary"
     BACKGROUND = "background"
@@ -15,6 +16,7 @@ class AttentionType(str, Enum):
 
 class InhibitionType(str, Enum):
     """Type of memory inhibition."""
+
     PROACTIVE = "proactive"  # Old memories suppressed by new
     RETROACTIVE = "retroactive"  # New learning suppresses old
     SELECTIVE = "selective"  # User-directed suppression
@@ -22,6 +24,7 @@ class InhibitionType(str, Enum):
 
 class TransitionType(str, Enum):
     """Type of attention transition."""
+
     VOLUNTARY = "voluntary"  # User-directed
     AUTOMATIC = "automatic"  # Salience-triggered
     INTERRUPTION = "interruption"  # External event
@@ -31,6 +34,7 @@ class TransitionType(str, Enum):
 @dataclass
 class SalienceScore:
     """Salience score for a memory."""
+
     memory_id: int
     memory_layer: str
     salience_score: float
@@ -45,6 +49,7 @@ class SalienceScore:
 @dataclass
 class FocusState:
     """Current attention focus state."""
+
     id: int
     project_id: int
     focus_memory_id: int
@@ -61,6 +66,7 @@ class FocusState:
 @dataclass
 class InhibitionRecord:
     """Memory inhibition record."""
+
     id: int
     project_id: int
     memory_id: int

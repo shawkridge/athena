@@ -11,8 +11,7 @@ Automatically breaks down complex goals into manageable subtasks with:
 
 import logging
 import json
-from typing import Optional, List, Dict, Tuple
-import uuid
+from typing import Optional, List, Dict
 from datetime import datetime
 
 from athena.core import config
@@ -20,7 +19,6 @@ from athena.core.database import Database
 from athena.planning.models import (
     Goal,
     TaskNode,
-    TaskNodeStatus,
     DecomposedGoal,
     DecompositionResult,
 )
@@ -48,6 +46,7 @@ class GoalDecompositionService:
         """Initialize goal-to-prospective converter if DB is available."""
         try:
             from athena.planning.goal_integration import GoalToProspectiveConverter
+
             self.converter = GoalToProspectiveConverter(self.db)
             logger.info("Goal-to-prospective converter initialized")
         except Exception as e:
@@ -59,6 +58,7 @@ class GoalDecompositionService:
         try:
             if self.llm_provider == "claude":
                 import anthropic
+
                 return anthropic.Anthropic(api_key=config.CLAUDE_API_KEY)
             elif self.llm_provider == "llamacpp":
                 # LlamaCPP is accessed via HTTP
@@ -98,10 +98,7 @@ class GoalDecompositionService:
             task_list = self._analyze_goal_with_llm(goal, max_depth, target_chunk_size_minutes)
 
             if not task_list:
-                return DecompositionResult(
-                    success=False,
-                    error_message="Failed to decompose goal"
-                )
+                return DecompositionResult(success=False, error_message="Failed to decompose goal")
 
             # Step 2: Build task graph with dependencies
             task_nodes = self._build_task_graph(task_list, goal)
@@ -133,10 +130,7 @@ class GoalDecompositionService:
 
         except Exception as e:
             logger.error(f"Error decomposing goal: {e}", exc_info=True)
-            return DecompositionResult(
-                success=False,
-                error_message=str(e)
-            )
+            return DecompositionResult(success=False, error_message=str(e))
 
     def _analyze_goal_with_llm(
         self,
@@ -200,7 +194,7 @@ Only return valid JSON, no other text."""
                 response = self.client.messages.create(
                     model=config.CLAUDE_MODEL,
                     max_tokens=4000,
-                    messages=[{"role": "user", "content": prompt}]
+                    messages=[{"role": "user", "content": prompt}],
                 )
                 response_text = response.content[0].text
 
@@ -293,7 +287,7 @@ Only return valid JSON, no other text."""
                         "estimated_complexity": 4,
                         "priority": 9,
                         "tags": ["requirements"],
-                        "subtasks": []
+                        "subtasks": [],
                     },
                     {
                         "title": "Document requirements",
@@ -302,9 +296,9 @@ Only return valid JSON, no other text."""
                         "estimated_complexity": 5,
                         "priority": 8,
                         "tags": ["documentation"],
-                        "subtasks": []
-                    }
-                ]
+                        "subtasks": [],
+                    },
+                ],
             },
             {
                 "title": "Design & Architecture",
@@ -321,7 +315,7 @@ Only return valid JSON, no other text."""
                         "estimated_complexity": 6,
                         "priority": 8,
                         "tags": ["design"],
-                        "subtasks": []
+                        "subtasks": [],
                     },
                     {
                         "title": "Define data models",
@@ -330,9 +324,9 @@ Only return valid JSON, no other text."""
                         "estimated_complexity": 7,
                         "priority": 8,
                         "tags": ["design"],
-                        "subtasks": []
-                    }
-                ]
+                        "subtasks": [],
+                    },
+                ],
             },
             {
                 "title": "Implementation",
@@ -341,7 +335,7 @@ Only return valid JSON, no other text."""
                 "estimated_complexity": 8,
                 "priority": 8,
                 "tags": ["implementation", "coding"],
-                "subtasks": []
+                "subtasks": [],
             },
             {
                 "title": "Testing & QA",
@@ -358,7 +352,7 @@ Only return valid JSON, no other text."""
                         "estimated_complexity": 5,
                         "priority": 8,
                         "tags": ["testing"],
-                        "subtasks": []
+                        "subtasks": [],
                     },
                     {
                         "title": "Integration testing",
@@ -367,9 +361,9 @@ Only return valid JSON, no other text."""
                         "estimated_complexity": 6,
                         "priority": 7,
                         "tags": ["testing"],
-                        "subtasks": []
-                    }
-                ]
+                        "subtasks": [],
+                    },
+                ],
             },
             {
                 "title": "Deployment",
@@ -378,8 +372,8 @@ Only return valid JSON, no other text."""
                 "estimated_complexity": 6,
                 "priority": 7,
                 "tags": ["deployment", "release"],
-                "subtasks": []
-            }
+                "subtasks": [],
+            },
         ]
 
     def _build_task_graph(
@@ -452,24 +446,20 @@ Only return valid JSON, no other text."""
     def _find_critical_path(self, task_nodes: Dict[str, TaskNode]) -> List[str]:
         """Find the critical path (longest dependency chain)."""
         # Simplified: just identify leaf tasks with high effort
-        leaf_tasks = [
-            task_id for task_id, task in task_nodes.items()
-            if not task.subtask_ids
-        ]
+        leaf_tasks = [task_id for task_id, task in task_nodes.items() if not task.subtask_ids]
 
         if not leaf_tasks:
             return []
 
         # Mark top effort tasks as critical
         sorted_tasks = sorted(
-            leaf_tasks,
-            key=lambda tid: task_nodes[tid].estimated_effort_minutes,
-            reverse=True
+            leaf_tasks, key=lambda tid: task_nodes[tid].estimated_effort_minutes, reverse=True
         )
 
         critical_threshold = sorted_tasks[0][1].estimated_effort_minutes * 0.7
         critical_path = [
-            tid for tid in sorted_tasks
+            tid
+            for tid in sorted_tasks
             if task_nodes[tid].estimated_effort_minutes >= critical_threshold
         ]
 
@@ -483,10 +473,7 @@ Only return valid JSON, no other text."""
     ) -> DecomposedGoal:
         """Create a DecomposedGoal from task nodes and analysis."""
         # Find root tasks (those without parents)
-        root_tasks = [
-            task for task in task_nodes.values()
-            if not task.parent_id
-        ]
+        root_tasks = [task for task in task_nodes.values() if not task.parent_id]
 
         # Mark critical path
         for task_id in critical_path:
@@ -495,12 +482,14 @@ Only return valid JSON, no other text."""
 
         # Calculate metrics
         total_effort = sum(
-            task.estimated_effort_minutes for task in task_nodes.values()
+            task.estimated_effort_minutes
+            for task in task_nodes.values()
             if not task.subtask_ids  # Only leaf tasks
         )
         avg_complexity = (
-            sum(t.estimated_complexity for t in task_nodes.values()) /
-            len(task_nodes) if task_nodes else 0
+            sum(t.estimated_complexity for t in task_nodes.values()) / len(task_nodes)
+            if task_nodes
+            else 0
         )
         max_depth = self._calculate_max_depth(root_tasks, task_nodes)
         num_subtasks = len([t for t in task_nodes.values() if t.subtask_ids])
@@ -533,10 +522,9 @@ Only return valid JSON, no other text."""
         max_d = 0
         for task in tasks:
             depth = 1 + (
-                self._calculate_max_depth(
-                    [all_tasks[sid] for sid in task.subtask_ids],
-                    all_tasks
-                ) if task.subtask_ids else 0
+                self._calculate_max_depth([all_tasks[sid] for sid in task.subtask_ids], all_tasks)
+                if task.subtask_ids
+                else 0
             )
             max_d = max(max_d, depth)
 
@@ -591,19 +579,14 @@ Only return valid JSON, no other text."""
         if not self.converter:
             return {
                 "success": False,
-                "error": "Prospective memory not initialized. Initialize with database."
+                "error": "Prospective memory not initialized. Initialize with database.",
             }
 
         # Step 1: Decompose the goal
-        decomposition_result = self.decompose_goal(
-            goal, max_depth, target_chunk_size_minutes
-        )
+        decomposition_result = self.decompose_goal(goal, max_depth, target_chunk_size_minutes)
 
         if not decomposition_result.success:
-            return {
-                "success": False,
-                "error": decomposition_result.error_message
-            }
+            return {"success": False, "error": decomposition_result.error_message}
 
         # Step 2: Store in prospective memory
         integration_result = await self.converter.integrate_decomposed_goal(
@@ -626,7 +609,7 @@ Only return valid JSON, no other text."""
                 "total_effort_minutes": decomposition_result.decomposed_goal.total_estimated_effort,
                 "complexity_score": decomposition_result.decomposed_goal.avg_complexity,
                 "critical_path_length": decomposition_result.decomposed_goal.critical_path_length,
-            }
+            },
         }
 
     def set_database(self, db: Database) -> None:

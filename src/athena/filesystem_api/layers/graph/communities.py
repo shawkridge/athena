@@ -5,7 +5,8 @@ Discovers natural clusters in graph structure.
 Returns community metrics, not full membership lists.
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
+
 try:
     import psycopg
     from psycopg import AsyncConnection
@@ -20,7 +21,7 @@ async def detect_communities(
     user: str,
     password: str,
     min_size: int = 2,
-    resolution: float = 1.0
+    resolution: float = 1.0,
 ) -> Dict[str, Any]:
     """
     Detect communities in knowledge graph using Leiden algorithm.
@@ -45,7 +46,9 @@ async def detect_communities(
         - entity_distribution: How entities spread across communities
     """
     try:
-        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
+        conn = await AsyncConnection.connect(
+            host, port=port, dbname=dbname, user=user, password=password
+        )
         cursor = conn.cursor()
 
         # Get all entities and relations
@@ -62,7 +65,7 @@ async def detect_communities(
                 "community_count": 0,
                 "empty": True,
                 "total_entities": len(entities),
-                "total_relations": len(relations)
+                "total_relations": len(relations),
             }
 
         # Simplified community detection (in production use actual Leiden)
@@ -78,27 +81,21 @@ async def detect_communities(
             "total_entities": len(entities),
             "total_relations": len(relations),
             "community_count": len(communities),
-            "avg_community_size": sum(len(c) for c in communities) / len(communities) if communities else 0,
+            "avg_community_size": (
+                sum(len(c) for c in communities) / len(communities) if communities else 0
+            ),
             "largest_community_size": max(len(c) for c in communities) if communities else 0,
             "smallest_community_size": min(len(c) for c in communities) if communities else 0,
             "entity_type_distribution": entity_types,
-            "modularity_estimate": _estimate_modularity(entities, relations, communities)
+            "modularity_estimate": _estimate_modularity(entities, relations, communities),
         }
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "error_type": type(e).__name__
-        }
+        return {"error": str(e), "error_type": type(e).__name__}
 
 
 async def get_community_info(
-    host: str,
-    port: int,
-    dbname: str,
-    user: str,
-    password: str,
-    community_id: int
+    host: str, port: int, dbname: str, user: str, password: str, community_id: int
 ) -> Dict[str, Any]:
     """
     Get summary info about a specific community.
@@ -106,29 +103,26 @@ async def get_community_info(
     Returns entity counts and relation counts, not members.
     """
     try:
-        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
+        conn = await AsyncConnection.connect(
+            host, port=port, dbname=dbname, user=user, password=password
+        )
         cursor = conn.cursor()
 
         # Get community members (from some membership table)
         await cursor.execute(
-            "SELECT entity_id FROM community_members WHERE community_id = %s",
-            (community_id,)
+            "SELECT entity_id FROM community_members WHERE community_id = %s", (community_id,)
         )
 
         member_ids = [row[0] for row in await cursor.fetchall()]
 
         if not member_ids:
-            return {
-                "community_id": community_id,
-                "member_count": 0,
-                "empty": True
-            }
+            return {"community_id": community_id, "member_count": 0, "empty": True}
 
         # Count entity types in community
         placeholders = ",".join("%s" * len(member_ids))
         await cursor.execute(
             f"SELECT type, COUNT(*) as count FROM graph_entities WHERE id IN ({placeholders}) GROUP BY type",
-            member_ids
+            member_ids,
         )
 
         type_dist = {row[0]: row[1] for row in await cursor.fetchall()}
@@ -139,7 +133,7 @@ async def get_community_info(
             SELECT COUNT(*) as count FROM graph_relations
             WHERE source_id IN ({placeholders}) AND target_id IN ({placeholders})
             """,
-            member_ids + member_ids
+            member_ids + member_ids,
         )
 
         internal_relations = (await cursor.fetchone())[0]
@@ -151,7 +145,7 @@ async def get_community_info(
             WHERE (source_id IN ({placeholders}) AND target_id NOT IN ({placeholders}))
                OR (source_id NOT IN ({placeholders}) AND target_id IN ({placeholders}))
             """,
-            member_ids + member_ids + member_ids + member_ids
+            member_ids + member_ids + member_ids + member_ids,
         )
 
         external_relations = (await cursor.fetchone())[0]
@@ -164,15 +158,20 @@ async def get_community_info(
             "entity_type_distribution": type_dist,
             "internal_relations": internal_relations,
             "external_relations": external_relations,
-            "density": internal_relations / (len(member_ids) * (len(member_ids) - 1) / 2) if len(member_ids) > 1 else 0,
-            "cohesion_score": internal_relations / (internal_relations + external_relations) if (internal_relations + external_relations) > 0 else 0
+            "density": (
+                internal_relations / (len(member_ids) * (len(member_ids) - 1) / 2)
+                if len(member_ids) > 1
+                else 0
+            ),
+            "cohesion_score": (
+                internal_relations / (internal_relations + external_relations)
+                if (internal_relations + external_relations) > 0
+                else 0
+            ),
         }
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "error_type": type(e).__name__
-        }
+        return {"error": str(e), "error_type": type(e).__name__}
 
 
 def _simple_detect(entities: List, relations: List, min_size: int) -> List[List[str]]:

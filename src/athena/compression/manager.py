@@ -6,7 +6,7 @@ Unified interface for:
 - Consolidation compression
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 from datetime import datetime
 
 from .base import (
@@ -15,9 +15,6 @@ from .base import (
     ConsolidationCompressor,
 )
 from .models import (
-    TemporalDecayConfig,
-    ImportanceWeightedBudgetConfig,
-    ConsolidationCompressionConfig,
     CompressionConfig,
     CompressedMemory,
 )
@@ -42,12 +39,8 @@ class CompressionManager:
 
         # Initialize compressors
         self.temporal_decay = TemporalDecayCompressor(self.config.temporal_decay)
-        self.importance_budgeter = ImportanceWeightedBudgeter(
-            self.config.importance_budgeting
-        )
-        self.consolidation = ConsolidationCompressor(
-            self.config.consolidation_compression
-        )
+        self.importance_budgeter = ImportanceWeightedBudgeter(self.config.importance_budgeting)
+        self.consolidation = ConsolidationCompressor(self.config.consolidation_compression)
 
         # Metrics tracking
         self.operations_count = 0
@@ -152,9 +145,9 @@ class CompressionManager:
 
         # Rename 'full_content' to 'content' for compressor interface
         memory = {
-            'id': consolidation.get('id', 0),
-            'content': consolidation.get('full_content', consolidation.get('content', '')),
-            'created_at': consolidation.get('created_at', datetime.now()),
+            "id": consolidation.get("id", 0),
+            "content": consolidation.get("full_content", consolidation.get("content", "")),
+            "created_at": consolidation.get("created_at", datetime.now()),
         }
 
         result = self.consolidation.compress(memory)
@@ -199,19 +192,19 @@ class CompressionManager:
         """
         if not strategy or strategy == "auto":
             # Auto-select strategy based on memory characteristics
-            memory_type = memory.get('entity_type', 'fact')
+            memory_type = memory.get("entity_type", "fact")
             age_days = self._get_memory_age(memory)
 
-            if memory_type == 'consolidation' or 'consolidation' in memory.get('tags', []):
+            if memory_type == "consolidation" or "consolidation" in memory.get("tags", []):
                 # Use consolidation strategy for consolidated memories
-                strategy = 'consolidation'
+                strategy = "consolidation"
             else:
                 # Use decay strategy for regular memories
-                strategy = 'decay'
+                strategy = "decay"
 
-        if strategy == 'decay':
+        if strategy == "decay":
             return self.compress_with_decay(memory)
-        elif strategy == 'consolidation':
+        elif strategy == "consolidation":
             return self.compress_consolidation(memory)
         else:
             raise ValueError(f"Unknown compression strategy: {strategy}")
@@ -234,13 +227,13 @@ class CompressionManager:
         )
 
         return {
-            'total_operations': self.operations_count,
-            'total_tokens_original': self.total_tokens_original,
-            'total_tokens_compressed': self.total_tokens_compressed,
-            'tokens_saved': self.total_tokens_original - self.total_tokens_compressed,
-            'overall_compression_ratio': overall_ratio,
-            'average_compression_ratio': overall_ratio,
-            'compression_percentage': (1.0 - overall_ratio) * 100,
+            "total_operations": self.operations_count,
+            "total_tokens_original": self.total_tokens_original,
+            "total_tokens_compressed": self.total_tokens_compressed,
+            "tokens_saved": self.total_tokens_original - self.total_tokens_compressed,
+            "overall_compression_ratio": overall_ratio,
+            "average_compression_ratio": overall_ratio,
+            "compression_percentage": (1.0 - overall_ratio) * 100,
         }
 
     def reset_stats(self):
@@ -265,21 +258,21 @@ class CompressionManager:
             updates: Dict of configuration updates
         """
         # Parse and apply updates to config
-        if 'temporal_decay' in updates:
+        if "temporal_decay" in updates:
             td_config = self.config.temporal_decay
-            td_updates = updates['temporal_decay']
-            if 'decay_schedule' in td_updates:
-                td_config.decay_schedule.update(td_updates['decay_schedule'])
-            if 'min_fidelity' in td_updates:
-                td_config.min_fidelity = td_updates['min_fidelity']
+            td_updates = updates["temporal_decay"]
+            if "decay_schedule" in td_updates:
+                td_config.decay_schedule.update(td_updates["decay_schedule"])
+            if "min_fidelity" in td_updates:
+                td_config.min_fidelity = td_updates["min_fidelity"]
 
-        if 'importance_budgeting' in updates:
+        if "importance_budgeting" in updates:
             ib_config = self.config.importance_budgeting
-            ib_updates = updates['importance_budgeting']
-            if 'weights' in ib_updates:
-                ib_config.weights.update(ib_updates['weights'])
-            if 'min_usefulness_score' in ib_updates:
-                ib_config.min_usefulness_score = ib_updates['min_usefulness_score']
+            ib_updates = updates["importance_budgeting"]
+            if "weights" in ib_updates:
+                ib_config.weights.update(ib_updates["weights"])
+            if "min_usefulness_score" in ib_updates:
+                ib_config.min_usefulness_score = ib_updates["min_usefulness_score"]
 
         self.config.validate()
 
@@ -295,7 +288,7 @@ class CompressionManager:
 
     def _get_memory_age(self, memory: dict) -> int:
         """Get memory age in days."""
-        created_at = memory.get('created_at')
+        created_at = memory.get("created_at")
         if not created_at:
             return 0
 

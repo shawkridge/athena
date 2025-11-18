@@ -51,7 +51,8 @@ class TodoWritePlanStore:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS todowrite_plans (
                 id SERIAL PRIMARY KEY,
                 project_id INTEGER NOT NULL,
@@ -87,14 +88,27 @@ class TodoWritePlanStore:
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL,
 
-                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-                INDEX idx_todo_id (todo_id),
-                INDEX idx_plan_id (plan_id),
-                INDEX idx_project_id (project_id),
-                INDEX idx_status (status),
-                INDEX idx_created_at (created_at)
+                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
             )
-        """)
+        """
+        )
+
+        # Create indexes separately (PostgreSQL syntax)
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_todowrite_todo_id ON todowrite_plans (todo_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_todowrite_plan_id ON todowrite_plans (plan_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_todowrite_project_id ON todowrite_plans (project_id)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_todowrite_status ON todowrite_plans (status)"
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_todowrite_created_at ON todowrite_plans (created_at)"
+        )
 
         cursor.close()
 
@@ -126,7 +140,8 @@ class TodoWritePlanStore:
 
             cursor = self.db.get_cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO todowrite_plans (
                     project_id, todo_id, plan_id, goal, description,
                     status, phase, priority,
@@ -135,25 +150,27 @@ class TodoWritePlanStore:
                     last_synced_at, sync_status,
                     created_at, updated_at
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                project_id,
-                todo_id,
-                plan_id,
-                goal,
-                description,
-                status,
-                phase,
-                priority,
-                json.dumps(plan.get("tags", [])),
-                json.dumps(plan.get("steps", [])),
-                json.dumps(plan.get("assumptions", [])),
-                json.dumps(plan.get("risks", [])),
-                json.dumps(plan.get("original_todo", {})),
-                now,
-                "synced",
-                now,
-                now,
-            ))
+            """,
+                (
+                    project_id,
+                    todo_id,
+                    plan_id,
+                    goal,
+                    description,
+                    status,
+                    phase,
+                    priority,
+                    json.dumps(plan.get("tags", [])),
+                    json.dumps(plan.get("steps", [])),
+                    json.dumps(plan.get("assumptions", [])),
+                    json.dumps(plan.get("risks", [])),
+                    json.dumps(plan.get("original_todo", {})),
+                    now,
+                    "synced",
+                    now,
+                    now,
+                ),
+            )
 
             cursor.close()
             logger.info(f"Stored plan {plan_id} for todo {todo_id}")
@@ -175,9 +192,12 @@ class TodoWritePlanStore:
         try:
             cursor = self.db.get_cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM todowrite_plans WHERE todo_id = %s
-            """, (todo_id,))
+            """,
+                (todo_id,),
+            )
 
             row = cursor.fetchone()
             cursor.close()
@@ -203,9 +223,12 @@ class TodoWritePlanStore:
         try:
             cursor = self.db.get_cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM todowrite_plans WHERE plan_id = %s
-            """, (plan_id,))
+            """,
+                (plan_id,),
+            )
 
             row = cursor.fetchone()
             cursor.close()
@@ -285,12 +308,15 @@ class TodoWritePlanStore:
 
             cursor = self.db.get_cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE todowrite_plans
                 SET sync_status = %s, sync_conflict_reason = %s,
                     last_synced_at = %s, updated_at = %s
                 WHERE plan_id = %s
-            """, (sync_status, conflict_reason, now, now, plan_id))
+            """,
+                (sync_status, conflict_reason, now, now, plan_id),
+            )
 
             cursor.close()
 
@@ -320,12 +346,15 @@ class TodoWritePlanStore:
         try:
             cursor = self.db.get_cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM todowrite_plans
                 WHERE project_id = %s AND status = %s
                 ORDER BY created_at DESC
                 LIMIT %s
-            """, (project_id, status, limit))
+            """,
+                (project_id, status, limit),
+            )
 
             rows = cursor.fetchall()
             cursor.close()
@@ -355,12 +384,15 @@ class TodoWritePlanStore:
         try:
             cursor = self.db.get_cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT * FROM todowrite_plans
                 WHERE project_id = %s AND sync_status = %s
                 ORDER BY updated_at DESC
                 LIMIT %s
-            """, (project_id, sync_status, limit))
+            """,
+                (project_id, sync_status, limit),
+            )
 
             rows = cursor.fetchall()
             cursor.close()
@@ -415,9 +447,12 @@ class TodoWritePlanStore:
         try:
             cursor = self.db.get_cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 DELETE FROM todowrite_plans WHERE plan_id = %s
-            """, (plan_id,))
+            """,
+                (plan_id,),
+            )
 
             cursor.close()
 
@@ -441,32 +476,44 @@ class TodoWritePlanStore:
             cursor = self.db.get_cursor()
 
             # Total count
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT COUNT(*) FROM todowrite_plans WHERE project_id = %s
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
             total = cursor.fetchone()[0]
 
             # By status
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT status, COUNT(*) FROM todowrite_plans
                 WHERE project_id = %s
                 GROUP BY status
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
             by_status = {row[0]: row[1] for row in cursor.fetchall()}
 
             # By sync status
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT sync_status, COUNT(*) FROM todowrite_plans
                 WHERE project_id = %s
                 GROUP BY sync_status
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
             by_sync_status = {row[0]: row[1] for row in cursor.fetchall()}
 
             # Conflicts
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT COUNT(*) FROM todowrite_plans
                 WHERE project_id = %s AND sync_status = 'conflict'
-            """, (project_id,))
+            """,
+                (project_id,),
+            )
             conflicts = cursor.fetchone()[0]
 
             cursor.close()
@@ -549,7 +596,5 @@ def get_store() -> TodoWritePlanStore:
         RuntimeError: If not initialized
     """
     if _store is None:
-        raise RuntimeError(
-            "TodoWritePlanStore not initialized. Call initialize(db) first."
-        )
+        raise RuntimeError("TodoWritePlanStore not initialized. Call initialize(db) first.")
     return _store

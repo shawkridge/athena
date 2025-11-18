@@ -75,6 +75,7 @@ def predict_effort(
     try:
         if db is None:
             from ..core.database import Database
+
             db = Database()
 
         from ..predictive.estimator import PredictiveEstimator

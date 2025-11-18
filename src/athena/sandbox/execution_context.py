@@ -15,11 +15,10 @@ import io
 import json
 import logging
 import sys
-import threading
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +33,7 @@ class ExecutionEvent:
         details: Event-specific data
         severity: Severity level (info|warning|error|critical)
     """
+
     timestamp: str
     event_type: str
     details: Dict[str, Any]
@@ -55,6 +55,7 @@ class ResourceUsage:
         network_operations_count: Number of network operations attempted
         duration_ms: Total execution time
     """
+
     peak_memory_mb: float = 0.0
     peak_cpu_percent: float = 0.0
     file_operations_count: int = 0
@@ -114,6 +115,7 @@ class IOCapture:
     @staticmethod
     def _create_wrapper(original_stream, buffer):
         """Create wrapper that writes to both original stream and buffer."""
+
         class StreamWrapper:
             def __init__(self, original, buffer):
                 self.original = original
@@ -388,12 +390,12 @@ class ExecutionContext:
             "execution_id": self.execution_id,
             "language": self.language,
             "status": self.status,
-            "start_time": datetime.fromtimestamp(self.start_time).isoformat()
-            if self.start_time
-            else None,
-            "end_time": datetime.fromtimestamp(self.end_time).isoformat()
-            if self.end_time
-            else None,
+            "start_time": (
+                datetime.fromtimestamp(self.start_time).isoformat() if self.start_time else None
+            ),
+            "end_time": (
+                datetime.fromtimestamp(self.end_time).isoformat() if self.end_time else None
+            ),
             "duration_ms": self.resources.duration_ms,
             "stdout": self.get_stdout()[:1000],  # Truncate for readability
             "stderr": self.get_stderr()[:1000],
@@ -401,12 +403,14 @@ class ExecutionContext:
             "violations_count": len(self.violations),
             "resources": self.resources.to_dict(),
             "events_count": len(self.events),
-            "exception": {
-                "type": type(self.exception).__name__,
-                "message": str(self.exception),
-            }
-            if self.exception
-            else None,
+            "exception": (
+                {
+                    "type": type(self.exception).__name__,
+                    "message": str(self.exception),
+                }
+                if self.exception
+                else None
+            ),
         }
 
     def to_json(self) -> str:

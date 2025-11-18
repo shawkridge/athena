@@ -33,7 +33,12 @@ from .memory_integration import ResearchMemoryIntegrator
 from .cache import ResearchQueryCache, CachedResult
 from .rate_limit import RateLimiter, RateLimitConfig, RateLimitError
 from .metrics import ResearchMetricsCollector, OperationMetrics
-from .circuit_breaker import CircuitBreaker, CircuitBreakerManager, CircuitBreakerConfig, CircuitState
+from .circuit_breaker import (
+    CircuitBreaker,
+    CircuitBreakerManager,
+    CircuitBreakerConfig,
+    CircuitState,
+)
 
 __all__ = [
     "ResearchTask",

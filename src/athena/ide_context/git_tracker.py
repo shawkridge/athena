@@ -1,6 +1,5 @@
 """Git integration for IDE context tracking."""
 
-import os
 import subprocess
 from datetime import datetime
 from pathlib import Path

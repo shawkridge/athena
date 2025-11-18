@@ -3,8 +3,8 @@
 Enables efficient loading of tools on-demand, reducing context overhead
 and improving performance through selective tool instantiation.
 """
+
 import importlib
-import sys
 from pathlib import Path
 from typing import Dict, Optional, Type
 import logging
@@ -188,7 +188,7 @@ class ToolLoader:
         return {
             "loaded_modules": loaded_count,
             "registered_tools": registered_count,
-            "unloaded_tools": registered_count - loaded_count
+            "unloaded_tools": registered_count - loaded_count,
         }
 
     @staticmethod

@@ -68,12 +68,14 @@ class GraphLinker:
             db: Database connection
         """
         self.db = db
+
     def _ensure_schema(self):
         """Create graph entity tables if they don't exist."""
         cursor = self.db.get_cursor()
 
         # Table: Graph entity refs (extended version with more details)
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS graph_entity_nodes (
                 id INTEGER PRIMARY KEY,
                 entity_name TEXT NOT NULL,
@@ -86,10 +88,12 @@ class GraphLinker:
                 created_at INTEGER NOT NULL,
                 last_updated INTEGER
             )
-        """)
+        """
+        )
 
         # Table: Entity relationships
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS graph_entity_relationships (
                 id INTEGER PRIMARY KEY,
                 from_entity_id INTEGER NOT NULL,
@@ -102,33 +106,44 @@ class GraphLinker:
                 FOREIGN KEY (from_entity_id) REFERENCES graph_entity_nodes(id),
                 FOREIGN KEY (to_entity_id) REFERENCES graph_entity_nodes(id)
             )
-        """)
+        """
+        )
 
         # Indexes for performance
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_graph_entity_name
             ON graph_entity_nodes(entity_name, entity_type)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_graph_entity_source
             ON graph_entity_nodes(source_layer, source_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_graph_relationships_from
             ON graph_entity_relationships(from_entity_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_graph_relationships_to
             ON graph_entity_relationships(to_entity_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_graph_relationships_type
             ON graph_entity_relationships(relation_type)
-        """)
+        """
+        )
 
         # commit handled by cursor context
 
@@ -140,7 +155,7 @@ class GraphLinker:
         source_id: Optional[int] = None,
         file_path: Optional[str] = None,
         description: Optional[str] = None,
-        metadata: Optional[dict] = None
+        metadata: Optional[dict] = None,
     ) -> int:
         """Create or get entity node.
 
@@ -159,11 +174,14 @@ class GraphLinker:
         cursor = self.db.get_cursor()
 
         # Check if entity already exists
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT id FROM graph_entity_nodes
             WHERE entity_name = ? AND entity_type = ?
             LIMIT 1
-        """, (entity_name, entity_type.value))
+        """,
+            (entity_name, entity_type.value),
+        )
 
         row = cursor.fetchone()
         if row:
@@ -173,22 +191,25 @@ class GraphLinker:
         now = int(datetime.now().timestamp() * 1000)
         metadata_json = json.dumps(metadata) if metadata else None
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO graph_entity_nodes
             (entity_name, entity_type, source_layer, source_id, file_path,
              description, metadata, created_at, last_updated)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            entity_name,
-            entity_type.value,
-            source_layer,
-            source_id,
-            file_path,
-            description,
-            metadata_json,
-            now,
-            now
-        ))
+        """,
+            (
+                entity_name,
+                entity_type.value,
+                source_layer,
+                source_id,
+                file_path,
+                description,
+                metadata_json,
+                now,
+                now,
+            ),
+        )
 
         entity_id = cursor.lastrowid
         # commit handled by cursor context
@@ -201,7 +222,7 @@ class GraphLinker:
         relation_type: RelationType,
         strength: float = 1.0,
         context: Optional[str] = None,
-        metadata: Optional[dict] = None
+        metadata: Optional[dict] = None,
     ) -> int:
         """Create relationship between entities.
 
@@ -223,20 +244,23 @@ class GraphLinker:
         now = int(datetime.now().timestamp() * 1000)
         metadata_json = json.dumps(metadata) if metadata else None
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO graph_entity_relationships
             (from_entity_id, to_entity_id, relation_type, strength,
              context, metadata, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            from_entity_id,
-            to_entity_id,
-            relation_type.value,
-            strength,
-            context,
-            metadata_json,
-            now
-        ))
+        """,
+            (
+                from_entity_id,
+                to_entity_id,
+                relation_type.value,
+                strength,
+                context,
+                metadata_json,
+                now,
+            ),
+        )
 
         rel_id = cursor.lastrowid
         # commit handled by cursor context
@@ -254,13 +278,16 @@ class GraphLinker:
         """
         cursor = self.db.get_cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT id, entity_name, entity_type, source_layer, source_id,
                    file_path, description, metadata
             FROM graph_entity_nodes
             WHERE entity_name = ? AND entity_type = ?
             LIMIT 1
-        """, (entity_name, entity_type.value))
+        """,
+            (entity_name, entity_type.value),
+        )
 
         row = cursor.fetchone()
         if not row:
@@ -286,7 +313,7 @@ class GraphLinker:
         self,
         entity_id: int,
         relation_type: Optional[RelationType] = None,
-        direction: str = "both"  # both, outgoing, incoming
+        direction: str = "both",  # both, outgoing, incoming
     ) -> list[dict]:
         """Get relationships for an entity.
 
@@ -319,18 +346,20 @@ class GraphLinker:
             cursor.execute(query, params)
 
             for row in cursor.fetchall():
-                relationships.append({
-                    "id": row[0],
-                    "direction": "outgoing",
-                    "relation_type": row[3],
-                    "strength": row[4],
-                    "context": row[5],
-                    "target_entity": {
-                        "id": row[2],
-                        "name": row[6],
-                        "type": row[7],
+                relationships.append(
+                    {
+                        "id": row[0],
+                        "direction": "outgoing",
+                        "relation_type": row[3],
+                        "strength": row[4],
+                        "context": row[5],
+                        "target_entity": {
+                            "id": row[2],
+                            "name": row[6],
+                            "type": row[7],
+                        },
                     }
-                })
+                )
 
         if direction in ("incoming", "both"):
             query = """
@@ -350,18 +379,20 @@ class GraphLinker:
             cursor.execute(query, params)
 
             for row in cursor.fetchall():
-                relationships.append({
-                    "id": row[0],
-                    "direction": "incoming",
-                    "relation_type": row[3],
-                    "strength": row[4],
-                    "context": row[5],
-                    "source_entity": {
-                        "id": row[1],
-                        "name": row[6],
-                        "type": row[7],
+                relationships.append(
+                    {
+                        "id": row[0],
+                        "direction": "incoming",
+                        "relation_type": row[3],
+                        "strength": row[4],
+                        "context": row[5],
+                        "source_entity": {
+                            "id": row[1],
+                            "name": row[6],
+                            "type": row[7],
+                        },
                     }
-                })
+                )
 
         return relationships
 
@@ -369,7 +400,7 @@ class GraphLinker:
         self,
         start_entity_id: int,
         max_depth: int = 3,
-        relation_types: Optional[list[RelationType]] = None
+        relation_types: Optional[list[RelationType]] = None,
     ) -> dict:
         """Traverse graph from starting entity.
 
@@ -392,11 +423,14 @@ class GraphLinker:
 
             # Get entity details
             cursor = self.db.get_cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT entity_name, entity_type, description
                 FROM graph_entity_nodes
                 WHERE id = ?
-            """, (entity_id,))
+            """,
+                (entity_id,),
+            )
 
             row = cursor.fetchone()
             if row:
@@ -411,7 +445,9 @@ class GraphLinker:
             # Get relationships
             relationships = self.get_relationships(entity_id)
             for rel in relationships:
-                if relation_types and rel["relation_type"] not in [rt.value for rt in relation_types]:
+                if relation_types and rel["relation_type"] not in [
+                    rt.value for rt in relation_types
+                ]:
                     continue
 
                 edge_data = {
@@ -433,10 +469,7 @@ class GraphLinker:
         return graph
 
     def find_paths(
-        self,
-        from_entity_id: int,
-        to_entity_id: int,
-        max_depth: int = 5
+        self, from_entity_id: int, to_entity_id: int, max_depth: int = 5
     ) -> list[list[int]]:
         """Find paths between two entities.
 
@@ -481,33 +514,42 @@ class GraphLinker:
         cursor = self.db.get_cursor()
 
         # Get entity details
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT entity_name, entity_type, source_layer
             FROM graph_entity_nodes
             WHERE id = ?
-        """, (entity_id,))
+        """,
+            (entity_id,),
+        )
 
         row = cursor.fetchone()
         if not row:
             return {}
 
         # Count outgoing relationships by type
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT relation_type, COUNT(*), AVG(strength)
             FROM graph_entity_relationships
             WHERE from_entity_id = ?
             GROUP BY relation_type
-        """, (entity_id,))
+        """,
+            (entity_id,),
+        )
 
         outgoing = {row[0]: {"count": row[1], "avg_strength": row[2]} for row in cursor.fetchall()}
 
         # Count incoming relationships by type
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT relation_type, COUNT(*), AVG(strength)
             FROM graph_entity_relationships
             WHERE to_entity_id = ?
             GROUP BY relation_type
-        """, (entity_id,))
+        """,
+            (entity_id,),
+        )
 
         incoming = {row[0]: {"count": row[1], "avg_strength": row[2]} for row in cursor.fetchall()}
 

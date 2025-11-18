@@ -156,9 +156,7 @@ class TOONIntegrator:
             Serialized events (TOON or JSON)
         """
         data = {"events": events, "count": len(events)}
-        return TOONIntegrator.serialize(
-            data, schema_name="episodic_events", use_toon=use_toon
-        )
+        return TOONIntegrator.serialize(data, schema_name="episodic_events", use_toon=use_toon)
 
     @staticmethod
     def serialize_knowledge_graph_entities(
@@ -194,9 +192,7 @@ class TOONIntegrator:
             Serialized procedures (TOON or JSON)
         """
         data = {"procedures": procedures, "count": len(procedures)}
-        return TOONIntegrator.serialize(
-            data, schema_name="procedures_list", use_toon=use_toon
-        )
+        return TOONIntegrator.serialize(data, schema_name="procedures_list", use_toon=use_toon)
 
     @staticmethod
     def serialize_metrics(

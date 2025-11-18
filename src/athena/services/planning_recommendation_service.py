@@ -51,7 +51,7 @@ class PlanningRecommendationService:
         """
         self.planning_store = planning_store
         self.planning_rag = planning_rag
-        self.db = planning_store.db if hasattr(planning_store, 'db') else None
+        self.db = planning_store.db if hasattr(planning_store, "db") else None
 
     async def recommend_for_task(
         self,
@@ -169,9 +169,7 @@ class PlanningRecommendationService:
 
         return []
 
-    def _rank_by_effectiveness(
-        self, patterns: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+    def _rank_by_effectiveness(self, patterns: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Rank patterns by success rate and execution count.
 
         Higher success rates and more executions = higher rank.
@@ -182,6 +180,7 @@ class PlanningRecommendationService:
         Returns:
             Sorted list of patterns
         """
+
         def rank_key(pattern):
             success_rate = pattern.get("success_rate", 0.0)
             execution_count = pattern.get("execution_count", 0)
@@ -190,8 +189,8 @@ class PlanningRecommendationService:
             # Weighted scoring: success rate is primary, count is secondary, recency is tertiary
             return (
                 success_rate * 100,  # Success rate weight: 100
-                execution_count,     # Execution count weight: 1
-                recency_score,       # Recency weight: 0-1
+                execution_count,  # Execution count weight: 1
+                recency_score,  # Recency weight: 0-1
             )
 
         return sorted(patterns, key=rank_key, reverse=True)

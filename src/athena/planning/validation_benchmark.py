@@ -10,10 +10,8 @@ Key Metrics:
 - Target F1: ≥0.85
 """
 
-import json
-import time
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -114,13 +112,15 @@ class PlanningValidationBenchmark:
             # 4. Check correctness
             is_correct = answer == question.correct_answer
 
-            results.append({
-                "question_id": question.question_id,
-                "validation_passed": validation_result.is_valid,
-                "answer_correct": is_correct,
-                "plan_quality": validation_result.quality_score,
-                "validation_time_ms": validation_result.validation_time_ms,
-            })
+            results.append(
+                {
+                    "question_id": question.question_id,
+                    "validation_passed": validation_result.is_valid,
+                    "answer_correct": is_correct,
+                    "plan_quality": validation_result.quality_score,
+                    "validation_time_ms": validation_result.validation_time_ms,
+                }
+            )
 
         # Compute metrics
         return self._compute_f1_metrics(
@@ -160,13 +160,15 @@ class PlanningValidationBenchmark:
             # 4. Check correctness (numerical comparison)
             is_correct = self._check_math_answer(answer, question.correct_answer)
 
-            results.append({
-                "question_id": question.question_id,
-                "validation_passed": validation_result.is_valid,
-                "answer_correct": is_correct,
-                "plan_quality": validation_result.quality_score,
-                "validation_time_ms": validation_result.validation_time_ms,
-            })
+            results.append(
+                {
+                    "question_id": question.question_id,
+                    "validation_passed": validation_result.is_valid,
+                    "answer_correct": is_correct,
+                    "plan_quality": validation_result.quality_score,
+                    "validation_time_ms": validation_result.validation_time_ms,
+                }
+            )
 
         return self._compute_f1_metrics(
             results=results,
@@ -205,13 +207,15 @@ class PlanningValidationBenchmark:
             # 4. Check correctness (test execution)
             is_correct = self._check_code_answer(answer, question)
 
-            results.append({
-                "question_id": question.question_id,
-                "validation_passed": validation_result.is_valid,
-                "answer_correct": is_correct,
-                "plan_quality": validation_result.quality_score,
-                "validation_time_ms": validation_result.validation_time_ms,
-            })
+            results.append(
+                {
+                    "question_id": question.question_id,
+                    "validation_passed": validation_result.is_valid,
+                    "answer_correct": is_correct,
+                    "plan_quality": validation_result.quality_score,
+                    "validation_time_ms": validation_result.validation_time_ms,
+                }
+            )
 
         return self._compute_f1_metrics(
             results=results,
@@ -347,7 +351,11 @@ class PlanningValidationBenchmark:
             "question_id": question.question_id,
             "benchmark": question.benchmark,
             "steps": [
-                {"step": 1, "action": "understand_question", "description": "Parse and understand the question"},
+                {
+                    "step": 1,
+                    "action": "understand_question",
+                    "description": "Parse and understand the question",
+                },
                 {"step": 2, "action": "decompose", "description": "Break into sub-problems"},
                 {"step": 3, "action": "reason", "description": "Apply reasoning"},
                 {"step": 4, "action": "synthesize", "description": "Combine findings into answer"},

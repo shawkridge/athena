@@ -9,7 +9,7 @@ Defines how each field should be handled:
 """
 
 from enum import Enum
-from typing import Dict, Any, Optional, List
+from typing import Dict, Optional
 from pathlib import Path
 import hashlib
 
@@ -18,10 +18,10 @@ class SanitizationStrategy(Enum):
     """Strategy for field sanitization."""
 
     PASS_THROUGH = "pass_through"  # No change
-    TOKENIZE = "tokenize"          # Replace PII with tokens
-    REDACT = "redact"              # Remove entirely
-    TRUNCATE = "truncate"          # Keep only basename/relative
-    HASH_PII = "hash_pii"          # Hash the entire value
+    TOKENIZE = "tokenize"  # Replace PII with tokens
+    REDACT = "redact"  # Remove entirely
+    TRUNCATE = "truncate"  # Keep only basename/relative
+    HASH_PII = "hash_pii"  # Hash the entire value
 
 
 class FieldPolicy:
@@ -33,26 +33,23 @@ class FieldPolicy:
     # Default policies for standard fields
     DEFAULT_POLICIES = {
         # CRITICAL RISK fields
-        'diff': SanitizationStrategy.REDACT,
-        'git_author': SanitizationStrategy.HASH_PII,
-
+        "diff": SanitizationStrategy.REDACT,
+        "git_author": SanitizationStrategy.HASH_PII,
         # HIGH RISK fields
-        'content': SanitizationStrategy.TOKENIZE,
-        'stack_trace': SanitizationStrategy.TOKENIZE,
-        'file_path': SanitizationStrategy.TRUNCATE,
-        'context.cwd': SanitizationStrategy.TRUNCATE,
-
+        "content": SanitizationStrategy.TOKENIZE,
+        "stack_trace": SanitizationStrategy.TOKENIZE,
+        "file_path": SanitizationStrategy.TRUNCATE,
+        "context.cwd": SanitizationStrategy.TRUNCATE,
         # MEDIUM RISK fields
-        'context.files': SanitizationStrategy.TRUNCATE,
-        'context.task': SanitizationStrategy.TOKENIZE,
-
+        "context.files": SanitizationStrategy.TRUNCATE,
+        "context.task": SanitizationStrategy.TOKENIZE,
         # LOW RISK fields (no change)
-        'event_type': SanitizationStrategy.PASS_THROUGH,
-        'outcome': SanitizationStrategy.PASS_THROUGH,
-        'timestamp': SanitizationStrategy.PASS_THROUGH,
-        'duration_ms': SanitizationStrategy.PASS_THROUGH,
-        'session_id': SanitizationStrategy.PASS_THROUGH,
-        'project_id': SanitizationStrategy.PASS_THROUGH,
+        "event_type": SanitizationStrategy.PASS_THROUGH,
+        "outcome": SanitizationStrategy.PASS_THROUGH,
+        "timestamp": SanitizationStrategy.PASS_THROUGH,
+        "duration_ms": SanitizationStrategy.PASS_THROUGH,
+        "session_id": SanitizationStrategy.PASS_THROUGH,
+        "project_id": SanitizationStrategy.PASS_THROUGH,
     }
 
     def __init__(self, custom_policies: Optional[Dict[str, SanitizationStrategy]] = None):
@@ -80,7 +77,7 @@ class FieldPolicy:
 
         # Check prefix match (e.g., 'context.*')
         for pattern_field, strategy in self.policies.items():
-            if pattern_field.endswith('.*'):
+            if pattern_field.endswith(".*"):
                 prefix = pattern_field[:-2]
                 if field_name.startswith(prefix):
                     return strategy
@@ -88,7 +85,9 @@ class FieldPolicy:
         # Default to pass-through for unknown fields
         return SanitizationStrategy.PASS_THROUGH
 
-    def apply(self, event: 'EpisodicEvent', tokenizer: Optional['PIITokenizer'] = None) -> 'EpisodicEvent':
+    def apply(
+        self, event: "EpisodicEvent", tokenizer: Optional["PIITokenizer"] = None
+    ) -> "EpisodicEvent":
         """Apply policies to an episodic event.
 
         Args:
@@ -104,53 +103,51 @@ class FieldPolicy:
 
         # Apply policies to each field
         if sanitized.content:
-            policy = self.get_policy('content')
+            policy = self.get_policy("content")
             sanitized.content = self._apply_field_policy(
-                sanitized.content, policy, 'content', tokenizer
+                sanitized.content, policy, "content", tokenizer
             )
 
         if sanitized.git_author:
-            policy = self.get_policy('git_author')
+            policy = self.get_policy("git_author")
             sanitized.git_author = self._apply_field_policy(
-                sanitized.git_author, policy, 'git_author', tokenizer
+                sanitized.git_author, policy, "git_author", tokenizer
             )
 
         if sanitized.file_path:
-            policy = self.get_policy('file_path')
+            policy = self.get_policy("file_path")
             sanitized.file_path = self._apply_field_policy(
-                sanitized.file_path, policy, 'file_path', tokenizer
+                sanitized.file_path, policy, "file_path", tokenizer
             )
 
         if sanitized.diff:
-            policy = self.get_policy('diff')
-            sanitized.diff = self._apply_field_policy(
-                sanitized.diff, policy, 'diff', tokenizer
-            )
+            policy = self.get_policy("diff")
+            sanitized.diff = self._apply_field_policy(sanitized.diff, policy, "diff", tokenizer)
 
         if sanitized.stack_trace:
-            policy = self.get_policy('stack_trace')
+            policy = self.get_policy("stack_trace")
             sanitized.stack_trace = self._apply_field_policy(
-                sanitized.stack_trace, policy, 'stack_trace', tokenizer
+                sanitized.stack_trace, policy, "stack_trace", tokenizer
             )
 
         # Apply to context fields
         if sanitized.context:
             if sanitized.context.cwd:
-                policy = self.get_policy('context.cwd')
+                policy = self.get_policy("context.cwd")
                 sanitized.context.cwd = self._apply_field_policy(
-                    sanitized.context.cwd, policy, 'context.cwd', tokenizer
+                    sanitized.context.cwd, policy, "context.cwd", tokenizer
                 )
 
             if sanitized.context.task:
-                policy = self.get_policy('context.task')
+                policy = self.get_policy("context.task")
                 sanitized.context.task = self._apply_field_policy(
-                    sanitized.context.task, policy, 'context.task', tokenizer
+                    sanitized.context.task, policy, "context.task", tokenizer
                 )
 
             if sanitized.context.files:
-                policy = self.get_policy('context.files')
+                policy = self.get_policy("context.files")
                 sanitized.context.files = [
-                    self._apply_field_policy(f, policy, 'context.files', tokenizer)
+                    self._apply_field_policy(f, policy, "context.files", tokenizer)
                     for f in sanitized.context.files
                 ]
 
@@ -161,7 +158,7 @@ class FieldPolicy:
         value: str,
         strategy: SanitizationStrategy,
         field_name: str,
-        tokenizer: Optional['PIITokenizer'] = None
+        tokenizer: Optional["PIITokenizer"] = None,
     ) -> str:
         """Apply a sanitization strategy to a field value.
 
@@ -223,17 +220,17 @@ class FieldPolicy:
                 if skip_next:
                     skip_next = False
                     continue
-                if part in ('home', 'Users', 'root'):
+                if part in ("home", "Users", "root"):
                     skip_next = True  # Skip username next
                     continue
                 filtered_parts.append(part)
 
             # Reconstruct path
             if filtered_parts:
-                if path.is_absolute() or path_str.startswith('/'):
-                    truncated = '/' + '/'.join(filtered_parts)
+                if path.is_absolute() or path_str.startswith("/"):
+                    truncated = "/" + "/".join(filtered_parts)
                 else:
-                    truncated = '/'.join(filtered_parts)
+                    truncated = "/".join(filtered_parts)
                 return truncated
             else:
                 return path_str
@@ -265,14 +262,14 @@ class CompliancePolicy(FieldPolicy):
 
     COMPLIANCE_POLICIES = {
         # Redact everything risky
-        'diff': SanitizationStrategy.REDACT,
-        'git_author': SanitizationStrategy.HASH_PII,
-        'content': SanitizationStrategy.TOKENIZE,
-        'stack_trace': SanitizationStrategy.REDACT,  # Stricter
-        'file_path': SanitizationStrategy.TRUNCATE,
-        'context.cwd': SanitizationStrategy.REDACT,  # Stricter
-        'context.files': SanitizationStrategy.TRUNCATE,
-        'context.task': SanitizationStrategy.TOKENIZE,
+        "diff": SanitizationStrategy.REDACT,
+        "git_author": SanitizationStrategy.HASH_PII,
+        "content": SanitizationStrategy.TOKENIZE,
+        "stack_trace": SanitizationStrategy.REDACT,  # Stricter
+        "file_path": SanitizationStrategy.TRUNCATE,
+        "context.cwd": SanitizationStrategy.REDACT,  # Stricter
+        "context.files": SanitizationStrategy.TRUNCATE,
+        "context.task": SanitizationStrategy.TOKENIZE,
     }
 
     def __init__(self):
@@ -286,14 +283,14 @@ class DebugPolicy(FieldPolicy):
     """
 
     DEBUG_POLICIES = {
-        'diff': SanitizationStrategy.TOKENIZE,  # Keep some info
-        'git_author': SanitizationStrategy.TOKENIZE,
-        'content': SanitizationStrategy.PASS_THROUGH,
-        'stack_trace': SanitizationStrategy.PASS_THROUGH,
-        'file_path': SanitizationStrategy.PASS_THROUGH,
-        'context.cwd': SanitizationStrategy.PASS_THROUGH,
-        'context.files': SanitizationStrategy.PASS_THROUGH,
-        'context.task': SanitizationStrategy.PASS_THROUGH,
+        "diff": SanitizationStrategy.TOKENIZE,  # Keep some info
+        "git_author": SanitizationStrategy.TOKENIZE,
+        "content": SanitizationStrategy.PASS_THROUGH,
+        "stack_trace": SanitizationStrategy.PASS_THROUGH,
+        "file_path": SanitizationStrategy.PASS_THROUGH,
+        "context.cwd": SanitizationStrategy.PASS_THROUGH,
+        "context.files": SanitizationStrategy.PASS_THROUGH,
+        "context.task": SanitizationStrategy.PASS_THROUGH,
     }
 
     def __init__(self):

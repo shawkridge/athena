@@ -30,7 +30,7 @@ class PackageJsonParser:
         """
         if code is None:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     code = f.read()
             except (IOError, UnicodeDecodeError):
                 return []
@@ -47,7 +47,7 @@ class PackageJsonParser:
             name_symbol = create_symbol(
                 file_path=file_path,
                 symbol_type=SymbolType.CONSTANT,
-                name=f"package.name",
+                name="package.name",
                 namespace="metadata",
                 signature=data["name"],
                 line_start=1,
@@ -55,7 +55,7 @@ class PackageJsonParser:
                 code="",
                 docstring="Package name",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(name_symbol)
 
@@ -63,7 +63,7 @@ class PackageJsonParser:
             version_symbol = create_symbol(
                 file_path=file_path,
                 symbol_type=SymbolType.CONSTANT,
-                name=f"package.version",
+                name="package.version",
                 namespace="metadata",
                 signature=data["version"],
                 line_start=1,
@@ -71,7 +71,7 @@ class PackageJsonParser:
                 code="",
                 docstring="Package version",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(version_symbol)
 
@@ -139,7 +139,7 @@ class PackageJsonParser:
                 code="",
                 docstring=f"{dep_type}: {package_name}@{version_range}",
                 language="json",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -169,7 +169,7 @@ class PackageJsonParser:
                 code="",
                 docstring=f"npm script: {script_name}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -201,7 +201,7 @@ class PackageJsonParser:
                 code="",
                 docstring=f"Engine requirement: {engine_name} {version_spec}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -218,7 +218,7 @@ class PackageJsonParser:
                 code="",
                 docstring=f"TypeScript types file: {data['types']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -235,7 +235,7 @@ class PackageJsonParser:
                 code="",
                 docstring=f"TypeScript typings file: {data['typings']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -252,7 +252,7 @@ class PackageJsonParser:
                 code="",
                 docstring=f"Main entry point: {data['main']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -269,7 +269,7 @@ class PackageJsonParser:
                 code="",
                 docstring=f"ES module entry point: {data['module']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -289,7 +289,7 @@ class PackageJsonParser:
                         code="",
                         docstring=f"Export condition '{export_key}': {export_value}",
                         language="json",
-                        visibility="public"
+                        visibility="public",
                     )
                     symbols.append(symbol)
 

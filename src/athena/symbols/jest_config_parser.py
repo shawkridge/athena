@@ -16,7 +16,7 @@ Supports:
 
 import json
 import re
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 from .symbol_models import Symbol, SymbolType, create_symbol
 
 
@@ -35,7 +35,7 @@ class JestConfigParser:
         """
         if code is None:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     code = f.read()
             except (IOError, UnicodeDecodeError):
                 return []
@@ -43,7 +43,7 @@ class JestConfigParser:
         symbols = []
 
         # Try JSON parsing first (for jest.config.json)
-        if file_path.endswith('.json'):
+        if file_path.endswith(".json"):
             try:
                 data = json.loads(code)
                 symbols.extend(self._extract_from_json(data, file_path))
@@ -72,7 +72,7 @@ class JestConfigParser:
                 code="",
                 docstring=f"Test environment: {data['testEnvironment']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -89,7 +89,7 @@ class JestConfigParser:
                 code="",
                 docstring=f"Jest preset: {data['preset']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -119,7 +119,7 @@ class JestConfigParser:
                     code="",
                     docstring=f"Transform {pattern} with {transformer}",
                     language="json",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
@@ -137,7 +137,7 @@ class JestConfigParser:
                     code="",
                     docstring=f"Setup file: {setup_file}",
                     language="json",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
@@ -154,7 +154,7 @@ class JestConfigParser:
                 code="",
                 docstring=f"Test timeout: {data['testTimeout']}ms",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -179,7 +179,7 @@ class JestConfigParser:
                     code="",
                     docstring=f"Jest reporter: {reporter_name}",
                     language="json",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
@@ -204,7 +204,7 @@ class JestConfigParser:
                 code="",
                 docstring=f"Test environment: {env}",
                 language="javascript",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -223,12 +223,12 @@ class JestConfigParser:
                 code="",
                 docstring=f"Jest preset: {preset}",
                 language="javascript",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
         # Extract testMatch patterns
-        test_match_pattern = r'testMatch\s*:\s*\[([^\]]+)\]'
+        test_match_pattern = r"testMatch\s*:\s*\[([^\]]+)\]"
         test_match = re.search(test_match_pattern, code)
         if test_match:
             patterns_str = test_match.group(1)
@@ -245,12 +245,12 @@ class JestConfigParser:
                     code="",
                     docstring=f"Test match pattern: {pattern}",
                     language="javascript",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
         # Extract testPathIgnorePatterns
-        ignore_pattern = r'testPathIgnorePatterns\s*:\s*\[([^\]]+)\]'
+        ignore_pattern = r"testPathIgnorePatterns\s*:\s*\[([^\]]+)\]"
         ignore_match = re.search(ignore_pattern, code)
         if ignore_match:
             patterns_str = ignore_match.group(1)
@@ -267,12 +267,12 @@ class JestConfigParser:
                     code="",
                     docstring=f"Test ignore pattern: {pattern}",
                     language="javascript",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
         # Extract moduleNameMapper (aliases)
-        module_map_pattern = r'moduleNameMapper\s*:\s*{([^}]+)}'
+        module_map_pattern = r"moduleNameMapper\s*:\s*{([^}]+)}"
         module_map = re.search(module_map_pattern, code)
         if module_map:
             mapper_content = module_map.group(1)
@@ -292,17 +292,17 @@ class JestConfigParser:
                     code="",
                     docstring=f"Module alias: {alias} -> {target}",
                     language="javascript",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
         # Extract coverage configuration
-        coverage_threshold_pattern = r'coverageThreshold\s*:\s*{([^}]+)}'
+        coverage_threshold_pattern = r"coverageThreshold\s*:\s*{([^}]+)}"
         coverage_match = re.search(coverage_threshold_pattern, code)
         if coverage_match:
             coverage_content = coverage_match.group(1)
             # Extract coverage metrics (lines, functions, branches, statements)
-            metrics = re.findall(r'(\w+)\s*:\s*(\d+)', coverage_content)
+            metrics = re.findall(r"(\w+)\s*:\s*(\d+)", coverage_content)
             for metric, value in metrics:
                 symbol = create_symbol(
                     file_path=file_path,
@@ -315,12 +315,12 @@ class JestConfigParser:
                     code="",
                     docstring=f"Coverage threshold {metric}: {value}%",
                     language="javascript",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
         # Extract transform patterns
-        transform_pattern = r'transform\s*:\s*{([^}]+)}'
+        transform_pattern = r"transform\s*:\s*{([^}]+)}"
         transform_match = re.search(transform_pattern, code)
         if transform_match:
             transform_content = transform_match.group(1)
@@ -340,12 +340,12 @@ class JestConfigParser:
                     code="",
                     docstring=f"Transform {pattern} with {transformer}",
                     language="javascript",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
         # Extract setupFilesAfterEnv
-        setup_pattern = r'setupFilesAfterEnv\s*:\s*\[([^\]]+)\]'
+        setup_pattern = r"setupFilesAfterEnv\s*:\s*\[([^\]]+)\]"
         setup_match = re.search(setup_pattern, code)
         if setup_match:
             setup_content = setup_match.group(1)
@@ -362,12 +362,12 @@ class JestConfigParser:
                     code="",
                     docstring=f"Setup file: {setup_file}",
                     language="javascript",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
         # Extract testTimeout
-        timeout_match = re.search(r'testTimeout\s*:\s*(\d+)', code)
+        timeout_match = re.search(r"testTimeout\s*:\s*(\d+)", code)
         if timeout_match:
             timeout = timeout_match.group(1)
             symbol = create_symbol(
@@ -381,12 +381,12 @@ class JestConfigParser:
                 code="",
                 docstring=f"Test timeout: {timeout}ms",
                 language="javascript",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
         # Extract collectCoverageFrom
-        collect_pattern = r'collectCoverageFrom\s*:\s*\[([^\]]+)\]'
+        collect_pattern = r"collectCoverageFrom\s*:\s*\[([^\]]+)\]"
         collect_match = re.search(collect_pattern, code)
         if collect_match:
             collect_content = collect_match.group(1)
@@ -403,7 +403,7 @@ class JestConfigParser:
                     code="",
                     docstring=f"Collect coverage from: {pattern}",
                     language="javascript",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
@@ -427,7 +427,7 @@ class JestConfigParser:
                     code="",
                     docstring=f"Test match pattern: {pattern}",
                     language="json",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
@@ -445,7 +445,7 @@ class JestConfigParser:
                     code="",
                     docstring=f"Test ignore pattern: {pattern}",
                     language="json",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
@@ -462,7 +462,7 @@ class JestConfigParser:
                 code="",
                 docstring=f"Test name pattern: {data['testNamePattern']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -486,12 +486,14 @@ class JestConfigParser:
                     code="",
                     docstring=f"Collect coverage from: {pattern}",
                     language="json",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
         # coveragePathIgnorePatterns
-        if "coveragePathIgnorePatterns" in data and isinstance(data["coveragePathIgnorePatterns"], list):
+        if "coveragePathIgnorePatterns" in data and isinstance(
+            data["coveragePathIgnorePatterns"], list
+        ):
             for pattern in data["coveragePathIgnorePatterns"]:
                 symbol = create_symbol(
                     file_path=file_path,
@@ -504,7 +506,7 @@ class JestConfigParser:
                     code="",
                     docstring=f"Ignore coverage for: {pattern}",
                     language="json",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
@@ -524,7 +526,7 @@ class JestConfigParser:
                             code="",
                             docstring=f"Coverage threshold {metric} ({scope}): {value}%",
                             language="json",
-                            visibility="public"
+                            visibility="public",
                         )
                         symbols.append(symbol)
 
@@ -547,7 +549,7 @@ class JestConfigParser:
                 code="",
                 docstring=f"Base URL: {data['baseUrl']}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -565,7 +567,7 @@ class JestConfigParser:
                     code="",
                     docstring=f"Module alias: {alias}",
                     language="json",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
@@ -583,7 +585,7 @@ class JestConfigParser:
                     code="",
                     docstring=f"Module path: {path}",
                     language="json",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 

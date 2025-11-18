@@ -8,7 +8,7 @@ Provides:
 - Refactoring suggestions based on complexity
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -17,6 +17,7 @@ from .symbol_models import Symbol
 
 class ComplexityCategory(str, Enum):
     """Code complexity categories."""
+
     SIMPLE = "simple"  # 1-5
     MODERATE = "moderate"  # 6-15
     COMPLEX = "complex"  # 16-30
@@ -27,6 +28,7 @@ class ComplexityCategory(str, Enum):
 @dataclass
 class ComplexityMetric:
     """Complexity metric for a symbol."""
+
     symbol: Symbol
     cyclomatic_complexity: float
     cognitive_complexity: float
@@ -42,6 +44,7 @@ class ComplexityMetric:
 @dataclass
 class ComplexityStats:
     """Statistical complexity metrics."""
+
     metric_name: str
     count: int
     mean: float
@@ -56,6 +59,7 @@ class ComplexityStats:
 @dataclass
 class ComplexityTrend:
     """Complexity trend for a symbol."""
+
     symbol_name: str
     previous_complexity: float
     current_complexity: float
@@ -66,6 +70,7 @@ class ComplexityTrend:
 @dataclass
 class ComplexityReport:
     """Complexity analysis report."""
+
     status: str
     total_symbols: int
     average_cyclomatic: float
@@ -148,7 +153,9 @@ class ComplexityAnalyzer:
         self.metrics[symbol.full_qualified_name] = metric
         return metric
 
-    def analyze(self, symbols: Dict[str, Symbol], code_structures: Dict[str, Dict]) -> Dict[str, ComplexityMetric]:
+    def analyze(
+        self, symbols: Dict[str, Symbol], code_structures: Dict[str, Dict]
+    ) -> Dict[str, ComplexityMetric]:
         """Analyze complexity for multiple symbols.
 
         Args:
@@ -166,7 +173,9 @@ class ComplexityAnalyzer:
 
         return self.metrics
 
-    def get_high_complexity_symbols(self, threshold: float = 15, limit: int = 10) -> List[Tuple[str, float]]:
+    def get_high_complexity_symbols(
+        self, threshold: float = 15, limit: int = 10
+    ) -> List[Tuple[str, float]]:
         """Get symbols with high complexity.
 
         Args:
@@ -176,8 +185,11 @@ class ComplexityAnalyzer:
         Returns:
             List of (symbol_name, complexity_score) tuples
         """
-        high = [(name, m.average_complexity) for name, m in self.metrics.items()
-                if m.average_complexity > threshold]
+        high = [
+            (name, m.average_complexity)
+            for name, m in self.metrics.items()
+            if m.average_complexity > threshold
+        ]
         return sorted(high, key=lambda x: x[1], reverse=True)[:limit]
 
     def get_complexity_distribution(self) -> Dict[str, int]:
@@ -260,7 +272,9 @@ class ComplexityAnalyzer:
             high_complexity_count=high_count,
         )
 
-    def compare_complexity(self, previous_metrics: Dict[str, ComplexityMetric]) -> List[ComplexityTrend]:
+    def compare_complexity(
+        self, previous_metrics: Dict[str, ComplexityMetric]
+    ) -> List[ComplexityTrend]:
         """Compare current complexity with previous metrics.
 
         Args:
@@ -283,13 +297,15 @@ class ComplexityAnalyzer:
                 else:
                     direction = "stable"
 
-                trends.append(ComplexityTrend(
-                    symbol_name=name,
-                    previous_complexity=previous.average_complexity,
-                    current_complexity=current_metric.average_complexity,
-                    change=change,
-                    direction=direction,
-                ))
+                trends.append(
+                    ComplexityTrend(
+                        symbol_name=name,
+                        previous_complexity=previous.average_complexity,
+                        current_complexity=current_metric.average_complexity,
+                        change=change,
+                        direction=direction,
+                    )
+                )
 
         return trends
 
@@ -314,9 +330,15 @@ class ComplexityAnalyzer:
             )
 
         # Calculate averages
-        avg_cyclomatic = sum(m.cyclomatic_complexity for m in self.metrics.values()) / len(self.metrics)
-        avg_cognitive = sum(m.cognitive_complexity for m in self.metrics.values()) / len(self.metrics)
-        avg_essential = sum(m.essential_complexity for m in self.metrics.values()) / len(self.metrics)
+        avg_cyclomatic = sum(m.cyclomatic_complexity for m in self.metrics.values()) / len(
+            self.metrics
+        )
+        avg_cognitive = sum(m.cognitive_complexity for m in self.metrics.values()) / len(
+            self.metrics
+        )
+        avg_essential = sum(m.essential_complexity for m in self.metrics.values()) / len(
+            self.metrics
+        )
 
         # Count by category
         distribution = self.get_complexity_distribution()

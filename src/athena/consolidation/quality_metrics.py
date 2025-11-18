@@ -12,7 +12,7 @@ Metrics:
 
 import math
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
 import numpy as np
 
@@ -72,7 +72,7 @@ class ConsolidationQualityMetrics:
             semantic_memories = cursor.fetchall()
             # Handle both dict-like rows (psycopg3) and tuple rows
             semantic_tokens = sum(
-                len((row.get('content') if isinstance(row, dict) else row[0] or "").split())
+                len((row.get("content") if isinstance(row, dict) else row[0] or "").split())
                 for row in semantic_memories
             )
 
@@ -82,6 +82,7 @@ class ConsolidationQualityMetrics:
 
         except Exception as e:
             import traceback
+
             print(f"Error measuring compression ratio: {e}")
             traceback.print_exc()
             return 0.0
@@ -128,9 +129,7 @@ class ConsolidationQualityMetrics:
 
             # Relative recall
             relative_recall = (
-                semantic_recall / max(episodic_recall, 0.01)
-                if episodic_recall > 0
-                else 0.0
+                semantic_recall / max(episodic_recall, 0.01) if episodic_recall > 0 else 0.0
             )
             relative_recall = min(1.0, relative_recall)
 
@@ -192,7 +191,9 @@ class ConsolidationQualityMetrics:
                 except (AttributeError, TypeError):
                     # Fall back to tuple access
                     try:
-                        row_tuple = tuple(memory_row) if not isinstance(memory_row, tuple) else memory_row
+                        row_tuple = (
+                            tuple(memory_row) if not isinstance(memory_row, tuple) else memory_row
+                        )
                         usefulness = float(row_tuple[1]) if len(row_tuple) > 1 else 0.5
                     except (ValueError, IndexError):
                         usefulness = 0.5
@@ -202,7 +203,9 @@ class ConsolidationQualityMetrics:
 
             # Consistency = how well pattern likelihood explains event entropy
             if event_entropy > 0:
-                consistency = min(1.0, np.exp(pattern_likelihood / len(semantic_memories) - event_entropy))
+                consistency = min(
+                    1.0, np.exp(pattern_likelihood / len(semantic_memories) - event_entropy)
+                )
             else:
                 consistency = 0.5
 
@@ -210,6 +213,7 @@ class ConsolidationQualityMetrics:
 
         except Exception as e:
             import traceback
+
             print(f"Error measuring pattern consistency: {e}")
             traceback.print_exc()
             return 0.5
@@ -254,7 +258,9 @@ class ConsolidationQualityMetrics:
                 except (AttributeError, TypeError):
                     # Fall back to tuple access
                     try:
-                        row_tuple = tuple(memory_row) if not isinstance(memory_row, tuple) else memory_row
+                        row_tuple = (
+                            tuple(memory_row) if not isinstance(memory_row, tuple) else memory_row
+                        )
                         content = row_tuple[1] if len(row_tuple) > 1 else None
                         usefulness_score = float(row_tuple[2]) if len(row_tuple) > 2 else 0.5
                     except (ValueError, IndexError):
@@ -295,6 +301,7 @@ class ConsolidationQualityMetrics:
 
         except Exception as e:
             import traceback
+
             print(f"Error measuring information density: {e}")
             traceback.print_exc()
             return {
@@ -380,10 +387,7 @@ class ConsolidationQualityMetrics:
         for query in queries:
             # Search semantic memories for query via recall method
             try:
-                results = self.semantic_store.search.recall(
-                    query=query,
-                    limit=1
-                )
+                results = self.semantic_store.search.recall(query=query, limit=1)
                 if results:
                     answerable += 1
             except (ValueError, TypeError, AttributeError, KeyError):
@@ -391,7 +395,7 @@ class ConsolidationQualityMetrics:
                 cursor = self.semantic_store.db.get_cursor()
                 cursor.execute(
                     "SELECT content FROM memory_vectors WHERE content ILIKE %s LIMIT 1",
-                    (f"%{query}%",)
+                    (f"%{query}%",),
                 )
                 if cursor.fetchone():
                     answerable += 1

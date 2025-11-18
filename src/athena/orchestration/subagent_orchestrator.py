@@ -12,7 +12,7 @@ Example: Consolidation operation spawns:
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Callable, Coroutine
+from typing import Dict, List, Optional, Any
 from enum import Enum
 from datetime import datetime
 from abc import ABC, abstractmethod
@@ -25,19 +25,21 @@ logger = logging.getLogger(__name__)
 
 class SubAgentType(Enum):
     """Types of specialized subagents."""
-    CLUSTERING = "clustering"           # Event clustering and segmentation
-    VALIDATION = "validation"           # Pattern/output validation
-    EXTRACTION = "extraction"           # Pattern and knowledge extraction
-    INTEGRATION = "integration"         # Knowledge graph integration
-    OPTIMIZATION = "optimization"       # Performance optimization
-    REMEDIATION = "remediation"         # Fixing violations
-    LEARNING = "learning"               # Learning from outcomes
-    PLANNING = "planning"               # Plan generation and verification
-    SYNTHESIS = "synthesis"             # Combining multiple sources
+
+    CLUSTERING = "clustering"  # Event clustering and segmentation
+    VALIDATION = "validation"  # Pattern/output validation
+    EXTRACTION = "extraction"  # Pattern and knowledge extraction
+    INTEGRATION = "integration"  # Knowledge graph integration
+    OPTIMIZATION = "optimization"  # Performance optimization
+    REMEDIATION = "remediation"  # Fixing violations
+    LEARNING = "learning"  # Learning from outcomes
+    PLANNING = "planning"  # Plan generation and verification
+    SYNTHESIS = "synthesis"  # Combining multiple sources
 
 
 class AgentStatus(Enum):
     """Status of a subagent task."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -48,6 +50,7 @@ class AgentStatus(Enum):
 @dataclass
 class SubAgentResult:
     """Result from a subagent task."""
+
     agent_id: str
     agent_type: SubAgentType
     status: AgentStatus
@@ -66,6 +69,7 @@ class SubAgentResult:
 @dataclass
 class SubAgentTask:
     """A task for a subagent to execute."""
+
     task_id: str
     agent_type: SubAgentType
     operation_data: Dict[str, Any]
@@ -98,10 +102,7 @@ class SubAgent(ABC):
             start_time = datetime.now()
 
             # Execute with timeout
-            result_data = await asyncio.wait_for(
-                self._do_work(task),
-                timeout=task.timeout_seconds
-            )
+            result_data = await asyncio.wait_for(self._do_work(task), timeout=task.timeout_seconds)
 
             execution_time = (datetime.now() - start_time).total_seconds() * 1000
 
@@ -248,9 +249,7 @@ class SubAgentOrchestrator:
         self.agents[agent.agent_type] = agent
 
     async def execute_parallel(
-        self,
-        tasks: List[SubAgentTask],
-        enable_feedback_loop: bool = True
+        self, tasks: List[SubAgentTask], enable_feedback_loop: bool = True
     ) -> Dict[str, SubAgentResult]:
         """
         Execute multiple subagent tasks in parallel.
@@ -274,10 +273,10 @@ class SubAgentOrchestrator:
         while len(completed) < len(tasks):
             # Find tasks with all dependencies satisfied
             ready_tasks = [
-                t for t in tasks
-                if t.task_id not in completed and all(
-                    dep_id in completed for dep_id in t.dependencies
-                )
+                t
+                for t in tasks
+                if t.task_id not in completed
+                and all(dep_id in completed for dep_id in t.dependencies)
             ]
 
             if not ready_tasks:
@@ -285,10 +284,7 @@ class SubAgentOrchestrator:
                 break
 
             # Execute ready tasks in parallel
-            execution_tasks = [
-                self._execute_task(task)
-                for task in ready_tasks
-            ]
+            execution_tasks = [self._execute_task(task) for task in ready_tasks]
 
             # Wait for all to complete
             results = await asyncio.gather(*execution_tasks, return_exceptions=True)
@@ -328,9 +324,7 @@ class SubAgentOrchestrator:
         return await agent.execute(task)
 
     def _apply_feedback_coordination(
-        self,
-        tasks: List[SubAgentTask],
-        completed: Dict[str, SubAgentResult]
+        self, tasks: List[SubAgentTask], completed: Dict[str, SubAgentResult]
     ) -> None:
         """
         Apply feedback from completed tasks to pending tasks.
@@ -376,17 +370,13 @@ class SubAgentOrchestrator:
 
         # Effectiveness: % of dependent tasks that benefited from prior results
         task_ids = list(self.task_graph.keys())
-        tasks_with_deps = [
-            t for t in self.task_graph.values()
-            if t.dependencies
-        ]
+        tasks_with_deps = [t for t in self.task_graph.values() if t.dependencies]
 
         if not tasks_with_deps:
             return 1.0
 
         benefited = sum(
-            1 for t in tasks_with_deps
-            if all(dep_id in self.results for dep_id in t.dependencies)
+            1 for t in tasks_with_deps if all(dep_id in self.results for dep_id in t.dependencies)
         )
 
         return benefited / len(tasks_with_deps)
@@ -395,7 +385,7 @@ class SubAgentOrchestrator:
         self,
         operation_type: str,
         operation_data: Dict[str, Any],
-        subagent_types: Optional[List[SubAgentType]] = None
+        subagent_types: Optional[List[SubAgentType]] = None,
     ) -> Dict[str, Any]:
         """
         Execute a complex operation using subagents.
@@ -433,14 +423,10 @@ class SubAgentOrchestrator:
         aggregated = {
             "operation_type": operation_type,
             "subagent_results": {
-                task_id: result.output
-                for task_id, result in results.items()
-                if result.is_success()
+                task_id: result.output for task_id, result in results.items() if result.is_success()
             },
             "failed_agents": [
-                task_id
-                for task_id, result in results.items()
-                if not result.is_success()
+                task_id for task_id, result in results.items() if not result.is_success()
             ],
             "coordination_insights": self.get_orchestration_insights(),
         }

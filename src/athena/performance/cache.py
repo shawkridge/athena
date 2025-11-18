@@ -1,12 +1,11 @@
 """In-memory caching layer for high performance queries."""
 
 import hashlib
-import time
 from collections import OrderedDict
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Callable, Optional, TypeVar
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class CacheEntry:
@@ -214,8 +213,7 @@ class QueryCache:
         """
         # Remove entries mentioning this table
         keys_to_remove = [
-            key for key in self.cache.cache.keys()
-            if table_pattern.lower() in key.lower()
+            key for key in self.cache.cache.keys() if table_pattern.lower() in key.lower()
         ]
         for key in keys_to_remove:
             self.cache.remove(key)
@@ -346,6 +344,7 @@ class CachedQuery:
         Returns:
             Wrapped function with caching
         """
+
         def wrapper(*args, **kwargs) -> T:
             # Generate cache key from function name and arguments
             key = f"{func.__name__}:{args}:{kwargs}"

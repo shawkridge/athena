@@ -70,7 +70,6 @@ Testing:
 
 import asyncio
 import logging
-import os
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, AsyncGenerator, Optional, List
@@ -85,6 +84,7 @@ from .factory import EventSourceFactory
 @dataclass
 class GitCommit:
     """Represents a git commit extracted from repository."""
+
     sha: str
     author: str
     timestamp: datetime
@@ -95,7 +95,9 @@ class GitCommit:
     files_added: int = 0
     files_removed: int = 0
 
-    def to_event(self, source_id: str, project_id: int = 1, session_id: str = "default") -> EpisodicEvent:
+    def to_event(
+        self, source_id: str, project_id: int = 1, session_id: str = "default"
+    ) -> EpisodicEvent:
         """Transform git commit to episodic event.
 
         Args:
@@ -120,9 +122,7 @@ class GitCommit:
             content=content,
             event_type=EventType.FILE_CHANGE,
             timestamp=self.timestamp,
-            context=EventContext(
-                files=self.files_changed
-            ),
+            context=EventContext(files=self.files_changed),
             outcome=EventOutcome.SUCCESS,
             # Git-specific metadata stored in code-aware fields
             git_commit=self.sha,
@@ -132,14 +132,14 @@ class GitCommit:
             lines_deleted=self.deletions,
             # Store additional stats in performance_metrics
             performance_metrics={
-                'commit_sha': self.sha,
-                'author': self.author,
-                'files_changed': self.files_changed,
-                'files_added': self.files_added,
-                'files_removed': self.files_removed,
-                'insertions': self.insertions,
-                'deletions': self.deletions
-            }
+                "commit_sha": self.sha,
+                "author": self.author,
+                "files_changed": self.files_changed,
+                "files_added": self.files_added,
+                "files_removed": self.files_removed,
+                "insertions": self.insertions,
+                "deletions": self.deletions,
+            },
         )
 
 
@@ -173,7 +173,7 @@ class FileSystemEventSource(BaseEventSource):
         exclude_patterns: Optional[List[str]] = None,
         max_commits: int = 1000,
         cursor: Optional[Dict[str, Any]] = None,
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
     ):
         """Initialize filesystem event source.
 
@@ -188,15 +188,15 @@ class FileSystemEventSource(BaseEventSource):
         """
         super().__init__(
             source_id=source_id,
-            source_type='filesystem',
-            source_name=f'FileSystem: {Path(root_dir).name}',
+            source_type="filesystem",
+            source_name=f"FileSystem: {Path(root_dir).name}",
             config={
-                'root_dir': root_dir,
-                'include_patterns': include_patterns or [],
-                'exclude_patterns': exclude_patterns or [],
-                'max_commits': max_commits
+                "root_dir": root_dir,
+                "include_patterns": include_patterns or [],
+                "exclude_patterns": exclude_patterns or [],
+                "max_commits": max_commits,
             },
-            logger=logger
+            logger=logger,
         )
 
         self.root_dir = Path(root_dir)
@@ -206,7 +206,7 @@ class FileSystemEventSource(BaseEventSource):
 
         # Cursor state for incremental sync
         self._cursor = cursor or {}
-        self._last_commit_sha: Optional[str] = self._cursor.get('last_commit_sha')
+        self._last_commit_sha: Optional[str] = self._cursor.get("last_commit_sha")
 
     # ========================================================================
     # Required Abstract Methods
@@ -214,9 +214,7 @@ class FileSystemEventSource(BaseEventSource):
 
     @classmethod
     async def create(
-        cls,
-        credentials: Dict[str, Any],
-        config: Dict[str, Any]
+        cls, credentials: Dict[str, Any], config: Dict[str, Any]
     ) -> "FileSystemEventSource":
         """Factory method to create filesystem event source.
 
@@ -237,7 +235,7 @@ class FileSystemEventSource(BaseEventSource):
             FileNotFoundError: root_dir doesn't exist
         """
         # Validate root_dir
-        root_dir = config.get('root_dir')
+        root_dir = config.get("root_dir")
         if not root_dir:
             raise ValueError("Config must include 'root_dir' (path to git repository)")
 
@@ -246,14 +244,14 @@ class FileSystemEventSource(BaseEventSource):
         if not root_path.is_dir():
             raise FileNotFoundError(f"Directory not found: {root_dir}")
 
-        if not (root_path / '.git').is_dir():
+        if not (root_path / ".git").is_dir():
             raise ValueError(f"Not a git repository (missing .git): {root_dir}")
 
         # Extract config
-        include_patterns = config.get('include_patterns')
-        exclude_patterns = config.get('exclude_patterns')
-        max_commits = config.get('max_commits', 1000)
-        cursor = config.get('cursor')
+        include_patterns = config.get("include_patterns")
+        exclude_patterns = config.get("exclude_patterns")
+        max_commits = config.get("max_commits", 1000)
+        cursor = config.get("cursor")
 
         # Generate source_id from root_dir if not provided
         source_id = f"filesystem-{root_path.name}"
@@ -267,7 +265,7 @@ class FileSystemEventSource(BaseEventSource):
             exclude_patterns=exclude_patterns,
             max_commits=max_commits,
             cursor=cursor,
-            logger=logger
+            logger=logger,
         )
 
     async def generate_events(self) -> AsyncGenerator[EpisodicEvent, None]:
@@ -285,8 +283,7 @@ class FileSystemEventSource(BaseEventSource):
         - Network: none (local filesystem only)
         """
         self._logger.info(
-            f"Generating events from {self.root_dir} "
-            f"(max={self.max_commits} commits)"
+            f"Generating events from {self.root_dir} " f"(max={self.max_commits} commits)"
         )
 
         try:
@@ -320,8 +317,7 @@ class FileSystemEventSource(BaseEventSource):
                     self._logger.error(f"Error processing commit {commit_data.sha}: {e}")
 
             self._logger.info(
-                f"Generated {self._events_generated} events "
-                f"({self._events_failed} failed)"
+                f"Generated {self._events_generated} events " f"({self._events_failed} failed)"
             )
 
         except Exception as e:
@@ -346,17 +342,17 @@ class FileSystemEventSource(BaseEventSource):
                 return False
 
             # Check is git repo
-            if not (self.root_dir / '.git').is_dir():
+            if not (self.root_dir / ".git").is_dir():
                 self._logger.error(f"Not a git repository: {self.root_dir}")
                 return False
 
             # Test git command (check if repository is healthy)
             result = await asyncio.to_thread(
                 subprocess.run,
-                ['git', 'rev-parse', 'HEAD'],
+                ["git", "rev-parse", "HEAD"],
                 cwd=str(self.root_dir),
                 capture_output=True,
-                text=True
+                text=True,
             )
 
             if result.returncode != 0:
@@ -395,10 +391,10 @@ class FileSystemEventSource(BaseEventSource):
         """
         if self._last_commit_sha:
             return {
-                'last_commit_sha': self._last_commit_sha,
-                'timestamp': datetime.now().isoformat(),
-                'repo_path': str(self.root_dir),
-                'source_type': 'filesystem'
+                "last_commit_sha": self._last_commit_sha,
+                "timestamp": datetime.now().isoformat(),
+                "repo_path": str(self.root_dir),
+                "source_type": "filesystem",
             }
         return None
 
@@ -413,10 +409,9 @@ class FileSystemEventSource(BaseEventSource):
         """
         if cursor:
             self._cursor = cursor
-            self._last_commit_sha = cursor.get('last_commit_sha')
+            self._last_commit_sha = cursor.get("last_commit_sha")
             self._logger.info(
-                f"Cursor set to commit: {self._last_commit_sha} "
-                f"(will skip earlier commits)"
+                f"Cursor set to commit: {self._last_commit_sha} " f"(will skip earlier commits)"
             )
 
     # ========================================================================
@@ -438,19 +433,20 @@ class FileSystemEventSource(BaseEventSource):
         try:
             # Build git log command
             cmd = [
-                'git', 'log',
-                f'--max-count={self.max_commits}',
-                '--format=%H|%an|%at|%s|%b',  # SHA|author|timestamp|subject|body
-                '--numstat',  # File stats (insertions/deletions per file)
+                "git",
+                "log",
+                f"--max-count={self.max_commits}",
+                "--format=%H|%an|%at|%s|%b",  # SHA|author|timestamp|subject|body
+                "--numstat",  # File stats (insertions/deletions per file)
             ]
 
             # If cursor is set, only get commits after it
             if self._last_commit_sha:
                 # Get commits between cursor and HEAD
-                cmd.append(f'{self._last_commit_sha}..HEAD')
+                cmd.append(f"{self._last_commit_sha}..HEAD")
             else:
                 # Get commits on default branch
-                cmd.append('HEAD')
+                cmd.append("HEAD")
 
             # Run git log command
             result = subprocess.run(
@@ -458,7 +454,7 @@ class FileSystemEventSource(BaseEventSource):
                 cwd=str(self.root_dir),
                 capture_output=True,
                 text=True,
-                timeout=30  # 30 second timeout
+                timeout=30,  # 30 second timeout
             )
 
             if result.returncode != 0:
@@ -487,12 +483,12 @@ class FileSystemEventSource(BaseEventSource):
             List of parsed GitCommit objects
         """
         commits = []
-        lines = output.strip().split('\n')
+        lines = output.strip().split("\n")
         i = 0
 
         while i < len(lines):
             # Parse commit line
-            parts = lines[i].split('|', 4)
+            parts = lines[i].split("|", 4)
             if len(parts) < 4:
                 i += 1
                 continue
@@ -514,10 +510,10 @@ class FileSystemEventSource(BaseEventSource):
             i += 1
             while i < len(lines) and lines[i].strip():
                 # numstat format: insertions\tdeletions\tfilename
-                stat_parts = lines[i].split('\t')
+                stat_parts = lines[i].split("\t")
                 if len(stat_parts) >= 3:
-                    insertions = int(stat_parts[0]) if stat_parts[0] != '-' else 0
-                    deletions = int(stat_parts[1]) if stat_parts[1] != '-' else 0
+                    insertions = int(stat_parts[0]) if stat_parts[0] != "-" else 0
+                    deletions = int(stat_parts[1]) if stat_parts[1] != "-" else 0
                     filename = stat_parts[2]
 
                     files_changed.append(filename)
@@ -542,7 +538,7 @@ class FileSystemEventSource(BaseEventSource):
                 insertions=insertions_total,
                 deletions=deletions_total,
                 files_added=files_added,
-                files_removed=files_removed
+                files_removed=files_removed,
             )
 
             commits.append(commit)
@@ -563,8 +559,7 @@ class FileSystemEventSource(BaseEventSource):
         # If include patterns specified, file must match at least one
         if self.include_patterns:
             matches_include = any(
-                PurePath(filepath).match(pattern)
-                for pattern in self.include_patterns
+                PurePath(filepath).match(pattern) for pattern in self.include_patterns
             )
             if not matches_include:
                 return False
@@ -572,8 +567,7 @@ class FileSystemEventSource(BaseEventSource):
         # If exclude patterns specified, file must not match any
         if self.exclude_patterns:
             matches_exclude = any(
-                PurePath(filepath).match(pattern)
-                for pattern in self.exclude_patterns
+                PurePath(filepath).match(pattern) for pattern in self.exclude_patterns
             )
             if matches_exclude:
                 return False
@@ -586,4 +580,4 @@ class FileSystemEventSource(BaseEventSource):
 # ============================================================================
 
 # Register FileSystemEventSource with the factory on module import
-EventSourceFactory.register_source('filesystem', FileSystemEventSource)
+EventSourceFactory.register_source("filesystem", FileSystemEventSource)

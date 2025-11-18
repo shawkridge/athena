@@ -19,41 +19,43 @@ from datetime import datetime
 # ENUMS: Symbol Types and Relationships
 # ============================================================================
 
+
 class SymbolType(str, Enum):
     """Classification of different code symbol types."""
 
-    FUNCTION = "function"                  # Standalone function
-    CLASS = "class"                        # Class definition
-    METHOD = "method"                      # Class method
-    PROPERTY = "property"                  # Property/attribute
-    INTERFACE = "interface"                # Interface/protocol
-    MODULE = "module"                      # File or module
-    IMPORT = "import"                      # External dependency
-    CONSTANT = "constant"                  # Global constant
-    ENUM = "enum"                          # Enumeration type
-    ASYNC_FUNCTION = "async_function"      # Async function
-    GENERATOR = "generator"                # Generator function
-    LAMBDA = "lambda"                      # Anonymous function
-    DATACLASS = "dataclass"                # Python dataclass
-    PROTOCOL = "protocol"                  # Protocol/interface definition
+    FUNCTION = "function"  # Standalone function
+    CLASS = "class"  # Class definition
+    METHOD = "method"  # Class method
+    PROPERTY = "property"  # Property/attribute
+    INTERFACE = "interface"  # Interface/protocol
+    MODULE = "module"  # File or module
+    IMPORT = "import"  # External dependency
+    CONSTANT = "constant"  # Global constant
+    ENUM = "enum"  # Enumeration type
+    ASYNC_FUNCTION = "async_function"  # Async function
+    GENERATOR = "generator"  # Generator function
+    LAMBDA = "lambda"  # Anonymous function
+    DATACLASS = "dataclass"  # Python dataclass
+    PROTOCOL = "protocol"  # Protocol/interface definition
 
 
 class RelationType(str, Enum):
     """Types of relationships between symbols."""
 
-    CALLS = "calls"                        # Function A calls Function B
-    INHERITS_FROM = "inherits_from"        # Class A extends Class B
-    IMPLEMENTS = "implements"              # Class implements Interface
-    IMPORTS = "imports"                    # Module imports Symbol
-    DEPENDS_ON = "depends_on"              # General dependency
-    REFERENCES = "references"              # Type or value reference
-    OVERRIDES = "overrides"                # Method overrides parent method
-    IS_MEMBER_OF = "is_member_of"          # Method belongs to class
+    CALLS = "calls"  # Function A calls Function B
+    INHERITS_FROM = "inherits_from"  # Class A extends Class B
+    IMPLEMENTS = "implements"  # Class implements Interface
+    IMPORTS = "imports"  # Module imports Symbol
+    DEPENDS_ON = "depends_on"  # General dependency
+    REFERENCES = "references"  # Type or value reference
+    OVERRIDES = "overrides"  # Method overrides parent method
+    IS_MEMBER_OF = "is_member_of"  # Method belongs to class
 
 
 # ============================================================================
 # DATACLASSES: Symbol Metrics and Properties
 # ============================================================================
+
 
 @dataclass
 class SymbolMetrics:
@@ -248,7 +250,7 @@ class SymbolAnalysisResult:
                 "total_symbols": 0,
                 "avg_cyclomatic": 0,
                 "max_cyclomatic": 0,
-                "complex_symbols": 0
+                "complex_symbols": 0,
             }
 
         cyclomatic_values = [s.metrics.cyclomatic_complexity for s in self.symbols]
@@ -258,7 +260,7 @@ class SymbolAnalysisResult:
             "total_symbols": len(self.symbols),
             "avg_cyclomatic": sum(cyclomatic_values) / len(self.symbols),
             "max_cyclomatic": max(cyclomatic_values),
-            "complex_symbols": complex_count
+            "complex_symbols": complex_count,
         }
 
 
@@ -274,6 +276,7 @@ DependencyGraph = Dict[str, List[str]]  # Mapping of symbol names to dependent n
 # UTILITY FUNCTIONS
 # ============================================================================
 
+
 def create_symbol(
     file_path: str,
     symbol_type: SymbolType,
@@ -285,7 +288,7 @@ def create_symbol(
     code: str,
     docstring: str = "",
     language: str = "python",
-    **kwargs
+    **kwargs,
 ) -> Symbol:
     """
     Factory function to create a Symbol with validated inputs.
@@ -325,7 +328,7 @@ def create_symbol(
         docstring=docstring,
         metrics=metrics,
         language=language,
-        **kwargs
+        **kwargs,
     )
 
 

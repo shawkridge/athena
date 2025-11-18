@@ -8,7 +8,7 @@ Provides:
 - Quality trends and progression tracking
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -23,6 +23,7 @@ from .technical_debt_analyzer import TechnicalDebtAnalyzer
 
 class QualityRating(str, Enum):
     """Overall quality rating."""
+
     EXCELLENT = "excellent"  # 85-100
     GOOD = "good"  # 70-84
     FAIR = "fair"  # 55-69
@@ -32,6 +33,7 @@ class QualityRating(str, Enum):
 
 class QualityMetric(str, Enum):
     """Individual quality metric."""
+
     SECURITY = "security"
     PERFORMANCE = "performance"
     QUALITY = "quality"
@@ -44,6 +46,7 @@ class QualityMetric(str, Enum):
 @dataclass
 class ComponentScore:
     """Score for a quality component."""
+
     metric: QualityMetric
     score: float  # 0-100
     rating: QualityRating
@@ -56,6 +59,7 @@ class ComponentScore:
 @dataclass
 class HealthCheck:
     """Result of a quality health check."""
+
     check_name: str
     passed: bool
     score: float  # 0-1
@@ -67,6 +71,7 @@ class HealthCheck:
 @dataclass
 class QualityImprovement:
     """Single quality improvement recommendation."""
+
     priority: int  # 1-based, lower = higher priority
     title: str
     description: str
@@ -78,6 +83,7 @@ class QualityImprovement:
 @dataclass
 class QualityTrend:
     """Quality metric trend over time."""
+
     metric: QualityMetric
     previous_score: float
     current_score: float
@@ -88,6 +94,7 @@ class QualityTrend:
 @dataclass
 class CodeQualityScore:
     """Comprehensive code quality score."""
+
     symbol: Symbol
     overall_score: float  # 0-100
     overall_rating: QualityRating
@@ -129,13 +136,16 @@ class CodeQualityScorer:
         self.testability_analyzer = TestabilityAnalyzer()
         self.debt_analyzer = TechnicalDebtAnalyzer()
 
-    def score_symbol(self, symbol: Symbol,
-                     security_issues: int = 0,
-                     performance_issues: int = 0,
-                     code_smells: int = 0,
-                     maintainability_score: float = 50.0,
-                     testability_score: float = 50.0,
-                     has_docstring: bool = False) -> CodeQualityScore:
+    def score_symbol(
+        self,
+        symbol: Symbol,
+        security_issues: int = 0,
+        performance_issues: int = 0,
+        code_smells: int = 0,
+        maintainability_score: float = 50.0,
+        testability_score: float = 50.0,
+        has_docstring: bool = False,
+    ) -> CodeQualityScore:
         """Score code quality of a single symbol.
 
         Args:
@@ -167,7 +177,11 @@ class CodeQualityScorer:
                 weight=0.25,
                 issues_count=security_issues,
                 critical_count=min(security_issues, 2),
-                status="critical" if security_debt > 70 else "warning" if security_debt > 40 else "healthy"
+                status=(
+                    "critical"
+                    if security_debt > 70
+                    else "warning" if security_debt > 40 else "healthy"
+                ),
             ),
             ComponentScore(
                 metric=QualityMetric.PERFORMANCE,
@@ -176,7 +190,11 @@ class CodeQualityScorer:
                 weight=0.15,
                 issues_count=performance_issues,
                 critical_count=max(0, performance_issues - 2),
-                status="critical" if performance_debt > 70 else "warning" if performance_debt > 40 else "healthy"
+                status=(
+                    "critical"
+                    if performance_debt > 70
+                    else "warning" if performance_debt > 40 else "healthy"
+                ),
             ),
             ComponentScore(
                 metric=QualityMetric.QUALITY,
@@ -185,7 +203,11 @@ class CodeQualityScorer:
                 weight=0.15,
                 issues_count=code_smells,
                 critical_count=max(0, code_smells - 3),
-                status="critical" if quality_debt > 70 else "warning" if quality_debt > 40 else "healthy"
+                status=(
+                    "critical"
+                    if quality_debt > 70
+                    else "warning" if quality_debt > 40 else "healthy"
+                ),
             ),
             ComponentScore(
                 metric=QualityMetric.DOCUMENTATION,
@@ -194,7 +216,7 @@ class CodeQualityScorer:
                 weight=0.10,
                 issues_count=0 if has_docstring else 1,
                 critical_count=0 if has_docstring else 0,
-                status="healthy" if has_docstring else "warning"
+                status="healthy" if has_docstring else "warning",
             ),
             ComponentScore(
                 metric=QualityMetric.MAINTAINABILITY,
@@ -203,7 +225,11 @@ class CodeQualityScorer:
                 weight=0.20,
                 issues_count=0 if maintainability_score > 70 else 1,
                 critical_count=0 if maintainability_score > 40 else 1,
-                status="critical" if maintainability_score < 40 else "warning" if maintainability_score < 60 else "healthy"
+                status=(
+                    "critical"
+                    if maintainability_score < 40
+                    else "warning" if maintainability_score < 60 else "healthy"
+                ),
             ),
             ComponentScore(
                 metric=QualityMetric.TESTABILITY,
@@ -212,7 +238,11 @@ class CodeQualityScorer:
                 weight=0.15,
                 issues_count=0 if testability_score > 65 else 1,
                 critical_count=0 if testability_score > 30 else 1,
-                status="critical" if testability_score < 30 else "warning" if testability_score < 65 else "healthy"
+                status=(
+                    "critical"
+                    if testability_score < 30
+                    else "warning" if testability_score < 65 else "healthy"
+                ),
             ),
         ]
 
@@ -220,22 +250,36 @@ class CodeQualityScorer:
         overall_score = sum(cs.score * cs.weight for cs in component_scores)
 
         # Count issues by severity
-        total_issues = security_issues + performance_issues + code_smells + (0 if has_docstring else 1)
+        total_issues = (
+            security_issues + performance_issues + code_smells + (0 if has_docstring else 1)
+        )
         critical_issues = sum(cs.critical_count for cs in component_scores)
-        high_issues = max(0, security_issues - 1) + max(0, performance_issues - 1) + max(0, code_smells - 2)
+        high_issues = (
+            max(0, security_issues - 1) + max(0, performance_issues - 1) + max(0, code_smells - 2)
+        )
         medium_issues = max(0, (security_issues - 1) - max(0, security_issues - 2))
         low_issues = max(0, total_issues - critical_issues - high_issues - medium_issues)
 
         # Perform health checks
         health_checks = self._perform_health_checks(
-            symbol, security_issues, performance_issues, code_smells,
-            maintainability_score, testability_score, has_docstring
+            symbol,
+            security_issues,
+            performance_issues,
+            code_smells,
+            maintainability_score,
+            testability_score,
+            has_docstring,
         )
 
         # Generate improvements
         improvements = self._generate_improvements(
-            component_scores, security_issues, performance_issues, code_smells,
-            maintainability_score, testability_score, has_docstring
+            component_scores,
+            security_issues,
+            performance_issues,
+            code_smells,
+            maintainability_score,
+            testability_score,
+            has_docstring,
         )
 
         # Identify strengths and weaknesses
@@ -338,237 +382,291 @@ class CodeQualityScorer:
         else:
             return QualityRating.CRITICAL
 
-    def _perform_health_checks(self, symbol: Symbol,
-                               security_issues: int,
-                               performance_issues: int,
-                               code_smells: int,
-                               maintainability_score: float,
-                               testability_score: float,
-                               has_docstring: bool) -> List[HealthCheck]:
+    def _perform_health_checks(
+        self,
+        symbol: Symbol,
+        security_issues: int,
+        performance_issues: int,
+        code_smells: int,
+        maintainability_score: float,
+        testability_score: float,
+        has_docstring: bool,
+    ) -> List[HealthCheck]:
         """Perform quality health checks."""
         checks = []
 
         # Security check
         if security_issues == 0:
-            checks.append(HealthCheck(
-                check_name="Security",
-                passed=True,
-                score=1.0,
-                details="No security issues detected",
-                recommendation="Continue security best practices",
-                severity="low"
-            ))
+            checks.append(
+                HealthCheck(
+                    check_name="Security",
+                    passed=True,
+                    score=1.0,
+                    details="No security issues detected",
+                    recommendation="Continue security best practices",
+                    severity="low",
+                )
+            )
         elif security_issues <= 1:
-            checks.append(HealthCheck(
-                check_name="Security",
-                passed=False,
-                score=0.7,
-                details=f"{security_issues} security issue(s) detected",
-                recommendation="Address security vulnerabilities immediately",
-                severity="high"
-            ))
+            checks.append(
+                HealthCheck(
+                    check_name="Security",
+                    passed=False,
+                    score=0.7,
+                    details=f"{security_issues} security issue(s) detected",
+                    recommendation="Address security vulnerabilities immediately",
+                    severity="high",
+                )
+            )
         else:
-            checks.append(HealthCheck(
-                check_name="Security",
-                passed=False,
-                score=max(0.0, 1.0 - security_issues * 0.2),
-                details=f"{security_issues} security issues detected",
-                recommendation="Critical: Audit and fix all security issues",
-                severity="critical"
-            ))
+            checks.append(
+                HealthCheck(
+                    check_name="Security",
+                    passed=False,
+                    score=max(0.0, 1.0 - security_issues * 0.2),
+                    details=f"{security_issues} security issues detected",
+                    recommendation="Critical: Audit and fix all security issues",
+                    severity="critical",
+                )
+            )
 
         # Performance check
         if performance_issues == 0:
-            checks.append(HealthCheck(
-                check_name="Performance",
-                passed=True,
-                score=1.0,
-                details="No performance issues detected",
-                recommendation="Monitor performance metrics",
-                severity="low"
-            ))
+            checks.append(
+                HealthCheck(
+                    check_name="Performance",
+                    passed=True,
+                    score=1.0,
+                    details="No performance issues detected",
+                    recommendation="Monitor performance metrics",
+                    severity="low",
+                )
+            )
         else:
-            checks.append(HealthCheck(
-                check_name="Performance",
-                passed=False,
-                score=max(0.0, 1.0 - performance_issues * 0.2),
-                details=f"{performance_issues} performance issue(s) detected",
-                recommendation="Optimize performance bottlenecks",
-                severity="medium" if performance_issues <= 2 else "high"
-            ))
+            checks.append(
+                HealthCheck(
+                    check_name="Performance",
+                    passed=False,
+                    score=max(0.0, 1.0 - performance_issues * 0.2),
+                    details=f"{performance_issues} performance issue(s) detected",
+                    recommendation="Optimize performance bottlenecks",
+                    severity="medium" if performance_issues <= 2 else "high",
+                )
+            )
 
         # Code quality check
         if code_smells <= 2:
-            checks.append(HealthCheck(
-                check_name="Code Quality",
-                passed=code_smells == 0,
-                score=1.0 - code_smells * 0.2,
-                details=f"{code_smells} code smell(s) detected" if code_smells > 0 else "Code quality is good",
-                recommendation="Refactor to eliminate remaining smells" if code_smells > 0 else "Maintain current quality",
-                severity="low" if code_smells <= 1 else "medium"
-            ))
+            checks.append(
+                HealthCheck(
+                    check_name="Code Quality",
+                    passed=code_smells == 0,
+                    score=1.0 - code_smells * 0.2,
+                    details=(
+                        f"{code_smells} code smell(s) detected"
+                        if code_smells > 0
+                        else "Code quality is good"
+                    ),
+                    recommendation=(
+                        "Refactor to eliminate remaining smells"
+                        if code_smells > 0
+                        else "Maintain current quality"
+                    ),
+                    severity="low" if code_smells <= 1 else "medium",
+                )
+            )
         else:
-            checks.append(HealthCheck(
-                check_name="Code Quality",
-                passed=False,
-                score=max(0.0, 1.0 - code_smells * 0.15),
-                details=f"{code_smells} code smells detected",
-                recommendation="Significant refactoring needed",
-                severity="high"
-            ))
+            checks.append(
+                HealthCheck(
+                    check_name="Code Quality",
+                    passed=False,
+                    score=max(0.0, 1.0 - code_smells * 0.15),
+                    details=f"{code_smells} code smells detected",
+                    recommendation="Significant refactoring needed",
+                    severity="high",
+                )
+            )
 
         # Maintainability check
         if maintainability_score >= 70:
-            checks.append(HealthCheck(
-                check_name="Maintainability",
-                passed=True,
-                score=maintainability_score / 100.0,
-                details="Code is well-structured and maintainable",
-                recommendation="Continue good practices",
-                severity="low"
-            ))
+            checks.append(
+                HealthCheck(
+                    check_name="Maintainability",
+                    passed=True,
+                    score=maintainability_score / 100.0,
+                    details="Code is well-structured and maintainable",
+                    recommendation="Continue good practices",
+                    severity="low",
+                )
+            )
         elif maintainability_score >= 55:
-            checks.append(HealthCheck(
-                check_name="Maintainability",
-                passed=False,
-                score=maintainability_score / 100.0,
-                details="Maintainability could be improved",
-                recommendation="Refactor for better structure",
-                severity="medium"
-            ))
+            checks.append(
+                HealthCheck(
+                    check_name="Maintainability",
+                    passed=False,
+                    score=maintainability_score / 100.0,
+                    details="Maintainability could be improved",
+                    recommendation="Refactor for better structure",
+                    severity="medium",
+                )
+            )
         else:
-            checks.append(HealthCheck(
-                check_name="Maintainability",
-                passed=False,
-                score=maintainability_score / 100.0,
-                details="Code is difficult to maintain",
-                recommendation="Critical: Refactor to improve maintainability",
-                severity="critical"
-            ))
+            checks.append(
+                HealthCheck(
+                    check_name="Maintainability",
+                    passed=False,
+                    score=maintainability_score / 100.0,
+                    details="Code is difficult to maintain",
+                    recommendation="Critical: Refactor to improve maintainability",
+                    severity="critical",
+                )
+            )
 
         # Testability check
         if testability_score >= 70:
-            checks.append(HealthCheck(
-                check_name="Testability",
-                passed=True,
-                score=testability_score / 100.0,
-                details="Code is highly testable",
-                recommendation="Maintain good testability practices",
-                severity="low"
-            ))
+            checks.append(
+                HealthCheck(
+                    check_name="Testability",
+                    passed=True,
+                    score=testability_score / 100.0,
+                    details="Code is highly testable",
+                    recommendation="Maintain good testability practices",
+                    severity="low",
+                )
+            )
         else:
-            checks.append(HealthCheck(
-                check_name="Testability",
-                passed=False,
-                score=testability_score / 100.0,
-                details="Code could be more testable",
-                recommendation="Improve dependency injection and reduce side effects",
-                severity="medium" if testability_score >= 50 else "high"
-            ))
+            checks.append(
+                HealthCheck(
+                    check_name="Testability",
+                    passed=False,
+                    score=testability_score / 100.0,
+                    details="Code could be more testable",
+                    recommendation="Improve dependency injection and reduce side effects",
+                    severity="medium" if testability_score >= 50 else "high",
+                )
+            )
 
         # Documentation check
         if has_docstring:
-            checks.append(HealthCheck(
-                check_name="Documentation",
-                passed=True,
-                score=1.0,
-                details="Code is documented",
-                recommendation="Keep documentation up-to-date",
-                severity="low"
-            ))
+            checks.append(
+                HealthCheck(
+                    check_name="Documentation",
+                    passed=True,
+                    score=1.0,
+                    details="Code is documented",
+                    recommendation="Keep documentation up-to-date",
+                    severity="low",
+                )
+            )
         else:
-            checks.append(HealthCheck(
-                check_name="Documentation",
-                passed=False,
-                score=0.0,
-                details="Code lacks documentation",
-                recommendation="Add comprehensive docstring",
-                severity="medium"
-            ))
+            checks.append(
+                HealthCheck(
+                    check_name="Documentation",
+                    passed=False,
+                    score=0.0,
+                    details="Code lacks documentation",
+                    recommendation="Add comprehensive docstring",
+                    severity="medium",
+                )
+            )
 
         return checks
 
-    def _generate_improvements(self, component_scores: List[ComponentScore],
-                              security_issues: int,
-                              performance_issues: int,
-                              code_smells: int,
-                              maintainability_score: float,
-                              testability_score: float,
-                              has_docstring: bool) -> List[QualityImprovement]:
+    def _generate_improvements(
+        self,
+        component_scores: List[ComponentScore],
+        security_issues: int,
+        performance_issues: int,
+        code_smells: int,
+        maintainability_score: float,
+        testability_score: float,
+        has_docstring: bool,
+    ) -> List[QualityImprovement]:
         """Generate quality improvement recommendations."""
         improvements = []
         priority = 1
 
         # Security improvements
         if security_issues > 0:
-            improvements.append(QualityImprovement(
-                priority=priority,
-                title="Fix Security Vulnerabilities",
-                description=f"Address {security_issues} security issue(s)",
-                estimated_effort="4-8 hours",
-                expected_impact=f"Eliminate security debt, +{security_issues * 10}-{security_issues * 20} quality score",
-                category="security"
-            ))
+            improvements.append(
+                QualityImprovement(
+                    priority=priority,
+                    title="Fix Security Vulnerabilities",
+                    description=f"Address {security_issues} security issue(s)",
+                    estimated_effort="4-8 hours",
+                    expected_impact=f"Eliminate security debt, +{security_issues * 10}-{security_issues * 20} quality score",
+                    category="security",
+                )
+            )
             priority += 1
 
         # Maintainability improvements
         if maintainability_score < 60:
-            improvements.append(QualityImprovement(
-                priority=priority,
-                title="Improve Maintainability",
-                description="Refactor code structure and reduce complexity",
-                estimated_effort="1-3 days",
-                expected_impact=f"+{min(40, 100 - maintainability_score)} to maintainability score",
-                category="maintainability"
-            ))
+            improvements.append(
+                QualityImprovement(
+                    priority=priority,
+                    title="Improve Maintainability",
+                    description="Refactor code structure and reduce complexity",
+                    estimated_effort="1-3 days",
+                    expected_impact=f"+{min(40, 100 - maintainability_score)} to maintainability score",
+                    category="maintainability",
+                )
+            )
             priority += 1
 
         # Performance improvements
         if performance_issues > 0:
-            improvements.append(QualityImprovement(
-                priority=priority,
-                title="Optimize Performance",
-                description=f"Fix {performance_issues} performance issue(s)",
-                estimated_effort="6-12 hours",
-                expected_impact="+15-30% performance improvement",
-                category="performance"
-            ))
+            improvements.append(
+                QualityImprovement(
+                    priority=priority,
+                    title="Optimize Performance",
+                    description=f"Fix {performance_issues} performance issue(s)",
+                    estimated_effort="6-12 hours",
+                    expected_impact="+15-30% performance improvement",
+                    category="performance",
+                )
+            )
             priority += 1
 
         # Code quality improvements
         if code_smells > 0:
-            improvements.append(QualityImprovement(
-                priority=priority,
-                title="Eliminate Code Smells",
-                description=f"Refactor to remove {code_smells} code smell(s)",
-                estimated_effort="4-8 hours",
-                expected_impact=f"Reduce smells by 100%, +{code_smells * 5}-{code_smells * 15} quality score",
-                category="quality"
-            ))
+            improvements.append(
+                QualityImprovement(
+                    priority=priority,
+                    title="Eliminate Code Smells",
+                    description=f"Refactor to remove {code_smells} code smell(s)",
+                    estimated_effort="4-8 hours",
+                    expected_impact=f"Reduce smells by 100%, +{code_smells * 5}-{code_smells * 15} quality score",
+                    category="quality",
+                )
+            )
             priority += 1
 
         # Testability improvements
         if testability_score < 65:
-            improvements.append(QualityImprovement(
-                priority=priority,
-                title="Improve Testability",
-                description="Refactor for better dependency injection and fewer side effects",
-                estimated_effort="1-2 days",
-                expected_impact=f"+{min(35, 100 - testability_score)} to testability score",
-                category="testability"
-            ))
+            improvements.append(
+                QualityImprovement(
+                    priority=priority,
+                    title="Improve Testability",
+                    description="Refactor for better dependency injection and fewer side effects",
+                    estimated_effort="1-2 days",
+                    expected_impact=f"+{min(35, 100 - testability_score)} to testability score",
+                    category="testability",
+                )
+            )
             priority += 1
 
         # Documentation improvements
         if not has_docstring:
-            improvements.append(QualityImprovement(
-                priority=priority,
-                title="Add Documentation",
-                description="Write comprehensive docstring and examples",
-                estimated_effort="1-2 hours",
-                expected_impact="+10-20 to documentation score",
-                category="documentation"
-            ))
+            improvements.append(
+                QualityImprovement(
+                    priority=priority,
+                    title="Add Documentation",
+                    description="Write comprehensive docstring and examples",
+                    estimated_effort="1-2 hours",
+                    expected_impact="+10-20 to documentation score",
+                    category="documentation",
+                )
+            )
             priority += 1
 
         return improvements
@@ -601,10 +699,7 @@ class CodeQualityScorer:
     def get_quality_report(self) -> Dict:
         """Generate comprehensive quality report."""
         if not self.scores:
-            return {
-                "status": "no_assessment",
-                "message": "No code quality assessments available"
-            }
+            return {"status": "no_assessment", "message": "No code quality assessments available"}
 
         avg_score = sum(s.overall_score for s in self.scores) / len(self.scores)
         avg_rating = self._score_to_rating(avg_score)
@@ -622,7 +717,7 @@ class CodeQualityScorer:
                 {
                     "symbol": s.symbol.name,
                     "score": s.overall_score,
-                    "rating": s.overall_rating.value
+                    "rating": s.overall_rating.value,
                 }
                 for s in sorted(self.scores, key=lambda s: s.overall_score, reverse=True)[:5]
             ],
@@ -631,12 +726,12 @@ class CodeQualityScorer:
                     "symbol": s.symbol.name,
                     "score": s.overall_score,
                     "rating": s.overall_rating.value,
-                    "critical_count": s.critical_issues
+                    "critical_count": s.critical_issues,
                 }
                 for s in sorted(self.scores, key=lambda s: s.overall_score)[:5]
             ],
             "top_improvements": self._get_top_improvements(),
-            "quality_breakdown": self._get_quality_breakdown()
+            "quality_breakdown": self._get_quality_breakdown(),
         }
 
     def _get_top_improvements(self, limit: int = 10) -> List[Dict]:
@@ -650,12 +745,14 @@ class CodeQualityScorer:
         top = []
         for imp in sorted(all_improvements, key=lambda x: x.priority):
             if imp.category not in seen_categories and len(top) < limit:
-                top.append({
-                    "title": imp.title,
-                    "category": imp.category,
-                    "effort": imp.estimated_effort,
-                    "impact": imp.expected_impact
-                })
+                top.append(
+                    {
+                        "title": imp.title,
+                        "category": imp.category,
+                        "effort": imp.estimated_effort,
+                        "impact": imp.expected_impact,
+                    }
+                )
                 seen_categories.add(imp.category)
 
         return top

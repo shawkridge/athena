@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from athena.manager import UnifiedMemoryManager
 
 
-def consolidate(strategy: str = 'balanced', days_back: int = 7):
+def consolidate(strategy: str = "balanced", days_back: int = 7):
     """
     Extract patterns from episodic events (sleep-like consolidation)
 
@@ -36,7 +36,7 @@ def consolidate(strategy: str = 'balanced', days_back: int = 7):
         ValueError: If strategy is invalid
         RuntimeError: If consolidation process fails
     """
-    valid_strategies = ['balanced', 'speed', 'quality']
+    valid_strategies = ["balanced", "speed", "quality"]
     if strategy not in valid_strategies:
         raise ValueError(f"Invalid strategy: {strategy}. Must be one of {valid_strategies}")
 
@@ -49,4 +49,3 @@ def consolidate(strategy: str = 'balanced', days_back: int = 7):
         return report
     except Exception as e:
         raise RuntimeError(f"Consolidation failed: {str(e)}") from e
-

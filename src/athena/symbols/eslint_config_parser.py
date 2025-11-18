@@ -30,7 +30,7 @@ class ESLintConfigParser:
         """
         if code is None:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     code = f.read()
             except (IOError, UnicodeDecodeError):
                 return []
@@ -38,7 +38,7 @@ class ESLintConfigParser:
         symbols = []
 
         # Try JSON parsing first (for .eslintrc.json or plain .eslintrc)
-        if file_path.endswith('.json') or file_path.endswith('.eslintrc'):
+        if file_path.endswith(".json") or file_path.endswith(".eslintrc"):
             try:
                 data = json.loads(code)
                 symbols.extend(self._extract_from_json(data, file_path))
@@ -48,7 +48,7 @@ class ESLintConfigParser:
                 pass  # Fall through to JS parsing
 
         # For JS files, use regex-based extraction
-        if file_path.endswith('.js') or file_path.endswith('.eslintrc'):
+        if file_path.endswith(".js") or file_path.endswith(".eslintrc"):
             symbols.extend(self._extract_from_js(code, file_path))
             return symbols
 
@@ -72,7 +72,7 @@ class ESLintConfigParser:
                 code="",
                 docstring=f"ESLint parser: {parser}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -92,7 +92,7 @@ class ESLintConfigParser:
                         code="",
                         docstring=f"Parser option: {key}",
                         language="json",
-                        visibility="public"
+                        visibility="public",
                     )
                     symbols.append(symbol)
 
@@ -113,7 +113,7 @@ class ESLintConfigParser:
                         code="",
                         docstring=f"Environment: {env_name}",
                         language="json",
-                        visibility="public"
+                        visibility="public",
                     )
                     symbols.append(symbol)
 
@@ -142,7 +142,7 @@ class ESLintConfigParser:
                         code="",
                         docstring=f"ESLint plugin: {plugin}",
                         language="json",
-                        visibility="public"
+                        visibility="public",
                     )
                     symbols.append(symbol)
 
@@ -171,7 +171,7 @@ class ESLintConfigParser:
                                     code="",
                                     docstring=f"Override for pattern: {file_pattern}",
                                     language="json",
-                                    visibility="public"
+                                    visibility="public",
                                 )
                                 symbols.append(symbol)
 
@@ -196,17 +196,17 @@ class ESLintConfigParser:
                 code="",
                 docstring=f"ESLint parser: {parser}",
                 language="javascript",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
         # Extract environments
-        env_pattern = r'env\s*:\s*{([^}]+)}'
+        env_pattern = r"env\s*:\s*{([^}]+)}"
         env_match = re.search(env_pattern, code)
         if env_match:
             env_content = env_match.group(1)
             # Find environment names with true values
-            envs = re.findall(r'(\w+)\s*:\s*true', env_content)
+            envs = re.findall(r"(\w+)\s*:\s*true", env_content)
             for env_name in envs:
                 symbol = create_symbol(
                     file_path=file_path,
@@ -219,7 +219,7 @@ class ESLintConfigParser:
                     code="",
                     docstring=f"Environment: {env_name}",
                     language="javascript",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
@@ -238,12 +238,12 @@ class ESLintConfigParser:
                 code="",
                 docstring=f"Extended config: {extends_config}",
                 language="javascript",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
         # Extract plugins
-        plugins_pattern = r'plugins\s*:\s*\[([^\]]+)\]'
+        plugins_pattern = r"plugins\s*:\s*\[([^\]]+)\]"
         plugins_match = re.search(plugins_pattern, code)
         if plugins_match:
             plugins_content = plugins_match.group(1)
@@ -260,34 +260,36 @@ class ESLintConfigParser:
                     code="",
                     docstring=f"ESLint plugin: {plugin}",
                     language="javascript",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
         # Extract rules (look for rules object with proper brace matching)
-        rules_match = re.search(r'rules\s*:\s*{', code)
+        rules_match = re.search(r"rules\s*:\s*{", code)
         if rules_match:
             # Find the rules object by counting braces
             start = rules_match.end() - 1
             depth = 0
             end = start
             for i in range(start, len(code)):
-                if code[i] == '{':
+                if code[i] == "{":
                     depth += 1
-                elif code[i] == '}':
+                elif code[i] == "}":
                     depth -= 1
                     if depth == 0:
                         end = i
                         break
 
             if end > start:
-                rules_content = code[start:end+1]
+                rules_content = code[start : end + 1]
                 # Extract rule names - look for quoted strings followed by colons
-                rule_pattern = r'["\']([^"\']+)["\'](?:\s*:\s*(?:["\']?(?:off|\d+|warn|error)["\']?|[\[\{]))'
+                rule_pattern = (
+                    r'["\']([^"\']+)["\'](?:\s*:\s*(?:["\']?(?:off|\d+|warn|error)["\']?|[\[\{]))'
+                )
                 for rule_match in re.finditer(rule_pattern, rules_content):
                     rule_name = rule_match.group(1)
                     # Try to find the severity
-                    after_match = rules_content[rule_match.end():]
+                    after_match = rules_content[rule_match.end() :]
                     severity_match = re.match(r'["\']?(off|\d+|warn|error)["\']?', after_match)
                     severity = severity_match.group(1) if severity_match else "off"
 
@@ -302,7 +304,7 @@ class ESLintConfigParser:
                         code="",
                         docstring=f"ESLint rule: {rule_name} ({severity})",
                         language="javascript",
-                        visibility="public"
+                        visibility="public",
                     )
                     symbols.append(symbol)
 
@@ -321,7 +323,7 @@ class ESLintConfigParser:
             code="",
             docstring=f"Extended config: {config}",
             language="json",
-            visibility="public"
+            visibility="public",
         )
         symbols.append(symbol)
 
@@ -350,7 +352,7 @@ class ESLintConfigParser:
                     severity = severity_map.get(first, str(first))
                 else:
                     severity = str(first)
-                
+
                 options = rule_config[1] if len(rule_config) > 1 else {}
                 options_str = json.dumps(options) if isinstance(options, dict) else str(options)
             else:
@@ -369,7 +371,7 @@ class ESLintConfigParser:
                 code="",
                 docstring=f"ESLint rule: {rule_name}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 

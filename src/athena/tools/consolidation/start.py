@@ -1,10 +1,9 @@
 """Start consolidation process tool."""
+
 import time
-import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from athena.tools import BaseTool, ToolMetadata
-from athena.manager import UnifiedMemoryManager
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +41,7 @@ class StartConsolidationTool(BaseTool):
                     "enum": ["balanced", "speed", "quality", "minimal"],
                     "description": "Consolidation strategy to use",
                     "required": False,
-                    "default": "balanced"
+                    "default": "balanced",
                 },
                 "max_events": {
                     "type": "integer",
@@ -50,7 +49,7 @@ class StartConsolidationTool(BaseTool):
                     "required": False,
                     "default": 10000,
                     "minimum": 1,
-                    "maximum": 100000
+                    "maximum": 100000,
                 },
                 "uncertainty_threshold": {
                     "type": "number",
@@ -58,49 +57,40 @@ class StartConsolidationTool(BaseTool):
                     "required": False,
                     "default": 0.5,
                     "minimum": 0.0,
-                    "maximum": 1.0
+                    "maximum": 1.0,
                 },
                 "dry_run": {
                     "type": "boolean",
                     "description": "Run without saving results",
                     "required": False,
-                    "default": False
-                }
+                    "default": False,
+                },
             },
             returns={
                 "type": "object",
                 "properties": {
                     "consolidation_id": {
                         "type": "string",
-                        "description": "Unique consolidation process ID"
+                        "description": "Unique consolidation process ID",
                     },
-                    "strategy": {
-                        "type": "string",
-                        "description": "Strategy used"
-                    },
+                    "strategy": {"type": "string", "description": "Strategy used"},
                     "status": {
                         "type": "string",
                         "enum": ["started", "in_progress", "completed", "error"],
-                        "description": "Consolidation status"
+                        "description": "Consolidation status",
                     },
                     "events_processed": {
                         "type": "integer",
-                        "description": "Number of events processed"
+                        "description": "Number of events processed",
                     },
                     "patterns_extracted": {
                         "type": "integer",
-                        "description": "Number of patterns extracted"
+                        "description": "Number of patterns extracted",
                     },
-                    "start_time": {
-                        "type": "string",
-                        "description": "When consolidation started"
-                    },
-                    "process_time_ms": {
-                        "type": "number",
-                        "description": "Time taken so far"
-                    }
-                }
-            }
+                    "start_time": {"type": "string", "description": "When consolidation started"},
+                    "process_time_ms": {"type": "number", "description": "Time taken so far"},
+                },
+            },
         )
 
     def validate_input(self, **kwargs) -> None:
@@ -143,6 +133,7 @@ class StartConsolidationTool(BaseTool):
             try:
                 # Try to get unified memory manager (if available)
                 from athena.core.database import get_database
+
                 db = get_database()
 
                 # Retrieve recent episodic events
@@ -153,7 +144,7 @@ class StartConsolidationTool(BaseTool):
                     cursor.execute(
                         "SELECT id, timestamp, content, event_type FROM episodic_events "
                         "ORDER BY timestamp DESC LIMIT ?",
-                        (max_events,)
+                        (max_events,),
                     )
                     rows = cursor.fetchall()
                     events_processed = len(rows)
@@ -162,7 +153,6 @@ class StartConsolidationTool(BaseTool):
                     if not dry_run and events_processed > 0:
                         # Import consolidation components
                         try:
-                            from athena.consolidation.consolidator import ConsolidationOrchestrator
                             from athena.consolidation.clustering import EventClusterer
 
                             # Cluster events
@@ -201,18 +191,18 @@ class StartConsolidationTool(BaseTool):
                 "start_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(start_time)),
                 "process_time_ms": elapsed,
                 "dry_run": dry_run,
-                "uncertainty_threshold": uncertainty_threshold
+                "uncertainty_threshold": uncertainty_threshold,
             }
 
         except ValueError as e:
             return {
                 "error": str(e),
                 "status": "error",
-                "process_time_ms": (time.time() - start_time) * 1000
+                "process_time_ms": (time.time() - start_time) * 1000,
             }
         except Exception as e:
             return {
                 "error": f"Unexpected error: {str(e)}",
                 "status": "error",
-                "process_time_ms": (time.time() - start_time) * 1000
+                "process_time_ms": (time.time() - start_time) * 1000,
             }

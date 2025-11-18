@@ -40,10 +40,9 @@ Target Metrics:
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Set
+from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 from collections import defaultdict
-import re
 
 logger = logging.getLogger(__name__)
 
@@ -51,46 +50,46 @@ logger = logging.getLogger(__name__)
 class TokenCountingStrategy(Enum):
     """Different strategies for counting tokens."""
 
-    CHARACTER_BASED = "character"      # ~4 characters per token
-    WHITESPACE_BASED = "whitespace"    # Split on whitespace
-    WORD_BASED = "word"                # Average word length
-    CLAUDE_ESTIMATE = "claude"         # Claude's actual token counting
+    CHARACTER_BASED = "character"  # ~4 characters per token
+    WHITESPACE_BASED = "whitespace"  # Split on whitespace
+    WORD_BASED = "word"  # Average word length
+    CLAUDE_ESTIMATE = "claude"  # Claude's actual token counting
 
 
 class PriorityLevel(Enum):
     """Priority levels for budget allocation."""
 
-    CRITICAL = 5   # System prompt, critical context
-    HIGH = 4       # Important context, query clarification
-    NORMAL = 3     # Regular content, examples
-    LOW = 2        # Supporting details, nice-to-have
-    MINIMAL = 1    # Filler, can be removed first
+    CRITICAL = 5  # System prompt, critical context
+    HIGH = 4  # Important context, query clarification
+    NORMAL = 3  # Regular content, examples
+    LOW = 2  # Supporting details, nice-to-have
+    MINIMAL = 1  # Filler, can be removed first
 
 
 class OverflowStrategy(Enum):
     """Strategies for handling budget overruns."""
 
-    COMPRESS = "compress"              # Use compression to reduce size
+    COMPRESS = "compress"  # Use compression to reduce size
     TRUNCATE_START = "truncate_start"  # Remove from beginning
-    TRUNCATE_END = "truncate_end"      # Remove from end
-    TRUNCATE_MIDDLE = "truncate_middle"# Remove from middle
-    DELEGATE = "delegate"              # Move to lower-priority section
-    DEGRADE = "degrade"                # Reduce detail level
+    TRUNCATE_END = "truncate_end"  # Remove from end
+    TRUNCATE_MIDDLE = "truncate_middle"  # Remove from middle
+    DELEGATE = "delegate"  # Move to lower-priority section
+    DEGRADE = "degrade"  # Reduce detail level
 
 
 @dataclass
 class TokenSection:
     """Represents a section of the token budget."""
 
-    name: str                           # Section identifier
-    content: str                        # Actual content
-    priority: PriorityLevel             # Priority level
-    token_count: int = 0                # Calculated token count
-    min_tokens: int = 0                 # Minimum tokens to preserve
-    max_tokens: Optional[int] = None    # Hard limit for this section
-    compressed: bool = False            # Whether content is compressed
-    original_count: Optional[int] = None # Token count before compression
-    compression_ratio: float = 1.0      # Ratio of compression applied
+    name: str  # Section identifier
+    content: str  # Actual content
+    priority: PriorityLevel  # Priority level
+    token_count: int = 0  # Calculated token count
+    min_tokens: int = 0  # Minimum tokens to preserve
+    max_tokens: Optional[int] = None  # Hard limit for this section
+    compressed: bool = False  # Whether content is compressed
+    original_count: Optional[int] = None  # Token count before compression
+    compression_ratio: float = 1.0  # Ratio of compression applied
     metadata: Dict = field(default_factory=dict)  # Custom metadata
 
 
@@ -99,9 +98,9 @@ class TokenBudgetConfig:
     """Configuration for token budgeting."""
 
     # Budget limits
-    total_budget: int = 4000            # Total tokens available
-    buffer_tokens: int = 100            # Reserve tokens for safety
-    min_response_tokens: int = 200      # Tokens reserved for response
+    total_budget: int = 4000  # Total tokens available
+    buffer_tokens: int = 100  # Reserve tokens for safety
+    min_response_tokens: int = 200  # Tokens reserved for response
 
     # Counting strategy
     counting_strategy: TokenCountingStrategy = TokenCountingStrategy.CHARACTER_BASED
@@ -115,34 +114,34 @@ class TokenBudgetConfig:
         default_factory=lambda: [
             OverflowStrategy.TRUNCATE_END,
             OverflowStrategy.TRUNCATE_START,
-            OverflowStrategy.DEGRADE
+            OverflowStrategy.DEGRADE,
         ]
     )
 
     # Quality thresholds
-    min_quality_score: float = 0.70     # Minimum acceptable quality
+    min_quality_score: float = 0.70  # Minimum acceptable quality
     max_compression_ratio: float = 0.3  # Don't compress below 30% of original
 
     # Behavior
-    allow_overflow: bool = False        # Allow exceeding budget if necessary
-    max_overflow_percent: float = 0.1   # Max 10% overflow if allowed
-    track_history: bool = True          # Track allocation history
+    allow_overflow: bool = False  # Allow exceeding budget if necessary
+    max_overflow_percent: float = 0.1  # Max 10% overflow if allowed
+    track_history: bool = True  # Track allocation history
 
     # Performance
-    cache_calculations: bool = True     # Cache token count calculations
-    batch_size: int = 10                # Process sections in batches
+    cache_calculations: bool = True  # Cache token count calculations
+    batch_size: int = 10  # Process sections in batches
 
 
 @dataclass
 class AllocationResult:
     """Result of token allocation."""
 
-    allocations: Dict[str, int]         # Section name -> allocated tokens
-    total_allocated: int                # Total tokens allocated
-    total_available: int                # Total tokens available
-    overflow: int                       # Tokens over budget (if any)
-    quality_score: float                # Overall quality score (0-1)
-    strategies_used: List[str]          # Strategies applied
+    allocations: Dict[str, int]  # Section name -> allocated tokens
+    total_allocated: int  # Total tokens allocated
+    total_available: int  # Total tokens available
+    overflow: int  # Tokens over budget (if any)
+    quality_score: float  # Overall quality score (0-1)
+    strategies_used: List[str]  # Strategies applied
     details: Dict = field(default_factory=dict)  # Additional details
 
 
@@ -150,15 +149,15 @@ class AllocationResult:
 class BudgetMetrics:
     """Metrics for token budget usage."""
 
-    timestamp: datetime                 # When measured
-    total_budget: int                   # Total budget
-    total_used: int                     # Tokens used
-    overflow: int                       # Tokens over budget
-    efficiency: float                   # Tokens used / total budget
-    quality_score: float                # Quality (0-1)
-    sections_count: int                 # Number of sections
-    compression_applied: bool           # Whether compression was used
-    strategies_used: List[str]          # Strategies applied
+    timestamp: datetime  # When measured
+    total_budget: int  # Total budget
+    total_used: int  # Tokens used
+    overflow: int  # Tokens over budget
+    efficiency: float  # Tokens used / total budget
+    quality_score: float  # Quality (0-1)
+    sections_count: int  # Number of sections
+    compression_applied: bool  # Whether compression was used
+    strategies_used: List[str]  # Strategies applied
 
     @property
     def utilization_percent(self) -> float:
@@ -225,18 +224,18 @@ class TokenCounter:
         Accounts for whitespace and punctuation separately.
         """
         # Remove excessive whitespace
-        normalized = ' '.join(text.split())
+        normalized = " ".join(text.split())
 
         # Base: roughly 4 chars per token
         char_tokens = len(normalized) / 4
 
         # Add tokens for special structure
-        newline_count = text.count('\n')
-        tab_count = text.count('\t')
-        punctuation_count = sum(1 for c in text if c in '.,!?;:()[]{}')
+        newline_count = text.count("\n")
+        tab_count = text.count("\t")
+        punctuation_count = sum(1 for c in text if c in ".,!?;:()[]{}")
 
         # Punctuation and structure typically add 0.1-0.2 tokens each
-        extra_tokens = (newline_count * 0.2 + tab_count * 0.15 + punctuation_count * 0.05)
+        extra_tokens = newline_count * 0.2 + tab_count * 0.15 + punctuation_count * 0.05
 
         return max(1, int(char_tokens + extra_tokens))
 
@@ -285,7 +284,7 @@ class TokenCounter:
         # Code: ~3 chars per token (more punctuation)
         # Numbers: ~2 chars per token
 
-        is_code = any(pattern in text for pattern in ['import ', 'def ', 'class ', 'async ', '://'])
+        is_code = any(pattern in text for pattern in ["import ", "def ", "class ", "async ", "://"])
         is_numeric = sum(c.isdigit() for c in text) / len(text) > 0.3 if text else False
 
         if is_code:
@@ -330,7 +329,7 @@ class TokenBudgetAllocator:
                 total_available=self._get_available_tokens(),
                 overflow=0,
                 quality_score=1.0,
-                strategies_used=[]
+                strategies_used=[],
             )
 
         # Calculate available tokens
@@ -348,7 +347,7 @@ class TokenBudgetAllocator:
                 total_available=available,
                 overflow=abs(min(0, available)),
                 quality_score=0.0,
-                strategies_used=["emergency_minimal"]
+                strategies_used=["emergency_minimal"],
             )
 
         # Count tokens in each section
@@ -374,9 +373,7 @@ class TokenBudgetAllocator:
         # Handle overflow if needed
         strategies_used = []
         if overflow > 0:
-            allocations, strategies_used = self._handle_overflow(
-                sections, allocations, overflow
-            )
+            allocations, strategies_used = self._handle_overflow(sections, allocations, overflow)
             total_allocated = sum(allocations.values())
             overflow = max(0, total_allocated - available)
 
@@ -389,20 +386,16 @@ class TokenBudgetAllocator:
             total_available=available,
             overflow=overflow,
             quality_score=quality_score,
-            strategies_used=strategies_used
+            strategies_used=strategies_used,
         )
 
     def _get_available_tokens(self) -> int:
         """Get available tokens for content."""
         return (
-            self.config.total_budget
-            - self.config.buffer_tokens
-            - self.config.min_response_tokens
+            self.config.total_budget - self.config.buffer_tokens - self.config.min_response_tokens
         )
 
-    def _allocate_balanced(
-        self, sections: List[TokenSection], available: int
-    ) -> Dict[str, int]:
+    def _allocate_balanced(self, sections: List[TokenSection], available: int) -> Dict[str, int]:
         """Balanced allocation: weight by priority."""
         allocations = {}
         total_requested = sum(s.token_count for s in sections)
@@ -454,9 +447,7 @@ class TokenBudgetAllocator:
 
         return allocations
 
-    def _allocate_speed(
-        self, sections: List[TokenSection], available: int
-    ) -> Dict[str, int]:
+    def _allocate_speed(self, sections: List[TokenSection], available: int) -> Dict[str, int]:
         """Speed allocation: prioritize fast-to-process content."""
         allocations = {}
 
@@ -484,9 +475,7 @@ class TokenBudgetAllocator:
 
         return allocations
 
-    def _allocate_quality(
-        self, sections: List[TokenSection], available: int
-    ) -> Dict[str, int]:
+    def _allocate_quality(self, sections: List[TokenSection], available: int) -> Dict[str, int]:
         """Quality allocation: maximize information preservation."""
         allocations = {}
 
@@ -516,17 +505,14 @@ class TokenBudgetAllocator:
 
         return allocations
 
-    def _allocate_minimal(
-        self, sections: List[TokenSection], available: int
-    ) -> Dict[str, int]:
+    def _allocate_minimal(self, sections: List[TokenSection], available: int) -> Dict[str, int]:
         """Minimal allocation: pack maximum content."""
         allocations = {}
 
         # Sort by priority, then by size (smaller first for packing)
         priority_scores = self._calculate_priority_scores(sections)
         sections_sorted = sorted(
-            sections,
-            key=lambda s: (-priority_scores.get(s.name, 1.0), s.token_count)
+            sections, key=lambda s: (-priority_scores.get(s.name, 1.0), s.token_count)
         )
 
         remaining = available
@@ -583,7 +569,9 @@ class TokenBudgetAllocator:
         section_map = {s.name: s for s in sections}
 
         # Try each overflow strategy in order
-        for strategy in [self.config.primary_overflow_strategy] + self.config.secondary_overflow_strategies:
+        for strategy in [
+            self.config.primary_overflow_strategy
+        ] + self.config.secondary_overflow_strategies:
             if remaining_overflow <= 0:
                 break
 
@@ -596,7 +584,9 @@ class TokenBudgetAllocator:
                     strategies_used.append("compression")
 
             elif strategy == OverflowStrategy.TRUNCATE_END:
-                result = self._apply_truncate_strategy(allocations, remaining_overflow, position="end")
+                result = self._apply_truncate_strategy(
+                    allocations, remaining_overflow, position="end"
+                )
                 reduction, updated_allocs = result
                 if reduction > 0:
                     allocations = updated_allocs
@@ -604,7 +594,9 @@ class TokenBudgetAllocator:
                     strategies_used.append("truncate_end")
 
             elif strategy == OverflowStrategy.TRUNCATE_START:
-                result = self._apply_truncate_strategy(allocations, remaining_overflow, position="start")
+                result = self._apply_truncate_strategy(
+                    allocations, remaining_overflow, position="start"
+                )
                 reduction, updated_allocs = result
                 if reduction > 0:
                     allocations = updated_allocs
@@ -612,7 +604,9 @@ class TokenBudgetAllocator:
                     strategies_used.append("truncate_start")
 
             elif strategy == OverflowStrategy.TRUNCATE_MIDDLE:
-                result = self._apply_truncate_strategy(allocations, remaining_overflow, position="middle")
+                result = self._apply_truncate_strategy(
+                    allocations, remaining_overflow, position="middle"
+                )
                 reduction, updated_allocs = result
                 if reduction > 0:
                     allocations = updated_allocs
@@ -620,7 +614,9 @@ class TokenBudgetAllocator:
                     strategies_used.append("truncate_middle")
 
             elif strategy == OverflowStrategy.DELEGATE:
-                result = self._apply_delegation_strategy(allocations, remaining_overflow, section_map)
+                result = self._apply_delegation_strategy(
+                    allocations, remaining_overflow, section_map
+                )
                 reduction, updated_allocs = result
                 if reduction > 0:
                     allocations = updated_allocs
@@ -679,7 +675,9 @@ class TokenBudgetAllocator:
         total_reduction = 0
 
         # Reduce from low-priority sections
-        sections_by_priority = sorted(updated.items(), key=lambda x: x[1])  # Smaller allocations first
+        sections_by_priority = sorted(
+            updated.items(), key=lambda x: x[1]
+        )  # Smaller allocations first
 
         for section_name, allocated in sections_by_priority:
             if total_reduction >= target_reduction:
@@ -696,7 +694,10 @@ class TokenBudgetAllocator:
         return total_reduction, updated
 
     def _apply_delegation_strategy(
-        self, allocations: Dict[str, int], target_reduction: int, section_map: Dict[str, TokenSection]
+        self,
+        allocations: Dict[str, int],
+        target_reduction: int,
+        section_map: Dict[str, TokenSection],
     ) -> Tuple[int, Dict[str, int]]:
         """Delegate content to lower-priority section.
 
@@ -756,8 +757,7 @@ class TokenBudgetAllocator:
         critical_sections = [s for s in sections if s.priority == PriorityLevel.CRITICAL]
         if critical_sections:
             critical_complete = sum(
-                1 for s in critical_sections
-                if allocations.get(s.name, 0) >= s.token_count
+                1 for s in critical_sections if allocations.get(s.name, 0) >= s.token_count
             )
             priority_score = critical_complete / len(critical_sections)
         else:
@@ -765,9 +765,7 @@ class TokenBudgetAllocator:
 
         # Balance: 20% weight
         allocation_ratios = [
-            allocations.get(s.name, 0) / s.token_count
-            for s in sections
-            if s.token_count > 0
+            allocations.get(s.name, 0) / s.token_count for s in sections if s.token_count > 0
         ]
         if allocation_ratios:
             # Penalize imbalance (variance)
@@ -778,11 +776,7 @@ class TokenBudgetAllocator:
             balance_score = 1.0
 
         # Weighted combination
-        quality = (
-            0.5 * coverage_score +
-            0.3 * priority_score +
-            0.2 * balance_score
-        )
+        quality = 0.5 * coverage_score + 0.3 * priority_score + 0.2 * balance_score
 
         return quality
 
@@ -811,7 +805,7 @@ class TokenBudgetManager:
         priority: PriorityLevel = PriorityLevel.NORMAL,
         min_tokens: int = 0,
         max_tokens: Optional[int] = None,
-        metadata: Optional[Dict] = None
+        metadata: Optional[Dict] = None,
     ) -> None:
         """Add a section to budget.
 
@@ -829,7 +823,7 @@ class TokenBudgetManager:
             priority=priority,
             min_tokens=min_tokens,
             max_tokens=max_tokens,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
         self._current_sections.append(section)
 
@@ -888,7 +882,7 @@ class TokenBudgetManager:
             quality_score=result.quality_score,
             sections_count=len(self._current_sections),
             compression_applied=any(s.compressed for s in self._current_sections),
-            strategies_used=result.strategies_used
+            strategies_used=result.strategies_used,
         )
 
         if self.config.track_history:
@@ -900,7 +894,7 @@ class TokenBudgetManager:
         self,
         model: str = "claude-3-5-sonnet",
         input_cost_per_mtok: float = 3.0,
-        output_cost_per_mtok: float = 15.0
+        output_cost_per_mtok: float = 15.0,
     ) -> Dict[str, float]:
         """Estimate API cost.
 
@@ -926,7 +920,7 @@ class TokenBudgetManager:
             "output_tokens": output_tokens,
             "input_cost": input_cost,
             "output_cost": output_cost,
-            "total_cost": input_cost + output_cost
+            "total_cost": input_cost + output_cost,
         }
 
     def get_history(self) -> List[BudgetMetrics]:

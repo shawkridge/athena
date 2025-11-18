@@ -5,9 +5,8 @@ with the task automation events (EventHandlers), creating a unified event system
 that spans both conversation context and task execution.
 """
 
-import asyncio
 import logging
-from typing import Optional, Callable
+from typing import Optional
 from ..hooks.dispatcher import HookDispatcher
 from ..automation.event_handlers import EventHandlers
 
@@ -194,9 +193,7 @@ class UnifiedHookSystem:
     Hook -> Event -> Automation -> Episodic Memory -> Consolidation -> Semantic Memory
     """
 
-    def __init__(
-        self, hook_dispatcher: HookDispatcher, event_handlers: EventHandlers
-    ):
+    def __init__(self, hook_dispatcher: HookDispatcher, event_handlers: EventHandlers):
         """Initialize unified hook system.
 
         Args:

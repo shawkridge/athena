@@ -1,8 +1,5 @@
 """Storage and retrieval for thinking traces."""
 
-import json
-import time
-from datetime import datetime
 from typing import Optional, Dict, Any
 
 from ..core.database import Database
@@ -35,6 +32,7 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
             db: Database instance
         """
         super().__init__(db)
+
     def _row_to_model(self, row: Dict[str, Any]) -> ThinkingTrace:
         """Convert database row to ThinkingTrace model.
 
@@ -61,7 +59,11 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
 
         consolidated_at = None
         if row.get("consolidated_at"):
-            consolidated_at = self.from_timestamp(row.get("consolidated_at") // 1000 if row.get("consolidated_at") >= 1000000000000 else row.get("consolidated_at"))
+            consolidated_at = self.from_timestamp(
+                row.get("consolidated_at") // 1000
+                if row.get("consolidated_at") >= 1000000000000
+                else row.get("consolidated_at")
+            )
 
         return ThinkingTrace(
             id=row.get("id"),
@@ -71,14 +73,20 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
             reasoning_steps=reasoning_steps,
             conclusion=row.get("conclusion"),
             reasoning_quality=row.get("reasoning_quality"),
-            primary_pattern=ReasoningPattern(row.get("primary_pattern")) if row.get("primary_pattern") else None,
+            primary_pattern=(
+                ReasoningPattern(row.get("primary_pattern")) if row.get("primary_pattern") else None
+            ),
             secondary_patterns=secondary_patterns,
             pattern_effectiveness=row.get("pattern_effectiveness"),
             linked_execution_id=row.get("linked_execution_id"),
             was_reasoning_correct=row.get("was_reasoning_correct"),
             execution_outcome_quality=row.get("execution_outcome_quality"),
             session_id=row.get("session_id"),
-            timestamp=self.from_timestamp(row.get("timestamp") // 1000 if row.get("timestamp") and row.get("timestamp") >= 1000000000000 else row.get("timestamp")),
+            timestamp=self.from_timestamp(
+                row.get("timestamp") // 1000
+                if row.get("timestamp") and row.get("timestamp") >= 1000000000000
+                else row.get("timestamp")
+            ),
             duration_seconds=row.get("duration_seconds"),
             ai_model_used=row.get("ai_model_used"),
             consolidation_status=row.get("consolidation_status"),
@@ -90,7 +98,8 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
         cursor = self.db.get_cursor()
 
         # Thinking traces table
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS thinking_traces (
                 id SERIAL PRIMARY KEY,
                 problem TEXT NOT NULL,
@@ -113,28 +122,37 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
                 consolidated_at INTEGER,
                 created_at INTEGER NOT NULL
             )
-        """)
+        """
+        )
 
         # Indexes for common queries
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_thinking_traces_session
             ON thinking_traces(session_id, timestamp DESC)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_thinking_traces_execution
             ON thinking_traces(linked_execution_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_thinking_traces_pattern
             ON thinking_traces(primary_pattern, pattern_effectiveness DESC)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_thinking_traces_correctness
             ON thinking_traces(was_reasoning_correct, created_at DESC)
-        """)
+        """
+        )
 
         # commit handled by cursor context
 
@@ -151,9 +169,7 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
 
         # Get enum values if needed
         problem_type_value = (
-            trace.problem_type.value
-            if hasattr(trace.problem_type, "value")
-            else trace.problem_type
+            trace.problem_type.value if hasattr(trace.problem_type, "value") else trace.problem_type
         )
         primary_pattern_value = (
             trace.primary_pattern.value
@@ -161,7 +177,8 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
             else trace.primary_pattern
         )
 
-        result = self.execute("""
+        result = self.execute(
+            """
             INSERT INTO thinking_traces
             (problem, problem_type, problem_complexity, reasoning_steps_json, conclusion,
              reasoning_quality, primary_pattern, secondary_patterns_json, pattern_effectiveness,
@@ -169,28 +186,30 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
              session_id, timestamp, duration_seconds, ai_model_used, created_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
-        """, (
-            trace.problem,
-            problem_type_value,
-            trace.problem_complexity,
-            self.serialize_json([s.dict() for s in trace.reasoning_steps]),
-            trace.conclusion,
-            trace.reasoning_quality,
-            primary_pattern_value,
-            self.serialize_json(
-                [p.value if hasattr(p, "value") else p
-                 for p in trace.secondary_patterns]
+        """,
+            (
+                trace.problem,
+                problem_type_value,
+                trace.problem_complexity,
+                self.serialize_json([s.dict() for s in trace.reasoning_steps]),
+                trace.conclusion,
+                trace.reasoning_quality,
+                primary_pattern_value,
+                self.serialize_json(
+                    [p.value if hasattr(p, "value") else p for p in trace.secondary_patterns]
+                ),
+                trace.pattern_effectiveness,
+                trace.linked_execution_id,
+                trace.was_reasoning_correct,
+                trace.execution_outcome_quality,
+                trace.session_id,
+                int(trace.timestamp.timestamp() * 1000),
+                trace.duration_seconds,
+                trace.ai_model_used,
+                now,
             ),
-            trace.pattern_effectiveness,
-            trace.linked_execution_id,
-            trace.was_reasoning_correct,
-            trace.execution_outcome_quality,
-            trace.session_id,
-            int(trace.timestamp.timestamp() * 1000),
-            trace.duration_seconds,
-            trace.ai_model_used,
-            now,
-        ), fetch_one=True)
+            fetch_one=True,
+        )
 
         self.commit()
         return result[0] if result else None
@@ -212,11 +231,28 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
         if not row:
             return None
         # Convert tuple to dict with column names
-        col_names = ["id", "problem", "problem_type", "problem_complexity", "reasoning_steps_json",
-                     "conclusion", "reasoning_quality", "primary_pattern", "secondary_patterns_json",
-                     "pattern_effectiveness", "linked_execution_id", "was_reasoning_correct",
-                     "execution_outcome_quality", "session_id", "timestamp", "duration_seconds",
-                     "ai_model_used", "consolidation_status", "consolidated_at", "created_at"]
+        col_names = [
+            "id",
+            "problem",
+            "problem_type",
+            "problem_complexity",
+            "reasoning_steps_json",
+            "conclusion",
+            "reasoning_quality",
+            "primary_pattern",
+            "secondary_patterns_json",
+            "pattern_effectiveness",
+            "linked_execution_id",
+            "was_reasoning_correct",
+            "execution_outcome_quality",
+            "session_id",
+            "timestamp",
+            "duration_seconds",
+            "ai_model_used",
+            "consolidation_status",
+            "consolidated_at",
+            "created_at",
+        ]
         return self._row_to_model(dict(zip(col_names, row)))
 
     def get_thinking_for_session(self, session_id: str) -> list[ThinkingTrace]:
@@ -233,11 +269,28 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
             (session_id,),
             fetch_all=True,
         )
-        col_names = ["id", "problem", "problem_type", "problem_complexity", "reasoning_steps_json",
-                     "conclusion", "reasoning_quality", "primary_pattern", "secondary_patterns_json",
-                     "pattern_effectiveness", "linked_execution_id", "was_reasoning_correct",
-                     "execution_outcome_quality", "session_id", "timestamp", "duration_seconds",
-                     "ai_model_used", "consolidation_status", "consolidated_at", "created_at"]
+        col_names = [
+            "id",
+            "problem",
+            "problem_type",
+            "problem_complexity",
+            "reasoning_steps_json",
+            "conclusion",
+            "reasoning_quality",
+            "primary_pattern",
+            "secondary_patterns_json",
+            "pattern_effectiveness",
+            "linked_execution_id",
+            "was_reasoning_correct",
+            "execution_outcome_quality",
+            "session_id",
+            "timestamp",
+            "duration_seconds",
+            "ai_model_used",
+            "consolidation_status",
+            "consolidated_at",
+            "created_at",
+        ]
         return [self._row_to_model(dict(zip(col_names, row))) for row in (rows or [])]
 
     def link_thinking_to_execution(
@@ -255,12 +308,15 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
             was_correct: Whether the reasoning proved correct
             outcome_quality: Quality of the execution outcome (0.0-1.0)
         """
-        self.execute("""
+        self.execute(
+            """
             UPDATE thinking_traces
             SET linked_execution_id = ?, was_reasoning_correct = ?,
                 execution_outcome_quality = ?
             WHERE id = ?
-        """, (execution_id, was_correct, outcome_quality, thinking_id))
+        """,
+            (execution_id, was_correct, outcome_quality, thinking_id),
+        )
         self.commit()
 
     def get_thinking_for_execution(self, execution_id: str) -> Optional[ThinkingTrace]:
@@ -279,11 +335,28 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
         )
         if not row:
             return None
-        col_names = ["id", "problem", "problem_type", "problem_complexity", "reasoning_steps_json",
-                     "conclusion", "reasoning_quality", "primary_pattern", "secondary_patterns_json",
-                     "pattern_effectiveness", "linked_execution_id", "was_reasoning_correct",
-                     "execution_outcome_quality", "session_id", "timestamp", "duration_seconds",
-                     "ai_model_used", "consolidation_status", "consolidated_at", "created_at"]
+        col_names = [
+            "id",
+            "problem",
+            "problem_type",
+            "problem_complexity",
+            "reasoning_steps_json",
+            "conclusion",
+            "reasoning_quality",
+            "primary_pattern",
+            "secondary_patterns_json",
+            "pattern_effectiveness",
+            "linked_execution_id",
+            "was_reasoning_correct",
+            "execution_outcome_quality",
+            "session_id",
+            "timestamp",
+            "duration_seconds",
+            "ai_model_used",
+            "consolidation_status",
+            "consolidated_at",
+            "created_at",
+        ]
         return self._row_to_model(dict(zip(col_names, row)))
 
     def get_thinking_by_pattern(
@@ -302,18 +375,39 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
         """
         pattern_value = pattern.value if hasattr(pattern, "value") else pattern
 
-        rows = self.execute("""
+        rows = self.execute(
+            """
             SELECT * FROM thinking_traces
             WHERE primary_pattern = ?
             AND (pattern_effectiveness >= ? OR pattern_effectiveness IS NULL)
             ORDER BY pattern_effectiveness DESC NULLS LAST
-        """, (pattern_value, min_effectiveness), fetch_all=True)
+        """,
+            (pattern_value, min_effectiveness),
+            fetch_all=True,
+        )
 
-        col_names = ["id", "problem", "problem_type", "problem_complexity", "reasoning_steps_json",
-                     "conclusion", "reasoning_quality", "primary_pattern", "secondary_patterns_json",
-                     "pattern_effectiveness", "linked_execution_id", "was_reasoning_correct",
-                     "execution_outcome_quality", "session_id", "timestamp", "duration_seconds",
-                     "ai_model_used", "consolidation_status", "consolidated_at", "created_at"]
+        col_names = [
+            "id",
+            "problem",
+            "problem_type",
+            "problem_complexity",
+            "reasoning_steps_json",
+            "conclusion",
+            "reasoning_quality",
+            "primary_pattern",
+            "secondary_patterns_json",
+            "pattern_effectiveness",
+            "linked_execution_id",
+            "was_reasoning_correct",
+            "execution_outcome_quality",
+            "session_id",
+            "timestamp",
+            "duration_seconds",
+            "ai_model_used",
+            "consolidation_status",
+            "consolidated_at",
+            "created_at",
+        ]
         return [self._row_to_model(dict(zip(col_names, row))) for row in (rows or [])]
 
     def get_reasoning_effectiveness(self) -> dict:
@@ -322,7 +416,8 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
         Returns:
             dict with pattern → {avg_effectiveness, count, success_rate}
         """
-        rows = self.execute("""
+        rows = self.execute(
+            """
             SELECT
                 primary_pattern,
                 AVG(pattern_effectiveness) as avg_effectiveness,
@@ -332,10 +427,12 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
             WHERE primary_pattern IS NOT NULL
             GROUP BY primary_pattern
             ORDER BY avg_effectiveness DESC
-        """, fetch_all=True)
+        """,
+            fetch_all=True,
+        )
 
         result = {}
-        for row in (rows or []):
+        for row in rows or []:
             pattern, avg_eff, count, success_rate = row
             result[pattern] = {
                 "avg_effectiveness": avg_eff or 0.0,
@@ -354,7 +451,8 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
             - avg_reasoning_quality: Average quality of reasoning
             - avg_outcome_quality: Average quality when linked
         """
-        row = self.execute("""
+        row = self.execute(
+            """
             SELECT
                 COUNT(*) as total,
                 SUM(CASE WHEN was_reasoning_correct = 1 THEN 1 ELSE 0 END) as correct_count,
@@ -362,7 +460,9 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
                 AVG(execution_outcome_quality) as avg_outcome_quality
             FROM thinking_traces
             WHERE linked_execution_id IS NOT NULL
-        """, fetch_one=True)
+        """,
+            fetch_one=True,
+        )
 
         if not row or row[0] == 0:
             return {
@@ -396,11 +496,28 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
             (limit,),
             fetch_all=True,
         )
-        col_names = ["id", "problem", "problem_type", "problem_complexity", "reasoning_steps_json",
-                     "conclusion", "reasoning_quality", "primary_pattern", "secondary_patterns_json",
-                     "pattern_effectiveness", "linked_execution_id", "was_reasoning_correct",
-                     "execution_outcome_quality", "session_id", "timestamp", "duration_seconds",
-                     "ai_model_used", "consolidation_status", "consolidated_at", "created_at"]
+        col_names = [
+            "id",
+            "problem",
+            "problem_type",
+            "problem_complexity",
+            "reasoning_steps_json",
+            "conclusion",
+            "reasoning_quality",
+            "primary_pattern",
+            "secondary_patterns_json",
+            "pattern_effectiveness",
+            "linked_execution_id",
+            "was_reasoning_correct",
+            "execution_outcome_quality",
+            "session_id",
+            "timestamp",
+            "duration_seconds",
+            "ai_model_used",
+            "consolidation_status",
+            "consolidated_at",
+            "created_at",
+        ]
         return [self._row_to_model(dict(zip(col_names, row))) for row in (rows or [])]
 
     def mark_consolidated(self, thinking_id: int) -> None:
@@ -410,11 +527,14 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
             thinking_id: Thinking trace ID
         """
         now = self.now_timestamp()
-        self.execute("""
+        self.execute(
+            """
             UPDATE thinking_traces
             SET consolidation_status = 'consolidated', consolidated_at = ?
             WHERE id = ?
-        """, (now, thinking_id))
+        """,
+            (now, thinking_id),
+        )
         self.commit()
 
     def get_unconsolidated_thinking(self, limit: int = 100) -> list[ThinkingTrace]:
@@ -426,16 +546,36 @@ class ThinkingTraceStore(BaseStore[ThinkingTrace]):
         Returns:
             List of unconsolidated ThinkingTraces
         """
-        rows = self.execute("""
+        rows = self.execute(
+            """
             SELECT * FROM thinking_traces
             WHERE consolidation_status = 'unconsolidated'
             ORDER BY created_at ASC
             LIMIT ?
-        """, (limit,), fetch_all=True)
-        col_names = ["id", "problem", "problem_type", "problem_complexity", "reasoning_steps_json",
-                     "conclusion", "reasoning_quality", "primary_pattern", "secondary_patterns_json",
-                     "pattern_effectiveness", "linked_execution_id", "was_reasoning_correct",
-                     "execution_outcome_quality", "session_id", "timestamp", "duration_seconds",
-                     "ai_model_used", "consolidation_status", "consolidated_at", "created_at"]
+        """,
+            (limit,),
+            fetch_all=True,
+        )
+        col_names = [
+            "id",
+            "problem",
+            "problem_type",
+            "problem_complexity",
+            "reasoning_steps_json",
+            "conclusion",
+            "reasoning_quality",
+            "primary_pattern",
+            "secondary_patterns_json",
+            "pattern_effectiveness",
+            "linked_execution_id",
+            "was_reasoning_correct",
+            "execution_outcome_quality",
+            "session_id",
+            "timestamp",
+            "duration_seconds",
+            "ai_model_used",
+            "consolidation_status",
+            "consolidated_at",
+            "created_at",
+        ]
         return [self._row_to_model(dict(zip(col_names, row))) for row in (rows or [])]
-

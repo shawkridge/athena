@@ -87,22 +87,50 @@ class SandboxSecurityPolicy:
     blocked_paths: List[str] = field(default_factory=lambda: ["/etc", "/sys", "/proc"])
 
     # Module/import restrictions
-    allowed_modules: Set[str] = field(default_factory=lambda: {
-        "os", "sys", "pathlib", "datetime", "json", "re", "typing", "dataclasses"
-    })
-    blocked_modules: Set[str] = field(default_factory=lambda: {
-        "subprocess", "socket", "requests", "urllib", "ssl", "paramiko"
-    })
+    allowed_modules: Set[str] = field(
+        default_factory=lambda: {
+            "os",
+            "sys",
+            "pathlib",
+            "datetime",
+            "json",
+            "re",
+            "typing",
+            "dataclasses",
+        }
+    )
+    blocked_modules: Set[str] = field(
+        default_factory=lambda: {"subprocess", "socket", "requests", "urllib", "ssl", "paramiko"}
+    )
 
     # Built-in function restrictions
-    allowed_builtins: Set[str] = field(default_factory=lambda: {
-        "len", "str", "int", "float", "list", "dict", "set", "tuple",
-        "sorted", "sum", "min", "max", "abs", "round", "enumerate",
-        "zip", "map", "filter", "range", "reversed"
-    })
-    blocked_builtins: Set[str] = field(default_factory=lambda: {
-        "exec", "eval", "compile", "__import__", "open", "input"
-    })
+    allowed_builtins: Set[str] = field(
+        default_factory=lambda: {
+            "len",
+            "str",
+            "int",
+            "float",
+            "list",
+            "dict",
+            "set",
+            "tuple",
+            "sorted",
+            "sum",
+            "min",
+            "max",
+            "abs",
+            "round",
+            "enumerate",
+            "zip",
+            "map",
+            "filter",
+            "range",
+            "reversed",
+        }
+    )
+    blocked_builtins: Set[str] = field(
+        default_factory=lambda: {"exec", "eval", "compile", "__import__", "open", "input"}
+    )
 
     # Dynamic code execution
     allow_eval: bool = False

@@ -14,12 +14,7 @@ Key Features:
 - ML-based consolidation routing
 """
 
-from .models import (
-    WorkingMemoryItem,
-    Goal,
-    AttentionFocus,
-    ConsolidationRoute
-)
+from .models import WorkingMemoryItem, Goal, AttentionFocus, ConsolidationRoute
 
 from .central_executive import CentralExecutive
 from .phonological_loop import PhonologicalLoop
@@ -29,15 +24,14 @@ from .consolidation_router import ConsolidationRouter
 
 __all__ = [
     # Models
-    'WorkingMemoryItem',
-    'Goal',
-    'AttentionFocus',
-    'ConsolidationRoute',
-
+    "WorkingMemoryItem",
+    "Goal",
+    "AttentionFocus",
+    "ConsolidationRoute",
     # Components
-    'CentralExecutive',
-    'PhonologicalLoop',
-    'VisuospatialSketchpad',
-    'EpisodicBuffer',
-    'ConsolidationRouter',
+    "CentralExecutive",
+    "PhonologicalLoop",
+    "VisuospatialSketchpad",
+    "EpisodicBuffer",
+    "ConsolidationRouter",
 ]

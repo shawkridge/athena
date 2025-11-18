@@ -5,6 +5,7 @@ Returns quality scores and health indicators.
 """
 
 from typing import Dict, Any, Optional
+
 try:
     import psycopg
     from psycopg import AsyncConnection
@@ -13,12 +14,7 @@ except ImportError:
 
 
 async def assess_memory_quality(
-    host: str,
-    port: int,
-    dbname: str,
-    user: str,
-    password: str,
-    memory_type: Optional[str] = None
+    host: str, port: int, dbname: str, user: str, password: str, memory_type: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Assess overall memory quality.
@@ -28,7 +24,9 @@ async def assess_memory_quality(
     Token cost: ~150 tokens vs 8,000 for detailed analysis.
     """
     try:
-        conn = await AsyncConnection.connect(host, port=port, dbname=dbname, user=user, password=password)
+        conn = await AsyncConnection.connect(
+            host, port=port, dbname=dbname, user=user, password=password
+        )
         cursor = conn.cursor()
 
         # Get memory counts
@@ -57,7 +55,9 @@ async def assess_memory_quality(
             "avg_episodic_confidence": episodic_confidence,
             "avg_semantic_confidence": semantic_confidence,
             "overall_quality_score": (episodic_confidence + semantic_confidence) / 2,
-            "memory_health": "good" if (episodic_confidence + semantic_confidence) / 2 > 0.7 else "fair"
+            "memory_health": (
+                "good" if (episodic_confidence + semantic_confidence) / 2 > 0.7 else "fair"
+            ),
         }
 
     except Exception as e:

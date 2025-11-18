@@ -10,18 +10,20 @@ logger = logging.getLogger(__name__)
 
 class ChunkingStrategy(Enum):
     """Code chunking strategies."""
-    FUNCTION = "function"      # Chunk by function boundaries
-    CLASS = "class"            # Chunk by class boundaries
-    MODULE = "module"          # Chunk by module/file
-    SYMBOL = "symbol"          # Chunk by symbol (function/class)
+
+    FUNCTION = "function"  # Chunk by function boundaries
+    CLASS = "class"  # Chunk by class boundaries
+    MODULE = "module"  # Chunk by module/file
+    SYMBOL = "symbol"  # Chunk by symbol (function/class)
     FIXED_SIZE = "fixed_size"  # Fixed-size chunks with overlap
-    SEMANTIC = "semantic"      # Semantic boundaries (imports, blocks)
-    HYBRID = "hybrid"          # Combine multiple strategies
+    SEMANTIC = "semantic"  # Semantic boundaries (imports, blocks)
+    HYBRID = "hybrid"  # Combine multiple strategies
 
 
 @dataclass
 class Chunk:
     """Represents a chunk of code."""
+
     content: str
     file_path: str
     start_line: int
@@ -208,7 +210,9 @@ class CodeChunker:
                     )
 
                 # Extract class name
-                current_class = stripped.split("(")[0].replace("class ", "").replace(":", "").strip()
+                current_class = (
+                    stripped.split("(")[0].replace("class ", "").replace(":", "").strip()
+                )
                 current_chunk_start = i
 
         # Add final chunk

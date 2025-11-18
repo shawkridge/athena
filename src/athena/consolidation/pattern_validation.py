@@ -33,7 +33,7 @@ def validate_pattern(
     pattern_description: str,
     pattern_type: str,
     original_confidence: float,
-    source_events: List[EpisodicEvent]
+    source_events: List[EpisodicEvent],
 ) -> PatternValidation:
     """
     Validate that a pattern is grounded in source events.
@@ -60,7 +60,7 @@ def validate_pattern(
             hallucination_risk="high",
             issues=["No source events provided"],
             evidence_matches=[],
-            confidence_adjusted=0.0
+            confidence_adjusted=0.0,
         )
 
     issues = []
@@ -77,7 +77,7 @@ def validate_pattern(
             hallucination_risk="high",
             issues=issues,
             evidence_matches=[],
-            confidence_adjusted=0.0
+            confidence_adjusted=0.0,
         )
 
     # For workflows: structural validation (sequence of event types)
@@ -127,7 +127,7 @@ def validate_pattern(
             hallucination_risk = "high"
 
         # For non-workflows, require higher grounding
-        is_valid = (grounding_score >= 0.5 and hallucination_risk != "high")
+        is_valid = grounding_score >= 0.5 and hallucination_risk != "high"
 
     # Adjust confidence based on grounding
     confidence_adjusted = original_confidence * grounding_score
@@ -141,14 +141,11 @@ def validate_pattern(
         hallucination_risk=hallucination_risk,
         issues=issues,
         evidence_matches=evidence_matches,
-        confidence_adjusted=confidence_adjusted
+        confidence_adjusted=confidence_adjusted,
     )
 
 
-def _extract_claims_from_pattern(
-    pattern_description: str,
-    pattern_type: str
-) -> List[str]:
+def _extract_claims_from_pattern(pattern_description: str, pattern_type: str) -> List[str]:
     """
     Extract verifiable claims from pattern description.
 
@@ -186,7 +183,17 @@ def _extract_claims_from_pattern(
                 words = step.lower().split()
                 for i, word in enumerate(words):
                     # Look for action verbs and objects
-                    if word in ["write", "test", "run", "implement", "verify", "fix", "debug", "deploy", "check"]:
+                    if word in [
+                        "write",
+                        "test",
+                        "run",
+                        "implement",
+                        "verify",
+                        "fix",
+                        "debug",
+                        "deploy",
+                        "check",
+                    ]:
                         claims.append(word)
                     elif i + 1 < len(words) and words[i] in ["write", "run", "implement"]:
                         # Include next word (e.g., "write test", "run tests")
@@ -270,9 +277,7 @@ def _find_evidence_for_claim(claim: str, source_events: List[EpisodicEvent]) -> 
 
 
 def _validate_pattern_type(
-    pattern_type: str,
-    source_events: List[EpisodicEvent],
-    claims: List[str]
+    pattern_type: str, source_events: List[EpisodicEvent], claims: List[str]
 ) -> bool:
     """
     Type-specific validation.
@@ -336,14 +341,13 @@ def calculate_cluster_confidence(cluster: List[EpisodicEvent]) -> float:
     cohesion = 1.0 if len(event_types) <= 2 else 0.7  # Some variety is good
 
     # Composite confidence
-    confidence = (0.5 * size_factor + 0.3 * avg_event_confidence + 0.2 * cohesion)
+    confidence = 0.5 * size_factor + 0.3 * avg_event_confidence + 0.2 * cohesion
 
     return confidence
 
 
 def _validate_workflow_pattern(
-    pattern_description: str,
-    source_events: List[EpisodicEvent]
+    pattern_description: str, source_events: List[EpisodicEvent]
 ) -> bool:
     """
     Validate that a workflow pattern matches the actual event sequence.
@@ -395,9 +399,7 @@ def _validate_workflow_pattern(
 
 
 def adjust_pattern_confidence_for_llm_brittleness(
-    pattern_confidence: float,
-    grounding_score: float,
-    extended_thinking_budget: int
+    pattern_confidence: float, grounding_score: float, extended_thinking_budget: int
 ) -> float:
     """
     Adjust confidence to account for CoT brittleness.
@@ -422,8 +424,7 @@ def adjust_pattern_confidence_for_llm_brittleness(
 
 
 def rank_patterns_by_reliability(
-    patterns: List[dict],  # List of {description, confidence, validation}
-    max_patterns: int = 3
+    patterns: List[dict], max_patterns: int = 3  # List of {description, confidence, validation}
 ) -> List[dict]:
     """
     Rank patterns by reliability (grounding + confidence).
@@ -444,16 +445,10 @@ def rank_patterns_by_reliability(
         else:
             reliability = validation.grounding_score * validation.confidence_adjusted
 
-        scored_patterns.append({
-            **pattern,
-            "reliability_score": reliability
-        })
+        scored_patterns.append({**pattern, "reliability_score": reliability})
 
     # Sort by reliability
     scored_patterns.sort(key=lambda p: p["reliability_score"], reverse=True)
 
     # Return top N with reliability >= 0.5
-    return [
-        p for p in scored_patterns[:max_patterns]
-        if p["reliability_score"] >= 0.5
-    ]
+    return [p for p in scored_patterns[:max_patterns] if p["reliability_score"] >= 0.5]

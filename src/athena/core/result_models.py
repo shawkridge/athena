@@ -20,21 +20,11 @@ class ConfidenceLevel(str, Enum):
 class ConfidenceScores(BaseModel):
     """Detailed confidence scoring breakdown."""
 
-    semantic_relevance: float = Field(
-        ..., ge=0, le=1, description="Semantic similarity score"
-    )
-    source_quality: float = Field(
-        ..., ge=0, le=1, description="Quality of source memory"
-    )
-    recency: float = Field(
-        ..., ge=0, le=1, description="Recency score (newer=higher)"
-    )
-    consistency: float = Field(
-        ..., ge=0, le=1, description="Consistency with other memories"
-    )
-    completeness: float = Field(
-        ..., ge=0, le=1, description="How complete the information is"
-    )
+    semantic_relevance: float = Field(..., ge=0, le=1, description="Semantic similarity score")
+    source_quality: float = Field(..., ge=0, le=1, description="Quality of source memory")
+    recency: float = Field(..., ge=0, le=1, description="Recency score (newer=higher)")
+    consistency: float = Field(..., ge=0, le=1, description="Consistency with other memories")
+    completeness: float = Field(..., ge=0, le=1, description="How complete the information is")
 
     model_config = ConfigDict(use_enum_values=False)
 
@@ -71,16 +61,10 @@ class MemoryWithConfidence(BaseModel):
 
     memory_id: str = Field(..., description="Unique identifier for the memory")
     content: Any = Field(..., description="Memory content")
-    confidence: float = Field(
-        ..., ge=0, le=1, description="Overall confidence score (0-1)"
-    )
+    confidence: float = Field(..., ge=0, le=1, description="Overall confidence score (0-1)")
     confidence_level: ConfidenceLevel = Field(..., description="Confidence level")
-    confidence_breakdown: ConfidenceScores = Field(
-        ..., description="Detailed confidence scoring"
-    )
-    source_layer: str = Field(
-        ..., description="Memory layer (episodic, semantic, etc.)"
-    )
+    confidence_breakdown: ConfidenceScores = Field(..., description="Detailed confidence scoring")
+    source_layer: str = Field(..., description="Memory layer (episodic, semantic, etc.)")
     retrieved_at: datetime = Field(default_factory=datetime.now)
 
 
@@ -91,9 +75,7 @@ class SearchResultWithExplain(BaseModel):
 
     result: MemoryWithConfidence = Field(..., description="Search result")
     explanation: Optional[str] = Field(None, description="Explanation of ranking")
-    reasoning: Optional[Dict[str, str]] = Field(
-        None, description="Detailed reasoning breakdown"
-    )
+    reasoning: Optional[Dict[str, str]] = Field(None, description="Detailed reasoning breakdown")
 
 
 class QueryExplanation(BaseModel):
@@ -103,9 +85,7 @@ class QueryExplanation(BaseModel):
 
     query: str = Field(..., description="Original query")
     query_type: str = Field(..., description="Classified query type")
-    layers_queried: List[str] = Field(
-        ..., description="Layers that were queried"
-    )
+    layers_queried: List[str] = Field(..., description="Layers that were queried")
     search_strategy: str = Field(..., description="Strategy used for search")
     total_candidates: int = Field(..., description="Total candidates considered")
     results_returned: int = Field(..., description="Final results returned")

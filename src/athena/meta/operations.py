@@ -12,7 +12,7 @@ No MCP protocol, no wrapper overhead. Just Python async functions.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from ..core.database import Database
 from .store import MetaMemoryStore
@@ -178,7 +178,9 @@ async def rate_memory(
 ) -> bool:
     """Rate memory. See MetaOperations.rate_memory for details."""
     ops = get_operations()
-    return await ops.rate_memory(memory_id=memory_id, quality=quality, confidence=confidence, usefulness=usefulness)
+    return await ops.rate_memory(
+        memory_id=memory_id, quality=quality, confidence=confidence, usefulness=usefulness
+    )
 
 
 async def get_expertise(topic: str | None = None, limit: int = 10) -> Dict[str, Any]:

@@ -20,49 +20,34 @@ class GoSymbolParser:
     """Parser for Go source code using regex-based pattern matching."""
 
     # Regex patterns for Go constructs
-    PACKAGE_PATTERN = re.compile(r'^package\s+(\w+)', re.MULTILINE)
+    PACKAGE_PATTERN = re.compile(r"^package\s+(\w+)", re.MULTILINE)
 
     IMPORT_PATTERN = re.compile(
-        r'import\s+(?:'
+        r"import\s+(?:"
         r'(?:"([^"]+)"|`([^`]+)`)|'  # Single import with quotes or backticks
-        r'\(([^)]*)\)'  # Import block
-        r')',
-        re.MULTILINE
+        r"\(([^)]*)\)"  # Import block
+        r")",
+        re.MULTILINE,
     )
 
-    STRUCT_PATTERN = re.compile(
-        r'(?:^|\n)\s*type\s+(\w+)\s+struct\s*\{',
-        re.MULTILINE
-    )
+    STRUCT_PATTERN = re.compile(r"(?:^|\n)\s*type\s+(\w+)\s+struct\s*\{", re.MULTILINE)
 
-    INTERFACE_PATTERN = re.compile(
-        r'(?:^|\n)\s*type\s+(\w+)\s+interface\s*\{',
-        re.MULTILINE
-    )
+    INTERFACE_PATTERN = re.compile(r"(?:^|\n)\s*type\s+(\w+)\s+interface\s*\{", re.MULTILINE)
 
     FUNCTION_PATTERN = re.compile(
-        r'(?:^|\n)\s*func\s+(\w+)\s*\(([^)]*)\)(?:\s*\(([^)]*)\))?',
-        re.MULTILINE
+        r"(?:^|\n)\s*func\s+(\w+)\s*\(([^)]*)\)(?:\s*\(([^)]*)\))?", re.MULTILINE
     )
 
     METHOD_PATTERN = re.compile(
-        r'(?:^|\n)\s*func\s*\(\s*(\w+)\s+\*?(\w+)\s*\)\s+(\w+)\s*\(([^)]*)\)',
-        re.MULTILINE
+        r"(?:^|\n)\s*func\s*\(\s*(\w+)\s+\*?(\w+)\s*\)\s+(\w+)\s*\(([^)]*)\)", re.MULTILINE
     )
 
-    CONST_PATTERN = re.compile(
-        r'(?:^|\n)\s*const\s+(\w+)(?:\s+\w+)?\s*=',
-        re.MULTILINE
-    )
+    CONST_PATTERN = re.compile(r"(?:^|\n)\s*const\s+(\w+)(?:\s+\w+)?\s*=", re.MULTILINE)
 
-    VAR_PATTERN = re.compile(
-        r'(?:^|\n)\s*var\s+(\w+)(?:\s+[^=]+)?(?:\s*=)?',
-        re.MULTILINE
-    )
+    VAR_PATTERN = re.compile(r"(?:^|\n)\s*var\s+(\w+)(?:\s+[^=]+)?(?:\s*=)?", re.MULTILINE)
 
     TYPE_PATTERN = re.compile(
-        r'(?:^|\n)\s*type\s+(\w+)\s+(?:struct|interface|\*?\w+)',
-        re.MULTILINE
+        r"(?:^|\n)\s*type\s+(\w+)\s+(?:struct|interface|\*?\w+)", re.MULTILINE
     )
 
     def parse_file(self, file_path: str, code: Optional[str] = None) -> list[Symbol]:
@@ -77,7 +62,7 @@ class GoSymbolParser:
         """
         if code is None:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     code = f.read()
             except (IOError, UnicodeDecodeError):
                 return []
@@ -126,12 +111,12 @@ class GoSymbolParser:
         single_import_pattern = re.compile(r'import\s+(?:"([^"]+)"|`([^`]+)`)')
         for match in single_import_pattern.finditer(code):
             import_path = match.group(1) or match.group(2)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             symbol = create_symbol(
                 file_path=file_path,
                 symbol_type=SymbolType.IMPORT,
-                name=import_path.split('/')[-1],
+                name=import_path.split("/")[-1],
                 namespace="",
                 signature="",
                 line_start=line_num,
@@ -139,32 +124,29 @@ class GoSymbolParser:
                 code="",
                 docstring="",
                 language="go",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
         # Handle import blocks: import ( "fmt"; "os" )
-        import_block_pattern = re.compile(
-            r'import\s*\(\s*([^)]+)\)',
-            re.MULTILINE | re.DOTALL
-        )
+        import_block_pattern = re.compile(r"import\s*\(\s*([^)]+)\)", re.MULTILINE | re.DOTALL)
         for block_match in import_block_pattern.finditer(code):
             block_content = block_match.group(1)
             # Extract individual imports from block
-            for line in block_content.split('\n'):
+            for line in block_content.split("\n"):
                 line = line.strip()
-                if not line or line.startswith('//'):
+                if not line or line.startswith("//"):
                     continue
                 # Match quoted paths
                 path_match = re.search(r'(?:"([^"]+)"|`([^`]+)`)', line)
                 if path_match:
                     import_path = path_match.group(1) or path_match.group(2)
-                    line_num = code[:block_match.start()].count('\n') + 1
+                    line_num = code[: block_match.start()].count("\n") + 1
 
                     symbol = create_symbol(
                         file_path=file_path,
                         symbol_type=SymbolType.IMPORT,
-                        name=import_path.split('/')[-1],
+                        name=import_path.split("/")[-1],
                         namespace="",
                         signature="",
                         line_start=line_num,
@@ -172,7 +154,7 @@ class GoSymbolParser:
                         code="",
                         docstring="",
                         language="go",
-                        visibility="public"
+                        visibility="public",
                     )
                     symbols.append(symbol)
 
@@ -184,7 +166,7 @@ class GoSymbolParser:
 
         for match in self.STRUCT_PATTERN.finditer(code):
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Determine visibility (exported if capitalized)
             visibility = "public" if name[0].isupper() else "private"
@@ -200,7 +182,7 @@ class GoSymbolParser:
                 code="",
                 docstring="",
                 language="go",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -213,16 +195,15 @@ class GoSymbolParser:
 
                 # Extract struct fields
                 field_pattern = re.compile(
-                    r'(?:^|\n)\s*(\w+)\s+(?:\*)?[\w\[\]\.]+(?:\s+`[^`]*`)?',
-                    re.MULTILINE
+                    r"(?:^|\n)\s*(\w+)\s+(?:\*)?[\w\[\]\.]+(?:\s+`[^`]*`)?", re.MULTILINE
                 )
                 for field_match in field_pattern.finditer(struct_body):
                     field_name = field_match.group(1)
                     # Skip if it looks like a method or other construct
-                    if field_name.lower() in ['func', 'type', 'const', 'var']:
+                    if field_name.lower() in ["func", "type", "const", "var"]:
                         continue
 
-                    field_line = code[:struct_body_start + field_match.start()].count('\n') + 1
+                    field_line = code[: struct_body_start + field_match.start()].count("\n") + 1
                     field_visibility = "public" if field_name[0].isupper() else "private"
 
                     field_symbol = create_symbol(
@@ -236,7 +217,7 @@ class GoSymbolParser:
                         code="",
                         docstring="",
                         language="go",
-                        visibility=field_visibility
+                        visibility=field_visibility,
                     )
                     symbols.append(field_symbol)
 
@@ -248,7 +229,7 @@ class GoSymbolParser:
 
         for match in self.INTERFACE_PATTERN.finditer(code):
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Determine visibility (exported if capitalized)
             visibility = "public" if name[0].isupper() else "private"
@@ -264,7 +245,7 @@ class GoSymbolParser:
                 code="",
                 docstring="",
                 language="go",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -277,15 +258,16 @@ class GoSymbolParser:
 
                 # Extract interface methods
                 method_pattern = re.compile(
-                    r'(?:^|\n)\s*(\w+)\s*\(([^)]*)\)(?:\s*\(([^)]*)\))?',
-                    re.MULTILINE
+                    r"(?:^|\n)\s*(\w+)\s*\(([^)]*)\)(?:\s*\(([^)]*)\))?", re.MULTILINE
                 )
                 for method_match in method_pattern.finditer(interface_body):
                     method_name = method_match.group(1)
                     params = method_match.group(2) if method_match.group(2) else ""
                     returns = method_match.group(3) if method_match.group(3) else ""
 
-                    method_line = code[:interface_body_start + method_match.start()].count('\n') + 1
+                    method_line = (
+                        code[: interface_body_start + method_match.start()].count("\n") + 1
+                    )
                     method_visibility = "public" if method_name[0].isupper() else "private"
                     signature = f"({params}) ({returns})" if returns else f"({params})"
 
@@ -300,7 +282,7 @@ class GoSymbolParser:
                         code="",
                         docstring="",
                         language="go",
-                        visibility=method_visibility
+                        visibility=method_visibility,
                     )
                     symbols.append(method_symbol)
 
@@ -317,10 +299,10 @@ class GoSymbolParser:
 
             # Skip if this is actually a method (has receiver)
             # Methods are detected before function in code with "func (receiver Type)"
-            if name.lower() in ['type', 'const', 'var', 'import', 'package']:
+            if name.lower() in ["type", "const", "var", "import", "package"]:
                 continue
 
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Determine visibility (exported if capitalized)
             visibility = "public" if name[0].isupper() else "private"
@@ -338,7 +320,7 @@ class GoSymbolParser:
                 code="",
                 docstring="",
                 language="go",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -354,7 +336,7 @@ class GoSymbolParser:
             method_name = match.group(3)
             params = match.group(4) if match.group(4) else ""
 
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Determine visibility (exported if capitalized)
             visibility = "public" if method_name[0].isupper() else "private"
@@ -372,7 +354,7 @@ class GoSymbolParser:
                 code="",
                 docstring="",
                 language="go",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -384,7 +366,7 @@ class GoSymbolParser:
 
         for match in self.CONST_PATTERN.finditer(code):
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Determine visibility (exported if capitalized)
             visibility = "public" if name[0].isupper() else "private"
@@ -400,7 +382,7 @@ class GoSymbolParser:
                 code="",
                 docstring="",
                 language="go",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -412,10 +394,10 @@ class GoSymbolParser:
 
         for match in self.VAR_PATTERN.finditer(code):
             name = match.group(1)
-            line_num = code[:match.start()].count('\n') + 1
+            line_num = code[: match.start()].count("\n") + 1
 
             # Skip if already extracted by other patterns
-            if name.lower() in ['package', 'import', 'type', 'func', 'const']:
+            if name.lower() in ["package", "import", "type", "func", "const"]:
                 continue
 
             # Determine visibility (exported if capitalized)
@@ -432,7 +414,7 @@ class GoSymbolParser:
                 code="",
                 docstring="",
                 language="go",
-                visibility=visibility
+                visibility=visibility,
             )
             symbols.append(symbol)
 
@@ -442,9 +424,9 @@ class GoSymbolParser:
         """Find the position of the closing brace matching the opening brace at start."""
         depth = 0
         for i in range(start, len(code)):
-            if code[i] == '{':
+            if code[i] == "{":
                 depth += 1
-            elif code[i] == '}':
+            elif code[i] == "}":
                 depth -= 1
                 if depth == 0:
                     return i
@@ -453,4 +435,4 @@ class GoSymbolParser:
     def _find_closing_brace_line(self, code: str, start: int) -> int:
         """Find the line number of the closing brace."""
         closing_pos = self._find_closing_brace(code, start)
-        return code[:closing_pos].count('\n') + 1
+        return code[:closing_pos].count("\n") + 1

@@ -14,9 +14,9 @@ Key features:
 
 import logging
 import time
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict, List, Optional, Tuple
 from collections import defaultdict
 
 logger = logging.getLogger(__name__)
@@ -210,9 +210,7 @@ class PerformanceProfiler:
             query_counts[metric.query_text] += 1
 
         # Sort by count (descending)
-        trending = sorted(
-            query_counts.items(), key=lambda x: x[1], reverse=True
-        )[:limit]
+        trending = sorted(query_counts.items(), key=lambda x: x[1], reverse=True)[:limit]
         return [q for q, _ in trending]
 
     def get_slow_queries(self, percentile: int = 99, limit: int = 10) -> List[Tuple[str, float]]:
@@ -258,9 +256,11 @@ class PerformanceProfiler:
                 }
             else:
                 pattern[hour] = {
-                    "avg_latency_ms": sum(m.latency_ms for m in metrics_in_hour) / len(metrics_in_hour),
+                    "avg_latency_ms": sum(m.latency_ms for m in metrics_in_hour)
+                    / len(metrics_in_hour),
                     "query_count": len(metrics_in_hour),
-                    "success_rate": sum(1 for m in metrics_in_hour if m.success) / len(metrics_in_hour),
+                    "success_rate": sum(1 for m in metrics_in_hour if m.success)
+                    / len(metrics_in_hour),
                 }
 
         return pattern

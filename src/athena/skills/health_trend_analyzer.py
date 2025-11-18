@@ -42,9 +42,7 @@ class HealthTrendAnalyzer:
         self.db = db
         self.monitor = TaskMonitor(db)
 
-    async def analyze_task_trend(
-        self, task_id: int, days: int = 30
-    ) -> HealthTrend:
+    async def analyze_task_trend(self, task_id: int, days: int = 30) -> HealthTrend:
         """Analyze health trend for a specific task.
 
         Args:
@@ -64,14 +62,10 @@ class HealthTrendAnalyzer:
                 task_id=task_id,
                 time_period=f"{days}d",
                 initial_score=(
-                    current_health.health_score
-                    if hasattr(current_health, "health_score")
-                    else 0.5
+                    current_health.health_score if hasattr(current_health, "health_score") else 0.5
                 ),
                 current_score=(
-                    current_health.health_score
-                    if hasattr(current_health, "health_score")
-                    else 0.5
+                    current_health.health_score if hasattr(current_health, "health_score") else 0.5
                 ),
                 trend="insufficient_data",
                 trend_strength=0.0,
@@ -89,9 +83,7 @@ class HealthTrendAnalyzer:
         trend, strength = self._calculate_trend(health_history)
         inflection_point = self._find_inflection_point(health_history)
         warnings = self._identify_early_warnings(health_history)
-        actions = self._recommend_actions(
-            trend, current_score, warnings
-        )
+        actions = self._recommend_actions(trend, current_score, warnings)
 
         return HealthTrend(
             task_id=task_id,
@@ -106,9 +98,7 @@ class HealthTrendAnalyzer:
             recommended_actions=actions,
         )
 
-    def _get_health_history(
-        self, task_id: int, days: int
-    ) -> List[float]:
+    def _get_health_history(self, task_id: int, days: int) -> List[float]:
         """Get historical health scores.
 
         Args:
@@ -120,9 +110,7 @@ class HealthTrendAnalyzer:
         """
         try:
             cursor = self.db.get_cursor()
-            cutoff_time = int(
-                (datetime.utcnow() - timedelta(days=days)).timestamp()
-            )
+            cutoff_time = int((datetime.utcnow() - timedelta(days=days)).timestamp())
 
             cursor.execute(
                 """
@@ -147,9 +135,7 @@ class HealthTrendAnalyzer:
         except (OSError, ValueError, TypeError, KeyError, IndexError):
             return [0.5]
 
-    def _calculate_trend(
-        self, scores: List[float]
-    ) -> tuple[str, float]:
+    def _calculate_trend(self, scores: List[float]) -> tuple[str, float]:
         """Calculate trend from scores.
 
         Args:
@@ -186,9 +172,7 @@ class HealthTrendAnalyzer:
 
         return (trend, min(strength, 1.0))
 
-    def _find_inflection_point(
-        self, scores: List[float]
-    ) -> Optional[str]:
+    def _find_inflection_point(self, scores: List[float]) -> Optional[str]:
         """Find where trend changed.
 
         Args:
@@ -217,9 +201,7 @@ class HealthTrendAnalyzer:
 
         return None
 
-    def _identify_early_warnings(
-        self, scores: List[float]
-    ) -> List[str]:
+    def _identify_early_warnings(self, scores: List[float]) -> List[str]:
         """Identify early warning signals.
 
         Args:
@@ -231,11 +213,7 @@ class HealthTrendAnalyzer:
         warnings = []
 
         current = scores[-1]
-        recent_avg = (
-            sum(scores[-3:]) / len(scores[-3:])
-            if len(scores) >= 3
-            else scores[-1]
-        )
+        recent_avg = sum(scores[-3:]) / len(scores[-3:]) if len(scores) >= 3 else scores[-1]
 
         # Check for degradation pattern
         if current < 0.65 and recent_avg < 0.70:
@@ -279,41 +257,29 @@ class HealthTrendAnalyzer:
         if trend == "degrading":
             actions.append("ACTION: Investigate cause of health degradation")
             if current_score < 0.65:
-                actions.append(
-                    "ACTION: Run /plan optimize to identify and fix issues"
-                )
+                actions.append("ACTION: Run /plan optimize to identify and fix issues")
             if current_score < 0.5:
-                actions.append(
-                    "ACTION: CRITICAL - Consider halting and reassessing approach"
-                )
+                actions.append("ACTION: CRITICAL - Consider halting and reassessing approach")
 
         elif trend == "improving":
             actions.append("✓ Positive trend - maintain current approach")
 
         elif trend == "stable":
             if current_score < 0.65:
-                actions.append(
-                    "ACTION: Health is stable but low - needs improvement"
-                )
+                actions.append("ACTION: Health is stable but low - needs improvement")
             else:
                 actions.append("✓ Health is stable and healthy")
 
         # Add warning-specific actions
         if "sustained low" in str(warnings).lower():
-            actions.append(
-                "ACTION: Schedule health review meeting to address root causes"
-            )
+            actions.append("ACTION: Schedule health review meeting to address root causes")
 
         if "volatility" in str(warnings).lower():
-            actions.append(
-                "ACTION: Stabilize execution - identify what causes score swings"
-            )
+            actions.append("ACTION: Stabilize execution - identify what causes score swings")
 
         return actions[:3]  # Top 3 actions
 
-    async def analyze_project_trends(
-        self, project_id: int, days: int = 30
-    ) -> dict:
+    async def analyze_project_trends(self, project_id: int, days: int = 30) -> dict:
         """Analyze trends across all tasks in a project.
 
         Args:
@@ -354,9 +320,7 @@ class HealthTrendAnalyzer:
             project_trend = (
                 "improving"
                 if improving_count > degrading_count
-                else "degrading"
-                if degrading_count > improving_count
-                else "stable"
+                else "degrading" if degrading_count > improving_count else "stable"
             )
 
             return {
@@ -366,15 +330,15 @@ class HealthTrendAnalyzer:
                 "project_trend": project_trend,
                 "improving_tasks": improving_count,
                 "degrading_tasks": degrading_count,
-                "warning_tasks": sum(
-                    1 for t in trends if t.intervention_needed
-                ),
+                "warning_tasks": sum(1 for t in trends if t.intervention_needed),
                 "recommendation": (
                     "Positive momentum - maintain current practices"
                     if project_trend == "improving"
-                    else "Concerning trend - schedule intervention review"
-                    if project_trend == "degrading"
-                    else "Stable - monitor for changes"
+                    else (
+                        "Concerning trend - schedule intervention review"
+                        if project_trend == "degrading"
+                        else "Stable - monitor for changes"
+                    )
                 ),
             }
         except (OSError, ValueError, TypeError, AttributeError, KeyError):

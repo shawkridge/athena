@@ -9,12 +9,12 @@ Implements:
 """
 
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from datetime import datetime
+from typing import Dict
 
 from ..core.database import Database
 from .dream_store import DreamStore
-from .dream_models import DreamStatus, DreamTier, DreamMetrics
+from .dream_models import DreamMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -83,10 +83,10 @@ class DreamMetricsCalculator:
             # Apply weights for compound score
             # 60% novelty, 15% quality evolution, 15% cross-project, 10% efficiency
             compound_score = (
-                0.60 * novelty_component +
-                0.15 * quality_component +
-                0.15 * leverage_component +
-                0.10 * efficiency_component
+                0.60 * novelty_component
+                + 0.15 * quality_component
+                + 0.15 * leverage_component
+                + 0.10 * efficiency_component
             )
 
             # Create metrics object
@@ -108,7 +108,7 @@ class DreamMetricsCalculator:
                 quality_evolution_weighted=quality_component * 0.15,
                 cross_project_leverage_weighted=leverage_component * 0.15,
                 efficiency_weighted=efficiency_component * 0.10,
-                compound_health_score=compound_score
+                compound_health_score=compound_score,
             )
 
             # Store metrics
@@ -198,7 +198,9 @@ class DreamMetricsCalculator:
         if result["total"] == 0:
             return 0.0, 0
 
-        adoption_rate = float(result["adopted"]) / float(result["total"]) if result["adopted"] else 0.0
+        adoption_rate = (
+            float(result["adopted"]) / float(result["total"]) if result["adopted"] else 0.0
+        )
         return adoption_rate, result["adopted"]
 
     async def _calculate_efficiency_metrics(self) -> tuple:
@@ -249,7 +251,7 @@ class DreamMetricsCalculator:
         tier1_success: float,
         tier1_count: int,
         tier2_count: int,
-        tier3_count: int
+        tier3_count: int,
     ) -> float:
         """Score quality component (0.0-1.0)."""
         total = tier1_count + tier2_count + tier3_count
@@ -258,15 +260,13 @@ class DreamMetricsCalculator:
             return 0.0
 
         # Distribution score: prefer Tier 1 > Tier 2 > Tier 3
-        distribution_score = (
-            (0.5 * tier1_count + 0.3 * tier2_count + 0.1 * tier3_count) / total
-        )
+        distribution_score = (0.5 * tier1_count + 0.3 * tier2_count + 0.1 * tier3_count) / total
 
         # Combine with viability and test success
         return (
-            (0.5 * min(avg_viability, 1.0)) +
-            (0.3 * distribution_score) +
-            (0.2 * tier1_success)  # Only if we have test data
+            (0.5 * min(avg_viability, 1.0))
+            + (0.3 * distribution_score)
+            + (0.2 * tier1_success)  # Only if we have test data
         )
 
     def _score_cross_project_leverage(self, adoption_rate: float) -> float:
@@ -312,7 +312,7 @@ class DreamMetricsCalculator:
             WHERE timestamp > datetime('now', ? || ' days')
             ORDER BY timestamp ASC
         """,
-            (f"-{days}",)
+            (f"-{days}",),
         )
 
         metrics_history = cursor.fetchall()
@@ -330,9 +330,15 @@ class DreamMetricsCalculator:
             "data_points": len(metrics_history),
             "initial_score": first_score,
             "latest_score": last_score,
-            "trend_direction": "improving" if last_score > first_score else "declining" if last_score < first_score else "stable",
+            "trend_direction": (
+                "improving"
+                if last_score > first_score
+                else "declining" if last_score < first_score else "stable"
+            ),
             "change_amount": last_score - first_score,
-            "change_percent": ((last_score - first_score) / first_score * 100) if first_score > 0 else 0,
+            "change_percent": (
+                ((last_score - first_score) / first_score * 100) if first_score > 0 else 0
+            ),
             "average_score": sum(compound_scores) / len(compound_scores),
             "max_score": max(compound_scores),
             "min_score": min(compound_scores),
@@ -355,7 +361,9 @@ class DreamMetricsCalculator:
         trend = await self.get_trend_analysis(days=30)
 
         return {
-            "status": "healthy" if latest_metrics.compound_health_score > 0.6 else "needs_improvement",
+            "status": (
+                "healthy" if latest_metrics.compound_health_score > 0.6 else "needs_improvement"
+            ),
             "compound_score": latest_metrics.compound_health_score,
             "components": {
                 "novelty": latest_metrics.novelty_score_weighted,

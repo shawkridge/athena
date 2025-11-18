@@ -1,6 +1,5 @@
 """ConsolidationMetricsStore - Persist and track consolidation quality metrics."""
 
-import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 
@@ -142,7 +141,7 @@ class ConsolidationMetricsStore(BaseStore[ConsolidationRun]):
                 WHERE id = ?
                 """,
                 (run_id,),
-                fetch_one=True
+                fetch_one=True,
             )
             if not result:
                 return None
@@ -164,9 +163,7 @@ class ConsolidationMetricsStore(BaseStore[ConsolidationRun]):
             print(f"Error retrieving metrics: {e}")
             return None
 
-    def get_project_metrics_history(
-        self, project_id: int, days: int = 30
-    ) -> List[Dict]:
+    def get_project_metrics_history(self, project_id: int, days: int = 30) -> List[Dict]:
         """Retrieve consolidation metrics history for a project.
 
         Args:
@@ -192,7 +189,7 @@ class ConsolidationMetricsStore(BaseStore[ConsolidationRun]):
                 ORDER BY started_at DESC
                 """,
                 (project_id, cutoff_ts),
-                fetch_all=True
+                fetch_all=True,
             )
 
             results = []
@@ -238,7 +235,7 @@ class ConsolidationMetricsStore(BaseStore[ConsolidationRun]):
                 FROM consolidation_runs
                 WHERE overall_quality_score IS NOT NULL
                 """,
-                fetch_one=True
+                fetch_one=True,
             )
 
             if not result or result[0] == 0:

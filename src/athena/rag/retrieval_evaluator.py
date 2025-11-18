@@ -7,12 +7,13 @@ and optional LLM-based evaluation for nuanced relevance assessment.
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from datetime import datetime
 
 
 class RelevanceLevel(str, Enum):
     """Relevance assessment levels"""
+
     IRRELEVANT = "irrelevant"
     PARTIALLY_RELEVANT = "partially_relevant"
     RELEVANT = "relevant"
@@ -22,6 +23,7 @@ class RelevanceLevel(str, Enum):
 @dataclass
 class RelevanceScore:
     """Score for a single document's relevance"""
+
     document_id: str
     query: str
     document_content: str
@@ -178,9 +180,7 @@ class RetrievalEvaluator:
             "semantic_score": 0.10,
         }
 
-        confidence = sum(
-            factors.get(key, 0.0) * weight for key, weight in weights.items()
-        )
+        confidence = sum(factors.get(key, 0.0) * weight for key, weight in weights.items())
 
         # Determine relevance level
         if confidence >= 0.75:
@@ -287,7 +287,9 @@ class RetrievalEvaluator:
             Human-readable reasoning
         """
         if relevance_level == RelevanceLevel.HIGHLY_RELEVANT:
-            return f"Document is highly relevant (confidence: {factors.get('keyword_overlap', 0):.0%})"
+            return (
+                f"Document is highly relevant (confidence: {factors.get('keyword_overlap', 0):.0%})"
+            )
         elif relevance_level == RelevanceLevel.RELEVANT:
             return f"Document is relevant with good coverage (confidence: {factors.get('query_coverage', 0):.0%})"
         elif relevance_level == RelevanceLevel.PARTIALLY_RELEVANT:
@@ -312,8 +314,7 @@ class RetrievalEvaluator:
             doc_ids = [str(i) for i in range(len(documents))]
 
         results = [
-            self.evaluate_relevance(query, doc, doc_id)
-            for doc, doc_id in zip(documents, doc_ids)
+            self.evaluate_relevance(query, doc, doc_id) for doc, doc_id in zip(documents, doc_ids)
         ]
 
         return results
@@ -377,9 +378,7 @@ class RetrievalEvaluator:
         avg_confidence = {}
         for level in RelevanceLevel:
             scores = [
-                s.confidence
-                for s in self.evaluation_cache.values()
-                if s.relevance_level == level
+                s.confidence for s in self.evaluation_cache.values() if s.relevance_level == level
             ]
             if scores:
                 avg_confidence[level.value] = sum(scores) / len(scores)

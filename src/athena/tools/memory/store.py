@@ -1,6 +1,7 @@
 """Store/remember memory tool - save new memories to the system."""
+
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from athena.tools import BaseTool, ToolMetadata
 
 
@@ -36,21 +37,21 @@ class StoreMemoryTool(BaseTool):
                 "content": {
                     "type": "string",
                     "description": "Memory content to store",
-                    "required": True
+                    "required": True,
                 },
                 "memory_type": {
                     "type": "string",
                     "enum": ["episodic", "semantic", "procedural", "prospective", "auto"],
                     "description": "Type of memory layer to store in",
                     "required": False,
-                    "default": "auto"
+                    "default": "auto",
                 },
                 "tags": {
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "Tags for categorizing the memory",
                     "required": False,
-                    "default": []
+                    "default": [],
                 },
                 "importance": {
                     "type": "number",
@@ -58,51 +59,39 @@ class StoreMemoryTool(BaseTool):
                     "required": False,
                     "default": 0.5,
                     "minimum": 0.0,
-                    "maximum": 1.0
+                    "maximum": 1.0,
                 },
                 "context": {
                     "type": "object",
                     "description": "Additional context metadata",
                     "required": False,
-                    "default": {}
+                    "default": {},
                 },
                 "relationships": {
                     "type": "array",
                     "description": "IDs of related memories",
                     "required": False,
-                    "default": []
-                }
+                    "default": [],
+                },
             },
             returns={
                 "type": "object",
                 "properties": {
-                    "memory_id": {
-                        "type": "string",
-                        "description": "Unique ID of stored memory"
-                    },
-                    "content": {
-                        "type": "string",
-                        "description": "The stored content"
-                    },
-                    "memory_type": {
-                        "type": "string",
-                        "description": "Memory layer used"
-                    },
-                    "timestamp": {
-                        "type": "string",
-                        "description": "When memory was created"
-                    },
+                    "memory_id": {"type": "string", "description": "Unique ID of stored memory"},
+                    "content": {"type": "string", "description": "The stored content"},
+                    "memory_type": {"type": "string", "description": "Memory layer used"},
+                    "timestamp": {"type": "string", "description": "When memory was created"},
                     "store_time_ms": {
                         "type": "number",
-                        "description": "Time taken to store memory"
+                        "description": "Time taken to store memory",
                     },
                     "status": {
                         "type": "string",
                         "enum": ["success", "error"],
-                        "description": "Operation status"
-                    }
-                }
-            }
+                        "description": "Operation status",
+                    },
+                },
+            },
         )
 
     def validate_input(self, **kwargs) -> None:
@@ -172,16 +161,25 @@ class StoreMemoryTool(BaseTool):
             try:
                 # Try to store in database if available
                 from athena.core.database import get_database
+
                 db = get_database()
 
                 # Determine memory layer based on type
                 if memory_type == "auto":
                     # Auto-detect based on content characteristics
-                    if any(word in content.lower() for word in ["today", "yesterday", "happened", "event"]):
+                    if any(
+                        word in content.lower()
+                        for word in ["today", "yesterday", "happened", "event"]
+                    ):
                         memory_type = "episodic"
-                    elif any(word in content.lower() for word in ["fact", "know", "definition", "means"]):
+                    elif any(
+                        word in content.lower() for word in ["fact", "know", "definition", "means"]
+                    ):
                         memory_type = "semantic"
-                    elif any(word in content.lower() for word in ["step", "process", "how to", "procedure"]):
+                    elif any(
+                        word in content.lower()
+                        for word in ["step", "process", "how to", "procedure"]
+                    ):
                         memory_type = "procedural"
                     elif any(word in content.lower() for word in ["task", "goal", "plan", "todo"]):
                         memory_type = "prospective"
@@ -195,17 +193,19 @@ class StoreMemoryTool(BaseTool):
                         """INSERT INTO memories
                            (id, content, memory_type, tags, importance, context, created_at)
                            VALUES (?, ?, ?, ?, ?, ?, datetime('now'))""",
-                        (memory_id, content, memory_type, ','.join(tags), importance, str(context))
+                        (memory_id, content, memory_type, ",".join(tags), importance, str(context)),
                     )
                     db.conn.commit()
                 except Exception as db_err:
                     # Continue if database insert fails
                     import logging
+
                     logging.warning(f"Could not store memory in database: {db_err}")
 
             except Exception as e:
                 # Continue if database unavailable
                 import logging
+
                 logging.debug(f"Database storage unavailable: {e}")
 
             elapsed = (time.time() - start_time) * 1000  # Convert to ms
@@ -220,18 +220,18 @@ class StoreMemoryTool(BaseTool):
                 "tags_count": len(tags),
                 "importance": importance,
                 "context_keys": len(context),
-                "relationships_count": len(relationships)
+                "relationships_count": len(relationships),
             }
 
         except ValueError as e:
             return {
                 "error": str(e),
                 "status": "error",
-                "store_time_ms": (time.time() - start_time) * 1000
+                "store_time_ms": (time.time() - start_time) * 1000,
             }
         except Exception as e:
             return {
                 "error": f"Unexpected error: {str(e)}",
                 "status": "error",
-                "store_time_ms": (time.time() - start_time) * 1000
+                "store_time_ms": (time.time() - start_time) * 1000,
             }

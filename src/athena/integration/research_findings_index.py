@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 class FindingType(str, Enum):
     """Classification of research findings."""
+
     FACTUAL = "factual"  # Empirical facts
     METHODOLOGICAL = "methodological"  # Method/approach insights
     PATTERN = "pattern"  # Identified patterns
@@ -31,6 +32,7 @@ class FindingType(str, Enum):
 
 class ConfidenceLevel(str, Enum):
     """Confidence in finding."""
+
     HIGH = "high"  # Multiple sources, peer reviewed
     MEDIUM = "medium"  # Single high-quality source
     LOW = "low"  # Single source, needs verification
@@ -39,6 +41,7 @@ class ConfidenceLevel(str, Enum):
 @dataclass
 class Finding:
     """A single research finding."""
+
     id: Optional[str] = None
     statement: str = ""
     finding_type: FindingType = FindingType.FACTUAL
@@ -55,6 +58,7 @@ class Finding:
 @dataclass
 class ResearchSession:
     """A research session with findings."""
+
     id: str
     topic: str
     findings: List[Finding] = field(default_factory=list)
@@ -81,20 +85,20 @@ class ResearchFindingsIndexer:
 
     # Common domain keywords for auto-tagging
     DOMAIN_KEYWORDS = {
-        'machine-learning': ['machine learning', 'neural', 'deep learning', 'algorithm', 'model'],
-        'security': ['security', 'vulnerability', 'attack', 'encryption', 'threat'],
-        'performance': ['performance', 'optimization', 'latency', 'throughput', 'bottleneck'],
-        'architecture': ['architecture', 'design', 'pattern', 'structure', 'component'],
-        'testing': ['test', 'testing', 'unit test', 'integration test', 'coverage'],
-        'documentation': ['documentation', 'document', 'spec', 'specification', 'guide'],
-        'user-research': ['user', 'usability', 'user experience', 'ux', 'behavior'],
+        "machine-learning": ["machine learning", "neural", "deep learning", "algorithm", "model"],
+        "security": ["security", "vulnerability", "attack", "encryption", "threat"],
+        "performance": ["performance", "optimization", "latency", "throughput", "bottleneck"],
+        "architecture": ["architecture", "design", "pattern", "structure", "component"],
+        "testing": ["test", "testing", "unit test", "integration test", "coverage"],
+        "documentation": ["documentation", "document", "spec", "specification", "guide"],
+        "user-research": ["user", "usability", "user experience", "ux", "behavior"],
     }
 
     # Confidence indicators
     CONFIDENCE_INDICATORS = {
-        'high': ['peer reviewed', 'published', 'verified', 'rigorous', 'multiple sources'],
-        'medium': ['well-established', 'authoritative', 'reputable source'],
-        'low': ['preliminary', 'anecdotal', 'unverified', 'single source']
+        "high": ["peer reviewed", "published", "verified", "rigorous", "multiple sources"],
+        "medium": ["well-established", "authoritative", "reputable source"],
+        "low": ["preliminary", "anecdotal", "unverified", "single source"],
     }
 
     def __init__(self):
@@ -105,10 +109,7 @@ class ResearchFindingsIndexer:
         self._domain_index: Dict[str, List[str]] = {}  # domain -> finding IDs
 
     def extract_findings(
-        self,
-        text: str,
-        research_topic: str = "",
-        sources: Optional[List[str]] = None
+        self, text: str, research_topic: str = "", sources: Optional[List[str]] = None
     ) -> List[Finding]:
         """Extract findings from research text.
 
@@ -129,19 +130,19 @@ class ResearchFindingsIndexer:
         sources = sources or []
 
         # Pattern 1: Explicit "Finding:" markers
-        for match in re.finditer(r'(?:Finding|Result):\s*([^\n.!?]+[.!?])', text, re.IGNORECASE):
+        for match in re.finditer(r"(?:Finding|Result):\s*([^\n.!?]+[.!?])", text, re.IGNORECASE):
             statement = match.group(1).strip()
             finding = Finding(
                 statement=statement,
                 finding_type=FindingType.FACTUAL,
                 domain=self._detect_domain(statement),
                 sources=sources,
-                tags=self._generate_tags(statement)
+                tags=self._generate_tags(statement),
             )
             findings.append(finding)
 
         # Pattern 2: Numbered findings
-        for match in re.finditer(r'^\d+\.\s+([^\n]+)$', text, re.MULTILINE):
+        for match in re.finditer(r"^\d+\.\s+([^\n]+)$", text, re.MULTILINE):
             statement = match.group(1).strip()
             if len(statement) > 10:  # Avoid trivial matches
                 finding = Finding(
@@ -149,7 +150,7 @@ class ResearchFindingsIndexer:
                     finding_type=self._classify_finding(statement),
                     domain=self._detect_domain(statement),
                     sources=sources,
-                    tags=self._generate_tags(statement)
+                    tags=self._generate_tags(statement),
                 )
                 findings.append(finding)
 
@@ -162,7 +163,7 @@ class ResearchFindingsIndexer:
                     finding_type=FindingType.FACTUAL,
                     domain=self._detect_domain(statement),
                     sources=sources,
-                    tags=self._generate_tags(statement)
+                    tags=self._generate_tags(statement),
                 )
                 findings.append(finding)
 
@@ -203,17 +204,17 @@ class ResearchFindingsIndexer:
         statement_lower = statement.lower()
 
         # Check for specific patterns
-        if re.search(r'\b(?:recommends?|should|must|needs?)\b', statement_lower):
+        if re.search(r"\b(?:recommends?|should|must|needs?)\b", statement_lower):
             return FindingType.RECOMMENDATION
-        elif re.search(r'\b(?:contradicts?|conflicts?|differs?|opposite)\b', statement_lower):
+        elif re.search(r"\b(?:contradicts?|conflicts?|differs?|opposite)\b", statement_lower):
             return FindingType.CONTRADICTION
-        elif re.search(r'\b(?:confirms?|validates?|supports?|consistent)\b', statement_lower):
+        elif re.search(r"\b(?:confirms?|validates?|supports?|consistent)\b", statement_lower):
             return FindingType.CONFIRMATION
-        elif re.search(r'\b(?:surprisingly|unexpected|novel|first time)\b', statement_lower):
+        elif re.search(r"\b(?:surprisingly|unexpected|novel|first time)\b", statement_lower):
             return FindingType.NOVEL
-        elif re.search(r'\b(?:method|approach|technique|process)\b', statement_lower):
+        elif re.search(r"\b(?:method|approach|technique|process)\b", statement_lower):
             return FindingType.METHODOLOGICAL
-        elif re.search(r'\b(?:pattern|trend|correlation|relationship)\b', statement_lower):
+        elif re.search(r"\b(?:pattern|trend|correlation|relationship)\b", statement_lower):
             return FindingType.PATTERN
 
         return FindingType.FACTUAL
@@ -235,11 +236,11 @@ class ResearchFindingsIndexer:
             return ConfidenceLevel.HIGH
 
         # Explicit confidence indicators
-        for indicator in self.CONFIDENCE_INDICATORS['high']:
+        for indicator in self.CONFIDENCE_INDICATORS["high"]:
             if indicator in statement_lower:
                 return ConfidenceLevel.HIGH
 
-        for indicator in self.CONFIDENCE_INDICATORS['low']:
+        for indicator in self.CONFIDENCE_INDICATORS["low"]:
             if indicator in statement_lower:
                 return ConfidenceLevel.LOW
 
@@ -262,23 +263,23 @@ class ResearchFindingsIndexer:
                 tags.add(domain)
 
         # Type tags
-        if re.search(r'\b(?:new|novel|unexpected)\b', statement.lower()):
-            tags.add('novel')
+        if re.search(r"\b(?:new|novel|unexpected)\b", statement.lower()):
+            tags.add("novel")
 
-        if re.search(r'\b(?:important|critical|significant)\b', statement.lower()):
-            tags.add('important')
+        if re.search(r"\b(?:important|critical|significant)\b", statement.lower()):
+            tags.add("important")
 
-        if re.search(r'\b(?:warning|risk|danger)\b', statement.lower()):
-            tags.add('warning')
+        if re.search(r"\b(?:warning|risk|danger)\b", statement.lower()):
+            tags.add("warning")
 
-        if re.search(r'\b(?:best practice|recommendation)\b', statement.lower()):
-            tags.add('best-practice')
+        if re.search(r"\b(?:best practice|recommendation)\b", statement.lower()):
+            tags.add("best-practice")
 
         # Length tag
         if len(statement.split()) < 15:
-            tags.add('concise')
+            tags.add("concise")
         else:
-            tags.add('detailed')
+            tags.add("detailed")
 
         return tags
 
@@ -308,7 +309,7 @@ class ResearchFindingsIndexer:
         query: str,
         domain: Optional[str] = None,
         confidence: Optional[ConfidenceLevel] = None,
-        finding_type: Optional[FindingType] = None
+        finding_type: Optional[FindingType] = None,
     ) -> List[Finding]:
         """Search findings by query and filters.
 
@@ -341,10 +342,13 @@ class ResearchFindingsIndexer:
             if query_lower in finding.statement.lower():
                 results.append(finding)
 
-        return sorted(results, key=lambda f: (
-            f.confidence != ConfidenceLevel.HIGH,  # High confidence first
-            -len(f.sources)  # More sources better
-        ))
+        return sorted(
+            results,
+            key=lambda f: (
+                f.confidence != ConfidenceLevel.HIGH,  # High confidence first
+                -len(f.sources),  # More sources better
+            ),
+        )
 
     def get_findings_by_domain(self, domain: str) -> List[Finding]:
         """Get all findings for a domain.
@@ -369,11 +373,7 @@ class ResearchFindingsIndexer:
             Created ResearchSession
         """
         session_id = f"session_{datetime.now().timestamp()}"
-        session = ResearchSession(
-            id=session_id,
-            topic=topic,
-            findings=findings or []
-        )
+        session = ResearchSession(id=session_id, topic=topic, findings=findings or [])
 
         self._sessions[session_id] = session
 
@@ -398,7 +398,7 @@ class ResearchFindingsIndexer:
             findings_by_type[type_key] = findings_by_type.get(type_key, 0) + 1
 
             # Count by domain
-            domain_key = finding.domain or 'unknown'
+            domain_key = finding.domain or "unknown"
             findings_by_domain[domain_key] = findings_by_domain.get(domain_key, 0) + 1
 
         confidence_counts = {}
@@ -407,9 +407,9 @@ class ResearchFindingsIndexer:
             confidence_counts[conf.value] = count
 
         return {
-            'total_findings': len(self._findings_index),
-            'total_sessions': len(self._sessions),
-            'findings_by_type': findings_by_type,
-            'findings_by_domain': findings_by_domain,
-            'findings_by_confidence': confidence_counts,
+            "total_findings": len(self._findings_index),
+            "total_sessions": len(self._sessions),
+            "findings_by_type": findings_by_type,
+            "findings_by_domain": findings_by_domain,
+            "findings_by_confidence": confidence_counts,
         }

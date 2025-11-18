@@ -231,7 +231,8 @@ class OrchestrationLearningEngine:
             Best pattern for this task, or None
         """
         matching = [
-            p for p in self._discovered_patterns
+            p
+            for p in self._discovered_patterns
             if task_type in p.applicable_task_types and p.success_rate > 0.75
         ]
 

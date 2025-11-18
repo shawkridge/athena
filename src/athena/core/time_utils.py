@@ -108,20 +108,20 @@ def time_category(dt: Optional[datetime]) -> str:
                  'this_week' (<7 days), 'older'
     """
     if dt is None:
-        return 'unknown'
+        return "unknown"
 
     seconds = seconds_since(dt)
 
     if seconds < 300:
-        return 'now'
+        return "now"
     elif seconds < 3600:
-        return 'recent'
+        return "recent"
     elif seconds < 86400:
-        return 'today'
+        return "today"
     elif seconds < 604800:
-        return 'this_week'
+        return "this_week"
     else:
-        return 'older'
+        return "older"
 
 
 def format_duration(seconds: float) -> str:
@@ -159,7 +159,7 @@ def format_relative_time(dt: Optional[datetime]) -> str:
         Relative time string (e.g., "5 minutes ago", "2 days ago")
     """
     if dt is None:
-        return 'unknown'
+        return "unknown"
 
     duration = format_duration(seconds_since(dt))
     return f"{duration} ago"

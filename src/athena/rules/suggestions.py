@@ -88,7 +88,9 @@ class SuggestionsEngine:
             fixes.append("Use guard clauses instead of nested if-else")
         elif "naming" in rule_name.lower():
             fixes.append("Rename variables to be more descriptive")
-            fixes.append("Follow naming conventions: snake_case for functions, UPPER_CASE for constants")
+            fixes.append(
+                "Follow naming conventions: snake_case for functions, UPPER_CASE for constants"
+            )
         else:
             fixes.append(f"Address code quality issue: {message}")
 
@@ -221,7 +223,9 @@ class SuggestionsEngine:
         """Generate generic suggestions for unknown rule types."""
         return [f"Address: {message} (Rule: {rule_name})"]
 
-    def suggest_compliant_plan(self, violations: List[Dict], original_plan: Any = None) -> List[str]:
+    def suggest_compliant_plan(
+        self, violations: List[Dict], original_plan: Any = None
+    ) -> List[str]:
         """Generate alternative plan suggestions that comply with rules.
 
         Analyzes violations and suggests plan restructuring to achieve compliance.
@@ -258,7 +262,9 @@ class SuggestionsEngine:
 
         # Generate plan-level suggestions based on violation types
         if duration_violations:
-            suggestions.append("Plan Restructuring: Split long-running tasks into smaller subtasks with shorter durations")
+            suggestions.append(
+                "Plan Restructuring: Split long-running tasks into smaller subtasks with shorter durations"
+            )
             suggestions.append("Add intermediate checkpoints to break down execution timeline")
             if original_plan:
                 total_duration = original_plan.get("duration", 0)
@@ -267,17 +273,25 @@ class SuggestionsEngine:
                 suggestions.append(f"Target: Reduce step duration to ~{suggested_duration} minutes")
 
         if parallel_violations:
-            suggestions.append("Parallelization: Reduce number of parallel tasks to respect resource limits")
+            suggestions.append(
+                "Parallelization: Reduce number of parallel tasks to respect resource limits"
+            )
             suggestions.append("Identify sequential dependencies that can be separated")
-            suggestions.append("Use serial execution for critical paths, parallel for independent tasks")
+            suggestions.append(
+                "Use serial execution for critical paths, parallel for independent tasks"
+            )
 
         if dependency_violations:
-            suggestions.append("Dependency Resolution: Ensure all prerequisite tasks complete before dependent tasks")
+            suggestions.append(
+                "Dependency Resolution: Ensure all prerequisite tasks complete before dependent tasks"
+            )
             suggestions.append("Add explicit ordering constraints in plan")
             suggestions.append("Identify critical path dependencies")
 
         if resource_violations:
-            suggestions.append("Resource Allocation: Distribute tasks across team members to balance load")
+            suggestions.append(
+                "Resource Allocation: Distribute tasks across team members to balance load"
+            )
             suggestions.append("Avoid concentrating multiple critical tasks on one person")
             suggestions.append("Schedule resource-intensive tasks during off-peak hours")
 
@@ -303,62 +317,76 @@ class SuggestionsEngine:
         """
         suggestions = []
 
-        logger.debug(f"Analyzing rule adjustments for '{rule_name}' with {violations_count} violations")
+        logger.debug(
+            f"Analyzing rule adjustments for '{rule_name}' with {violations_count} violations"
+        )
 
         if violations_count == 0:
-            suggestions.append({
-                "type": "monitor",
-                "reason": f"Rule '{rule_name}' has no recent violations",
-                "recommendation": "Continue monitoring rule effectiveness",
-                "priority": "low",
-            })
+            suggestions.append(
+                {
+                    "type": "monitor",
+                    "reason": f"Rule '{rule_name}' has no recent violations",
+                    "recommendation": "Continue monitoring rule effectiveness",
+                    "priority": "low",
+                }
+            )
         elif violations_count < 3:
-            suggestions.append({
-                "type": "maintain",
-                "reason": f"Rule '{rule_name}' violated {violations_count} times",
-                "recommendation": "Rule is working as intended. Maintain current threshold.",
-                "priority": "low",
-            })
+            suggestions.append(
+                {
+                    "type": "maintain",
+                    "reason": f"Rule '{rule_name}' violated {violations_count} times",
+                    "recommendation": "Rule is working as intended. Maintain current threshold.",
+                    "priority": "low",
+                }
+            )
         elif violations_count < 5:
-            suggestions.append({
-                "type": "review",
-                "reason": f"Rule '{rule_name}' violated {violations_count} times",
-                "recommendation": "Review rule to ensure it's aligned with team capacity",
-                "priority": "medium",
-            })
+            suggestions.append(
+                {
+                    "type": "review",
+                    "reason": f"Rule '{rule_name}' violated {violations_count} times",
+                    "recommendation": "Review rule to ensure it's aligned with team capacity",
+                    "priority": "medium",
+                }
+            )
         elif violations_count < 10:
-            suggestions.append({
-                "type": "adjust",
-                "reason": f"Rule '{rule_name}' violated {violations_count} times",
-                "recommendation": "Consider adjusting rule threshold or conditions slightly",
-                "priority": "medium",
-                "examples": [
-                    "If duration-based: increase max duration by 10-20%",
-                    "If threshold-based: relax the constraint by 1 level",
-                    "Add exception conditions for edge cases",
-                ],
-            })
+            suggestions.append(
+                {
+                    "type": "adjust",
+                    "reason": f"Rule '{rule_name}' violated {violations_count} times",
+                    "recommendation": "Consider adjusting rule threshold or conditions slightly",
+                    "priority": "medium",
+                    "examples": [
+                        "If duration-based: increase max duration by 10-20%",
+                        "If threshold-based: relax the constraint by 1 level",
+                        "Add exception conditions for edge cases",
+                    ],
+                }
+            )
         else:  # >= 10
-            suggestions.append({
-                "type": "relax",
-                "reason": f"Rule '{rule_name}' violated {violations_count} times (frequent violations)",
-                "recommendation": "Rule appears overly strict. Recommend significant adjustment or removal",
-                "priority": "high",
-                "examples": [
-                    "Increase threshold by 25-50%",
-                    "Make rule informational instead of blocking",
-                    "Add broad exception conditions",
-                    "Consider removing rule if fundamentally misaligned",
-                ],
-            })
+            suggestions.append(
+                {
+                    "type": "relax",
+                    "reason": f"Rule '{rule_name}' violated {violations_count} times (frequent violations)",
+                    "recommendation": "Rule appears overly strict. Recommend significant adjustment or removal",
+                    "priority": "high",
+                    "examples": [
+                        "Increase threshold by 25-50%",
+                        "Make rule informational instead of blocking",
+                        "Add broad exception conditions",
+                        "Consider removing rule if fundamentally misaligned",
+                    ],
+                }
+            )
 
         # Add general recommendation
-        suggestions.append({
-            "type": "analysis",
-            "reason": "Regular violation pattern analysis",
-            "recommendation": f"Review team capacity and rule alignment. Current violation rate: {violations_count} in observation period",
-            "priority": "medium",
-        })
+        suggestions.append(
+            {
+                "type": "analysis",
+                "reason": "Regular violation pattern analysis",
+                "recommendation": f"Review team capacity and rule alignment. Current violation rate: {violations_count} in observation period",
+                "priority": "medium",
+            }
+        )
 
         logger.debug(f"Generated {len(suggestions)} rule adjustment suggestions")
         return suggestions

@@ -28,7 +28,7 @@ class SkillParameter:
     """Definition of a skill parameter."""
 
     name: str
-    type: str                              # 'str', 'int', 'List[str]', etc.
+    type: str  # 'str', 'int', 'List[str]', etc.
     description: str
     required: bool = True
     default: Optional[Any] = None
@@ -37,12 +37,12 @@ class SkillParameter:
     def to_dict(self) -> Dict:
         """Convert to dictionary."""
         return {
-            'name': self.name,
-            'type': self.type,
-            'description': self.description,
-            'required': self.required,
-            'default': self.default,
-            'example': self.example,
+            "name": self.name,
+            "type": self.type,
+            "description": self.description,
+            "required": self.required,
+            "default": self.default,
+            "example": self.example,
         }
 
 
@@ -83,20 +83,20 @@ class SkillMetadata:
     def to_dict(self) -> Dict:
         """Convert to dictionary for storage."""
         return {
-            'name': self.name,
-            'description': self.description,
-            'domain': self.domain.value,
-            'parameters': [p.to_dict() for p in self.parameters],
-            'return_type': self.return_type,
-            'examples': self.examples,
-            'dependencies': self.dependencies,
-            'quality_score': self.quality_score,
-            'times_used': self.times_used,
-            'success_rate': self.success_rate,
-            'learned_from': self.learned_from,
-            'tags': self.tags,
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat(),
+            "name": self.name,
+            "description": self.description,
+            "domain": self.domain.value,
+            "parameters": [p.to_dict() for p in self.parameters],
+            "return_type": self.return_type,
+            "examples": self.examples,
+            "dependencies": self.dependencies,
+            "quality_score": self.quality_score,
+            "times_used": self.times_used,
+            "success_rate": self.success_rate,
+            "learned_from": self.learned_from,
+            "tags": self.tags,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
         }
 
     def to_json(self) -> str:
@@ -104,23 +104,23 @@ class SkillMetadata:
         return json.dumps(self.to_dict(), indent=2)
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'SkillMetadata':
+    def from_dict(cls, data: Dict) -> "SkillMetadata":
         """Create from dictionary."""
         return cls(
-            name=data['name'],
-            description=data['description'],
-            domain=SkillDomain(data['domain']),
-            parameters=[SkillParameter(**p) for p in data['parameters']],
-            return_type=data['return_type'],
-            examples=data['examples'],
-            dependencies=data.get('dependencies', []),
-            quality_score=data.get('quality_score', 0.8),
-            times_used=data.get('times_used', 0),
-            success_rate=data.get('success_rate', 1.0),
-            learned_from=data.get('learned_from'),
-            tags=data.get('tags', []),
-            created_at=datetime.fromisoformat(data.get('created_at', datetime.now().isoformat())),
-            updated_at=datetime.fromisoformat(data.get('updated_at', datetime.now().isoformat())),
+            name=data["name"],
+            description=data["description"],
+            domain=SkillDomain(data["domain"]),
+            parameters=[SkillParameter(**p) for p in data["parameters"]],
+            return_type=data["return_type"],
+            examples=data["examples"],
+            dependencies=data.get("dependencies", []),
+            quality_score=data.get("quality_score", 0.8),
+            times_used=data.get("times_used", 0),
+            success_rate=data.get("success_rate", 1.0),
+            learned_from=data.get("learned_from"),
+            tags=data.get("tags", []),
+            created_at=datetime.fromisoformat(data.get("created_at", datetime.now().isoformat())),
+            updated_at=datetime.fromisoformat(data.get("updated_at", datetime.now().isoformat())),
         )
 
 
@@ -135,8 +135,8 @@ class Skill:
     """
 
     metadata: SkillMetadata
-    code: str                              # Python source code
-    entry_point: str                       # Function name to call
+    code: str  # Python source code
+    entry_point: str  # Function name to call
 
     @property
     def id(self) -> str:
@@ -152,9 +152,9 @@ class Skill:
     def usage_stats(self) -> Dict:
         """Usage statistics."""
         return {
-            'times_used': self.metadata.times_used,
-            'success_rate': self.metadata.success_rate,
-            'quality': self.metadata.quality_score,
+            "times_used": self.metadata.times_used,
+            "success_rate": self.metadata.success_rate,
+            "quality": self.metadata.quality_score,
         }
 
     def update_usage(self, success: bool) -> None:
@@ -168,7 +168,9 @@ class Skill:
 
         # Update success rate
         old_rate = self.metadata.success_rate
-        new_rate = (old_rate * (self.metadata.times_used - 1) + (1.0 if success else 0.0)) / self.metadata.times_used
+        new_rate = (
+            old_rate * (self.metadata.times_used - 1) + (1.0 if success else 0.0)
+        ) / self.metadata.times_used
         self.metadata.success_rate = new_rate
 
         # Update quality based on success rate
@@ -180,18 +182,18 @@ class Skill:
     def to_dict(self) -> Dict:
         """Convert to dictionary."""
         return {
-            'metadata': self.metadata.to_dict(),
-            'code': self.code,
-            'entry_point': self.entry_point,
+            "metadata": self.metadata.to_dict(),
+            "code": self.code,
+            "entry_point": self.entry_point,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'Skill':
+    def from_dict(cls, data: Dict) -> "Skill":
         """Create from dictionary."""
         return cls(
-            metadata=SkillMetadata.from_dict(data['metadata']),
-            code=data['code'],
-            entry_point=data['entry_point'],
+            metadata=SkillMetadata.from_dict(data["metadata"]),
+            code=data["code"],
+            entry_point=data["entry_point"],
         )
 
     def __repr__(self) -> str:
@@ -203,8 +205,8 @@ class SkillMatch:
     """Result of skill matching against a task."""
 
     skill: Skill
-    relevance: float                       # 0-1 confidence
-    reason: str                            # Why this skill matches
+    relevance: float  # 0-1 confidence
+    reason: str  # Why this skill matches
     parameters: Dict[str, Any] = field(default_factory=dict)  # Suggested parameter values
 
     def __repr__(self) -> str:

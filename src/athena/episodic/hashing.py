@@ -93,9 +93,9 @@ class EventHasher:
 
     # Fields excluded from hash computation (volatile or system-generated)
     EXCLUDED_FIELDS = {
-        "id",                      # Database-assigned, not part of content
-        "consolidation_status",    # Changes during consolidation lifecycle
-        "consolidated_at",         # Updated during consolidation
+        "id",  # Database-assigned, not part of content
+        "consolidation_status",  # Changes during consolidation lifecycle
+        "consolidated_at",  # Updated during consolidation
         # Note: timestamp IS included - events at different times are different
     }
 
@@ -218,10 +218,10 @@ class EventHasher:
         """
         return json.dumps(
             obj,
-            sort_keys=True,          # Consistent key ordering
-            separators=(",", ":"),   # No whitespace (minimal size)
-            ensure_ascii=True,       # Consistent encoding
-            default=str              # Fallback for non-JSON types
+            sort_keys=True,  # Consistent key ordering
+            separators=(",", ":"),  # No whitespace (minimal size)
+            ensure_ascii=True,  # Consistent encoding
+            default=str,  # Fallback for non-JSON types
         )
 
     def _should_exclude_field(self, field_name: str) -> bool:
@@ -286,14 +286,14 @@ if __name__ == "__main__":
             cwd="/home/user/project",
             files=["src/auth.py", "tests/test_auth.py"],
             task="Add OAuth support",
-            phase="implementation"
+            phase="implementation",
         ),
         duration_ms=1500,
         files_changed=2,
         lines_added=85,
         lines_deleted=12,
         learned="OAuth 2.0 requires state parameter for security",
-        confidence=0.9
+        confidence=0.9,
     )
 
     event_b = EpisodicEvent(
@@ -307,7 +307,7 @@ if __name__ == "__main__":
             cwd="/home/user/project",
             files=["src/auth.py", "tests/test_auth.py"],
             task="Add OAuth support",
-            phase="implementation"
+            phase="implementation",
         ),
         duration_ms=1500,
         files_changed=2,
@@ -317,7 +317,7 @@ if __name__ == "__main__":
         confidence=0.9,
         # Different volatile fields (excluded from hash)
         id=999,
-        consolidation_status="consolidated"
+        consolidation_status="consolidated",
     )
 
     hasher = EventHasher()

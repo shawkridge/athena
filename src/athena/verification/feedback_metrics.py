@@ -14,6 +14,7 @@ import math
 @dataclass
 class MetricSnapshot:
     """A single point-in-time metric measurement."""
+
     timestamp: datetime
     value: float
     context: Dict[str, Any] = field(default_factory=dict)
@@ -22,6 +23,7 @@ class MetricSnapshot:
 @dataclass
 class MetricTrend:
     """Trend analysis for a metric."""
+
     metric_name: str
     snapshots: List[MetricSnapshot] = field(default_factory=list)
     mean: float = 0.0
@@ -40,10 +42,7 @@ class FeedbackMetricsCollector:
         self.aggregates: Dict[str, Any] = {}
 
     def record_metric(
-        self,
-        metric_name: str,
-        value: float,
-        context: Optional[Dict[str, Any]] = None
+        self, metric_name: str, value: float, context: Optional[Dict[str, Any]] = None
     ) -> None:
         """
         Record a metric value.
@@ -53,18 +52,15 @@ class FeedbackMetricsCollector:
             value: Metric value (0.0-1.0 for rates)
             context: Additional context about measurement
         """
-        snapshot = MetricSnapshot(
-            timestamp=datetime.now(),
-            value=value,
-            context=context or {}
-        )
+        snapshot = MetricSnapshot(timestamp=datetime.now(), value=value, context=context or {})
 
         self.metrics[metric_name].append(snapshot)
 
     def get_metric_trend(self, metric_name: str) -> MetricTrend:
         """Calculate trend for a metric."""
         snapshots = [
-            s for s in self.metrics.get(metric_name, [])
+            s
+            for s in self.metrics.get(metric_name, [])
             if (datetime.now() - s.timestamp) < timedelta(hours=self.window_hours)
         ]
 
@@ -82,8 +78,8 @@ class FeedbackMetricsCollector:
         trend_magnitude = 0.0
 
         if len(snapshots) >= 2:
-            first_half = values[:len(values)//2]
-            second_half = values[len(values)//2:]
+            first_half = values[: len(values) // 2]
+            second_half = values[len(values) // 2 :]
 
             first_mean = sum(first_half) / len(first_half)
             second_mean = sum(second_half) / len(second_half)
@@ -125,12 +121,14 @@ class FeedbackMetricsCollector:
 
         return min(1.0, risk)
 
-    def calculate_composite_score(self, metric_names: List[str], weights: Optional[Dict[str, float]] = None) -> float:
+    def calculate_composite_score(
+        self, metric_names: List[str], weights: Optional[Dict[str, float]] = None
+    ) -> float:
         """Calculate composite score from multiple metrics."""
         if not metric_names:
             return 0.0
 
-        weights = weights or {name: 1.0/len(metric_names) for name in metric_names}
+        weights = weights or {name: 1.0 / len(metric_names) for name in metric_names}
 
         score = 0.0
         for metric_name in metric_names:
@@ -203,10 +201,7 @@ class FeedbackMetricsCollector:
         anomalies = []
 
         for metric_name, snapshots in self.metrics.items():
-            recent = [
-                s for s in snapshots
-                if (datetime.now() - s.timestamp) < timedelta(hours=1)
-            ]
+            recent = [s for s in snapshots if (datetime.now() - s.timestamp) < timedelta(hours=1)]
 
             if len(recent) < 3:
                 continue
@@ -218,13 +213,15 @@ class FeedbackMetricsCollector:
                 z_score = abs((value - trend.mean) / trend.std_dev) if trend.std_dev > 0 else 0
 
                 if z_score > sigma_threshold:
-                    anomalies.append({
-                        "metric_name": metric_name,
-                        "value": value,
-                        "expected": trend.mean,
-                        "z_score": z_score,
-                        "timestamp": snapshot.timestamp.isoformat(),
-                    })
+                    anomalies.append(
+                        {
+                            "metric_name": metric_name,
+                            "value": value,
+                            "expected": trend.mean,
+                            "z_score": z_score,
+                            "timestamp": snapshot.timestamp.isoformat(),
+                        }
+                    )
 
         return anomalies
 
@@ -236,23 +233,17 @@ class FeedbackMetricsCollector:
         for metric_name in ["gate_pass_rate", "decision_accuracy", "remediation_effectiveness"]:
             regression_risk = self.get_regression_risk(metric_name)
             if regression_risk > 0.5:
-                alerts.append(
-                    f"⚠️ High regression risk for {metric_name}: {regression_risk:.0%}"
-                )
+                alerts.append(f"⚠️ High regression risk for {metric_name}: {regression_risk:.0%}")
 
         # Check for anomalies
         anomalies = self.get_anomalies(sigma_threshold=2.0)
         if anomalies:
-            alerts.append(
-                f"🚨 Detected {len(anomalies)} metric anomalies in last hour"
-            )
+            alerts.append(f"🚨 Detected {len(anomalies)} metric anomalies in last hour")
 
         # Check performance degradation
         latency_trend = self.get_metric_trend("operation_latency_ms")
         if latency_trend.trend == "degrading":
-            alerts.append(
-                f"⏱️ Operation latency degrading: {latency_trend.trend_magnitude:.0%}"
-            )
+            alerts.append(f"⏱️ Operation latency degrading: {latency_trend.trend_magnitude:.0%}")
 
         return alerts
 
@@ -293,7 +284,7 @@ class FeedbackMetricsCollector:
         # Reduce score for regressions
         for metric in key_metrics:
             regression_risk = self.get_regression_risk(metric)
-            score *= (1.0 - regression_risk * 0.1)
+            score *= 1.0 - regression_risk * 0.1
 
         # Reduce score for anomalies
         anomaly_count = len(self.get_anomalies())
@@ -308,28 +299,20 @@ class FeedbackMetricsCollector:
         # Check improvement opportunities
         decision_accuracy = self.get_metric_trend("decision_accuracy")
         if decision_accuracy.mean < 0.8:
-            recommendations.append(
-                "Increase training data size to improve decision accuracy"
-            )
+            recommendations.append("Increase training data size to improve decision accuracy")
 
         gate_pass_rate = self.get_metric_trend("gate_pass_rate")
         if gate_pass_rate.std_dev > 0.2:
-            recommendations.append(
-                "Gate thresholds are unstable; consider gradual tuning"
-            )
+            recommendations.append("Gate thresholds are unstable; consider gradual tuning")
 
         # Performance recommendations
         latency = self.get_metric_trend("operation_latency_ms")
         if latency.mean > 1000:
-            recommendations.append(
-                "Operations taking >1s; consider caching or async processing"
-            )
+            recommendations.append("Operations taking >1s; consider caching or async processing")
 
         # Remediation recommendations
         remediation = self.get_metric_trend("remediation_effectiveness")
         if remediation.mean < 0.7:
-            recommendations.append(
-                "Remediation effectiveness low; improve violation handlers"
-            )
+            recommendations.append("Remediation effectiveness low; improve violation handlers")
 
         return recommendations if recommendations else ["All systems operating normally"]

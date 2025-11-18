@@ -222,9 +222,9 @@ class GraphOperations:
             "total_relationships": len(relationships),
             "entity_types": entity_types,
             "relationship_types": relationship_types,
-            "avg_importance": sum(e.importance for e in entities) / len(entities)
-            if entities
-            else 0.0,
+            "avg_importance": (
+                sum(e.importance for e in entities) / len(entities) if entities else 0.0
+            ),
         }
 
 
@@ -268,7 +268,9 @@ async def add_entity(
 ) -> str:
     """Add entity. See GraphOperations.add_entity for details."""
     ops = get_operations()
-    return await ops.add_entity(name=name, entity_type=entity_type, description=description, metadata=metadata)
+    return await ops.add_entity(
+        name=name, entity_type=entity_type, description=description, metadata=metadata
+    )
 
 
 async def add_relationship(

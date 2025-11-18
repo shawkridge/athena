@@ -8,16 +8,14 @@ Events are also stored in Athena memory for persistence and replay.
 """
 
 import logging
-from typing import AsyncIterator, Callable, Dict, List, Optional, Set
+from typing import AsyncIterator, Dict, List, Optional
 from asyncio import Queue, Event
 from datetime import datetime
-from uuid import uuid4
 
 from .agent_events import (
     AgentEvent,
     AgentEventType,
     EventSubscription,
-    AgentEventPriority,
 )
 
 logger = logging.getLogger(__name__)
@@ -125,9 +123,7 @@ class EventBus:
         self.subscriber_queues[subscriber_id] = queue
 
         # Register subscription for each event type
-        event_type_keys = (
-            [et.value for et in event_types] if event_types else ["*"]
-        )
+        event_type_keys = [et.value for et in event_types] if event_types else ["*"]
         for event_type_key in event_type_keys:
             if event_type_key not in self.subscriptions:
                 self.subscriptions[event_type_key] = []

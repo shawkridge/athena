@@ -10,18 +10,16 @@ All commands use MemoryBridge for direct PostgreSQL access.
 
 import sys
 import os
-import json
 import time
 import logging
 from typing import Any, Dict, List, Optional
-from datetime import datetime, timedelta
 
 # Setup logging
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Add hooks lib to path for MemoryBridge
-sys.path.insert(0, '/home/user/.claude/hooks/lib')
+sys.path.insert(0, "/home/user/.claude/hooks/lib")
 
 try:
     from memory_bridge import MemoryBridge, PerformanceTimer
@@ -45,12 +43,12 @@ class BaseCommand:
         cwd = os.getcwd()
         project = self.bridge.get_project_by_path(cwd)
         if project:
-            self.project_id = project['id']
+            self.project_id = project["id"]
         else:
             # Try default project
-            project = self.bridge.get_project_by_path('/home/user/.work/athena')
+            project = self.bridge.get_project_by_path("/home/user/.work/athena")
             if project:
-                self.project_id = project['id']
+                self.project_id = project["id"]
             else:
                 logger.warning("No project context found")
 
@@ -136,7 +134,7 @@ class MemorySearchCommand(BaseCommand):
             cursor = self.bridge.conn.cursor()
             # Simple keyword search count using content column only
             search_terms = query.lower().split()[:3]
-            where_clauses = " OR ".join([f"content ILIKE %s" for _ in search_terms])
+            where_clauses = " OR ".join(["content ILIKE %s" for _ in search_terms])
             params = [f"%{term}%" for term in search_terms]
 
             cursor.execute(
@@ -362,7 +360,8 @@ class ValidatePlanCommand(BaseCommand):
                     "checks_passed": validation_results["checks_passed"],
                     "issues": validation_results["issues"],
                     "recommendations": validation_results["recommendations"],
-                    "ready_for_execution": validation_results["all_passed"] and validation_results["risk_level"] == "low",
+                    "ready_for_execution": validation_results["all_passed"]
+                    and validation_results["risk_level"] == "low",
                     "execution_time_ms": self._get_execution_time_ms(),
                 }
 
@@ -379,10 +378,7 @@ class ValidatePlanCommand(BaseCommand):
         return {
             "has_goals": bool("goal" in plan.lower()),
             "has_timeline": bool(
-                any(
-                    word in plan.lower()
-                    for word in ["day", "week", "hour", "minute", "time"]
-                )
+                any(word in plan.lower() for word in ["day", "week", "hour", "minute", "time"])
             ),
             "has_dependencies": bool("depend" in plan.lower()),
             "complexity": "high" if len(plan) > 500 else "medium" if len(plan) > 200 else "low",
@@ -392,18 +388,24 @@ class ValidatePlanCommand(BaseCommand):
         """Validate plan feasibility (EXECUTE)."""
         checks = [
             ("has_clear_goal", "goal" in plan.lower() or "objective" in plan.lower()),
-            ("has_timeline", any(
-                word in plan.lower()
-                for word in ["day", "week", "hour", "deadline", "when"]
-            )),
-            ("has_resources", any(
-                word in plan.lower()
-                for word in ["team", "person", "resource", "budget", "tool"]
-            )),
-            ("has_success_criteria", any(
-                word in plan.lower()
-                for word in ["success", "criteria", "measure", "metric", "validate"]
-            )),
+            (
+                "has_timeline",
+                any(word in plan.lower() for word in ["day", "week", "hour", "deadline", "when"]),
+            ),
+            (
+                "has_resources",
+                any(
+                    word in plan.lower()
+                    for word in ["team", "person", "resource", "budget", "tool"]
+                ),
+            ),
+            (
+                "has_success_criteria",
+                any(
+                    word in plan.lower()
+                    for word in ["success", "criteria", "measure", "metric", "validate"]
+                ),
+            ),
             ("under_1000_chars", len(plan) < 5000),
         ]
 
@@ -441,9 +443,7 @@ class SessionStartCommand(BaseCommand):
                     project = self.bridge.get_project_by_path(project_path)
                 else:
                     project = (
-                        self.bridge.get_project_by_path(os.getcwd())
-                        if self.project_id
-                        else None
+                        self.bridge.get_project_by_path(os.getcwd()) if self.project_id else None
                     )
 
                 if not project:
@@ -454,15 +454,15 @@ class SessionStartCommand(BaseCommand):
                     }
 
                 # EXECUTE: Load active context
-                active_memories = self.bridge.get_active_memories(project['id'], limit=7)
-                active_goals = self.bridge.get_active_goals(project['id'], limit=5)
-                recent_events = self._get_recent_events(project['id'], limit=5)
+                active_memories = self.bridge.get_active_memories(project["id"], limit=7)
+                active_goals = self.bridge.get_active_goals(project["id"], limit=5)
+                recent_events = self._get_recent_events(project["id"], limit=5)
 
                 # SUMMARIZE: Return session context
                 return {
                     "status": "success",
-                    "project": project['name'],
-                    "project_id": project['id'],
+                    "project": project["name"],
+                    "project_id": project["id"],
                     "session_initialized": True,
                     "active_memory": {
                         "count": active_memories.get("count", 0),

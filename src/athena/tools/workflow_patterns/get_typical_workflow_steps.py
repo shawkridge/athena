@@ -3,7 +3,7 @@
 Part of Phase 3b: Workflow Pattern Mining
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 
 def get_typical_workflow_steps(
@@ -51,6 +51,7 @@ def get_typical_workflow_steps(
     try:
         if db is None:
             from ..core.database import Database
+
             db = Database()
 
         from ..workflow.suggestions import PatternSuggestionEngine
@@ -58,9 +59,7 @@ def get_typical_workflow_steps(
         engine = PatternSuggestionEngine(db)
 
         # Get typical workflow steps
-        steps = engine.get_typical_workflow_steps(
-            project_id, task_type, max_steps
-        )
+        steps = engine.get_typical_workflow_steps(project_id, task_type, max_steps)
 
         if not steps:
             return {

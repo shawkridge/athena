@@ -114,7 +114,11 @@ Be strict but fair. Focus on actionable feedback."""
             # Weighted overall quality
             # Coherence is most important (30%), followed by relevance (25%) and completeness (25%)
             overall_quality = (
-                0.30 * coherence + 0.25 * relevance + 0.25 * completeness + 0.15 * clarity + 0.05 * uniqueness
+                0.30 * coherence
+                + 0.25 * relevance
+                + 0.25 * completeness
+                + 0.15 * clarity
+                + 0.05 * uniqueness
             )
 
             # Clamp to 0.0-1.0
@@ -174,9 +178,22 @@ Be strict but fair. Focus on actionable feedback."""
         # Relevance: check for dev-related keywords
         relevance = 0.5
         dev_keywords = [
-            "code", "function", "class", "database", "api", "algorithm",
-            "pattern", "design", "implementation", "performance", "optimization",
-            "testing", "debugging", "error", "exception", "error handling"
+            "code",
+            "function",
+            "class",
+            "database",
+            "api",
+            "algorithm",
+            "pattern",
+            "design",
+            "implementation",
+            "performance",
+            "optimization",
+            "testing",
+            "debugging",
+            "error",
+            "exception",
+            "error handling",
         ]
         keyword_matches = sum(1 for kw in dev_keywords if kw in content.lower())
         relevance = min(0.95, 0.5 + (keyword_matches * 0.1))
@@ -200,8 +217,14 @@ Be strict but fair. Focus on actionable feedback."""
         # Uniqueness: check for genericity/similarity to common phrases
         uniqueness = 0.7
         generic_phrases = [
-            "this is a", "this is the", "here is", "basically,",
-            "what is", "how does", "explain", "understand"
+            "this is a",
+            "this is the",
+            "here is",
+            "basically,",
+            "what is",
+            "how does",
+            "explain",
+            "understand",
         ]
         generic_count = sum(1 for phrase in generic_phrases if phrase in content.lower())
         if generic_count > 3:
@@ -209,7 +232,11 @@ Be strict but fair. Focus on actionable feedback."""
 
         # Overall quality (weighted)
         overall_quality = (
-            0.30 * coherence + 0.25 * relevance + 0.25 * completeness + 0.15 * clarity + 0.05 * uniqueness
+            0.30 * coherence
+            + 0.25 * relevance
+            + 0.25 * completeness
+            + 0.15 * clarity
+            + 0.05 * uniqueness
         )
 
         # Determine tier
@@ -333,14 +360,18 @@ Be strict but fair. Focus on actionable feedback."""
                 for suggestion in score.suggestions:
                     recommendations[suggestion] = recommendations.get(suggestion, 0) + 1
 
-            top_recommendations = sorted(recommendations.items(), key=lambda x: x[1], reverse=True)[:5]
+            top_recommendations = sorted(recommendations.items(), key=lambda x: x[1], reverse=True)[
+                :5
+            ]
 
             return {
                 "avg_quality": avg_quality,
                 "total_memories": len(scores),
                 "quality_distribution": tier_counts,
                 "low_quality_count": len(low_quality),
-                "recommendations": [{"action": rec, "frequency": count} for rec, count in top_recommendations],
+                "recommendations": [
+                    {"action": rec, "frequency": count} for rec, count in top_recommendations
+                ],
             }
 
         except Exception as e:

@@ -25,59 +25,129 @@ class TierSelector:
     # Keywords that indicate fast (Tier 1) queries
     FAST_KEYWORDS = {
         # Temporal queries (episodic focus)
-        "when", "what happened", "last time", "recently", "on date",
-        "history of", "past", "earlier", "before", "after",
-
+        "when",
+        "what happened",
+        "last time",
+        "recently",
+        "on date",
+        "history of",
+        "past",
+        "earlier",
+        "before",
+        "after",
         # Recent/current state (episodic/semantic)
-        "last", "recent", "latest", "current", "now", "today",
-        "this session", "just now", "just did", "recent events",
-
+        "last",
+        "recent",
+        "latest",
+        "current",
+        "now",
+        "today",
+        "this session",
+        "just now",
+        "just did",
+        "recent events",
         # Specific lookup (semantic/graph)
-        "what is", "define", "who is", "where is", "what does",
-        "definition of", "meaning of", "what's", "what are",
-
+        "what is",
+        "define",
+        "who is",
+        "where is",
+        "what does",
+        "definition of",
+        "meaning of",
+        "what's",
+        "what are",
         # Simple retrieval
-        "find", "list", "show", "get", "lookup", "search",
-        "retrieve", "recall", "remind", "tell me about",
+        "find",
+        "list",
+        "show",
+        "get",
+        "lookup",
+        "search",
+        "retrieve",
+        "recall",
+        "remind",
+        "tell me about",
     }
 
     # Keywords that indicate enriched (Tier 2) queries
     ENRICHED_KEYWORDS = {
         # Contextual queries
-        "relate", "context", "phase",
-        "given", "considering", "related", "connections",
-        "similarities", "patterns", "trends",
-
+        "relate",
+        "context",
+        "phase",
+        "given",
+        "considering",
+        "related",
+        "connections",
+        "similarities",
+        "patterns",
+        "trends",
         # Cross-layer reasoning
-        "why", "cause", "relationship", "dependency", "impact",
-        "affects", "influences", "depends", "based",
-
+        "why",
+        "cause",
+        "relationship",
+        "dependency",
+        "impact",
+        "affects",
+        "influences",
+        "depends",
+        "based",
         # Multi-aspect questions
-        "how", "what about", "tell me more", "explain",
-        "summarize", "overview", "background",
+        "how",
+        "what about",
+        "tell me more",
+        "explain",
+        "summarize",
+        "overview",
+        "background",
     }
 
     # Keywords that indicate synthesis (Tier 3) queries
     SYNTHESIS_KEYWORDS = {
         # Complex synthesis
-        "synthesize", "combine", "integrate", "merge",
-        "understand", "picture", "context",
-
+        "synthesize",
+        "combine",
+        "integrate",
+        "merge",
+        "understand",
+        "picture",
+        "context",
         # Strategic/planning queries
-        "strategy", "plan", "recommend", "suggest", "approach",
-        "should we", "optimal", "solution",
-        "everything", "considering",
-
+        "strategy",
+        "plan",
+        "recommend",
+        "suggest",
+        "approach",
+        "should we",
+        "optimal",
+        "solution",
+        "everything",
+        "considering",
         # Multi-step reasoning
-        "all", "take into account", "comprehensive", "holistic", "complete",
-        "step by step", "detailed",
+        "all",
+        "take into account",
+        "comprehensive",
+        "holistic",
+        "complete",
+        "step by step",
+        "detailed",
     }
 
     # Keywords suggesting user is uncertain or needs exploration
     EXPLORATION_KEYWORDS = {
-        "maybe", "could", "might", "possible", "explore",
-        "what if", "hypothetical", "scenario", "imagine",
-        "brainstorm", "ideas", "possibilities", "options",
+        "maybe",
+        "could",
+        "might",
+        "possible",
+        "explore",
+        "what if",
+        "hypothetical",
+        "scenario",
+        "imagine",
+        "brainstorm",
+        "ideas",
+        "possibilities",
+        "options",
     }
 
     def __init__(self, debug: bool = False):
@@ -211,7 +281,7 @@ class TierSelector:
         Uses word boundary matching to avoid substring matches.
         """
         # Create regex pattern with word boundaries
-        pattern = r'\b(' + '|'.join(re.escape(kw) for kw in keywords) + r')\b'
+        pattern = r"\b(" + "|".join(re.escape(kw) for kw in keywords) + r")\b"
         return bool(re.search(pattern, text, re.IGNORECASE))
 
     def explain_selection(self, query: str, context: Optional[dict] = None) -> str:
@@ -302,9 +372,7 @@ class TierSelector:
 
         # Filter layers by threshold
         high_quality_layers = {
-            layer: score
-            for layer, score in layer_quality_scores.items()
-            if score >= threshold
+            layer: score for layer, score in layer_quality_scores.items() if score >= threshold
         }
 
         # If no layers meet threshold, fall back to all layers
@@ -386,7 +454,11 @@ class TierSelector:
             layer_quality_scores = self._estimate_default_qualities(context or {})
 
         # Calculate average quality
-        avg_quality = sum(layer_quality_scores.values()) / len(layer_quality_scores) if layer_quality_scores else 0.5
+        avg_quality = (
+            sum(layer_quality_scores.values()) / len(layer_quality_scores)
+            if layer_quality_scores
+            else 0.5
+        )
 
         # Decision logic
         explanation_parts = [f"Complexity: {total_complexity:.2f}, Avg Quality: {avg_quality:.2f}"]
@@ -437,11 +509,11 @@ class TierSelector:
 
         # Base defaults
         qualities = {
-            "semantic": 0.75,    # Facts are reliable
-            "episodic": 0.65,    # Events can be stale
+            "semantic": 0.75,  # Facts are reliable
+            "episodic": 0.65,  # Events can be stale
             "procedural": 0.70,  # Procedures are verified
-            "prospective": 0.60, # Tasks change
-            "graph": 0.72,       # Relationships fairly stable
+            "prospective": 0.60,  # Tasks change
+            "graph": 0.72,  # Relationships fairly stable
         }
 
         # Boost based on task type

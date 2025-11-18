@@ -2,7 +2,7 @@
 
 from collections import defaultdict
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 
 from ..episodic.store import EpisodicStore
 from ..procedural.store import ProceduralStore
@@ -27,15 +27,17 @@ def analyze_domain_coverage(
     Returns:
         List of domain coverage reports
     """
-    domains = defaultdict(lambda: {
-        "memory_count": 0,
-        "episodic_count": 0,
-        "procedural_count": 0,
-        "entity_count": 0,
-        "confidence_sum": 0.0,
-        "usefulness_sum": 0.0,
-        "first_encounter": None,
-    })
+    domains = defaultdict(
+        lambda: {
+            "memory_count": 0,
+            "episodic_count": 0,
+            "procedural_count": 0,
+            "entity_count": 0,
+            "confidence_sum": 0.0,
+            "usefulness_sum": 0.0,
+            "first_encounter": None,
+        }
+    )
 
     # Analyze episodic events
     events = episodic_store.get_recent_events(project_id, hours=720)  # 30 days
@@ -60,12 +62,8 @@ def analyze_domain_coverage(
     coverage_list = []
     for domain_name, stats in domains.items():
         total_memories = stats["memory_count"]
-        avg_confidence = (
-            stats["confidence_sum"] / total_memories if total_memories > 0 else 0.0
-        )
-        avg_usefulness = (
-            stats["usefulness_sum"] / total_memories if total_memories > 0 else 0.0
-        )
+        avg_confidence = stats["confidence_sum"] / total_memories if total_memories > 0 else 0.0
+        avg_usefulness = stats["usefulness_sum"] / total_memories if total_memories > 0 else 0.0
 
         # Infer expertise level
         expertise = _infer_expertise(
@@ -230,7 +228,17 @@ def _infer_category(domain_name: str) -> str:
     Returns:
         Category string
     """
-    tech_domains = ["react", "vue", "angular", "typescript", "javascript", "python", "rust", "golang", "java"]
+    tech_domains = [
+        "react",
+        "vue",
+        "angular",
+        "typescript",
+        "javascript",
+        "python",
+        "rust",
+        "golang",
+        "java",
+    ]
     infrastructure = ["docker", "kubernetes", "aws", "azure", "gcp"]
     databases = ["sql", "postgresql", "mongodb", "redis", "database"]
     patterns = ["authentication", "testing", "api", "rest-api", "graphql"]

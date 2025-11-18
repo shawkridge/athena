@@ -44,9 +44,7 @@ class LLMConsolidationClusterer:
         else:
             logger.info("LLM consolidation clusterer: Using heuristic clustering")
 
-    def cluster_events(
-        self, events: list[dict], limit: int = 20
-    ) -> list[SemanticCluster]:
+    def cluster_events(self, events: list[dict], limit: int = 20) -> list[SemanticCluster]:
         """Cluster episodic events into semantic patterns.
 
         Args:
@@ -64,9 +62,7 @@ class LLMConsolidationClusterer:
         else:
             return self._cluster_heuristic(events, limit)
 
-    def _cluster_with_llm(
-        self, events: list[dict], limit: int
-    ) -> list[SemanticCluster]:
+    def _cluster_with_llm(self, events: list[dict], limit: int) -> list[SemanticCluster]:
         """Cluster events using LLM semantic analysis."""
 
         try:
@@ -125,7 +121,9 @@ Be selective - only include meaningful clusters."""
                 )
                 clusters.append(cluster)
 
-            logger.info(f"LLM identified {len(clusters)} semantic clusters from {len(events)} events")
+            logger.info(
+                f"LLM identified {len(clusters)} semantic clusters from {len(events)} events"
+            )
             return clusters
 
         except json.JSONDecodeError as e:
@@ -135,9 +133,7 @@ Be selective - only include meaningful clusters."""
             logger.debug(f"LLM clustering failed: {e}")
             return self._cluster_heuristic(events, limit)
 
-    def _cluster_heuristic(
-        self, events: list[dict], limit: int
-    ) -> list[SemanticCluster]:
+    def _cluster_heuristic(self, events: list[dict], limit: int) -> list[SemanticCluster]:
         """Cluster events using heuristic rules (fallback)."""
 
         # Group by event type

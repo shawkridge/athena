@@ -18,7 +18,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from athena.manager import UnifiedMemoryManager
 
 
-def remember(content: str, event_type: str = 'ACTION', tags: Optional[List[str]] = None, project_id: Optional[int] = None) -> int:
+def remember(
+    content: str,
+    event_type: str = "ACTION",
+    tags: Optional[List[str]] = None,
+    project_id: Optional[int] = None,
+) -> int:
     """
     Store a new memory (semantic fact, insight, decision, or pattern)
 
@@ -48,12 +53,8 @@ def remember(content: str, event_type: str = 'ACTION', tags: Optional[List[str]]
     try:
         manager = UnifiedMemoryManager()
         memory_id = manager.remember(
-            content=content,
-            event_type=event_type,
-            tags=tags or [],
-            project_id=project_id
+            content=content, event_type=event_type, tags=tags or [], project_id=project_id
         )
         return memory_id
     except Exception as e:
         raise RuntimeError(f"Memory storage failed: {str(e)}") from e
-

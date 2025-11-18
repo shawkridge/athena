@@ -357,9 +357,7 @@ class CorrectiveRAGManager:
         self.validator = DocumentValidator(llm_client)
         self.corrector = DocumentCorrector(llm_client)
 
-    def process_documents(
-        self, query: str, documents: List[MemorySearchResult]
-    ) -> CRAGResult:
+    def process_documents(self, query: str, documents: List[MemorySearchResult]) -> CRAGResult:
         """Process documents through CRAG pipeline.
 
         Args:
@@ -376,13 +374,14 @@ class CorrectiveRAGManager:
 
         for doc in documents:
             # Validate relevance
-            validation = self.validator.validate_relevance(
-                query, doc.content, doc.id
-            )
+            validation = self.validator.validate_relevance(query, doc.content, doc.id)
             validations.append((doc, validation))
 
             # Correct if needed
-            if validation.needs_correction and validation.relevance_score > self.config.relevance_threshold_low:
+            if (
+                validation.needs_correction
+                and validation.relevance_score > self.config.relevance_threshold_low
+            ):
                 corrected_content, success = self.corrector.correct_document(
                     query, doc.content, validation.correction_reason or "Missing details"
                 )
@@ -398,8 +397,7 @@ class CorrectiveRAGManager:
 
         # Calculate statistics
         relevant_count = sum(
-            1 for _, v in validations
-            if v.relevance_score >= self.config.relevance_threshold_low
+            1 for _, v in validations if v.relevance_score >= self.config.relevance_threshold_low
         )
 
         overall_relevance = (
@@ -423,9 +421,7 @@ class CorrectiveRAGManager:
             quality_score=quality_score,
         )
 
-    def _calculate_quality_score(
-        self, validations: List[Tuple[Any, DocumentValidation]]
-    ) -> float:
+    def _calculate_quality_score(self, validations: List[Tuple[Any, DocumentValidation]]) -> float:
         """Calculate overall quality score.
 
         Args:
@@ -496,9 +492,11 @@ class CorrectiveRAGManager:
             "web_search_needed": crag_result.web_search_needed,
             "overall_relevance": round(crag_result.overall_relevance, 3),
             "quality_score": round(crag_result.quality_score, 3),
-            "success_rate": round(crag_result.relevant_documents / crag_result.total_documents, 2)
-            if crag_result.total_documents > 0
-            else 0.0,
+            "success_rate": (
+                round(crag_result.relevant_documents / crag_result.total_documents, 2)
+                if crag_result.total_documents > 0
+                else 0.0
+            ),
         }
 
     def clear_cache(self):

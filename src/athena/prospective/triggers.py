@@ -1,10 +1,8 @@
 """Trigger evaluation and firing logic for prospective memory."""
 
-import json
 from datetime import datetime
 from typing import List, Optional
 
-from ..episodic.models import EpisodicEvent
 from .models import ProspectiveTask, TaskTrigger, TriggerType
 from .store import ProspectiveStore
 
@@ -128,9 +126,7 @@ class TriggerEvaluator:
         if schedule.get("frequency") == "daily":
             target_hour = schedule.get("hour", 9)
             target_minute = schedule.get("minute", 0)
-            return (
-                current_time.hour == target_hour and current_time.minute == target_minute
-            )
+            return current_time.hour == target_hour and current_time.minute == target_minute
 
         # Weekly schedule
         if schedule.get("frequency") == "weekly":
@@ -347,9 +343,7 @@ def create_event_trigger(
     if content_pattern:
         condition["content_pattern"] = content_pattern
 
-    return TaskTrigger(
-        task_id=task_id, trigger_type=TriggerType.EVENT, trigger_condition=condition
-    )
+    return TaskTrigger(task_id=task_id, trigger_type=TriggerType.EVENT, trigger_condition=condition)
 
 
 def create_file_trigger(task_id: int, file_path: str) -> TaskTrigger:

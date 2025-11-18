@@ -5,7 +5,6 @@ conflicts, analyzes critical paths, and coordinates task execution across
 multiple projects.
 """
 
-from typing import Optional
 from dataclasses import dataclass
 from ..integration.project_coordinator import ProjectCoordinator
 from ..prospective.store import ProspectiveStore
@@ -45,9 +44,7 @@ class ProjectCoordinatorAgent:
         self.coordinator = ProjectCoordinator(db)
         self.store = ProspectiveStore(db)
 
-    async def coordinate_projects(
-        self, project_ids: list[int]
-    ) -> ProjectCoordinationSummary:
+    async def coordinate_projects(self, project_ids: list[int]) -> ProjectCoordinationSummary:
         """Coordinate multiple projects with dependencies and conflicts.
 
         Args:
@@ -60,14 +57,10 @@ class ProjectCoordinatorAgent:
             raise ValueError("At least one project ID required")
 
         # Analyze critical path for primary project
-        critical_path = await self.coordinator.analyze_critical_path(
-            project_ids[0]
-        )
+        critical_path = await self.coordinator.analyze_critical_path(project_ids[0])
 
         # Detect resource conflicts across all projects
-        conflicts = await self.coordinator.detect_resource_conflicts(
-            project_ids
-        )
+        conflicts = await self.coordinator.detect_resource_conflicts(project_ids)
 
         # Count total tasks
         total_tasks = self._count_tasks(project_ids)
@@ -82,15 +75,12 @@ class ProjectCoordinatorAgent:
         )
 
         # Assess timeline status
-        timeline_status = self._assess_timeline_status(
-            critical_path, len(conflicts)
-        )
+        timeline_status = self._assess_timeline_status(critical_path, len(conflicts))
 
         # Extract critical task IDs
         critical_tasks = (
             critical_path.task_ids
-            if hasattr(critical_path, "task_ids")
-            and critical_path.task_ids
+            if hasattr(critical_path, "task_ids") and critical_path.task_ids
             else []
         )
 
@@ -107,23 +97,30 @@ class ProjectCoordinatorAgent:
             critical_tasks=critical_tasks[:10],  # Top 10
             resource_conflicts=[
                 {
-                    "type": conflict.conflict_type
-                    if hasattr(conflict, "conflict_type")
-                    else conflict.get("conflict_type", "unknown"),
-                    "severity": conflict.severity
-                    if hasattr(conflict, "severity")
-                    else conflict.get("severity", "medium"),
-                    "recommendation": conflict.recommendations[0]
-                    if (
-                        hasattr(conflict, "recommendations")
-                        and conflict.recommendations
-                    )
-                    else conflict.get("recommendations", ["TBD"])[0]
-                    if isinstance(conflict, dict)
-                    else "TBD",
+                    "type": (
+                        conflict.conflict_type
+                        if hasattr(conflict, "conflict_type")
+                        else conflict.get("conflict_type", "unknown")
+                    ),
+                    "severity": (
+                        conflict.severity
+                        if hasattr(conflict, "severity")
+                        else conflict.get("severity", "medium")
+                    ),
+                    "recommendation": (
+                        conflict.recommendations[0]
+                        if (hasattr(conflict, "recommendations") and conflict.recommendations)
+                        else (
+                            conflict.get("recommendations", ["TBD"])[0]
+                            if isinstance(conflict, dict)
+                            else "TBD"
+                        )
+                    ),
                 }
                 for conflict in (conflicts if conflicts else [])
-            ][:5],  # Top 5
+            ][
+                :5
+            ],  # Top 5
             bottleneck_persons=bottleneck_persons,
             bottleneck_tools=bottleneck_tools,
             timeline_status=timeline_status,
@@ -154,9 +151,7 @@ class ProjectCoordinatorAgent:
         except (OSError, ValueError, TypeError, KeyError, IndexError):
             return 0
 
-    def _extract_bottleneck_persons(
-        self, conflicts: list
-    ) -> list[str]:
+    def _extract_bottleneck_persons(self, conflicts: list) -> list[str]:
         """Extract persons involved in resource conflicts.
 
         Args:
@@ -182,9 +177,7 @@ class ProjectCoordinatorAgent:
         # Remove duplicates and return top 3
         return list(set(persons))[:3]
 
-    def _extract_bottleneck_tools(
-        self, conflicts: list
-    ) -> list[str]:
+    def _extract_bottleneck_tools(self, conflicts: list) -> list[str]:
         """Extract tools involved in resource conflicts.
 
         Args:
@@ -208,9 +201,7 @@ class ProjectCoordinatorAgent:
 
         return list(set(tools))[:3]
 
-    def _assess_timeline_status(
-        self, critical_path, conflict_count: int
-    ) -> str:
+    def _assess_timeline_status(self, critical_path, conflict_count: int) -> str:
         """Assess project timeline status.
 
         Args:
@@ -249,23 +240,15 @@ class ProjectCoordinatorAgent:
 
         # Critical path recommendations
         slack_time = (
-            critical_path.slack_time_minutes
-            if hasattr(critical_path, "slack_time_minutes")
-            else 0
+            critical_path.slack_time_minutes if hasattr(critical_path, "slack_time_minutes") else 0
         )
 
         if slack_time < 60:
-            recommendations.append(
-                "CRITICAL: Slack time < 1 hour - any delay will miss deadline"
-            )
+            recommendations.append("CRITICAL: Slack time < 1 hour - any delay will miss deadline")
         elif slack_time < 480:  # 8 hours
-            recommendations.append(
-                "ACTION: Limited slack time - prioritize critical path tasks"
-            )
+            recommendations.append("ACTION: Limited slack time - prioritize critical path tasks")
         else:
-            recommendations.append(
-                "✓ Adequate slack time for schedule adjustments"
-            )
+            recommendations.append("✓ Adequate slack time for schedule adjustments")
 
         # Resource conflict recommendations
         if conflicts:
@@ -274,9 +257,7 @@ class ProjectCoordinatorAgent:
                     "ACTION: Multiple resource conflicts - consider reassignment"
                 )
             else:
-                recommendations.append(
-                    f"ACTION: Resolve {len(conflicts)} resource conflict(s)"
-                )
+                recommendations.append(f"ACTION: Resolve {len(conflicts)} resource conflict(s)")
 
         # Bottleneck person recommendations
         if bottleneck_persons:
@@ -286,21 +267,15 @@ class ProjectCoordinatorAgent:
 
         # Dependency recommendations
         if hasattr(critical_path, "task_ids") and critical_path.task_ids:
-            recommendations.append(
-                f"MONITOR: {len(critical_path.task_ids)} tasks on critical path"
-            )
+            recommendations.append(f"MONITOR: {len(critical_path.task_ids)} tasks on critical path")
 
         # Default if no issues
         if not recommendations:
-            recommendations.append(
-                "✓ Multi-project coordination is healthy"
-            )
+            recommendations.append("✓ Multi-project coordination is healthy")
 
         return recommendations
 
-    async def suggest_task_reordering(
-        self, project_ids: list[int]
-    ) -> list[dict]:
+    async def suggest_task_reordering(self, project_ids: list[int]) -> list[dict]:
         """Suggest task reordering to optimize resource utilization.
 
         Args:
@@ -313,9 +288,7 @@ class ProjectCoordinatorAgent:
 
         try:
             # Detect conflicts
-            conflicts = await self.coordinator.detect_resource_conflicts(
-                project_ids
-            )
+            conflicts = await self.coordinator.detect_resource_conflicts(project_ids)
 
             # For each conflict, suggest resolution
             for conflict in conflicts or []:
@@ -329,7 +302,7 @@ class ProjectCoordinatorAgent:
                     suggestions.append(
                         {
                             "action": "defer",
-                            "reason": f"Person has multiple concurrent critical tasks",
+                            "reason": "Person has multiple concurrent critical tasks",
                             "recommendation": "Defer one task to sequential window",
                             "priority": "high",
                         }
@@ -364,9 +337,7 @@ class ProjectCoordinatorAgent:
                 }
             ]
 
-    async def check_deadline_risks(
-        self, project_ids: list[int], target_date: str
-    ) -> dict:
+    async def check_deadline_risks(self, project_ids: list[int], target_date: str) -> dict:
         """Check if projects can meet target deadline.
 
         Args:
@@ -378,9 +349,7 @@ class ProjectCoordinatorAgent:
         """
         try:
             # Analyze critical path
-            critical_path = await self.coordinator.analyze_critical_path(
-                project_ids[0]
-            )
+            critical_path = await self.coordinator.analyze_critical_path(project_ids[0])
 
             # Extract duration
             cp_duration = (
@@ -400,9 +369,7 @@ class ProjectCoordinatorAgent:
             risk_level = (
                 "critical"
                 if slack_time < 0
-                else "high" if slack_time < 240
-                else "medium" if slack_time < 480
-                else "low"
+                else "high" if slack_time < 240 else "medium" if slack_time < 480 else "low"
             )
 
             return {
@@ -412,9 +379,13 @@ class ProjectCoordinatorAgent:
                 "risk_level": risk_level,
                 "feasible": slack_time >= 0,
                 "recommendation": (
-                    "On schedule" if slack_time > 480
-                    else "At risk - tight deadline" if slack_time > 0
-                    else "CRITICAL - deadline will be missed"
+                    "On schedule"
+                    if slack_time > 480
+                    else (
+                        "At risk - tight deadline"
+                        if slack_time > 0
+                        else "CRITICAL - deadline will be missed"
+                    )
                 ),
             }
         except Exception as e:

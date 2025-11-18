@@ -7,7 +7,6 @@ for persistent, retrievable project knowledge.
 import json
 import logging
 from typing import Optional
-from datetime import datetime
 
 from athena.core.database import Database
 from athena.analysis.project_analyzer import ProjectAnalysis
@@ -66,8 +65,9 @@ class ProjectAnalysisMemoryStorage:
         results["insights"] = insights_result
         results["stored_items"] += 1
 
-        logger.info(f"Stored analysis for {analysis.project_name}: "
-                   f"{results['stored_items']} items")
+        logger.info(
+            f"Stored analysis for {analysis.project_name}: " f"{results['stored_items']} items"
+        )
 
         return results
 
@@ -117,11 +117,7 @@ Recommendations:
 {chr(10).join(f'- {r}' for r in analysis.recommendations)}
 """
             logger.info(f"Stored overview for {analysis.project_name}")
-            return {
-                "status": "stored",
-                "project": analysis.project_name,
-                "type": "overview"
-            }
+            return {"status": "stored", "project": analysis.project_name, "type": "overview"}
         except Exception as e:
             logger.error(f"Failed to store overview: {e}")
             return {"status": "failed", "error": str(e)}
@@ -146,18 +142,16 @@ Recommendations:
 
                 # Store as entity
                 logger.info(f"Stored component: {component.name}")
-                results.append({
-                    "status": "stored",
-                    "entity": component.name,
-                    "type": "component",
-                })
+                results.append(
+                    {
+                        "status": "stored",
+                        "entity": component.name,
+                        "type": "component",
+                    }
+                )
             except Exception as e:
                 logger.error(f"Failed to store component {component.name}: {e}")
-                results.append({
-                    "status": "failed",
-                    "entity": component.name,
-                    "error": str(e)
-                })
+                results.append({"status": "failed", "entity": component.name, "error": str(e)})
 
         return results
 
@@ -177,18 +171,16 @@ Recommendations:
                 }
 
                 logger.info(f"Stored pattern: {pattern.name}")
-                results.append({
-                    "status": "stored",
-                    "entity": pattern.name,
-                    "type": "pattern",
-                })
+                results.append(
+                    {
+                        "status": "stored",
+                        "entity": pattern.name,
+                        "type": "pattern",
+                    }
+                )
             except Exception as e:
                 logger.error(f"Failed to store pattern {pattern.name}: {e}")
-                results.append({
-                    "status": "failed",
-                    "entity": pattern.name,
-                    "error": str(e)
-                })
+                results.append({"status": "failed", "entity": pattern.name, "error": str(e)})
 
         return results
 
@@ -201,16 +193,15 @@ Recommendations:
             for dep in component.dependencies[:3]:  # Top 3 dependencies
                 try:
                     # Create relation: component depends_on dependency
-                    logger.info(
-                        f"Created relation: {component.name} "
-                        f"depends_on {dep}"
+                    logger.info(f"Created relation: {component.name} " f"depends_on {dep}")
+                    results.append(
+                        {
+                            "status": "created",
+                            "from": component.name,
+                            "type": "depends_on",
+                            "to": dep,
+                        }
                     )
-                    results.append({
-                        "status": "created",
-                        "from": component.name,
-                        "type": "depends_on",
-                        "to": dep,
-                    })
                 except Exception as e:
                     logger.error(f"Failed to create relation: {e}")
 
@@ -228,14 +219,14 @@ Recommendations:
                     "complexity": analysis.avg_complexity,
                     "test_coverage": analysis.test_file_ratio,
                     "documentation": analysis.documentation_score,
-                }
+                },
             }
 
             logger.info(f"Stored insights for {analysis.project_name}")
             return {
                 "status": "stored",
                 "insight_count": len(analysis.insights),
-                "recommendation_count": len(analysis.recommendations)
+                "recommendation_count": len(analysis.recommendations),
             }
         except Exception as e:
             logger.error(f"Failed to store insights: {e}")
@@ -253,10 +244,7 @@ Recommendations:
         try:
             # Try to retrieve from memory system
             logger.info(f"Retrieved summary for {project_name}")
-            return {
-                "project": project_name,
-                "status": "retrieved"
-            }
+            return {"project": project_name, "status": "retrieved"}
         except Exception as e:
             logger.error(f"Failed to retrieve project summary: {e}")
             return None
@@ -273,18 +261,10 @@ Recommendations:
         """
         try:
             # Try to retrieve from memory system
-            logger.info(
-                f"Retrieved info for {project_name}/{component_name}"
-            )
-            return {
-                "project": project_name,
-                "component": component_name,
-                "status": "retrieved"
-            }
+            logger.info(f"Retrieved info for {project_name}/{component_name}")
+            return {"project": project_name, "component": component_name, "status": "retrieved"}
         except Exception as e:
-            logger.error(
-                f"Failed to retrieve component info: {e}"
-            )
+            logger.error(f"Failed to retrieve component info: {e}")
             return None
 
     def export_analysis(self, analysis: ProjectAnalysis) -> str:

@@ -13,7 +13,7 @@ No MCP protocol, no wrapper overhead. Just Python async functions.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from ..core.database import Database
 from .store import EpisodicStore
@@ -120,23 +120,23 @@ class EpisodicOperations:
         filtered = results
 
         # Filter by confidence (importance score)
-        filtered = [
-            r for r in filtered
-            if getattr(r, 'importance_score', 0.5) >= min_confidence
-        ]
+        filtered = [r for r in filtered if getattr(r, "importance_score", 0.5) >= min_confidence]
 
         # Filter by time range if provided
         if time_range:
             start = time_range.get("start")
             end = time_range.get("end")
             filtered = [
-                r for r in filtered
+                r
+                for r in filtered
                 if (not start or r.timestamp >= start) and (not end or r.timestamp <= end)
             ]
 
         # Filter by tags if provided
         if tags:
-            filtered = [r for r in filtered if any(tag in tags for tag in (getattr(r, 'tags', []) or []))]
+            filtered = [
+                r for r in filtered if any(tag in tags for tag in (getattr(r, "tags", []) or []))
+            ]
 
         # Filter by session_id if provided
         if session_id:
@@ -181,9 +181,7 @@ class EpisodicOperations:
         project_id = 1  # Default project
         # Get all events for the project and filter by session
         all_events = self.store.list_events(
-            project_id=project_id,
-            limit=limit,
-            order_by="timestamp DESC"
+            project_id=project_id, limit=limit, order_by="timestamp DESC"
         )
         # Filter by session_id client-side
         return [e for e in all_events if e.session_id == session_id]
@@ -232,7 +230,7 @@ class EpisodicOperations:
                 "end_time": end,
             },
             limit=limit,
-            order_by="timestamp DESC"
+            order_by="timestamp DESC",
         )
 
     async def delete_old(
@@ -255,9 +253,7 @@ class EpisodicOperations:
         # Get events to delete in batches
         while True:
             events = await self.store.list(
-                filters={"end_time": cutoff_date},
-                limit=batch_size,
-                order_by="timestamp ASC"
+                filters={"end_time": cutoff_date}, limit=batch_size, order_by="timestamp ASC"
             )
 
             if not events:
@@ -304,7 +300,9 @@ class EpisodicOperations:
             "max_importance": max(importances) if importances else 0.0,
             "earliest": min(timestamps).isoformat() if timestamps else None,
             "latest": max(timestamps).isoformat() if timestamps else None,
-            "time_span_days": (max(timestamps) - min(timestamps)).days if len(timestamps) > 1 else 0,
+            "time_span_days": (
+                (max(timestamps) - min(timestamps)).days if len(timestamps) > 1 else 0
+            ),
         }
 
 
@@ -336,8 +334,7 @@ def get_operations() -> EpisodicOperations:
     """
     if _operations is None:
         raise RuntimeError(
-            "Episodic operations not initialized. "
-            "Call initialize(db, store) first."
+            "Episodic operations not initialized. " "Call initialize(db, store) first."
         )
     return _operations
 

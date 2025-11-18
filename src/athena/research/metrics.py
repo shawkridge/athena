@@ -3,8 +3,7 @@
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Optional, Dict
-from enum import Enum
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -155,9 +154,7 @@ class ResearchMetricsCollector:
         stats = {
             "total_operations": len(self.metrics_history),
             "unique_operations": len(operations),
-            "operations": {
-                op: self.get_operation_stats(op) for op in sorted(operations)
-            },
+            "operations": {op: self.get_operation_stats(op) for op in sorted(operations)},
             "overall": {
                 "total_successful": sum(1 for m in self.metrics_history if m.success),
                 "total_failed": sum(1 for m in self.metrics_history if not m.success),
@@ -167,9 +164,7 @@ class ResearchMetricsCollector:
         # Calculate overall success rate
         total = len(self.metrics_history)
         if total > 0:
-            stats["overall"]["success_rate"] = (
-                stats["overall"]["total_successful"] / total
-            )
+            stats["overall"]["success_rate"] = stats["overall"]["total_successful"] / total
 
         return stats
 

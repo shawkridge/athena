@@ -6,13 +6,12 @@ Automatically links events in temporal and causal sequences.
 from datetime import datetime
 from typing import List, Optional
 
-from ..episodic.models import EpisodicEvent, EventType
+from ..episodic.models import EpisodicEvent
 from .models import CausalPattern, EventChain, TemporalRelation
 
 
 def create_temporal_chains(
-    events: List[EpisodicEvent],
-    same_session_only: bool = False
+    events: List[EpisodicEvent], same_session_only: bool = False
 ) -> List[EventChain]:
     """
     Create temporal chains from event sequences.
@@ -45,35 +44,36 @@ def create_temporal_chains(
 
         # Chain continues if:
         # - Within 1 hour AND (same session OR not restricted to session)
-        should_continue = (
-            time_gap_seconds < 3600 and
-            (session_matches or not same_session_only)
-        )
+        should_continue = time_gap_seconds < 3600 and (session_matches or not same_session_only)
 
         if should_continue:
             current_chain.append(curr_event)
         else:
             # Finalize current chain and start new one
             if len(current_chain) >= 2:
-                chains.append(EventChain(
-                    events=current_chain,
-                    chain_type='temporal',
-                    start_time=current_chain[0].timestamp,
-                    end_time=current_chain[-1].timestamp,
-                    session_id=current_chain[0].session_id
-                ))
+                chains.append(
+                    EventChain(
+                        events=current_chain,
+                        chain_type="temporal",
+                        start_time=current_chain[0].timestamp,
+                        end_time=current_chain[-1].timestamp,
+                        session_id=current_chain[0].session_id,
+                    )
+                )
 
             current_chain = [curr_event]
 
     # Add final chain
     if len(current_chain) >= 2:
-        chains.append(EventChain(
-            events=current_chain,
-            chain_type='temporal',
-            start_time=current_chain[0].timestamp,
-            end_time=current_chain[-1].timestamp,
-            session_id=current_chain[0].session_id
-        ))
+        chains.append(
+            EventChain(
+                events=current_chain,
+                chain_type="temporal",
+                start_time=current_chain[0].timestamp,
+                end_time=current_chain[-1].timestamp,
+                session_id=current_chain[0].session_id,
+            )
+        )
 
     return chains
 
@@ -103,13 +103,13 @@ def create_temporal_relations(events: List[EpisodicEvent]) -> List[TemporalRelat
 
         # Determine relation type and strength based on time gap
         if time_gap_seconds < 60:
-            relation_type = 'immediately_after'
+            relation_type = "immediately_after"
             strength = 0.9
         elif time_gap_seconds < 3600:
-            relation_type = 'shortly_after'
+            relation_type = "shortly_after"
             strength = 0.7
         else:
-            relation_type = 'later_after'
+            relation_type = "later_after"
             strength = max(0.3, 0.9 - (time_gap_seconds / 86400))  # Decay over 1 day
 
         relation = TemporalRelation(
@@ -117,7 +117,7 @@ def create_temporal_relations(events: List[EpisodicEvent]) -> List[TemporalRelat
             to_event_id=next_event.id,
             relation_type=relation_type,
             strength=strength,
-            inferred_at=datetime.now()
+            inferred_at=datetime.now(),
         )
 
         relations.append(relation)
@@ -166,9 +166,9 @@ def infer_causal_relations(events: List[EpisodicEvent]) -> List[TemporalRelation
             causal_relation = TemporalRelation(
                 from_event_id=current.id,
                 to_event_id=next_event.id,
-                relation_type='caused',
+                relation_type="caused",
                 strength=strength,
-                inferred_at=datetime.now()
+                inferred_at=datetime.now(),
             )
 
             causal_relations.append(causal_relation)
@@ -190,11 +190,15 @@ def is_likely_causal(event1: EpisodicEvent, event2: EpisodicEvent) -> bool:
         True if likely causal relationship
     """
     # Helper to get event type as string
-    type1 = event1.event_type.value if hasattr(event1.event_type, 'value') else str(event1.event_type)
-    type2 = event2.event_type.value if hasattr(event2.event_type, 'value') else str(event2.event_type)
+    type1 = (
+        event1.event_type.value if hasattr(event1.event_type, "value") else str(event1.event_type)
+    )
+    type2 = (
+        event2.event_type.value if hasattr(event2.event_type, "value") else str(event2.event_type)
+    )
 
     # Pattern 1: Error followed by fix/success
-    if type1 == 'error' and type2 in ['file_change', 'success']:
+    if type1 == "error" and type2 in ["file_change", "success"]:
         # Check file overlap
         if event1.context and event2.context:
             files1 = set(event1.context.files or [])
@@ -203,20 +207,20 @@ def is_likely_causal(event1: EpisodicEvent, event2: EpisodicEvent) -> bool:
                 return True
 
     # Pattern 2: Test failure followed by code change
-    if event1.outcome == 'failure' and type2 == 'file_change':
+    if event1.outcome == "failure" and type2 == "file_change":
         return True
 
     # Pattern 3: Code change followed by test pass
-    if type1 == 'file_change' and type2 == 'test_run':
-        if event2.outcome == 'success':
+    if type1 == "file_change" and type2 == "test_run":
+        if event2.outcome == "success":
             return True
 
     # Pattern 4: Decision followed by action
-    if type1 == 'decision' and type2 == 'action':
+    if type1 == "decision" and type2 == "action":
         return True
 
     # Pattern 5: Debugging followed by success
-    if type1 == 'debugging' and event2.outcome == 'success':
+    if type1 == "debugging" and event2.outcome == "success":
         return True
 
     return False
@@ -289,7 +293,7 @@ def detect_causal_patterns(events: List[EpisodicEvent]) -> List[CausalPattern]:
 
     # Sliding window to detect patterns
     for i in range(len(sorted_events) - 2):
-        window = sorted_events[i:i+4]  # Look at 3-4 events
+        window = sorted_events[i : i + 4]  # Look at 3-4 events
 
         # TDD pattern: test failure → code change → test pass
         if len(window) >= 3:
@@ -319,20 +323,24 @@ def _detect_tdd_pattern(events: List[EpisodicEvent]) -> Optional[CausalPattern]:
 
     e1, e2, e3 = events[0], events[1], events[2]
 
-    type1 = e1.event_type.value if hasattr(e1.event_type, 'value') else str(e1.event_type)
-    type2 = e2.event_type.value if hasattr(e2.event_type, 'value') else str(e2.event_type)
-    type3 = e3.event_type.value if hasattr(e3.event_type, 'value') else str(e3.event_type)
+    type1 = e1.event_type.value if hasattr(e1.event_type, "value") else str(e1.event_type)
+    type2 = e2.event_type.value if hasattr(e2.event_type, "value") else str(e2.event_type)
+    type3 = e3.event_type.value if hasattr(e3.event_type, "value") else str(e3.event_type)
 
     # Test failure → Code change → Test pass
-    if (type1 == 'test_run' and e1.outcome == 'failure' and
-        type2 == 'file_change' and
-        type3 == 'test_run' and e3.outcome == 'success'):
+    if (
+        type1 == "test_run"
+        and e1.outcome == "failure"
+        and type2 == "file_change"
+        and type3 == "test_run"
+        and e3.outcome == "success"
+    ):
 
         return CausalPattern(
-            pattern_type='tdd_cycle',
+            pattern_type="tdd_cycle",
             events=events,
             confidence=0.85,
-            description="Test-driven development: test → code → test pass"
+            description="Test-driven development: test → code → test pass",
         )
 
     return None
@@ -345,19 +353,17 @@ def _detect_error_fix_pattern(events: List[EpisodicEvent]) -> Optional[CausalPat
 
     e1, e2, e3 = events[0], events[1], events[2]
 
-    type1 = e1.event_type.value if hasattr(e1.event_type, 'value') else str(e1.event_type)
-    type2 = e2.event_type.value if hasattr(e2.event_type, 'value') else str(e2.event_type)
+    type1 = e1.event_type.value if hasattr(e1.event_type, "value") else str(e1.event_type)
+    type2 = e2.event_type.value if hasattr(e2.event_type, "value") else str(e2.event_type)
 
     # Error → File change → Success
-    if (type1 == 'error' and
-        type2 == 'file_change' and
-        e3.outcome == 'success'):
+    if type1 == "error" and type2 == "file_change" and e3.outcome == "success":
 
         return CausalPattern(
-            pattern_type='error_fix',
+            pattern_type="error_fix",
             events=events,
             confidence=0.75,
-            description="Error recovery: error → fix → success"
+            description="Error recovery: error → fix → success",
         )
 
     return None
@@ -370,16 +376,18 @@ def _detect_debug_session(events: List[EpisodicEvent]) -> Optional[CausalPattern
 
     # Check for multiple errors/debugging events followed by success
     error_count = sum(
-        1 for e in events[:-1]
-        if (e.event_type.value if hasattr(e.event_type, 'value') else str(e.event_type)) in ['error', 'debugging']
+        1
+        for e in events[:-1]
+        if (e.event_type.value if hasattr(e.event_type, "value") else str(e.event_type))
+        in ["error", "debugging"]
     )
 
-    if error_count >= 2 and events[-1].outcome == 'success':
+    if error_count >= 2 and events[-1].outcome == "success":
         return CausalPattern(
-            pattern_type='debug_session',
+            pattern_type="debug_session",
             events=events,
             confidence=0.7,
-            description=f"Debug session: {error_count} errors resolved"
+            description=f"Debug session: {error_count} errors resolved",
         )
 
     return None

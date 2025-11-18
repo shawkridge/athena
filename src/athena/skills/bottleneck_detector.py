@@ -8,9 +8,8 @@ Detects and analyzes:
 - Suggests resource rebalancing
 """
 
-from typing import List, Dict, Optional
+from typing import List, Dict
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 from ..core.database import Database
 
 
@@ -74,18 +73,10 @@ class BottleneckDetector:
                 task_ids_str = row[2]
 
                 if task_count > overload_threshold:
-                    task_ids = [
-                        int(t.strip())
-                        for t in task_ids_str.split(",")
-                        if t.strip()
-                    ]
+                    task_ids = [int(t.strip()) for t in task_ids_str.split(",") if t.strip()]
 
                     severity = (
-                        "critical"
-                        if task_count > 5
-                        else "high"
-                        if task_count > 4
-                        else "medium"
+                        "critical" if task_count > 5 else "high" if task_count > 4 else "medium"
                     )
 
                     recommendations = [
@@ -150,11 +141,11 @@ class BottleneckDetector:
                     blocker_type = (
                         "dependency"
                         if "depend" in blocker_reason.lower()
-                        else "tool"
-                        if "tool" in blocker_reason.lower()
-                        else "knowledge"
-                        if "know" in blocker_reason.lower()
-                        else "other"
+                        else (
+                            "tool"
+                            if "tool" in blocker_reason.lower()
+                            else "knowledge" if "know" in blocker_reason.lower() else "other"
+                        )
                     )
 
                     recommendations = [
@@ -171,9 +162,7 @@ class BottleneckDetector:
                             severity=(
                                 "critical"
                                 if blocker_count > 3
-                                else "high"
-                                if blocker_count > 1
-                                else "medium"
+                                else "high" if blocker_count > 1 else "medium"
                             ),
                             impact_hours=blocker_count * 4,
                             affected_tasks=[task_id],
@@ -221,22 +210,14 @@ class BottleneckDetector:
                 task_ids_str = row[2]
 
                 if count > 2:  # Multiple tasks using same resource
-                    task_ids = [
-                        int(t.strip())
-                        for t in task_ids_str.split(",")
-                        if t.strip()
-                    ]
+                    task_ids = [int(t.strip()) for t in task_ids_str.split(",") if t.strip()]
 
                     bottlenecks.append(
                         Bottleneck(
                             bottleneck_type="tool",
                             resource=content[:40],
                             current_load=count,
-                            severity=(
-                                "high"
-                                if count > 3
-                                else "medium"
-                            ),
+                            severity=("high" if count > 3 else "medium"),
                             impact_hours=count * 2,
                             affected_tasks=task_ids,
                             recommendations=[
@@ -251,9 +232,7 @@ class BottleneckDetector:
         except (OSError, ValueError, TypeError, KeyError, IndexError):
             return []
 
-    def get_project_bottlenecks(
-        self, project_id: int
-    ) -> Dict[str, any]:
+    def get_project_bottlenecks(self, project_id: int) -> Dict[str, any]:
         """Get comprehensive bottleneck analysis for project.
 
         Args:
@@ -266,11 +245,7 @@ class BottleneckDetector:
         blocked_bottlenecks = self.detect_blocked_tasks(project_id)
         tool_bottlenecks = self.detect_tool_contention(project_id)
 
-        all_bottlenecks = (
-            person_bottlenecks
-            + blocked_bottlenecks
-            + tool_bottlenecks
-        )
+        all_bottlenecks = person_bottlenecks + blocked_bottlenecks + tool_bottlenecks
 
         # Sort by severity and impact
         severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
@@ -284,9 +259,7 @@ class BottleneckDetector:
         return {
             "project_id": project_id,
             "total_bottlenecks": len(all_bottlenecks),
-            "critical_count": sum(
-                1 for b in all_bottlenecks if b.severity == "critical"
-            ),
+            "critical_count": sum(1 for b in all_bottlenecks if b.severity == "critical"),
             "person_bottlenecks": len(person_bottlenecks),
             "blocked_bottlenecks": len(blocked_bottlenecks),
             "tool_bottlenecks": len(tool_bottlenecks),
@@ -316,9 +289,7 @@ class BottleneckDetector:
         if not bottlenecks:
             return "Excellent - no bottlenecks detected"
 
-        critical_count = sum(
-            1 for b in bottlenecks if b.severity == "critical"
-        )
+        critical_count = sum(1 for b in bottlenecks if b.severity == "critical")
         high_count = sum(1 for b in bottlenecks if b.severity == "high")
 
         if critical_count > 0:
@@ -330,9 +301,7 @@ class BottleneckDetector:
         else:
             return "Good - only minor bottlenecks"
 
-    def suggest_rebalancing(
-        self, project_id: int
-    ) -> List[Dict[str, any]]:
+    def suggest_rebalancing(self, project_id: int) -> List[Dict[str, any]]:
         """Suggest resource rebalancing options.
 
         Args:
@@ -344,9 +313,7 @@ class BottleneckDetector:
         suggestions = []
 
         # Get person bottlenecks
-        person_bottlenecks = (
-            self.detect_person_overload(project_id)
-        )
+        person_bottlenecks = self.detect_person_overload(project_id)
         for bottleneck in person_bottlenecks:
             suggestions.append(
                 {
@@ -354,9 +321,7 @@ class BottleneckDetector:
                     "from": bottleneck.resource,
                     "task_ids": bottleneck.affected_tasks[:2],
                     "reason": f"Person overloaded with {bottleneck.current_load} tasks",
-                    "priority": "high"
-                    if bottleneck.severity == "critical"
-                    else "medium",
+                    "priority": "high" if bottleneck.severity == "critical" else "medium",
                 }
             )
 
@@ -369,17 +334,13 @@ class BottleneckDetector:
                     "blocker": bottleneck.resource,
                     "task_ids": bottleneck.affected_tasks,
                     "reason": f"Tasks blocked by {bottleneck.resource}",
-                    "priority": "critical"
-                    if bottleneck.severity == "critical"
-                    else "high",
+                    "priority": "critical" if bottleneck.severity == "critical" else "high",
                 }
             )
 
         return suggestions[:5]  # Top 5 suggestions
 
-    def estimate_resolution_impact(
-        self, bottleneck: Bottleneck
-    ) -> Dict[str, any]:
+    def estimate_resolution_impact(self, bottleneck: Bottleneck) -> Dict[str, any]:
         """Estimate impact of resolving bottleneck.
 
         Args:
@@ -394,8 +355,6 @@ class BottleneckDetector:
             "tasks_unblocked": len(bottleneck.affected_tasks),
             "hours_saved": bottleneck.impact_hours * 0.5,  # Estimate 50% improvement
             "timeline_improvement_hours": bottleneck.impact_hours,
-            "effort_to_resolve_hours": (
-                2 if bottleneck.severity == "critical" else 4
-            ),
+            "effort_to_resolve_hours": (2 if bottleneck.severity == "critical" else 4),
             "roi": "High" if bottleneck.severity == "critical" else "Medium",
         }

@@ -3,9 +3,8 @@
 from datetime import datetime, timedelta, date
 from typing import Optional, Dict, List
 from dataclasses import dataclass
-from statistics import mean, stdev
+from statistics import mean
 
-from .models import GoalStatus
 
 
 @dataclass
@@ -40,7 +39,9 @@ class ExecutiveMetrics:
         """Initialize metrics tracker."""
         self.db_path = db_path
 
-    async def calculate_metrics(self, project_id: int, date_range: Optional[tuple] = None) -> MetricsSnapshot:
+    async def calculate_metrics(
+        self, project_id: int, date_range: Optional[tuple] = None
+    ) -> MetricsSnapshot:
         """
         Calculate metrics for a project.
 
@@ -199,7 +200,9 @@ class ExecutiveMetrics:
 
                 success_count = outcome_data.get("success", {}).get("count", 0)
                 failure_count = outcome_data.get("failure", {}).get("count", 0)
-                total_used = success_count + failure_count + outcome_data.get("partial", {}).get("count", 0)
+                total_used = (
+                    success_count + failure_count + outcome_data.get("partial", {}).get("count", 0)
+                )
 
                 success_rate = success_count / total_used if total_used > 0 else 0.0
 
@@ -268,7 +271,11 @@ class ExecutiveMetrics:
         return completion_times
 
     def _calculate_efficiency_score(
-        self, completed_goals: int, total_goals: int, total_switch_ms: int, completion_times: List[float]
+        self,
+        completed_goals: int,
+        total_goals: int,
+        total_switch_ms: int,
+        completion_times: List[float],
     ) -> float:
         """
         Calculate efficiency score (0-100).

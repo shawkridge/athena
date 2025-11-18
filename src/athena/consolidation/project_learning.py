@@ -73,58 +73,76 @@ class ProjectLearningEngine:
 
         # Insight 1: Most effective decomposition strategy
         if execution_feedback:
-            strategies = [f.get("decomposition_strategy") for f in execution_feedback if f.get("decomposition_strategy")]
+            strategies = [
+                f.get("decomposition_strategy")
+                for f in execution_feedback
+                if f.get("decomposition_strategy")
+            ]
             if strategies:
                 most_common = max(set(strategies), key=strategies.count)
                 success_count = len([f for f in execution_feedback if f.get("success")])
-                success_rate = success_count / len(execution_feedback) if execution_feedback else 0.0
+                success_rate = (
+                    success_count / len(execution_feedback) if execution_feedback else 0.0
+                )
 
-                insights.append(ProjectInsight(
-                    title=f"Effective Decomposition Strategy",
-                    description=f"Strategy '{most_common}' succeeded in {success_count}/{len(execution_feedback)} tasks",
-                    extracted_at=datetime.now(),
-                    project_id=project_id,
-                    confidence=success_rate,
-                ))
+                insights.append(
+                    ProjectInsight(
+                        title="Effective Decomposition Strategy",
+                        description=f"Strategy '{most_common}' succeeded in {success_count}/{len(execution_feedback)} tasks",
+                        extracted_at=datetime.now(),
+                        project_id=project_id,
+                        confidence=success_rate,
+                    )
+                )
 
         # Insight 2: Phase duration accuracy
         phases = project_data.get("phases", [])
         if phases:
-            variances = [p.get("duration_variance_pct", 0) for p in phases if "duration_variance_pct" in p]
+            variances = [
+                p.get("duration_variance_pct", 0) for p in phases if "duration_variance_pct" in p
+            ]
             if variances:
                 avg_variance = sum(variances) / len(variances)
-                insights.append(ProjectInsight(
-                    title="Phase Duration Estimation Accuracy",
-                    description=f"Average variance: {avg_variance:.1f}% (planned vs actual)",
-                    extracted_at=datetime.now(),
-                    project_id=project_id,
-                    confidence=0.9,
-                ))
+                insights.append(
+                    ProjectInsight(
+                        title="Phase Duration Estimation Accuracy",
+                        description=f"Average variance: {avg_variance:.1f}% (planned vs actual)",
+                        extracted_at=datetime.now(),
+                        project_id=project_id,
+                        confidence=0.9,
+                    )
+                )
 
         # Insight 3: Quality patterns
-        quality_scores = [f.get("quality_score", 0) for f in execution_feedback if f.get("quality_score")]
+        quality_scores = [
+            f.get("quality_score", 0) for f in execution_feedback if f.get("quality_score")
+        ]
         if quality_scores:
             avg_quality = sum(quality_scores) / len(quality_scores)
-            insights.append(ProjectInsight(
-                title="Quality Baseline",
-                description=f"Average quality score: {avg_quality:.2f}/1.0 across {len(quality_scores)} tasks",
-                extracted_at=datetime.now(),
-                project_id=project_id,
-                confidence=0.85 if len(quality_scores) >= 5 else 0.6,
-            ))
+            insights.append(
+                ProjectInsight(
+                    title="Quality Baseline",
+                    description=f"Average quality score: {avg_quality:.2f}/1.0 across {len(quality_scores)} tasks",
+                    extracted_at=datetime.now(),
+                    project_id=project_id,
+                    confidence=0.85 if len(quality_scores) >= 5 else 0.6,
+                )
+            )
 
         # Insight 4: Blockers and risks
         blockers = [f.get("blockers", []) for f in execution_feedback if f.get("blockers")]
         if blockers:
             flattened_blockers = [b for blocker_list in blockers for b in blocker_list]
             if flattened_blockers:
-                insights.append(ProjectInsight(
-                    title="Common Blockers Identified",
-                    description=f"Encountered {len(flattened_blockers)} blocking issues across project",
-                    extracted_at=datetime.now(),
-                    project_id=project_id,
-                    confidence=0.8,
-                ))
+                insights.append(
+                    ProjectInsight(
+                        title="Common Blockers Identified",
+                        description=f"Encountered {len(flattened_blockers)} blocking issues across project",
+                        extracted_at=datetime.now(),
+                        project_id=project_id,
+                        confidence=0.8,
+                    )
+                )
 
         self._project_insights.extend(insights)
         return insights
@@ -153,8 +171,10 @@ class ProjectLearningEngine:
         typical_tasks = self._extract_typical_tasks(project_data_list)
 
         # Estimate average duration
-        durations = [p.get("actual_duration_days", p.get("estimated_duration_days", 0))
-                     for p in project_data_list]
+        durations = [
+            p.get("actual_duration_days", p.get("estimated_duration_days", 0))
+            for p in project_data_list
+        ]
         avg_duration = sum(durations) / len(durations) if durations else 0.0
 
         # Determine applicable project types
@@ -295,8 +315,7 @@ class ProjectLearningEngine:
         """
         # Filter templates by project type
         matching_templates = [
-            t for t in self._templates.values()
-            if project_type in t.applicable_project_types
+            t for t in self._templates.values() if project_type in t.applicable_project_types
         ]
 
         if not matching_templates:
@@ -373,7 +392,9 @@ class ProjectLearningEngine:
         # Keep only most common tasks per phase
         for phase_name in typical_tasks:
             all_tasks = typical_tasks[phase_name]
-            common_tasks = [t for t in set(all_tasks) if all_tasks.count(t) > len(project_data_list) / 2]
+            common_tasks = [
+                t for t in set(all_tasks) if all_tasks.count(t) > len(project_data_list) / 2
+            ]
             typical_tasks[phase_name] = common_tasks
 
         return typical_tasks

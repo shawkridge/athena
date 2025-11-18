@@ -7,12 +7,13 @@ from datetime import datetime
 
 from .store import ResearchStore
 from .models import ResearchFinding, AgentProgress, AgentStatus, ResearchStatus
+
 # Note: agents module now contains ResearchCoordinator and specialized agents
 # RESEARCH_AGENTS defined locally in this module
-from .aggregation import FindingAggregator, AggregatedFinding
+from .aggregation import FindingAggregator
 from .memory_integration import ResearchMemoryIntegrator
 from .cache import ResearchQueryCache
-from .rate_limit import RateLimiter, RateLimitError
+from .rate_limit import RateLimiter
 from .metrics import ResearchMetricsCollector
 from .circuit_breaker import CircuitBreakerManager
 from .consolidation import ResearchConsolidationStore
@@ -69,7 +70,9 @@ class ResearchAgentExecutor:
         self.memory_integrator = memory_integrator
 
         # Production hardening components
-        self.cache = ResearchQueryCache(default_ttl_seconds=cache_ttl_seconds) if enable_cache else None
+        self.cache = (
+            ResearchQueryCache(default_ttl_seconds=cache_ttl_seconds) if enable_cache else None
+        )
         self.rate_limiter = RateLimiter() if enable_rate_limiting else None
         self.metrics = ResearchMetricsCollector()
         self.circuit_breakers = CircuitBreakerManager()
@@ -80,10 +83,7 @@ class ResearchAgentExecutor:
         self.on_streaming_update: Optional[Callable[[StreamingUpdate], Any]] = None
 
     async def execute_research(
-        self,
-        task_id: int,
-        topic: str,
-        constraints: Optional[QueryRefinement] = None
+        self, task_id: int, topic: str, constraints: Optional[QueryRefinement] = None
     ) -> int:
         """Execute research for a topic with parallel agent coordination.
 
@@ -140,9 +140,7 @@ class ResearchAgentExecutor:
                 )
 
                 # Create async task for agent execution
-                task = self._execute_agent_with_timeout(
-                    task_id, topic, agent_info, constraints
-                )
+                task = self._execute_agent_with_timeout(task_id, topic, agent_info, constraints)
                 tasks.append(task)
 
             # Wait for all agents to complete (with timeout protection)
@@ -169,14 +167,15 @@ class ResearchAgentExecutor:
                     raw_findings.extend(result)
 
                     self.research_store.update_agent_progress(
-                        task_id, agent_name, AgentStatus.COMPLETED,
-                        findings_count=findings_count
+                        task_id, agent_name, AgentStatus.COMPLETED, findings_count=findings_count
                     )
 
                     logger.info(f"Agent {agent_name} completed: {findings_count} findings")
 
             # Phase 2: Deduplicate, cross-validate, and rank findings
-            logger.info(f"Aggregating {len(raw_findings)} raw findings for deduplication and cross-validation")
+            logger.info(
+                f"Aggregating {len(raw_findings)} raw findings for deduplication and cross-validation"
+            )
 
             # Convert ResearchFinding objects to dict format for aggregator
             findings_dict_list = [
@@ -193,8 +192,7 @@ class ResearchAgentExecutor:
 
             # Run aggregation pipeline (dedup → cross-validate → filter)
             aggregated_findings = self.aggregator.aggregate(
-                findings_dict_list,
-                high_confidence_only=False
+                findings_dict_list, high_confidence_only=False
             )
 
             logger.info(f"Aggregated to {len(aggregated_findings)} deduplicated findings")
@@ -222,15 +220,13 @@ class ResearchAgentExecutor:
                             tags=[
                                 f"research-task-{task_id}",
                                 f"topic-{topic.replace(' ', '-').lower()}",
-                            ]
+                            ],
                         )
 
                         # Build knowledge graph for finding
                         if memory_id:
                             self.memory_integrator.build_finding_graph(
-                                finding,
-                                task_id=task_id,
-                                project_id=project_id
+                                finding, task_id=task_id, project_id=project_id
                             )
                             entities_created += 1
 
@@ -260,14 +256,13 @@ class ResearchAgentExecutor:
 
             # Update task statistics with aggregated data
             self.research_store.increment_task_stats(
-                task_id,
-                findings=total_findings,
-                entities=entities_created,
-                relations=0
+                task_id, findings=total_findings, entities=entities_created, relations=0
             )
 
             # Mark task as completed (even if some agents failed)
-            final_status = ResearchStatus.COMPLETED if len(failed_agents) == 0 else ResearchStatus.COMPLETED
+            final_status = (
+                ResearchStatus.COMPLETED if len(failed_agents) == 0 else ResearchStatus.COMPLETED
+            )
             self.research_store.update_status(task_id, final_status)
 
             if self.on_status_updated:
@@ -320,7 +315,7 @@ class ResearchAgentExecutor:
         task_id: int,
         topic: str,
         agent_info: dict,
-        constraints: Optional[QueryRefinement] = None
+        constraints: Optional[QueryRefinement] = None,
     ) -> list[ResearchFinding]:
         """Execute single agent with timeout and circuit breaker protection.
 
@@ -358,7 +353,7 @@ class ResearchAgentExecutor:
                 self._simulate_agent_research(
                     task_id, topic, agent_name, source, credibility, constraints
                 ),
-                timeout=60.0
+                timeout=60.0,
             )
 
             # Record success in circuit breaker
@@ -369,7 +364,9 @@ class ResearchAgentExecutor:
         except asyncio.TimeoutError:
             # Record timeout as failure
             breaker.on_failure()
-            logger.warning(f"Agent {agent_name} timed out after 60 seconds - circuit breaker failure recorded")
+            logger.warning(
+                f"Agent {agent_name} timed out after 60 seconds - circuit breaker failure recorded"
+            )
             raise Exception(f"Agent {agent_name} timeout")
         except Exception as e:
             # Record failure in circuit breaker
@@ -436,7 +433,9 @@ class ResearchAgentExecutor:
                 # Add time constraint to query
                 if constraints.time_constraint:
                     search_query += f" {constraints.time_constraint}"
-                    logger.debug(f"Added time constraint to {agent_name}: {constraints.time_constraint}")
+                    logger.debug(
+                        f"Added time constraint to {agent_name}: {constraints.time_constraint}"
+                    )
 
                 # Get agent-specific directives if available
                 if agent_name in constraints.agent_directives:
@@ -447,7 +446,9 @@ class ResearchAgentExecutor:
 
             # Execute search asynchronously
             search_results = await agent.search(search_query)
-            agent_metrics.complete(success=True, items_output=len(search_results) if search_results else 0)
+            agent_metrics.complete(
+                success=True, items_output=len(search_results) if search_results else 0
+            )
 
             # Store findings to database, filtering by quality threshold
             quality_threshold = constraints.quality_threshold if constraints else 0.5
@@ -469,15 +470,17 @@ class ResearchAgentExecutor:
                     summary=result["summary"],
                     url=result.get("url"),
                 )
-                findings.append(ResearchFinding(
-                    id=finding_id,
-                    research_task_id=task_id,
-                    source=source,
-                    title=result["title"],
-                    summary=result["summary"],
-                    url=result.get("url"),
-                    credibility_score=result_quality,
-                ))
+                findings.append(
+                    ResearchFinding(
+                        id=finding_id,
+                        research_task_id=task_id,
+                        source=source,
+                        title=result["title"],
+                        summary=result["summary"],
+                        url=result.get("url"),
+                        credibility_score=result_quality,
+                    )
+                )
 
             logger.info(
                 f"Agent {agent_name} found {len(findings)} results for '{topic}' "
@@ -664,9 +667,7 @@ class ResearchAgentExecutor:
     # PHASE 3.4: REAL-TIME STREAMING
     # =========================================================================
 
-    def enable_streaming(
-        self, on_streaming_update: Callable[[StreamingUpdate], Any]
-    ) -> None:
+    def enable_streaming(self, on_streaming_update: Callable[[StreamingUpdate], Any]) -> None:
         """Enable real-time streaming of research results.
 
         Args:
@@ -688,9 +689,7 @@ class ResearchAgentExecutor:
         self.agent_monitor = LiveAgentMonitor()
         logger.info(f"Streaming initialized for task {task_id}")
 
-    async def add_finding_to_stream(
-        self, finding: ResearchFinding, agent_name: str
-    ) -> None:
+    async def add_finding_to_stream(self, finding: ResearchFinding, agent_name: str) -> None:
         """Add finding to streaming collector.
 
         Args:
@@ -701,9 +700,7 @@ class ResearchAgentExecutor:
             return
 
         # Add to streaming collector
-        update = await self.streaming_collector.add_finding_async(
-            finding, agent_name
-        )
+        update = await self.streaming_collector.add_finding_async(finding, agent_name)
 
         # Record discovery in agent monitor
         if self.agent_monitor:

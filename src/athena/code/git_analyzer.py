@@ -6,7 +6,7 @@ from typing import List, Optional, Dict
 
 from .git_context import GitContext
 from .enhanced_parser import EnhancedCodeParser
-from .models import CodeElement, CodeSearchResult
+from .models import CodeElement
 
 logger = logging.getLogger(__name__)
 
@@ -58,9 +58,7 @@ class GitAwareAnalyzer:
                     elements = self.parser.parse_file(filepath)
                     result[change.filepath] = elements
 
-                    logger.debug(
-                        f"Analyzed {change.filepath}: {len(elements)} elements"
-                    )
+                    logger.debug(f"Analyzed {change.filepath}: {len(elements)} elements")
                 except Exception as e:
                     logger.warning(f"Failed to parse {change.filepath}: {e}")
 
@@ -144,8 +142,8 @@ class GitAwareAnalyzer:
             lines = [
                 f"=== File: {filepath} ===",
                 f"Status: {diff.status}",
-                f"",
-                f"--- Diff ---",
+                "",
+                "--- Diff ---",
                 diff.diff_text,
                 "",
             ]
@@ -215,9 +213,7 @@ class GitAwareAnalyzer:
             logger.error(f"Failed to get change summary: {e}")
             raise
 
-    def get_changed_elements(
-        self, since: str = "HEAD~1"
-    ) -> List[CodeElement]:
+    def get_changed_elements(self, since: str = "HEAD~1") -> List[CodeElement]:
         """Get all CodeElements from changed files.
 
         Args:
@@ -240,9 +236,7 @@ class GitAwareAnalyzer:
             prioritized = self.get_prioritized_context(since, include_related=False)
             priority_map = {f: i for i, f in enumerate(prioritized)}
 
-            elements.sort(
-                key=lambda e: (priority_map.get(e.file_path, 9999), e.start_line)
-            )
+            elements.sort(key=lambda e: (priority_map.get(e.file_path, 9999), e.start_line))
 
             return elements
 
@@ -302,9 +296,7 @@ class GitAwareAnalyzer:
         """
         try:
             changes = self.git.get_changed_files(since)
-            target_change = next(
-                (c for c in changes if c.filepath == filepath), None
-            )
+            target_change = next((c for c in changes if c.filepath == filepath), None)
 
             if not target_change:
                 return 0.0

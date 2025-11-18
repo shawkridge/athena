@@ -10,12 +10,13 @@ Provides:
 """
 
 from typing import Dict, List, Optional
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 
 class VulnerabilityType(str, Enum):
     """Types of security vulnerabilities."""
+
     SQL_INJECTION = "sql_injection"
     XSS = "xss"
     INSECURE_DESERIALIZATION = "insecure_deserialization"
@@ -30,6 +31,7 @@ class VulnerabilityType(str, Enum):
 
 class SecurityRiskLevel(str, Enum):
     """Security risk severity levels."""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -39,6 +41,7 @@ class SecurityRiskLevel(str, Enum):
 
 class SecureCodePractice(str, Enum):
     """Secure coding practices."""
+
     INPUT_VALIDATION = "input_validation"
     OUTPUT_ENCODING = "output_encoding"
     AUTHENTICATION = "authentication"
@@ -52,6 +55,7 @@ class SecureCodePractice(str, Enum):
 @dataclass
 class SecurityVulnerability:
     """Identified security vulnerability."""
+
     symbol_name: str
     vulnerability_type: VulnerabilityType
     risk_level: SecurityRiskLevel
@@ -66,6 +70,7 @@ class SecurityVulnerability:
 @dataclass
 class SecureCodeIssue:
     """Issue with secure coding practices."""
+
     symbol_name: str
     practice: SecureCodePractice
     severity: str  # low, medium, high, critical
@@ -77,6 +82,7 @@ class SecureCodeIssue:
 @dataclass
 class SecurityMetric:
     """Security metric for a symbol."""
+
     metric_name: str
     value: float  # 0-1
     threshold: float  # 0-1
@@ -86,6 +92,7 @@ class SecurityMetric:
 @dataclass
 class SecurityProfile:
     """Complete security profile for a symbol."""
+
     symbol_name: str
     overall_security_score: float  # 0-100
     security_level: str  # critical, high, medium, low, secure
@@ -133,17 +140,13 @@ class SecurityAnalyzer:
         owasp_a3 = self._calculate_owasp_a3(vulnerabilities, symbol_data)
 
         # Calculate overall security score
-        overall_score = self._calculate_security_score(
-            vulnerabilities, practice_issues, metrics
-        )
+        overall_score = self._calculate_security_score(vulnerabilities, practice_issues, metrics)
 
         # Determine security level
         security_level = self._determine_security_level(overall_score)
 
         # Generate recommendations
-        recommendations = self._generate_recommendations(
-            vulnerabilities, practice_issues
-        )
+        recommendations = self._generate_recommendations(vulnerabilities, practice_issues)
 
         profile = SecurityProfile(
             symbol_name=symbol_name,
@@ -281,10 +284,10 @@ class SecurityAnalyzer:
     def _check_sql_injection(self, code: str) -> bool:
         """Check for SQL injection vulnerability patterns."""
         injection_patterns = [
-            "select" in code and ("+" in code or "f\"" in code),
-            "insert" in code and ("+" in code or "f\"" in code),
-            "update" in code and ("+" in code or "f\"" in code),
-            "delete" in code and ("+" in code or "f\"" in code),
+            "select" in code and ("+" in code or 'f"' in code),
+            "insert" in code and ("+" in code or 'f"' in code),
+            "update" in code and ("+" in code or 'f"' in code),
+            "delete" in code and ("+" in code or 'f"' in code),
             "query(" in code and ("+" in code or "format(" in code),
         ]
         return any(injection_patterns)
@@ -333,9 +336,7 @@ class SecurityAnalyzer:
 
         return False
 
-    def _check_secure_practices(
-        self, symbol_name: str, symbol_data: Dict
-    ) -> List[SecureCodeIssue]:
+    def _check_secure_practices(self, symbol_name: str, symbol_data: Dict) -> List[SecureCodeIssue]:
         """Check secure coding practices."""
         issues = []
         code = symbol_data.get("code", "").lower()
@@ -417,7 +418,8 @@ class SecurityAnalyzer:
         score = 100.0
 
         access_control_vulns = [
-            v for v in vulnerabilities
+            v
+            for v in vulnerabilities
             if v.vulnerability_type == VulnerabilityType.BROKEN_ACCESS_CONTROL
         ]
 
@@ -437,7 +439,8 @@ class SecurityAnalyzer:
         score = 100.0
 
         crypto_vulns = [
-            v for v in vulnerabilities
+            v
+            for v in vulnerabilities
             if v.vulnerability_type == VulnerabilityType.CRYPTOGRAPHIC_FAILURE
         ]
 
@@ -458,7 +461,8 @@ class SecurityAnalyzer:
         score = 100.0
 
         injection_vulns = [
-            v for v in vulnerabilities
+            v
+            for v in vulnerabilities
             if v.vulnerability_type in [VulnerabilityType.SQL_INJECTION, VulnerabilityType.XSS]
         ]
 
@@ -556,7 +560,11 @@ class SecurityAnalyzer:
             "Input_Validation": profile.metrics.get("input_validation", None)
             and profile.metrics["input_validation"].status == "compliant",
             "Error_Handling": len(
-                [i for i in profile.practice_issues if i.practice == SecureCodePractice.ERROR_HANDLING]
+                [
+                    i
+                    for i in profile.practice_issues
+                    if i.practice == SecureCodePractice.ERROR_HANDLING
+                ]
             )
             == 0,
             "Logging": profile.metrics.get("logging", None)
@@ -577,9 +585,7 @@ class SecurityAnalyzer:
             }
 
         scores = [p.overall_security_score for p in self.profiles.values()]
-        critical_count = len(
-            [p for p in self.profiles.values() if p.security_level == "critical"]
-        )
+        critical_count = len([p for p in self.profiles.values() if p.security_level == "critical"])
         vulnerable_count = len(self.detected_vulnerabilities)
 
         return {
@@ -593,7 +599,5 @@ class SecurityAnalyzer:
             },
             "critical_count": critical_count,
             "vulnerable_count": vulnerable_count,
-            "total_vulnerabilities": sum(
-                len(v) for v in self.detected_vulnerabilities.values()
-            ),
+            "total_vulnerabilities": sum(len(v) for v in self.detected_vulnerabilities.values()),
         }

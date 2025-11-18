@@ -157,9 +157,7 @@ class LightweightPlanner:
         self.task_library[task.task_id] = task
         logger.debug(f"Registered task: {task.task_id}")
 
-    def estimate_resource_usage(
-        self, task: LightweightTask
-    ) -> ResourceEstimate:
+    def estimate_resource_usage(self, task: LightweightTask) -> ResourceEstimate:
         """Estimate resources needed for task.
 
         Args:
@@ -354,9 +352,7 @@ class LightweightPlanner:
         # Check token budget
         if self.constraints.max_total_tokens:
             if plan.total_estimated_tokens > self.constraints.max_total_tokens:
-                pct_over = (
-                    plan.total_estimated_tokens / self.constraints.max_total_tokens - 1
-                )
+                pct_over = plan.total_estimated_tokens / self.constraints.max_total_tokens - 1
                 suggestions.append(
                     f"Plan exceeds token budget by {pct_over:.0%}. "
                     f"Consider reducing task scope or using inference mode."
@@ -365,9 +361,7 @@ class LightweightPlanner:
         # Check latency budget
         if self.constraints.max_latency_ms:
             if plan.total_estimated_latency_ms > self.constraints.max_latency_ms:
-                pct_over = (
-                    plan.total_estimated_latency_ms / self.constraints.max_latency_ms - 1
-                )
+                pct_over = plan.total_estimated_latency_ms / self.constraints.max_latency_ms - 1
                 suggestions.append(
                     f"Plan exceeds latency budget by {pct_over:.0%}. "
                     f"Consider using parallel execution or streaming results."
@@ -431,9 +425,7 @@ class LightweightPlanner:
 
         # Check constraints
         if self.constraints.max_total_tokens:
-            usage_pct = (
-                plan.total_estimated_tokens / self.constraints.max_total_tokens * 100
-            )
+            usage_pct = plan.total_estimated_tokens / self.constraints.max_total_tokens * 100
             status = "✓" if usage_pct <= 100 else "✗"
             lines.append(
                 f"{status} Tokens: {plan.total_estimated_tokens:,} "
@@ -441,9 +433,7 @@ class LightweightPlanner:
             )
 
         if self.constraints.max_latency_ms:
-            usage_pct = (
-                plan.total_estimated_latency_ms / self.constraints.max_latency_ms * 100
-            )
+            usage_pct = plan.total_estimated_latency_ms / self.constraints.max_latency_ms * 100
             status = "✓" if usage_pct <= 100 else "✗"
             lines.append(
                 f"{status} Latency: {plan.total_estimated_latency_ms:.0f}ms "

@@ -216,8 +216,7 @@ class ValidationLearningEngine:
         ranked = self.rank_rules_by_effectiveness()
 
         high_value = [
-            r for r in ranked
-            if r.effectiveness >= effectiveness_threshold and r.confidence > 0.6
+            r for r in ranked if r.effectiveness >= effectiveness_threshold and r.confidence > 0.6
         ]
 
         return high_value
@@ -260,10 +259,7 @@ class ValidationLearningEngine:
                     complementary[other_exec.rule_id] += 1.0
 
         # Normalize scores
-        result = [
-            (rule_id, score / len(missed_issues))
-            for rule_id, score in complementary.items()
-        ]
+        result = [(rule_id, score / len(missed_issues)) for rule_id, score in complementary.items()]
 
         result.sort(key=lambda x: x[1], reverse=True)
         return result
@@ -285,8 +281,7 @@ class ValidationLearningEngine:
 
         metrics = self.rank_rules_by_effectiveness()
         high_precision_rules = [
-            r.rule_id for r in metrics
-            if r.precision > 0.9 and r.rule_id != rule_id
+            r.rule_id for r in metrics if r.precision > 0.9 and r.rule_id != rule_id
         ]
 
         return high_precision_rules[:3]  # Top 3
@@ -352,7 +347,8 @@ class ValidationLearningEngine:
 
         # Filter to high-effectiveness rules with high confidence
         recommended = [
-            r.rule_id for r in ranked
+            r.rule_id
+            for r in ranked
             if r.effectiveness > 0.6 and r.confidence > 0.5 and r.total_executions > 3
         ]
 

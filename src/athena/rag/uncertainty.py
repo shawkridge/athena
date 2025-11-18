@@ -11,7 +11,7 @@ Provides:
 """
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
@@ -102,9 +102,7 @@ class UncertaintyConfig:
             + self.recency_weight
         )
         if not (0.99 <= weights_sum <= 1.01):
-            raise ValueError(
-                f"Component weights must sum to 1.0, got {weights_sum}"
-            )
+            raise ValueError(f"Component weights must sum to 1.0, got {weights_sum}")
 
 
 class UncertaintyCalibrator:
@@ -146,9 +144,7 @@ class UncertaintyCalibrator:
         relevance_score = self._compute_relevance(results)
         coverage_score = self._compute_coverage(results, len(query.split()))
         consistency_score = (
-            self._compute_consistency(results)
-            if self.config.check_consistency
-            else 1.0
+            self._compute_consistency(results) if self.config.check_consistency else 1.0
         )
         recency_score = self._compute_recency(results)
 
@@ -221,10 +217,7 @@ class UncertaintyCalibrator:
 
         # Check minimum result count
         if len(results) < self.config.min_result_count:
-            penalty = (
-                1.0
-                - (len(results) / self.config.min_result_count)
-            ) * 0.3  # 30% penalty
+            penalty = (1.0 - (len(results) / self.config.min_result_count)) * 0.3  # 30% penalty
         else:
             penalty = 0.0
 
@@ -255,16 +248,11 @@ class UncertaintyCalibrator:
         result_count_score = min(len(results) / 5.0, 1.0)  # 5+ results = good coverage
 
         # Diversity check: are results from different sources/types?
-        unique_event_types = len(
-            set(
-                getattr(r, "event_type", "unknown")
-                for r in results
-            )
-        )
+        unique_event_types = len(set(getattr(r, "event_type", "unknown") for r in results))
         diversity_score = min(unique_event_types / 3.0, 1.0)  # 3+ types = good diversity
 
         # Combined coverage score
-        return (result_count_score * 0.6 + diversity_score * 0.4)
+        return result_count_score * 0.6 + diversity_score * 0.4
 
     def _compute_consistency(self, results: list[MemorySearchResult]) -> float:
         """Compute consistency score (agreement between results).
@@ -286,8 +274,7 @@ class UncertaintyCalibrator:
         # Bad consistency if they vary wildly
         if len(similarities) > 1:
             variance = sum(
-                (s - sum(similarities) / len(similarities)) ** 2
-                for s in similarities
+                (s - sum(similarities) / len(similarities)) ** 2 for s in similarities
             ) / len(similarities)
             # Lower variance = higher consistency
             # Normalize: variance of 0-0.5 maps to 1.0-0.0
@@ -402,9 +389,7 @@ class UncertaintyCalibrator:
         elif confidence_level == ConfidenceLevel.MEDIUM:
             return f"Medium confidence ({confidence_pct}%). Answer with some caveats. {details}"
         elif confidence_level == ConfidenceLevel.LOW:
-            return (
-                f"Low confidence ({confidence_pct}%). Answer with significant uncertainty. {details}"
-            )
+            return f"Low confidence ({confidence_pct}%). Answer with significant uncertainty. {details}"
         else:
             return f"Unclear confidence ({confidence_pct}%). {details}"
 

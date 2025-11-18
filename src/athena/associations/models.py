@@ -8,6 +8,7 @@ from typing import Optional
 
 class LinkType(str, Enum):
     """Type of associative link."""
+
     SEMANTIC = "semantic"  # Meaning-based association
     TEMPORAL = "temporal"  # Time-based co-occurrence
     CAUSAL = "causal"  # Cause-effect relationship
@@ -17,6 +18,7 @@ class LinkType(str, Enum):
 @dataclass
 class AssociationLink:
     """Link between two memories in the association network."""
+
     id: int
     project_id: int
     from_memory_id: int
@@ -33,6 +35,7 @@ class AssociationLink:
 @dataclass
 class ActivatedNode:
     """Node with current activation level."""
+
     memory_id: int
     memory_layer: str
     activation_level: float
@@ -43,6 +46,7 @@ class ActivatedNode:
 @dataclass
 class PrimedMemory:
     """Memory with temporal priming boost."""
+
     memory_id: int
     memory_layer: str
     priming_strength: float
@@ -53,7 +57,8 @@ class PrimedMemory:
 @dataclass
 class NetworkNode:
     """Node in the association network with metadata."""
+
     memory_id: int
     layer: str
-    neighbors: list['AssociationLink']
+    neighbors: list["AssociationLink"]
     activation: float = 0.0

@@ -8,11 +8,11 @@ Provides:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional, Literal
 
 from ..core.database import Database
-from .models import ProspectiveTask, TaskPhase, TaskStatus, TaskPriority
+from .models import ProspectiveTask, TaskPhase, TaskStatus
 from .store import ProspectiveStore
 
 logger = logging.getLogger(__name__)
@@ -135,16 +135,15 @@ class TaskMonitor:
         in_progress = sum(
             1
             for t in tasks
-            if t.status == TaskStatus.PENDING or t.phase in [TaskPhase.PLANNING, TaskPhase.EXECUTING]
+            if t.status == TaskStatus.PENDING
+            or t.phase in [TaskPhase.PLANNING, TaskPhase.EXECUTING]
         )
         blocked = sum(1 for t in tasks if t.blocked_reason)
 
         # Phase breakdown
         phase_breakdown = {}
         for task in tasks:
-            phase_name = (
-                task.phase.value if hasattr(task.phase, "value") else str(task.phase)
-            )
+            phase_name = task.phase.value if hasattr(task.phase, "value") else str(task.phase)
             phase_breakdown[phase_name] = phase_breakdown.get(phase_name, 0) + 1
 
         # Priority breakdown
@@ -164,9 +163,7 @@ class TaskMonitor:
                 health_statuses[health.health_status] += 1
                 total_health_score += health.health_score
 
-        avg_health = (
-            total_health_score / len(tasks) if len(tasks) > 0 else 0
-        )
+        avg_health = total_health_score / len(tasks) if len(tasks) > 0 else 0
 
         return {
             "project_id": project_id,
@@ -206,7 +203,9 @@ class TaskMonitor:
                     {
                         "task_id": task.id,
                         "content": task.content,
-                        "phase": task.phase.value if hasattr(task.phase, "value") else str(task.phase),
+                        "phase": (
+                            task.phase.value if hasattr(task.phase, "value") else str(task.phase)
+                        ),
                         "progress": self._calculate_progress(task),
                         **health.to_dict(),
                     }
@@ -260,7 +259,7 @@ class TaskMonitor:
         try:
             cursor = self.db.get_cursor()
             cursor.execute(
-                f"""
+                """
                 SELECT COUNT(*) as count
                 FROM episodic_events
                 WHERE context_task LIKE ? AND event_type = ?
@@ -301,9 +300,7 @@ class TaskMonitor:
 
         return max(0.0, min(1.0, score))
 
-    def _determine_health_status(
-        self, health_score: float, errors: int, blockers: int
-    ) -> str:
+    def _determine_health_status(self, health_score: float, errors: int, blockers: int) -> str:
         """Determine health status from metrics."""
         if blockers > 0 or errors >= 5:
             return TaskHealth.CRITICAL

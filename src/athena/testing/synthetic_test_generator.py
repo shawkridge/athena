@@ -1,12 +1,10 @@
 """Generate synthetic test inputs for dream procedures."""
 
 import ast
-import inspect
 import logging
-from typing import Any, Dict, List, Tuple, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 from dataclasses import dataclass
 import random
-import string
 
 logger = logging.getLogger(__name__)
 

@@ -8,13 +8,10 @@ Tests cover:
 """
 
 import pytest
-import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import Mock, AsyncMock, patch
+from datetime import datetime
 
-from athena.learning.tracker import LearningTracker, LearningOutcome
+from athena.learning.tracker import LearningTracker
 from athena.orchestration.adaptive_agent import AdaptiveAgent
-from athena.core.database import Database
 
 
 class MockDatabase:
@@ -38,15 +35,15 @@ class MockDatabase:
             outcome_id = len(self.data) + 1
             if params:
                 self.data[outcome_id] = {
-                    'id': outcome_id,
-                    'agent_name': params[0],
-                    'decision': params[1],
-                    'outcome': params[2],
-                    'success_rate': params[3],
-                    'execution_time_ms': params[4],
-                    'context': params[5] if len(params) > 5 else {},
-                    'session_id': params[6] if len(params) > 6 else None,
-                    'timestamp': datetime.now()
+                    "id": outcome_id,
+                    "agent_name": params[0],
+                    "decision": params[1],
+                    "outcome": params[2],
+                    "success_rate": params[3],
+                    "execution_time_ms": params[4],
+                    "context": params[5] if len(params) > 5 else {},
+                    "session_id": params[6] if len(params) > 6 else None,
+                    "timestamp": datetime.now(),
                 }
             # Return ID as list of list (mimics psycopg2)
             return [(outcome_id,)]
@@ -55,7 +52,7 @@ class MockDatabase:
         if "SELECT AVG(success_rate)" in sql:
             outcomes = [v for v in self.data.values()]
             if outcomes:
-                avg_rate = sum(o['success_rate'] for o in outcomes) / len(outcomes)
+                avg_rate = sum(o["success_rate"] for o in outcomes) / len(outcomes)
                 return [[avg_rate, len(outcomes)]]
             return [[None, 0]]
 
@@ -64,15 +61,15 @@ class MockDatabase:
             outcomes = [v for v in self.data.values()]
             return [
                 (
-                    o['id'],
-                    o['agent_name'],
-                    o['decision'],
-                    o['outcome'],
-                    o['success_rate'],
-                    o['execution_time_ms'],
-                    o['context'],
-                    o['timestamp'],
-                    o['session_id']
+                    o["id"],
+                    o["agent_name"],
+                    o["decision"],
+                    o["outcome"],
+                    o["success_rate"],
+                    o["execution_time_ms"],
+                    o["context"],
+                    o["timestamp"],
+                    o["session_id"],
                 )
                 for o in outcomes
             ]
@@ -82,12 +79,12 @@ class MockDatabase:
             outcomes = [v for v in self.data.values()]
             if outcomes:
                 total = len(outcomes)
-                avg_rate = sum(o['success_rate'] for o in outcomes) / len(outcomes)
-                min_rate = min(o['success_rate'] for o in outcomes)
-                max_rate = max(o['success_rate'] for o in outcomes)
-                avg_time = sum(o['execution_time_ms'] for o in outcomes) / len(outcomes)
-                successes = len([o for o in outcomes if o['outcome'] == 'success'])
-                failures = len([o for o in outcomes if o['outcome'] == 'failure'])
+                avg_rate = sum(o["success_rate"] for o in outcomes) / len(outcomes)
+                min_rate = min(o["success_rate"] for o in outcomes)
+                max_rate = max(o["success_rate"] for o in outcomes)
+                avg_time = sum(o["execution_time_ms"] for o in outcomes) / len(outcomes)
+                successes = len([o for o in outcomes if o["outcome"] == "success"])
+                failures = len([o for o in outcomes if o["outcome"] == "failure"])
                 return [(total, avg_rate, min_rate, max_rate, avg_time, successes, failures)]
             return [(0, None, None, None, None, 0, 0)]
 
@@ -118,7 +115,7 @@ class TestLearningTracker:
             outcome="success",
             success_rate=0.9,
             execution_time_ms=150.0,
-            context={"file": "test.py"}
+            context={"file": "test.py"},
         )
 
         assert outcome_id > 0
@@ -131,7 +128,7 @@ class TestLearningTracker:
                 agent_name="test-agent",
                 decision="strategy_a",
                 outcome="unknown_outcome",  # Invalid
-                success_rate=0.9
+                success_rate=0.9,
             )
 
     async def test_track_outcome_invalid_success_rate(self, learning_tracker):
@@ -141,7 +138,7 @@ class TestLearningTracker:
                 agent_name="test-agent",
                 decision="strategy_a",
                 outcome="success",
-                success_rate=1.5  # Out of range
+                success_rate=1.5,  # Out of range
             )
 
     async def test_track_outcome_with_session_id(self, learning_tracker, mock_db):
@@ -151,7 +148,7 @@ class TestLearningTracker:
             decision="strategy_a",
             outcome="success",
             success_rate=0.8,
-            session_id="session-123"
+            session_id="session-123",
         )
 
         assert outcome_id > 0
@@ -165,22 +162,13 @@ class TestLearningTracker:
         """Test getting success rate with tracked outcomes."""
         # Track multiple outcomes
         await learning_tracker.track_outcome(
-            agent_name="test-agent",
-            decision="strategy_a",
-            outcome="success",
-            success_rate=0.9
+            agent_name="test-agent", decision="strategy_a", outcome="success", success_rate=0.9
         )
         await learning_tracker.track_outcome(
-            agent_name="test-agent",
-            decision="strategy_a",
-            outcome="success",
-            success_rate=0.8
+            agent_name="test-agent", decision="strategy_a", outcome="success", success_rate=0.8
         )
         await learning_tracker.track_outcome(
-            agent_name="test-agent",
-            decision="strategy_a",
-            outcome="failure",
-            success_rate=0.2
+            agent_name="test-agent", decision="strategy_a", outcome="failure", success_rate=0.2
         )
 
         # Mock return average
@@ -191,16 +179,10 @@ class TestLearningTracker:
     async def test_get_success_rate_by_decision(self, learning_tracker, mock_db):
         """Test filtering success rate by specific decision."""
         await learning_tracker.track_outcome(
-            agent_name="test-agent",
-            decision="deep_analysis",
-            outcome="success",
-            success_rate=0.95
+            agent_name="test-agent", decision="deep_analysis", outcome="success", success_rate=0.95
         )
         await learning_tracker.track_outcome(
-            agent_name="test-agent",
-            decision="quick_analysis",
-            outcome="failure",
-            success_rate=0.3
+            agent_name="test-agent", decision="quick_analysis", outcome="failure", success_rate=0.3
         )
 
         # Mock implementation - just verify it doesn't crash
@@ -210,10 +192,7 @@ class TestLearningTracker:
     async def test_get_decision_history(self, learning_tracker, mock_db):
         """Test retrieving decision history."""
         await learning_tracker.track_outcome(
-            agent_name="test-agent",
-            decision="strategy_a",
-            outcome="success",
-            success_rate=0.9
+            agent_name="test-agent", decision="strategy_a", outcome="success", success_rate=0.9
         )
 
         history = learning_tracker.get_decision_history("test-agent", limit=10)
@@ -224,33 +203,24 @@ class TestLearningTracker:
     async def test_get_statistics(self, learning_tracker, mock_db):
         """Test getting comprehensive statistics."""
         await learning_tracker.track_outcome(
-            agent_name="test-agent",
-            decision="strategy_a",
-            outcome="success",
-            success_rate=0.9
+            agent_name="test-agent", decision="strategy_a", outcome="success", success_rate=0.9
         )
 
         stats = learning_tracker.get_statistics("test-agent")
 
         # Verify stats structure
         assert isinstance(stats, dict)
-        assert 'agent_name' in stats
-        assert 'total_decisions' in stats
-        assert 'success_rate' in stats
+        assert "agent_name" in stats
+        assert "total_decisions" in stats
+        assert "success_rate" in stats
 
     async def test_track_multiple_agents(self, learning_tracker, mock_db):
         """Test tracking outcomes for multiple agents."""
         await learning_tracker.track_outcome(
-            agent_name="agent-1",
-            decision="strategy_a",
-            outcome="success",
-            success_rate=0.9
+            agent_name="agent-1", decision="strategy_a", outcome="success", success_rate=0.9
         )
         await learning_tracker.track_outcome(
-            agent_name="agent-2",
-            decision="strategy_b",
-            outcome="success",
-            success_rate=0.8
+            agent_name="agent-2", decision="strategy_b", outcome="success", success_rate=0.8
         )
 
         # Both should be tracked
@@ -304,7 +274,7 @@ class TestAdaptiveAgent:
         assert "result" in result
         assert "success_rate" in result
         assert "outcome" in result
-        assert 0.0 <= result['success_rate'] <= 1.0
+        assert 0.0 <= result["success_rate"] <= 1.0
 
     async def test_run_records_decision_history(self, agent):
         """Test that run() updates decision history."""
@@ -317,9 +287,7 @@ class TestAdaptiveAgent:
     async def test_evaluate_outcome_success(self, agent):
         """Test evaluation of successful outcomes."""
         success_rate, outcome = await agent._evaluate_outcome(
-            result={"data": [1, 2, 3]},
-            decision="test",
-            context={}
+            result={"data": [1, 2, 3]}, decision="test", context={}
         )
 
         assert outcome == "success"
@@ -328,9 +296,7 @@ class TestAdaptiveAgent:
     async def test_evaluate_outcome_failure(self, agent):
         """Test evaluation of failed outcomes."""
         success_rate, outcome = await agent._evaluate_outcome(
-            result=None,
-            decision="test",
-            context={}
+            result=None, decision="test", context={}
         )
 
         assert outcome == "failure"
@@ -339,9 +305,7 @@ class TestAdaptiveAgent:
     async def test_evaluate_outcome_partial(self, agent):
         """Test evaluation of partial outcomes."""
         success_rate, outcome = await agent._evaluate_outcome(
-            result={"partial": True},
-            decision="test",
-            context={}
+            result={"partial": True}, decision="test", context={}
         )
 
         assert outcome == "partial"
@@ -354,13 +318,14 @@ class TestAdaptiveAgent:
         stats = await agent.get_performance_stats()
 
         assert isinstance(stats, dict)
-        assert 'agent_name' in stats
-        assert 'total_decisions' in stats
-        assert 'success_rate' in stats
-        assert 'recent_decisions' in stats
+        assert "agent_name" in stats
+        assert "total_decisions" in stats
+        assert "success_rate" in stats
+        assert "recent_decisions" in stats
 
     async def test_error_handling_in_run(self, agent):
         """Test that run() handles errors gracefully."""
+
         class FailingAgent(self.ConcreteAdaptiveAgent):
             async def execute(self, decision: str, context: dict):
                 raise RuntimeError("Execution failed")
@@ -373,10 +338,7 @@ class TestAdaptiveAgent:
     async def test_learn_from_outcome_custom(self, agent, mock_db):
         """Test custom learning implementation."""
         await agent.learn_from_outcome(
-            decision="strategy_a",
-            outcome="success",
-            success_rate=0.95,
-            context={"type": "test"}
+            decision="strategy_a", outcome="success", success_rate=0.95, context={"type": "test"}
         )
 
         # Verify outcome was tracked
@@ -395,9 +357,9 @@ class TestCodeAnalyzerAdaptive:
         analyzer = CodeAnalyzerAgent(db=None)
 
         # Should have adaptive methods
-        assert hasattr(analyzer, 'decide')
-        assert hasattr(analyzer, 'execute')
-        assert hasattr(analyzer, '_evaluate_outcome')
+        assert hasattr(analyzer, "decide")
+        assert hasattr(analyzer, "execute")
+        assert hasattr(analyzer, "_evaluate_outcome")
 
     async def test_code_analyzer_decide(self):
         """Test CodeAnalyzer decision logic."""
@@ -416,8 +378,7 @@ class TestCodeAnalyzerAdaptive:
         analyzer = CodeAnalyzerAgent(db=None)
 
         result = await analyzer.execute(
-            "deep_analysis",
-            {"code": "def foo(): pass", "language": "python"}
+            "deep_analysis", {"code": "def foo(): pass", "language": "python"}
         )
 
         assert isinstance(result, dict)
@@ -431,9 +392,7 @@ class TestCodeAnalyzerAdaptive:
 
         # With issues found
         success_rate, outcome = await analyzer._evaluate_outcome(
-            result={"issues": [{"severity": "high"}]},
-            decision="deep_analysis",
-            context={}
+            result={"issues": [{"severity": "high"}]}, decision="deep_analysis", context={}
         )
 
         assert outcome == "success"
@@ -455,12 +414,12 @@ class TestIntegration:
                 decision="deep_analysis" if i < 3 else "quick_analysis",
                 outcome="success",
                 success_rate=0.9 if i < 3 else 0.7,
-                context={"iteration": i}
+                context={"iteration": i},
             )
 
         # Check learning happened
         stats = tracker.get_statistics("analyzer")
-        assert stats['total_decisions'] > 0
+        assert stats["total_decisions"] > 0
 
     async def test_multiple_strategies_learning(self, mock_db):
         """Test learning across multiple strategies."""
@@ -470,14 +429,11 @@ class TestIntegration:
         for strategy in ["strategy_a", "strategy_b", "strategy_c"]:
             for _ in range(3):
                 await tracker.track_outcome(
-                    agent_name="agent",
-                    decision=strategy,
-                    outcome="success",
-                    success_rate=0.8
+                    agent_name="agent", decision=strategy, outcome="success", success_rate=0.8
                 )
 
         stats = tracker.get_statistics("agent")
-        assert stats['total_decisions'] >= 9
+        assert stats["total_decisions"] >= 9
 
     async def test_failure_tracking(self, mock_db):
         """Test tracking of failures for learning."""
@@ -485,28 +441,23 @@ class TestIntegration:
 
         # Track both successes and failures
         await tracker.track_outcome(
-            agent_name="agent",
-            decision="risky_strategy",
-            outcome="failure",
-            success_rate=0.0
+            agent_name="agent", decision="risky_strategy", outcome="failure", success_rate=0.0
         )
 
         await tracker.track_outcome(
-            agent_name="agent",
-            decision="safe_strategy",
-            outcome="success",
-            success_rate=0.95
+            agent_name="agent", decision="safe_strategy", outcome="success", success_rate=0.95
         )
 
         # Agent should learn to avoid risky_strategy
         stats = tracker.get_statistics("agent")
-        assert stats['failures'] >= 1
+        assert stats["failures"] >= 1
 
 
 # Run async tests
 @pytest.mark.asyncio
 class TestLearningTrackerAsync:
     """Async versions of tracker tests."""
+
     pass
 
 

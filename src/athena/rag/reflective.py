@@ -145,9 +145,7 @@ class ReflectiveRAG:
 
         return final_results
 
-    def _critique_results(
-        self, original_query: str, results: list[MemorySearchResult]
-    ) -> dict:
+    def _critique_results(self, original_query: str, results: list[MemorySearchResult]) -> dict:
         """LLM critiques retrieval results.
 
         Args:
@@ -292,9 +290,7 @@ Refined query:"""
             logger.error(f"Query refinement failed: {e}")
             return original_query
 
-    def _deduplicate(
-        self, results: list[MemorySearchResult]
-    ) -> list[MemorySearchResult]:
+    def _deduplicate(self, results: list[MemorySearchResult]) -> list[MemorySearchResult]:
         """Remove duplicate memories from results.
 
         Args:

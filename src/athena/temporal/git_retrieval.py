@@ -24,9 +24,7 @@ class GitTemporalRetrieval:
         self.db = db
         self.store = GitStore(db)
 
-    def when_was_introduced(
-        self, regression_commit: str
-    ) -> Optional[dict]:
+    def when_was_introduced(self, regression_commit: str) -> Optional[dict]:
         """Find when a specific regression was introduced.
 
         Returns commit metadata including timestamp, author, message, and files changed.
@@ -47,9 +45,7 @@ class GitTemporalRetrieval:
             "deletions": commit["deletions"],
         }
 
-    def who_introduced_regression(
-        self, regression_commit: str
-    ) -> Optional[dict]:
+    def who_introduced_regression(self, regression_commit: str) -> Optional[dict]:
         """Find who introduced a regression.
 
         Returns author information and their metrics.
@@ -147,16 +143,12 @@ class GitTemporalRetrieval:
             "total_changes": total_changes,
         }
 
-    def trace_regression_timeline(
-        self, regression_commit: str
-    ) -> dict:
+    def trace_regression_timeline(self, regression_commit: str) -> dict:
         """Create a complete timeline of a regression from introduction to fix.
 
         Shows: when introduced, discovered, fixed, and related commits.
         """
-        regressions = self.store.get_regressions_by_commit(
-            regression_commit
-        )
+        regressions = self.store.get_regressions_by_commit(regression_commit)
 
         if not regressions:
             return {
@@ -169,35 +161,25 @@ class GitTemporalRetrieval:
         for reg in regressions:
             intro = self.store.get_commit(regression_commit)
             discovered = self.store.get_commit(reg["discovered_commit"])
-            fix = (
-                self.store.get_commit(reg["fix_commit"])
-                if reg["fix_commit"]
-                else None
-            )
+            fix = self.store.get_commit(reg["fix_commit"]) if reg["fix_commit"] else None
 
             timeline.append(
                 {
                     "type": reg["type"],
                     "description": reg["description"],
                     "introduced": intro["committed_timestamp"] if intro else None,
-                    "discovered": discovered["committed_timestamp"]
-                    if discovered
-                    else None,
+                    "discovered": discovered["committed_timestamp"] if discovered else None,
                     "fixed": fix["committed_timestamp"] if fix else None,
                     "time_to_discovery_hours": (
                         (
-                            discovered["committed_timestamp"]
-                            - intro["committed_timestamp"]
+                            discovered["committed_timestamp"] - intro["committed_timestamp"]
                         ).total_seconds()
                         / 3600
                         if discovered and intro
                         else None
                     ),
                     "time_to_fix_hours": (
-                        (
-                            fix["committed_timestamp"]
-                            - intro["committed_timestamp"]
-                        ).total_seconds()
+                        (fix["committed_timestamp"] - intro["committed_timestamp"]).total_seconds()
                         / 3600
                         if fix and intro
                         else None
@@ -213,9 +195,7 @@ class GitTemporalRetrieval:
             "timeline": timeline,
         }
 
-    def find_high_risk_commits(
-        self, limit: int = 20
-    ) -> list[dict]:
+    def find_high_risk_commits(self, limit: int = 20) -> list[dict]:
         """Find commits that introduced the most/highest-impact regressions.
 
         Ranked by impact estimate and number of regressions.
@@ -269,9 +249,7 @@ class GitTemporalRetrieval:
 
         # Filter regressions introduced by this author
         author_regressions = [
-            r
-            for r in regressions
-            if self._commit_author(r["introducing_commit"]) == author
+            r for r in regressions if self._commit_author(r["introducing_commit"]) == author
         ]
 
         metrics = self.store.get_author_metrics(author)
@@ -280,14 +258,9 @@ class GitTemporalRetrieval:
             "author": author,
             "total_commits": len(commits),
             "regressions_introduced": len(author_regressions),
-            "regression_rate": (
-                len(author_regressions) / len(commits)
-                if commits
-                else 0.0
-            ),
+            "regression_rate": (len(author_regressions) / len(commits) if commits else 0.0),
             "avg_impact": (
-                sum(r["impact_estimate"] for r in author_regressions)
-                / len(author_regressions)
+                sum(r["impact_estimate"] for r in author_regressions) / len(author_regressions)
                 if author_regressions
                 else 0.0
             ),
@@ -305,9 +278,7 @@ class GitTemporalRetrieval:
         relations = self.store.get_temporal_relations_from(commit_hash)
 
         if relation_type:
-            relations = [
-                r for r in relations if r["relation_type"] == relation_type
-            ]
+            relations = [r for r in relations if r["relation_type"] == relation_type]
 
         results = []
         for rel in relations:
@@ -373,15 +344,11 @@ class GitTemporalRetrieval:
             "avg_impact": overall[1],
             "total_fixed": overall[2],
             "total_unfixed": overall[0] - (overall[2] or 0),
-            "overall_fix_rate": (
-                overall[2] / overall[0] if overall[0] > 0 else 0.0
-            ),
+            "overall_fix_rate": (overall[2] / overall[0] if overall[0] > 0 else 0.0),
             "by_type": stats_by_type,
         }
 
-    def get_file_history(
-        self, file_path: str, include_regressions: bool = True
-    ) -> dict:
+    def get_file_history(self, file_path: str, include_regressions: bool = True) -> dict:
         """Get complete history of a file including regressions.
 
         Shows all commits that touched it and any related regressions.

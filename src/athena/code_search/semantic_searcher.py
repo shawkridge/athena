@@ -1,7 +1,7 @@
 """Semantic code search using embeddings and similarity matching."""
 
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from dataclasses import dataclass
 import numpy as np
 
@@ -14,9 +14,10 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SearchScores:
     """Scores for a search result."""
+
     semantic_score: float  # Vector similarity (0-1)
-    name_score: float      # Exact/partial name match (0-1)
-    type_score: float      # Type match (0-1)
+    name_score: float  # Exact/partial name match (0-1)
+    type_score: float  # Type match (0-1)
     combined_score: float  # Weighted combination
 
 
@@ -44,9 +45,9 @@ class SemanticCodeSearcher:
         self.embeddings = self._build_embeddings()
 
         # Scoring weights
-        self.semantic_weight = 0.5    # Embedding similarity
-        self.name_weight = 0.25       # Name matching
-        self.type_weight = 0.25       # Type matching
+        self.semantic_weight = 0.5  # Embedding similarity
+        self.name_weight = 0.25  # Name matching
+        self.type_weight = 0.25  # Type matching
 
     def _build_embeddings(self) -> dict:
         """Build embedding vectors for all indexed units."""
@@ -99,9 +100,7 @@ class SemanticCodeSearcher:
         query_embedding = None
         if self.embedding_manager:
             try:
-                query_embedding = np.array(
-                    self.embedding_manager.generate(query)
-                )
+                query_embedding = np.array(self.embedding_manager.generate(query))
             except Exception as e:
                 logger.warning(f"Failed to generate query embedding: {e}")
 
@@ -310,9 +309,7 @@ class SemanticCodeSearcher:
         # Semantic similarity (embedding-based)
         if query_embedding is not None and unit.id in self.embeddings:
             if self.embeddings[unit.id] is not None:
-                semantic_score = self._cosine_similarity(
-                    query_embedding, self.embeddings[unit.id]
-                )
+                semantic_score = self._cosine_similarity(query_embedding, self.embeddings[unit.id])
 
         # Name matching
         query_text = query.original or query.intent
@@ -320,9 +317,7 @@ class SemanticCodeSearcher:
             name_score = 0.8
             if unit.name.lower() == query_text.lower():
                 name_score = 1.0
-        elif any(
-            word.lower() in unit.name.lower() for word in query_text.split()
-        ):
+        elif any(word.lower() in unit.name.lower() for word in query_text.split()):
             name_score = 0.5
 
         # Type matching (if query specifies type)
@@ -343,9 +338,7 @@ class SemanticCodeSearcher:
         )
 
     @staticmethod
-    def _cosine_similarity(
-        a: np.ndarray, b: np.ndarray
-    ) -> float:
+    def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
         """Calculate cosine similarity between vectors."""
         if a is None or b is None:
             return 0.0
@@ -382,16 +375,12 @@ class SemanticCodeSearcher:
     def get_search_stats(self) -> dict:
         """Get statistics about indexed units and embeddings."""
         total_units = len(self.units)
-        units_with_embeddings = sum(
-            1 for e in self.embeddings.values() if e is not None
-        )
+        units_with_embeddings = sum(1 for e in self.embeddings.values() if e is not None)
 
         return {
             "total_units": total_units,
             "units_with_embeddings": units_with_embeddings,
-            "embedding_coverage": (
-                units_with_embeddings / total_units if total_units > 0 else 0
-            ),
+            "embedding_coverage": (units_with_embeddings / total_units if total_units > 0 else 0),
             "units_by_type": self._count_by_type(),
         }
 

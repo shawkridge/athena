@@ -6,7 +6,7 @@ memories from the same or related code locations.
 """
 
 import logging
-from typing import Optional, List, Dict, Tuple, Any
+from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SpatialContext:
     """Spatial (file path) context."""
+
     file_path: str
     directory: str
     depth: int  # Path depth (e.g., /src/auth/jwt.py = 3)
@@ -114,10 +115,7 @@ class SpatialContextIntegration:
             return 0.8
 
         # Same root directory
-        if (
-            context_a.file_path.split("/")[0]
-            == context_b.file_path.split("/")[0]
-        ):
+        if context_a.file_path.split("/")[0] == context_b.file_path.split("/")[0]:
             return 0.5
 
         # Different components
@@ -175,15 +173,17 @@ class SpatialContextIntegration:
 
                 # Only include if meets proximity threshold
                 if proximity >= radius:
-                    memories.append({
-                        "id": event_id,
-                        "content": content,
-                        "timestamp": timestamp,
-                        "layer": layer,
-                        "usefulness": float(usefulness or 0.5),
-                        "proximity": proximity,
-                        "file_path": file_path,
-                    })
+                    memories.append(
+                        {
+                            "id": event_id,
+                            "content": content,
+                            "timestamp": timestamp,
+                            "layer": layer,
+                            "usefulness": float(usefulness or 0.5),
+                            "proximity": proximity,
+                            "file_path": file_path,
+                        }
+                    )
 
             # Sort by proximity
             memories.sort(key=lambda m: m["proximity"], reverse=True)
@@ -292,10 +292,7 @@ class SpatialContextIntegration:
 
             # Calculate stats
             for component, info in components.items():
-                depths = [
-                    len(Path(f).parts)
-                    for f in info["files"]
-                ]
+                depths = [len(Path(f).parts) for f in info["files"]]
                 if depths:
                     info["depth_avg"] = sum(depths) / len(depths)
                     info["depth_max"] = max(depths)

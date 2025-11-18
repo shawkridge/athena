@@ -8,7 +8,6 @@ Supports:
 
 import logging
 import math
-import time
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 
@@ -22,19 +21,23 @@ class DecayConfig:
     default_half_life: float = 30.0  # seconds
 
     # Decay by content type (verbal, spatial, action, decision)
-    content_type_half_lives: Dict[str, float] = field(default_factory=lambda: {
-        "verbal": 30.0,      # Fast decay (verbal loop)
-        "spatial": 45.0,     # Slightly slower (spatial sketchpad)
-        "action": 20.0,      # Very fast (transient actions)
-        "decision": 60.0,    # Slow decay (important decisions)
-    })
+    content_type_half_lives: Dict[str, float] = field(
+        default_factory=lambda: {
+            "verbal": 30.0,  # Fast decay (verbal loop)
+            "spatial": 45.0,  # Slightly slower (spatial sketchpad)
+            "action": 20.0,  # Very fast (transient actions)
+            "decision": 60.0,  # Slow decay (important decisions)
+        }
+    )
 
     # Decay by importance level
-    importance_multipliers: Dict[str, float] = field(default_factory=lambda: {
-        "low": 1.5,      # Low importance: decay 1.5x faster
-        "medium": 1.0,   # Medium: normal decay
-        "high": 0.7,     # High: decay 1.4x slower (0.7 = 1/1.43)
-    })
+    importance_multipliers: Dict[str, float] = field(
+        default_factory=lambda: {
+            "low": 1.5,  # Low importance: decay 1.5x faster
+            "medium": 1.0,  # Medium: normal decay
+            "high": 0.7,  # High: decay 1.4x slower (0.7 = 1/1.43)
+        }
+    )
 
     def get_half_life_for_content_type(self, content_type: str) -> float:
         """Get half-life for a content type.
@@ -63,9 +66,7 @@ class DecayConfig:
         else:
             return self.importance_multipliers.get("high", 0.7)
 
-    def compute_effective_half_life(
-        self, content_type: str, importance: float
-    ) -> float:
+    def compute_effective_half_life(self, content_type: str, importance: float) -> float:
         """Compute effective half-life for an item.
 
         Combines content type half-life with importance multiplier.
@@ -94,17 +95,23 @@ class DecayConfig:
         """Create DecayConfig from dictionary."""
         return cls(
             default_half_life=data.get("default_half_life", 30.0),
-            content_type_half_lives=data.get("content_type_half_lives", {
-                "verbal": 30.0,
-                "spatial": 45.0,
-                "action": 20.0,
-                "decision": 60.0,
-            }),
-            importance_multipliers=data.get("importance_multipliers", {
-                "low": 1.5,
-                "medium": 1.0,
-                "high": 0.7,
-            }),
+            content_type_half_lives=data.get(
+                "content_type_half_lives",
+                {
+                    "verbal": 30.0,
+                    "spatial": 45.0,
+                    "action": 20.0,
+                    "decision": 60.0,
+                },
+            ),
+            importance_multipliers=data.get(
+                "importance_multipliers",
+                {
+                    "low": 1.5,
+                    "medium": 1.0,
+                    "high": 0.7,
+                },
+            ),
         )
 
 
@@ -118,7 +125,9 @@ class DecayCalculator:
             config: DecayConfig instance (uses defaults if None)
         """
         self.config = config or DecayConfig()
-        logger.info(f"DecayCalculator initialized with default_half_life={self.config.default_half_life}s")
+        logger.info(
+            f"DecayCalculator initialized with default_half_life={self.config.default_half_life}s"
+        )
 
     def compute_activation(
         self,

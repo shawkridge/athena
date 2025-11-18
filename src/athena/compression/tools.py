@@ -7,7 +7,6 @@ This module defines the three core compression MCP tools:
 """
 
 from dataclasses import dataclass
-from datetime import datetime
 from typing import List, Optional
 
 
@@ -78,53 +77,55 @@ class RetrieveWithDecayTool:
     input_schema = {
         "type": "object",
         "properties": {
-            "query": {
-                "type": "string",
-                "description": "Search query for semantic retrieval"
-            },
+            "query": {"type": "string", "description": "Search query for semantic retrieval"},
             "apply_decay": {
                 "type": "boolean",
                 "description": "Whether to apply temporal decay compression (default: true)",
-                "default": True
+                "default": True,
             },
             "min_fidelity": {
                 "type": "number",
                 "description": "Minimum fidelity to return (0.0-1.0). "
-                              "If memory would compress below threshold, return uncompressed. "
-                              "Default: 0.5 (don't return < 50% quality)",
+                "If memory would compress below threshold, return uncompressed. "
+                "Default: 0.5 (don't return < 50% quality)",
                 "default": 0.5,
                 "minimum": 0.0,
-                "maximum": 1.0
+                "maximum": 1.0,
             },
             "limit": {
                 "type": "integer",
                 "description": "Maximum number of results (default: 10)",
                 "default": 10,
                 "minimum": 1,
-                "maximum": 100
+                "maximum": 100,
             },
             "decay_schedule": {
                 "type": "object",
                 "description": "Override default decay schedule (optional). "
-                              "Keys: 'recent', 'detailed', 'gist', 'reference'. "
-                              "Values: age in days",
+                "Keys: 'recent', 'detailed', 'gist', 'reference'. "
+                "Values: age in days",
                 "properties": {
                     "recent": {"type": "integer", "description": "Threshold for recent (days)"},
                     "detailed": {"type": "integer", "description": "Threshold for detailed (days)"},
                     "gist": {"type": "integer", "description": "Threshold for gist (days)"},
-                    "reference": {"type": "integer", "description": "Threshold for reference (days)"}
-                }
-            }
+                    "reference": {
+                        "type": "integer",
+                        "description": "Threshold for reference (days)",
+                    },
+                },
+            },
         },
-        "required": ["query"]
+        "required": ["query"],
     }
 
     @staticmethod
-    async def execute(query: str,
-                     apply_decay: bool = True,
-                     min_fidelity: float = 0.5,
-                     limit: int = 10,
-                     decay_schedule: Optional[dict] = None) -> List[CompressedMemoryResult]:
+    async def execute(
+        query: str,
+        apply_decay: bool = True,
+        min_fidelity: float = 0.5,
+        limit: int = 10,
+        decay_schedule: Optional[dict] = None,
+    ) -> List[CompressedMemoryResult]:
         """
         Execute retrieve_with_decay operation.
 
@@ -201,38 +202,37 @@ class RetrieveWithBudgetTool:
     input_schema = {
         "type": "object",
         "properties": {
-            "query": {
-                "type": "string",
-                "description": "Search query for semantic retrieval"
-            },
+            "query": {"type": "string", "description": "Search query for semantic retrieval"},
             "token_budget": {
                 "type": "integer",
                 "description": "Maximum tokens to use (default: 2000)",
                 "default": 2000,
                 "minimum": 100,
-                "maximum": 50000
+                "maximum": 50000,
             },
             "min_usefulness": {
                 "type": "number",
                 "description": "Only return memories with usefulness >= threshold (default: 0.5)",
                 "default": 0.5,
                 "minimum": 0.0,
-                "maximum": 1.0
+                "maximum": 1.0,
             },
             "include_metadata": {
                 "type": "boolean",
                 "description": "Include token cost estimates in result (default: false)",
-                "default": False
-            }
+                "default": False,
+            },
         },
-        "required": ["query"]
+        "required": ["query"],
     }
 
     @staticmethod
-    async def execute(query: str,
-                     token_budget: int = 2000,
-                     min_usefulness: float = 0.5,
-                     include_metadata: bool = False) -> BudgetedRetrievalResult:
+    async def execute(
+        query: str,
+        token_budget: int = 2000,
+        min_usefulness: float = 0.5,
+        include_metadata: bool = False,
+    ) -> BudgetedRetrievalResult:
         """
         Execute retrieve_with_budget operation.
 
@@ -315,36 +315,35 @@ class ConsolidateWithCompressionTool:
     input_schema = {
         "type": "object",
         "properties": {
-            "project_id": {
-                "type": "integer",
-                "description": "Project ID to consolidate"
-            },
+            "project_id": {"type": "integer", "description": "Project ID to consolidate"},
             "max_age_days": {
                 "type": "integer",
                 "description": "Only consolidate events older than this (default: 30)",
                 "default": 30,
                 "minimum": 1,
-                "maximum": 365
+                "maximum": 365,
             },
             "generate_compression": {
                 "type": "boolean",
                 "description": "Generate compressed executive summaries (default: true)",
-                "default": True
+                "default": True,
             },
             "dry_run": {
                 "type": "boolean",
                 "description": "Preview consolidation without writing to DB (default: false)",
-                "default": False
-            }
+                "default": False,
+            },
         },
-        "required": ["project_id"]
+        "required": ["project_id"],
     }
 
     @staticmethod
-    async def execute(project_id: int,
-                     max_age_days: int = 30,
-                     generate_compression: bool = True,
-                     dry_run: bool = False) -> ConsolidationCompressionResult:
+    async def execute(
+        project_id: int,
+        max_age_days: int = 30,
+        generate_compression: bool = True,
+        dry_run: bool = False,
+    ) -> ConsolidationCompressionResult:
         """
         Execute consolidate_with_compression operation.
 

@@ -1,7 +1,6 @@
 """AST-based code analyzer for extracting entities and metrics."""
 
 import ast
-from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -16,7 +15,9 @@ class CodeAnalyzer:
         self.current_file_path: Optional[str] = None
         self.current_module_id: Optional[int] = None
 
-    def analyze_file(self, file_path: str, project_id: int, module_id: Optional[int] = None) -> list[CodeEntity]:
+    def analyze_file(
+        self, file_path: str, project_id: int, module_id: Optional[int] = None
+    ) -> list[CodeEntity]:
         """Analyze a Python file and extract code entities.
 
         Args:
@@ -61,20 +62,28 @@ class CodeAnalyzer:
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 if node.col_offset == 0:  # Top-level function
-                    entity = self._extract_function_entity(node, project_id, file_path, module_entity)
+                    entity = self._extract_function_entity(
+                        node, project_id, file_path, module_entity
+                    )
                     if entity:
                         entities.append(entity)
 
             elif isinstance(node, ast.ClassDef):
                 if node.col_offset == 0:  # Top-level class
-                    class_entity = self._extract_class_entity(node, project_id, file_path, module_entity)
+                    class_entity = self._extract_class_entity(
+                        node, project_id, file_path, module_entity
+                    )
                     if class_entity:
                         entities.append(class_entity)
                         # Extract methods
                         for item in node.body:
                             if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
                                 method_entity = self._extract_function_entity(
-                                    item, project_id, file_path, module_entity, parent_entity=class_entity
+                                    item,
+                                    project_id,
+                                    file_path,
+                                    module_entity,
+                                    parent_entity=class_entity,
                                 )
                                 if method_entity:
                                     entities.append(method_entity)
@@ -203,18 +212,22 @@ class CodeAnalyzer:
             parameters.append(
                 {
                     "name": f"*{node.args.vararg.arg}",
-                    "type_annotation": ast.unparse(node.args.vararg.annotation)
-                    if node.args.vararg.annotation
-                    else None,
+                    "type_annotation": (
+                        ast.unparse(node.args.vararg.annotation)
+                        if node.args.vararg.annotation
+                        else None
+                    ),
                 }
             )
         if node.args.kwarg:
             parameters.append(
                 {
                     "name": f"**{node.args.kwarg.arg}",
-                    "type_annotation": ast.unparse(node.args.kwarg.annotation)
-                    if node.args.kwarg.annotation
-                    else None,
+                    "type_annotation": (
+                        ast.unparse(node.args.kwarg.annotation)
+                        if node.args.kwarg.annotation
+                        else None
+                    ),
                 }
             )
 

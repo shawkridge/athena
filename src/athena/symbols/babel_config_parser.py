@@ -30,7 +30,7 @@ class BabelConfigParser:
         """
         if code is None:
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, "r", encoding="utf-8") as f:
                     code = f.read()
             except (IOError, UnicodeDecodeError):
                 return []
@@ -38,7 +38,7 @@ class BabelConfigParser:
         symbols = []
 
         # Try JSON parsing first (for babel.config.json)
-        if file_path.endswith('.json'):
+        if file_path.endswith(".json"):
             try:
                 data = json.loads(code)
                 symbols.extend(self._extract_from_json(data, file_path))
@@ -71,7 +71,11 @@ class BabelConfigParser:
                 if isinstance(env_data, dict):
                     env_presets = env_data.get("presets", [])
                     for preset in env_presets:
-                        preset_name = preset if isinstance(preset, str) else preset[0] if isinstance(preset, list) else str(preset)
+                        preset_name = (
+                            preset
+                            if isinstance(preset, str)
+                            else preset[0] if isinstance(preset, list) else str(preset)
+                        )
                         symbol = create_symbol(
                             file_path=file_path,
                             symbol_type=SymbolType.CONSTANT,
@@ -83,7 +87,7 @@ class BabelConfigParser:
                             code="",
                             docstring=f"Preset for environment '{env_name}'",
                             language="json",
-                            visibility="public"
+                            visibility="public",
                         )
                         symbols.append(symbol)
 
@@ -100,7 +104,7 @@ class BabelConfigParser:
                 code="",
                 docstring="Source map generation",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -116,7 +120,7 @@ class BabelConfigParser:
                 code="",
                 docstring="Minify output",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -127,7 +131,7 @@ class BabelConfigParser:
         symbols = []
 
         # Extract presets array
-        preset_pattern = r'presets\s*:\s*\[(.*?)\]'
+        preset_pattern = r"presets\s*:\s*\[(.*?)\]"
         preset_matches = re.findall(preset_pattern, code, re.DOTALL)
         for match in preset_matches:
             # Extract individual preset names
@@ -144,12 +148,12 @@ class BabelConfigParser:
                     code="",
                     docstring=f"Babel preset: {preset}",
                     language="javascript",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
         # Extract plugins array
-        plugin_pattern = r'plugins\s*:\s*\[(.*?)\]'
+        plugin_pattern = r"plugins\s*:\s*\[(.*?)\]"
         plugin_matches = re.findall(plugin_pattern, code, re.DOTALL)
         for match in plugin_matches:
             # Extract individual plugin names
@@ -166,17 +170,17 @@ class BabelConfigParser:
                     code="",
                     docstring=f"Babel plugin: {plugin}",
                     language="javascript",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
         # Extract env configurations
-        env_pattern = r'env\s*:\s*{(.*?)}'
+        env_pattern = r"env\s*:\s*{(.*?)}"
         env_match = re.search(env_pattern, code, re.DOTALL)
         if env_match:
             env_content = env_match.group(1)
             # Find environment names and their configurations
-            env_configs = re.findall(r'([a-z_]+)\s*:\s*{', env_content)
+            env_configs = re.findall(r"([a-z_]+)\s*:\s*{", env_content)
             for env_name in env_configs:
                 symbol = create_symbol(
                     file_path=file_path,
@@ -189,7 +193,7 @@ class BabelConfigParser:
                     code="",
                     docstring=f"Environment configuration: {env_name}",
                     language="javascript",
-                    visibility="public"
+                    visibility="public",
                 )
                 symbols.append(symbol)
 
@@ -223,7 +227,7 @@ class BabelConfigParser:
                 code="",
                 docstring=f"Babel preset: {preset_name}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 
@@ -257,7 +261,7 @@ class BabelConfigParser:
                 code="",
                 docstring=f"Babel plugin: {plugin_name}",
                 language="json",
-                visibility="public"
+                visibility="public",
             )
             symbols.append(symbol)
 

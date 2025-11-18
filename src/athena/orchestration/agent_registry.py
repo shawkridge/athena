@@ -8,10 +8,9 @@ import json
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
-from ..core.database import Database
 from ..graph.store import GraphStore
 from ..meta.store import MetaMemoryStore
-from .models import Agent, AgentStatistics
+from .models import AgentStatistics
 
 
 class AgentRegistry:
@@ -34,10 +33,12 @@ class AgentRegistry:
         self.graph = graph_store
         self.meta = meta_store
         self.db = graph_store.db
+
     def _ensure_schema(self) -> None:
         """Create agent registry table if not exists."""
         cursor = self.db.get_cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS agents (
                 id SERIAL PRIMARY KEY,
                 agent_id TEXT UNIQUE NOT NULL,
@@ -51,10 +52,9 @@ class AgentRegistry:
                 last_updated INTEGER,
                 metadata TEXT
             )
-        """)
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_agents_id ON agents(agent_id)"
+        """
         )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_agents_id ON agents(agent_id)")
         # commit handled by cursor context
 
     def register_agent(
@@ -138,9 +138,7 @@ class AgentRegistry:
         where_clauses = []
         for skill in required:
             # Check if capabilities JSON array contains the skill
-            where_clauses.append(
-                "json_array_length(capabilities) > 0 AND capabilities LIKE ?"
-            )
+            where_clauses.append("json_array_length(capabilities) > 0 AND capabilities LIKE ?")
 
         where_clause = " AND ".join(where_clauses)
         if exclude:
@@ -220,9 +218,7 @@ class AgentRegistry:
         new_count = old_count + (1 if success else 0)
         # Only include duration if the task was successful
         if success:
-            new_avg = (
-                (old_avg * old_count + duration_ms) / new_count if new_count > 0 else 0
-            )
+            new_avg = (old_avg * old_count + duration_ms) / new_count if new_count > 0 else 0
         else:
             new_avg = old_avg  # Failed tasks don't affect avg
 

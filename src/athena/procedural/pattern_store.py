@@ -20,10 +20,7 @@ from .code_patterns import (
     CodeSmellPattern,
     CodeSmellType,
     PatternApplication,
-    PatternType,
-    ArchitecturalPattern,
     PatternSuggestion,
-    CodeMetrics,
 )
 
 
@@ -33,14 +30,18 @@ class PatternStore:
     def __init__(self, db: Database):
         """Initialize pattern store."""
         self.db = db
+
     def _ensure_schema(self):
         """Create pattern tables if they don't exist."""
 
         # For PostgreSQL async databases, skip sync schema initialization
-        if not hasattr(self.db, 'conn'):
+        if not hasattr(self.db, "conn"):
             import logging
+
             logger = logging.getLogger(__name__)
-            logger.debug(f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema().")
+            logger.debug(
+                f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema()."
+            )
             return
         cursor = self.db.get_cursor()
 
@@ -216,9 +217,7 @@ class PatternStore:
 
         # commit handled by cursor context
 
-    def create_refactoring_pattern(
-        self, pattern: RefactoringPattern
-    ) -> int:
+    def create_refactoring_pattern(self, pattern: RefactoringPattern) -> int:
         """Create a refactoring pattern."""
         cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
@@ -284,9 +283,7 @@ class PatternStore:
         # commit handled by cursor context
         return cursor.lastrowid
 
-    def create_code_smell_pattern(
-        self, pattern: CodeSmellPattern
-    ) -> int:
+    def create_code_smell_pattern(self, pattern: CodeSmellPattern) -> int:
         """Create a code smell pattern."""
         cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
@@ -428,9 +425,7 @@ class PatternStore:
             for row in cursor.fetchall()
         ]
 
-    def record_pattern_application(
-        self, application: PatternApplication
-    ) -> int:
+    def record_pattern_application(self, application: PatternApplication) -> int:
         """Record application of a pattern."""
         cursor = self.db.get_cursor()
         now = int(datetime.now().timestamp())
@@ -456,9 +451,7 @@ class PatternStore:
         # commit handled by cursor context
         return cursor.lastrowid
 
-    def suggest_pattern(
-        self, suggestion: PatternSuggestion
-    ) -> int:
+    def suggest_pattern(self, suggestion: PatternSuggestion) -> int:
         """Create a pattern suggestion."""
         cursor = self.db.get_cursor()
 
@@ -484,9 +477,7 @@ class PatternStore:
         # commit handled by cursor context
         return cursor.lastrowid
 
-    def get_suggestions_for_file(
-        self, file_path: str
-    ) -> list[dict]:
+    def get_suggestions_for_file(self, file_path: str) -> list[dict]:
         """Get pattern suggestions for a specific file."""
         cursor = self.db.get_cursor()
 
@@ -541,9 +532,7 @@ class PatternStore:
         smell_stats = {row[0]: row[1] for row in cursor.fetchall()}
 
         # Count applications
-        cursor.execute(
-            "SELECT COUNT(*) FROM pattern_applications WHERE success = 1"
-        )
+        cursor.execute("SELECT COUNT(*) FROM pattern_applications WHERE success = 1")
         successful_applications = cursor.fetchone()[0]
 
         cursor.execute("SELECT COUNT(*) FROM pattern_applications")
@@ -559,9 +548,7 @@ class PatternStore:
             "successful_applications": successful_applications,
             "total_applications": total_applications,
             "application_success_rate": (
-                successful_applications / total_applications
-                if total_applications > 0
-                else 0
+                successful_applications / total_applications if total_applications > 0 else 0
             ),
         }
 

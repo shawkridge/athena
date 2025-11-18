@@ -8,7 +8,6 @@ Provides:
 - Alternative plan generation
 """
 
-import json
 import logging
 from typing import Optional
 
@@ -60,9 +59,7 @@ class PlanningAssistant:
         self.db = db
         self.prospective_store = ProspectiveStore(db)
 
-    async def generate_plan(
-        self, task: ProspectiveTask, context: Optional[str] = None
-    ) -> Plan:
+    async def generate_plan(self, task: ProspectiveTask, context: Optional[str] = None) -> Plan:
         """Generate execution plan for a task.
 
         Uses task description to create structured steps.
@@ -190,46 +187,56 @@ class PlanningAssistant:
 
         # Common task patterns
         if "implement" in task_content.lower():
-            steps.extend([
-                "Understand requirements",
-                "Design architecture",
-                "Implement solution",
-                "Test implementation",
-                "Review and refactor",
-            ])
+            steps.extend(
+                [
+                    "Understand requirements",
+                    "Design architecture",
+                    "Implement solution",
+                    "Test implementation",
+                    "Review and refactor",
+                ]
+            )
         elif "fix" in task_content.lower() or "debug" in task_content.lower():
-            steps.extend([
-                "Reproduce the issue",
-                "Analyze root cause",
-                "Implement fix",
-                "Test fix",
-                "Deploy and monitor",
-            ])
+            steps.extend(
+                [
+                    "Reproduce the issue",
+                    "Analyze root cause",
+                    "Implement fix",
+                    "Test fix",
+                    "Deploy and monitor",
+                ]
+            )
         elif "document" in task_content.lower():
-            steps.extend([
-                "Gather information",
-                "Outline structure",
-                "Write content",
-                "Review and edit",
-                "Publish documentation",
-            ])
+            steps.extend(
+                [
+                    "Gather information",
+                    "Outline structure",
+                    "Write content",
+                    "Review and edit",
+                    "Publish documentation",
+                ]
+            )
         elif "refactor" in task_content.lower():
-            steps.extend([
-                "Understand current code",
-                "Design refactoring approach",
-                "Implement changes",
-                "Run tests",
-                "Verify improvements",
-            ])
+            steps.extend(
+                [
+                    "Understand current code",
+                    "Design refactoring approach",
+                    "Implement changes",
+                    "Run tests",
+                    "Verify improvements",
+                ]
+            )
         else:
             # Generic steps for unknown tasks
-            steps.extend([
-                "Analyze task requirements",
-                "Plan approach",
-                "Execute plan",
-                "Review results",
-                "Complete and document",
-            ])
+            steps.extend(
+                [
+                    "Analyze task requirements",
+                    "Plan approach",
+                    "Execute plan",
+                    "Review results",
+                    "Complete and document",
+                ]
+            )
 
         return steps
 
@@ -281,7 +288,9 @@ class PlanningAssistant:
         content_lower = task_content.lower()
 
         # Check for complex operations
-        if any(keyword in content_lower for keyword in ["complex", "critical", "security", "database"]):
+        if any(
+            keyword in content_lower for keyword in ["complex", "critical", "security", "database"]
+        ):
             return PlanSuggestion(
                 suggestion_type="risk",
                 title="Complex task identified",
@@ -291,7 +300,10 @@ class PlanningAssistant:
             )
 
         # Check for external dependencies
-        if any(keyword in content_lower for keyword in ["api", "integration", "third-party", "external"]):
+        if any(
+            keyword in content_lower
+            for keyword in ["api", "integration", "third-party", "external"]
+        ):
             return PlanSuggestion(
                 suggestion_type="risk",
                 title="External dependency detected",

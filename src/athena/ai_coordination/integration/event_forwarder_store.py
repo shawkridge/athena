@@ -4,8 +4,6 @@ Handles database operations for the forwarding audit trail,
 tracking what AI Coordination events have been forwarded to Memory-MCP.
 """
 
-import json
-from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 
@@ -44,6 +42,7 @@ class EventForwarderStore(BaseStore[ForwardingLogEntry]):
             db: Database connection
         """
         super().__init__(db)
+
     def _row_to_model(self, row: Dict[str, Any]) -> ForwardingLogEntry:
         """Convert database row to ForwardingLogEntry model.
 
@@ -61,7 +60,11 @@ class EventForwarderStore(BaseStore[ForwardingLogEntry]):
             target_id=row.get("target_id"),
             status=row.get("status", "complete"),
             timestamp=row.get("timestamp"),
-            metadata=self.deserialize_json(row.get("metadata_json"), {}) if row.get("metadata_json") else {},
+            metadata=(
+                self.deserialize_json(row.get("metadata_json"), {})
+                if row.get("metadata_json")
+                else {}
+            ),
             created_at=row.get("created_at"),
         )
 
@@ -70,7 +73,8 @@ class EventForwarderStore(BaseStore[ForwardingLogEntry]):
         cursor = self.db.get_cursor()
 
         # Forwarding log table - tracks all forwards
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS forwarding_log (
                 id INTEGER PRIMARY KEY,
                 source_type TEXT NOT NULL,
@@ -83,10 +87,12 @@ class EventForwarderStore(BaseStore[ForwardingLogEntry]):
                 created_at INTEGER NOT NULL,
                 UNIQUE(source_type, source_id, target_type)
             )
-        """)
+        """
+        )
 
         # Forwarding statistics table - pre-computed stats
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS forwarding_stats (
                 id INTEGER PRIMARY KEY,
                 source_type TEXT UNIQUE,
@@ -94,23 +100,30 @@ class EventForwarderStore(BaseStore[ForwardingLogEntry]):
                 last_forward_time INTEGER,
                 updated_at INTEGER
             )
-        """)
+        """
+        )
 
         # Create indexes for performance
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_forwarding_source
             ON forwarding_log(source_type, source_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_forwarding_target
             ON forwarding_log(target_type, target_id)
-        """)
+        """
+        )
 
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE INDEX IF NOT EXISTS idx_forwarding_time
             ON forwarding_log(timestamp)
-        """)
+        """
+        )
 
         # commit handled by cursor context
 
@@ -175,21 +188,28 @@ class EventForwarderStore(BaseStore[ForwardingLogEntry]):
             Object with total_forwarded, by_source_type, pending_forwarding
         """
         # Get total forwarded
-        result = self.execute("SELECT COUNT(*) FROM forwarding_log WHERE status = 'complete'", fetch_one=True)
+        result = self.execute(
+            "SELECT COUNT(*) FROM forwarding_log WHERE status = 'complete'", fetch_one=True
+        )
         total = result[0] if result else 0
 
         # Get by source type
-        rows = self.execute("""
+        rows = self.execute(
+            """
             SELECT source_type, COUNT(*) as count
             FROM forwarding_log
             WHERE status = 'complete'
             GROUP BY source_type
-        """, fetch_all=True)
+        """,
+            fetch_all=True,
+        )
 
         by_type = {row[0]: row[1] for row in rows} if rows else {}
 
         # Get pending count
-        result = self.execute("SELECT COUNT(*) FROM forwarding_log WHERE status = 'pending'", fetch_one=True)
+        result = self.execute(
+            "SELECT COUNT(*) FROM forwarding_log WHERE status = 'pending'", fetch_one=True
+        )
         pending = result[0] if result else 0
 
         # Get last forward time
@@ -243,10 +263,27 @@ class EventForwarderStore(BaseStore[ForwardingLogEntry]):
                 fetch_all=True,
             )
 
-        return [self._row_to_model(dict(zip(
-            ["id", "source_type", "source_id", "target_type", "target_id", "status", "timestamp", "metadata_json", "created_at"],
-            row
-        ))) for row in (rows or [])]
+        return [
+            self._row_to_model(
+                dict(
+                    zip(
+                        [
+                            "id",
+                            "source_type",
+                            "source_id",
+                            "target_type",
+                            "target_id",
+                            "status",
+                            "timestamp",
+                            "metadata_json",
+                            "created_at",
+                        ],
+                        row,
+                    )
+                )
+            )
+            for row in (rows or [])
+        ]
 
     def get_all_forwarding_logs(
         self,
@@ -274,10 +311,27 @@ class EventForwarderStore(BaseStore[ForwardingLogEntry]):
             fetch_all=True,
         )
 
-        return [self._row_to_model(dict(zip(
-            ["id", "source_type", "source_id", "target_type", "target_id", "status", "timestamp", "metadata_json", "created_at"],
-            row
-        ))) for row in (rows or [])]
+        return [
+            self._row_to_model(
+                dict(
+                    zip(
+                        [
+                            "id",
+                            "source_type",
+                            "source_id",
+                            "target_type",
+                            "target_id",
+                            "status",
+                            "timestamp",
+                            "metadata_json",
+                            "created_at",
+                        ],
+                        row,
+                    )
+                )
+            )
+            for row in (rows or [])
+        ]
 
     def mark_forwarding_complete(self, log_id: int) -> bool:
         """Mark a forwarding as complete
@@ -349,10 +403,24 @@ class EventForwarderStore(BaseStore[ForwardingLogEntry]):
         if not row:
             return None
 
-        return self._row_to_model(dict(zip(
-            ["id", "source_type", "source_id", "target_type", "target_id", "status", "timestamp", "metadata_json", "created_at"],
-            row
-        )))
+        return self._row_to_model(
+            dict(
+                zip(
+                    [
+                        "id",
+                        "source_type",
+                        "source_id",
+                        "target_type",
+                        "target_id",
+                        "status",
+                        "timestamp",
+                        "metadata_json",
+                        "created_at",
+                    ],
+                    row,
+                )
+            )
+        )
 
     def _update_stats(self, source_type: str):
         """Update forwarding statistics for a source type
@@ -391,11 +459,14 @@ class EventForwarderStore(BaseStore[ForwardingLogEntry]):
         Returns:
             Dict mapping source_type to {count, last_forward_time}
         """
-        rows = self.execute("""
+        rows = self.execute(
+            """
             SELECT source_type, forward_count, last_forward_time
             FROM forwarding_stats
             ORDER BY source_type
-        """, fetch_all=True)
+        """,
+            fetch_all=True,
+        )
 
         return {
             row[0]: {

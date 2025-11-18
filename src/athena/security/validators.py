@@ -9,12 +9,13 @@ Validates:
 """
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from pydantic import BaseModel, Field, validator, ValidationError
 
 
 class ValidationError(Exception):
     """Custom validation error."""
+
     pass
 
 
@@ -25,23 +26,23 @@ class RecallRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=10000)
     limit: int = Field(default=10, ge=1, le=1000)
 
-    @validator('project_id')
+    @validator("project_id")
     def project_id_valid(cls, v):
         """Validate project ID format."""
-        if not re.match(r'^[a-zA-Z0-9_\-]+$', v):
+        if not re.match(r"^[a-zA-Z0-9_\-]+$", v):
             raise ValueError("Project ID contains invalid characters")
         return v
 
-    @validator('query')
+    @validator("query")
     def query_no_injection(cls, v):
         """Validate query doesn't contain SQL injection patterns."""
         dangerous_patterns = [
-            r'(?i)drop\s+table',
-            r'(?i)delete\s+from',
-            r'(?i)insert\s+into',
-            r'(?i)union\s+select',
-            r'(?i)exec\s*\(',
-            r'(?i)execute\s*\(',
+            r"(?i)drop\s+table",
+            r"(?i)delete\s+from",
+            r"(?i)insert\s+into",
+            r"(?i)union\s+select",
+            r"(?i)exec\s*\(",
+            r"(?i)execute\s*\(",
         ]
 
         for pattern in dangerous_patterns:
@@ -56,12 +57,12 @@ class RememberRequest(BaseModel):
 
     project_id: str = Field(..., min_length=1, max_length=100)
     content: str = Field(..., min_length=1, max_length=50000)
-    memory_type: str = Field(..., regex=r'^(fact|pattern|decision|context)$')
+    memory_type: str = Field(..., regex=r"^(fact|pattern|decision|context)$")
 
-    @validator('project_id')
+    @validator("project_id")
     def project_id_valid(cls, v):
         """Validate project ID format."""
-        if not re.match(r'^[a-zA-Z0-9_\-]+$', v):
+        if not re.match(r"^[a-zA-Z0-9_\-]+$", v):
             raise ValueError("Project ID contains invalid characters")
         return v
 
@@ -72,13 +73,15 @@ class CreateTaskRequest(BaseModel):
     project_id: str = Field(..., min_length=1, max_length=100)
     title: str = Field(..., min_length=1, max_length=500)
     description: Optional[str] = Field(default=None, max_length=5000)
-    priority: str = Field(default="medium", regex=r'^(low|medium|high|critical)$')
-    status: str = Field(default="pending", regex=r'^(pending|in_progress|completed|paused|cancelled)$')
+    priority: str = Field(default="medium", regex=r"^(low|medium|high|critical)$")
+    status: str = Field(
+        default="pending", regex=r"^(pending|in_progress|completed|paused|cancelled)$"
+    )
 
-    @validator('project_id')
+    @validator("project_id")
     def project_id_valid(cls, v):
         """Validate project ID."""
-        if not re.match(r'^[a-zA-Z0-9_\-]+$', v):
+        if not re.match(r"^[a-zA-Z0-9_\-]+$", v):
             raise ValueError("Invalid project ID")
         return v
 
@@ -91,14 +94,14 @@ class CreateEntityRequest(BaseModel):
     entity_type: str = Field(...)
     description: Optional[str] = Field(default=None, max_length=5000)
 
-    @validator('project_id')
+    @validator("project_id")
     def project_id_valid(cls, v):
         """Validate project ID."""
-        if not re.match(r'^[a-zA-Z0-9_\-]+$', v):
+        if not re.match(r"^[a-zA-Z0-9_\-]+$", v):
             raise ValueError("Invalid project ID")
         return v
 
-    @validator('name')
+    @validator("name")
     def name_no_injection(cls, v):
         """Validate name for XSS/injection."""
         if re.search(r'[<>"\';]', v):
@@ -114,10 +117,10 @@ class CreateRelationRequest(BaseModel):
     target_name: str = Field(..., min_length=1, max_length=500)
     relation_type: str = Field(..., min_length=1, max_length=100)
 
-    @validator('project_id')
+    @validator("project_id")
     def project_id_valid(cls, v):
         """Validate project ID."""
-        if not re.match(r'^[a-zA-Z0-9_\-]+$', v):
+        if not re.match(r"^[a-zA-Z0-9_\-]+$", v):
             raise ValueError("Invalid project ID")
         return v
 
@@ -130,14 +133,14 @@ class RecordEventRequest(BaseModel):
     description: str = Field(..., min_length=1, max_length=5000)
     context: Optional[Dict[str, Any]] = Field(default=None)
 
-    @validator('project_id')
+    @validator("project_id")
     def project_id_valid(cls, v):
         """Validate project ID."""
-        if not re.match(r'^[a-zA-Z0-9_\-]+$', v):
+        if not re.match(r"^[a-zA-Z0-9_\-]+$", v):
             raise ValueError("Invalid project ID")
         return v
 
-    @validator('context')
+    @validator("context")
     def context_not_huge(cls, v):
         """Limit context size."""
         if v and len(str(v)) > 10000:
@@ -146,6 +149,7 @@ class RecordEventRequest(BaseModel):
 
 
 # Validation functions for direct use
+
 
 def validate_project_id(project_id: str) -> str:
     """Validate project ID.
@@ -162,7 +166,7 @@ def validate_project_id(project_id: str) -> str:
     if not project_id or len(project_id) > 100:
         raise ValidationError("Invalid project ID length")
 
-    if not re.match(r'^[a-zA-Z0-9_\-]+$', project_id):
+    if not re.match(r"^[a-zA-Z0-9_\-]+$", project_id):
         raise ValidationError("Project ID contains invalid characters")
 
     return project_id
@@ -186,10 +190,10 @@ def validate_query(query: str, max_length: int = 10000) -> str:
 
     # Check for SQL injection patterns
     dangerous_patterns = [
-        r'(?i)drop\s+table',
-        r'(?i)delete\s+from',
-        r'(?i)insert\s+into',
-        r'(?i)union\s+select',
+        r"(?i)drop\s+table",
+        r"(?i)delete\s+from",
+        r"(?i)insert\s+into",
+        r"(?i)union\s+select",
     ]
 
     for pattern in dangerous_patterns:
@@ -211,7 +215,7 @@ def validate_memory_type(memory_type: str) -> str:
     Raises:
         ValidationError: If invalid
     """
-    valid_types = {'fact', 'pattern', 'decision', 'context'}
+    valid_types = {"fact", "pattern", "decision", "context"}
 
     if memory_type not in valid_types:
         raise ValidationError(f"Invalid memory type. Must be one of: {', '.join(valid_types)}")
@@ -231,7 +235,7 @@ def validate_priority(priority: str) -> str:
     Raises:
         ValidationError: If invalid
     """
-    valid_priorities = {'low', 'medium', 'high', 'critical'}
+    valid_priorities = {"low", "medium", "high", "critical"}
 
     if priority not in valid_priorities:
         raise ValidationError(f"Invalid priority. Must be one of: {', '.join(valid_priorities)}")

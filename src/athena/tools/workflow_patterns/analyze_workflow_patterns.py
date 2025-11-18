@@ -53,6 +53,7 @@ def analyze_workflow_patterns(
     try:
         if db is None:
             from ..core.database import Database
+
             db = Database()
 
         from ..workflow.analyzer import TaskSequenceAnalyzer
