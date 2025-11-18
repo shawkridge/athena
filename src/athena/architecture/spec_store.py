@@ -21,6 +21,7 @@ from typing import List, Optional, Dict, Any
 from ..core.database import Database
 from ..core.base_store import BaseStore
 from .models import Specification, SpecType, SpecStatus
+from .spec_validator import SpecificationValidator, ValidationResult
 
 logger = logging.getLogger(__name__)
 
@@ -640,3 +641,78 @@ For more info, see: docs/SPEC_DRIVEN_DEVELOPMENT.md
                 matching.append(spec)
 
         return matching
+
+    def validate(self, spec_id: int, update_db: bool = True) -> ValidationResult:
+        """Validate a specification and optionally update validation status in database.
+
+        Args:
+            spec_id: Specification ID to validate
+            update_db: Whether to update validation status in database (default: True)
+
+        Returns:
+            ValidationResult with validation status and errors/warnings
+
+        Example:
+            >>> result = store.validate(spec_id=5)
+            >>> if result.is_valid:
+            ...     print("Specification is valid!")
+            >>> else:
+            ...     print(f"Errors: {result.errors}")
+        """
+        # Get specification
+        spec = self.get(spec_id)
+        if not spec:
+            raise ValueError(f"Specification {spec_id} not found")
+
+        # Validate using validator
+        validator = SpecificationValidator()
+        result = validator.validate(spec)
+
+        # Update database if requested
+        if update_db:
+            spec.validation_status = result.status
+            spec.validated_at = result.validated_at
+            spec.validation_errors = result.errors + [f"WARNING: {w}" for w in result.warnings]
+            self.update(spec, write_to_file=False)
+
+            logger.info(
+                f"Validated spec {spec_id}: {result.status} "
+                f"({len(result.errors)} errors, {len(result.warnings)} warnings)"
+            )
+
+        return result
+
+    def validate_all(self, project_id: int, spec_type: Optional[SpecType] = None) -> Dict[int, ValidationResult]:
+        """Validate all specifications for a project.
+
+        Args:
+            project_id: Project ID
+            spec_type: Optional filter by spec type
+
+        Returns:
+            Dictionary mapping spec_id to ValidationResult
+
+        Example:
+            >>> results = store.validate_all(project_id=1, spec_type=SpecType.OPENAPI)
+            >>> for spec_id, result in results.items():
+            ...     print(f"Spec {spec_id}: {result.status}")
+        """
+        # Get specs to validate
+        specs = self.list_by_project(project_id, spec_type=spec_type)
+
+        # Validate each
+        results = {}
+        for spec in specs:
+            if spec.id:
+                try:
+                    result = self.validate(spec.id, update_db=True)
+                    results[spec.id] = result
+                except Exception as e:
+                    logger.error(f"Error validating spec {spec.id}: {e}")
+                    results[spec.id] = ValidationResult(
+                        is_valid=False,
+                        errors=[str(e)],
+                        validator_used="none"
+                    )
+
+        return results

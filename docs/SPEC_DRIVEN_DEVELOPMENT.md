@@ -1,7 +1,7 @@
 # Spec-Driven Development in Athena
 
-**Status**: Phase 1 Complete (Basic Storage & CLI)
-**Version**: 1.0.0
+**Status**: Phase 2 Complete (Validation)
+**Version**: 2.0.0
 **Last Updated**: November 18, 2025
 
 ## Table of Contents
@@ -323,8 +323,33 @@ athena-spec-manage sync --project-id 1
 ### Validate Specification
 
 ```bash
-# Validate spec (Phase 2 - coming soon)
+# Validate spec and update database
 athena-spec-manage validate --spec-id 5
+
+# Output:
+# 🔍 Validating User Authentication API (v1.0.0)...
+#    Type: openapi
+#
+# ✅ Validation passed - specification is valid!
+#    Validator: openapi-spec-validator
+#
+# Validated at: 2025-11-18 14:30:45
+# Status: valid
+
+# Validate without updating database
+athena-spec-manage validate --spec-id 5 --no-update-db
+```
+
+**Supported Validators**:
+- **OpenAPI 3.0/3.1**: Validates against OpenAPI specification
+- **JSON Schema**: Validates schema structure
+- **GraphQL**: Validates GraphQL SDL syntax
+- **AsyncAPI**: Coming in Phase 5
+
+**Installation**:
+```bash
+# Install validation libraries (optional)
+pip install 'athena[validation]'
 ```
 
 ---
@@ -481,6 +506,71 @@ athena-spec-manage create \
 # npx prisma migrate dev
 ```
 
+### Example 4: Validation Workflow
+
+```bash
+# 1. Create an OpenAPI spec
+cat > specs/api/users.yaml <<'EOF'
+openapi: 3.0.0
+info:
+  title: User Management API
+  version: 1.0.0
+paths:
+  /users:
+    get:
+      summary: List users
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+EOF
+
+# 2. Import to Athena
+athena-spec-manage create \
+  --name "User Management API" \
+  --type openapi \
+  --file-path "api/users.yaml" \
+  --content-file specs/api/users.yaml
+
+# 3. Validate the specification
+athena-spec-manage validate --spec-id 1
+
+# Output:
+# 🔍 Validating User Management API (v1.0.0)...
+#    Type: openapi
+#
+# ✅ Validation passed - specification is valid!
+#    Validator: openapi-spec-validator
+#
+# Validated at: 2025-11-18 14:30:45
+# Status: valid
+
+# 4. Make a change that breaks validation
+cat >> specs/api/users.yaml <<'EOF'
+  /invalid:
+    post:
+      # Missing responses - will fail validation
+EOF
+
+# 5. Sync and validate again
+athena-spec-manage sync --project-id 1
+athena-spec-manage validate --spec-id 1
+
+# Output:
+# ❌ Validation failed with 1 error(s)
+#
+# ❌ Errors:
+#   1. Missing required field 'responses' in operation
+#
+# Validated at: 2025-11-18 14:35:22
+# Status: invalid
+```
+
 ---
 
 ## Roadmap
@@ -494,13 +584,16 @@ athena-spec-manage create \
 - [x] CLI commands
 - [x] Tests (26/26 passing)
 
-### Phase 2: Validation (2-3 days)
+### Phase 2: Validation ✅ (Complete)
 
-- [ ] OpenAPI validation (openapi-spec-validator)
-- [ ] JSON Schema validation
-- [ ] GraphQL schema validation
-- [ ] Validation error tracking
-- [ ] Validation status in database
+- [x] OpenAPI validation (openapi-spec-validator)
+- [x] JSON Schema validation
+- [x] GraphQL schema validation
+- [x] Validation error tracking
+- [x] Validation status in database
+- [x] CLI validation command
+- [x] Graceful degradation (optional dependencies)
+- [x] Tests (15 validation tests passing)
 
 ### Phase 3: Planning Integration (1 week)
 
@@ -557,7 +650,22 @@ store.supersede(old_spec_id=5, new_spec_id=10)
 
 ### Q: How do I validate specs?
 
-Phase 2 will add automatic validation for OpenAPI, JSON Schema, and GraphQL. For now, use external tools:
+Use the built-in validation command:
+
+```bash
+# Install validation libraries (optional)
+pip install 'athena[validation]'
+
+# Validate a specification
+athena-spec-manage validate --spec-id 5
+```
+
+**Supported validators**:
+- **OpenAPI 3.0/3.1**: Automatic validation with `openapi-spec-validator`
+- **JSON Schema**: Validates schema structure with `jsonschema`
+- **GraphQL**: Validates SDL syntax with `graphql-core`
+
+If validation libraries aren't installed, Athena will show a warning but continue to work. You can also use external tools:
 - OpenAPI: `openapi-spec-validator spec.yaml`
 - JSON Schema: `ajv validate schema.json`
 - TLA+: `tlc spec.tla`

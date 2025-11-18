@@ -555,3 +555,81 @@ def test_nested_directory_creation(spec_store, temp_specs_dir):
     file_path = temp_specs_dir / "api" / "v1" / "users.yaml"
     assert file_path.exists()
     assert file_path.read_text() == "nested content"
+
+
+def test_validate_specification(spec_store):
+    """Test validating a specification."""
+    # Create a valid OpenAPI spec
+    spec = Specification(
+        project_id=1,
+        name="Test API",
+        spec_type=SpecType.OPENAPI,
+        version="1.0.0",
+        content="""openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      responses:
+        '200':
+          description: OK
+""",
+    )
+
+    spec_id = spec_store.create(spec, write_to_file=False)
+
+    # Validate
+    result = spec_store.validate(spec_id, update_db=True)
+
+    assert result.is_valid
+    # Validation status should be updated in database
+    validated_spec = spec_store.get(spec_id)
+    assert validated_spec.validation_status is not None
+
+
+def test_validate_invalid_specification(spec_store):
+    """Test validating an invalid specification."""
+    # Create an invalid OpenAPI spec
+    spec = Specification(
+        project_id=1,
+        name="Invalid API",
+        spec_type=SpecType.OPENAPI,
+        version="1.0.0",
+        content="not valid yaml {[",
+    )
+
+    spec_id = spec_store.create(spec, write_to_file=False)
+
+    # Validate (will fail if library is installed)
+    result = spec_store.validate(spec_id, update_db=True)
+
+    # If validator is available, should fail
+    if result.validator_used != "none":
+        assert not result.is_valid
+        assert len(result.errors) > 0
+
+
+def test_validate_all_specifications(spec_store):
+    """Test validating all specifications for a project."""
+    # Create multiple specs
+    for i in range(3):
+        spec = Specification(
+            project_id=1,
+            name=f"API {i}",
+            spec_type=SpecType.MARKDOWN,
+            version="1.0.0",
+            content=f"# API {i}",
+        )
+        spec_store.create(spec, write_to_file=False)
+
+    # Validate all
+    results = spec_store.validate_all(project_id=1)
+
+    # Should have 3 results
+    assert len(results) == 3
+
+    # All should be valid (markdown has no validator)
+    for spec_id, result in results.items():
+        assert result.is_valid

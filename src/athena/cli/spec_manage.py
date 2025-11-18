@@ -273,7 +273,7 @@ def cmd_show(args):
 
 
 def cmd_validate(args):
-    """Validate a specification (placeholder for OpenAPI validation)."""
+    """Validate a specification."""
     db = get_database()
     store = SpecificationStore(db)
 
@@ -283,24 +283,53 @@ def cmd_validate(args):
         sys.exit(1)
 
     print(f"🔍 Validating {spec.name} (v{spec.version})...")
+    print(f"   Type: {spec.spec_type.value}")
+    print()
 
-    # Placeholder - will be implemented in Phase 2
-    if spec.spec_type == SpecType.OPENAPI:
-        print("⚠️  OpenAPI validation not yet implemented (Phase 2)")
-        print("   Will validate against OpenAPI 3.0/3.1 spec")
-    elif spec.spec_type == SpecType.JSONSCHEMA:
-        print("⚠️  JSON Schema validation not yet implemented (Phase 2)")
-    else:
-        print(f"⚠️  Validation for {spec.spec_type.value} not yet implemented")
+    # Perform validation
+    try:
+        result = store.validate(args.spec_id, update_db=not args.no_update_db)
 
-    print("\n📋 Current status:")
-    print(f"   Validation Status: {spec.validation_status or '(not validated)'}")
-    if spec.validated_at:
-        print(f"   Last Validated: {spec.validated_at.strftime('%Y-%m-%d %H:%M')}")
-    if spec.validation_errors:
-        print(f"   Errors: {len(spec.validation_errors)}")
-        for i, error in enumerate(spec.validation_errors[:5], 1):
-            print(f"     {i}. {error}")
+        # Print results
+        if result.is_valid:
+            if result.warnings:
+                print(f"✅ Validation passed with {len(result.warnings)} warning(s)")
+            else:
+                print("✅ Validation passed - specification is valid!")
+        else:
+            print(f"❌ Validation failed with {len(result.errors)} error(s)")
+
+        if result.validator_used and result.validator_used != "none":
+            print(f"   Validator: {result.validator_used}")
+        print()
+
+        # Print errors
+        if result.errors:
+            print("❌ Errors:")
+            for i, error in enumerate(result.errors, 1):
+                print(f"  {i}. {error}")
+            print()
+
+        # Print warnings
+        if result.warnings:
+            print("⚠️  Warnings:")
+            for i, warning in enumerate(result.warnings, 1):
+                print(f"  {i}. {warning}")
+            print()
+
+        # Print validation metadata
+        print(f"Validated at: {result.validated_at.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Status: {result.status}")
+
+        # Exit with error code if validation failed
+        if not result.is_valid:
+            sys.exit(1)
+
+    except Exception as e:
+        print(f"❌ Error during validation: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 
 def main():
@@ -365,6 +394,7 @@ def main():
     # Validate command
     validate_parser = subparsers.add_parser("validate", help="Validate a specification")
     validate_parser.add_argument("--spec-id", type=int, required=True, help="Specification ID")
+    validate_parser.add_argument("--no-update-db", action="store_true", help="Don't update validation status in database")
 
     args = parser.parse_args()
 
