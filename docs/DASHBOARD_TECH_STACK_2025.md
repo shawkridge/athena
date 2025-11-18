@@ -105,10 +105,10 @@ Based on comprehensive research of current best practices and emerging technolog
 ┌─────────────────────────────────────────────────────┐
 │              Development & Deployment                │
 ├─────────────────────────────────────────────────────┤
-│  Containerization:  Docker + Docker Compose         │
-│  Reverse Proxy:     Caddy or Nginx                  │
-│  Process Manager:   PM2 (for local) or systemd      │
-│  Monitoring:        Built-in dashboard metrics      │
+│  Process Manager:   systemd services (native)       │
+│  Reverse Proxy:     Caddy (recommended) or Nginx    │
+│  Service Isolation: systemd user/group controls     │
+│  Monitoring:        journalctl + built-in metrics   │
 ├─────────────────────────────────────────────────────┤
 │  Testing                                             │
 ├─────────────────────────────────────────────────────┤
@@ -764,8 +764,8 @@ volumes:
 - [ ] Component tests
 - [ ] E2E tests (Playwright)
 - [ ] Performance testing
-- [ ] Docker containerization
-- [ ] Production deployment
+- [ ] Create systemd service files
+- [ ] Production deployment with systemd
 
 ---
 
@@ -877,7 +877,8 @@ Backend:
 └── Uvicorn + Gunicorn
 
 Dev/Deploy:
-├── Docker + Docker Compose
+├── systemd services (process management)
+├── Caddy or Nginx (reverse proxy)
 ├── Vitest + Playwright (testing)
 └── pnpm (package manager)
 ```
@@ -896,7 +897,7 @@ Dev/Deploy:
 ### Next Steps
 
 1. ✅ Review and approve this tech stack
-2. Setup development environment (Docker Compose)
+2. Setup development environment (see DASHBOARD_DEPLOYMENT_SYSTEMD.md)
 3. Create project scaffolding (Next.js + FastAPI)
 4. Build MVP (Overview dashboard + 1-2 visualizations)
 5. Iterate based on feedback
@@ -972,16 +973,32 @@ EOF
 uvicorn main:app --reload  # http://localhost:8000
 ```
 
-### Docker Setup
-```bash
-# Full stack with Docker Compose
-docker-compose up -d
+### Production Deployment (systemd)
 
-# Frontend: http://localhost:3000
-# Backend: http://localhost:8000
-# PostgreSQL: localhost:5432
+See **`DASHBOARD_DEPLOYMENT_SYSTEMD.md`** for complete deployment guide.
+
+Quick start:
+```bash
+# Start services
+sudo systemctl start athena-dashboard-backend
+sudo systemctl start athena-dashboard-frontend
+sudo systemctl start caddy
+
+# Check status
+systemctl status athena-dashboard-*
+
+# View logs
+sudo journalctl -u athena-dashboard-backend -f
 ```
+
+**Access:**
+- Frontend: http://localhost (via Caddy proxy)
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
 
 ---
 
 **Ready to build! 🚀**
+
+For detailed deployment instructions with systemd service files, see:
+**`docs/DASHBOARD_DEPLOYMENT_SYSTEMD.md`**
