@@ -1,0 +1,110 @@
+# {{ spec.name }}
+
+{% if spec.description -%}
+{{ spec.description }}
+{% endif %}
+
+**Version:** {{ spec.version }}
+**Generated:** {{ generated_at }}
+
+---
+
+## Overview
+
+This document describes the API specification for {{ spec.name }}.
+
+{% if spec.content %}
+## API Specification
+
+The complete OpenAPI specification is provided below:
+
+### Endpoints
+
+{% set spec_data = spec.content | from_json %}
+{% if spec_data.paths %}
+{% for path, methods in spec_data.paths.items() %}
+### `{{ path }}`
+
+{% for method, details in methods.items() %}
+#### {{ method.upper() }}
+
+{% if details.summary %}
+**Summary:** {{ details.summary }}
+{% endif %}
+
+{% if details.description %}
+{{ details.description }}
+{% endif %}
+
+{% if details.parameters %}
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+{% for param in details.parameters %}
+| `{{ param.name }}` | {{ param.in }} | {{ "Yes" if param.required else "No" }} | {{ param.description | default("") }} |
+{% endfor %}
+{% endif %}
+
+{% if details.requestBody %}
+**Request Body:**
+
+{{ details.requestBody.description | default("") }}
+{% endif %}
+
+{% if details.responses %}
+**Responses:**
+
+| Status | Description |
+|--------|-------------|
+{% for status, response in details.responses.items() %}
+| `{{ status }}` | {{ response.description | default("") }} |
+{% endfor %}
+{% endif %}
+
+---
+
+{% endfor %}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+## Authentication
+
+{% if spec_data.components and spec_data.components.securitySchemes %}
+This API uses the following authentication methods:
+
+{% for name, scheme in spec_data.components.securitySchemes.items() %}
+- **{{ name }}**: {{ scheme.type }}
+  {% if scheme.description %}
+  {{ scheme.description }}
+  {% endif %}
+{% endfor %}
+{% else %}
+Authentication details not specified in the specification.
+{% endif %}
+
+## Usage Examples
+
+### Example Request
+
+```bash
+curl -X GET {{ spec_data.servers[0].url if spec_data.servers else "https://api.example.com" }}/path
+```
+
+### Example Response
+
+```json
+{
+  "status": "success",
+  "data": {}
+}
+```
+
+## Support
+
+For questions or issues, please contact the API team.
+
+---
+
+*Generated from {{ spec.spec_type }} specification on {{ generated_at }}*

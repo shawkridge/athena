@@ -1,0 +1,218 @@
+# Technical Design Document: {{ spec.name }}
+
+**Version:** {{ spec.version }}
+**Author:** {{ author }}
+**Date:** {{ generated_at }}
+**Status:** Draft
+
+---
+
+## Executive Summary
+
+{% if spec.description -%}
+{{ spec.description }}
+{% else %}
+Brief overview of the technical design for {{ spec.name }}.
+{% endif %}
+
+## Problem Statement
+
+### Background
+
+Describe the problem this design solves and the context.
+
+### Goals and Non-Goals
+
+**Goals:**
+- [Goal 1]
+- [Goal 2]
+- [Goal 3]
+
+**Non-Goals:**
+- [Non-goal 1]
+- [Non-goal 2]
+
+## Proposed Solution
+
+### Overview
+
+High-level description of the proposed solution.
+
+### Architecture
+
+#### System Components
+
+```
+┌─────────────────┐
+│   Component A   │
+└────────┬────────┘
+         │
+    ┌────▼────┐
+    │ Component B│
+    └────┬────┘
+         │
+    ┌────▼────┐
+    │ Component C│
+    └─────────┘
+```
+
+#### Component Details
+
+**Component A:**
+- Responsibility:
+- Technology:
+- Dependencies:
+
+**Component B:**
+- Responsibility:
+- Technology:
+- Dependencies:
+
+**Component C:**
+- Responsibility:
+- Technology:
+- Dependencies:
+
+### Data Model
+
+```mermaid
+erDiagram
+    ENTITY_A ||--o{ ENTITY_B : has
+    ENTITY_B ||--|| ENTITY_C : belongs_to
+```
+
+### API Design
+
+{% if spec.spec_type == "openapi" %}
+See [API Documentation](./api-reference.md) for complete API specification.
+
+**Key Endpoints:**
+{% set spec_data = spec.content | from_json %}
+{% if spec_data.paths %}
+{% for path, methods in spec_data.paths.items() %}
+- `{{ path }}`
+{% endfor %}
+{% endif %}
+{% else %}
+API design details to be added.
+{% endif %}
+
+### Sequence Diagrams
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Database
+
+    Client->>API: Request
+    API->>Database: Query
+    Database-->>API: Results
+    API-->>Client: Response
+```
+
+## Implementation Plan
+
+### Phase 1: Foundation
+- [ ] Set up project structure
+- [ ] Configure development environment
+- [ ] Initialize database schema
+
+### Phase 2: Core Functionality
+- [ ] Implement Component A
+- [ ] Implement Component B
+- [ ] Implement Component C
+
+### Phase 3: Integration & Testing
+- [ ] Integration testing
+- [ ] Performance testing
+- [ ] Security review
+
+### Phase 4: Deployment
+- [ ] Staging deployment
+- [ ] Production deployment
+- [ ] Monitoring setup
+
+## Dependencies
+
+| Dependency | Version | Purpose |
+|------------|---------|---------|
+| Library A  | 1.0.0   | Authentication |
+| Library B  | 2.3.0   | Data processing |
+| Library C  | 3.1.0   | API framework |
+
+## Risk Assessment
+
+| Risk | Impact | Probability | Mitigation |
+|------|--------|-------------|------------|
+| Performance bottleneck | High | Medium | Implement caching layer |
+| Data inconsistency | High | Low | Use transactions |
+| Third-party API downtime | Medium | Medium | Implement retry logic |
+
+## Testing Strategy
+
+### Unit Tests
+- Component-level testing
+- Target: >90% code coverage
+
+### Integration Tests
+- API endpoint testing
+- Database interaction testing
+
+### Performance Tests
+- Load testing with expected traffic
+- Stress testing for peak scenarios
+
+## Security Considerations
+
+- **Authentication:** [Method]
+- **Authorization:** [RBAC/ABAC]
+- **Data Encryption:** [At rest / in transit]
+- **Input Validation:** [Strategy]
+
+## Monitoring & Observability
+
+- **Metrics:** [Key performance indicators]
+- **Logging:** [Centralized logging strategy]
+- **Alerting:** [Critical alerts and thresholds]
+- **Tracing:** [Distributed tracing]
+
+## Alternative Approaches Considered
+
+### Alternative 1: [Name]
+**Pros:**
+- Advantage 1
+- Advantage 2
+
+**Cons:**
+- Disadvantage 1
+- Disadvantage 2
+
+**Why not chosen:** Rationale
+
+### Alternative 2: [Name]
+**Pros:**
+- Advantage 1
+- Advantage 2
+
+**Cons:**
+- Disadvantage 1
+- Disadvantage 2
+
+**Why not chosen:** Rationale
+
+## Open Questions
+
+1. Question 1?
+2. Question 2?
+3. Question 3?
+
+## References
+
+- [Related ADR #1](../adrs/001-decision.md)
+- [Related Spec](../specs/spec.yaml)
+- [External Documentation](https://example.com)
+
+---
+
+*Generated from {{ spec.spec_type }} specification on {{ generated_at }}*

@@ -1,0 +1,34 @@
+# {{ spec.name if spec else "Documentation" }}
+
+{% if spec.description -%}
+{{ spec.description }}
+{% endif %}
+
+**Version:** {{ version }}
+**Generated:** {{ generated_at }}
+
+---
+
+## Overview
+
+{% if spec %}
+This documentation is generated from a {{ spec.spec_type }} specification.
+{% else %}
+General documentation template.
+{% endif %}
+
+## Content
+
+{% if spec and spec.content %}
+{{ spec.content }}
+{% else %}
+Add your content here.
+{% endif %}
+
+## Additional Information
+
+For more details, please refer to the complete specification.
+
+---
+
+*Generated on {{ generated_at }}{% if author %} by {{ author }}{% endif %}*
