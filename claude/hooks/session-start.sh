@@ -66,7 +66,7 @@ python3 << 'PYTHON_EOF'
 import sys
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import time
 
 # Suppress verbose logging
@@ -107,9 +107,11 @@ try:
         continuity = CrossSessionContinuity(session_id="session_start", project_id=project_id)
 
         # Phase 4: Check for session gap and format resumption context
+        # Use timezone-aware UTC datetime (matches memory_bridge.get_last_session_time())
         last_session_time = bridge.get_last_session_time(project_id)
         if last_session_time:
-            gap_analysis = continuity.analyze_session_gap(datetime.utcnow(), last_session_time)
+            current_time = datetime.now(timezone.utc).replace(tzinfo=None)
+            gap_analysis = continuity.analyze_session_gap(current_time, last_session_time)
             gap_type = gap_analysis.get("gap_type")
             gap_readable = gap_analysis.get("human_readable", "some time ago")
 

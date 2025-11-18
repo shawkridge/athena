@@ -15,7 +15,7 @@ import sys
 import json
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, List
 
 # Import connection pool and query cache for performance
@@ -257,7 +257,9 @@ class MemoryBridge:
             with PooledConnection() as conn:
                 cursor = conn.cursor()
 
-                timestamp = int(datetime.now().timestamp() * 1000)  # milliseconds
+                # Use UTC time for consistency with session-start.sh
+                # timezone-aware UTC datetime (modern approach)
+                timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)  # milliseconds
                 session_id = str(uuid.uuid4())[:8]  # Generate short session ID
 
                 cursor.execute(
@@ -353,7 +355,7 @@ class MemoryBridge:
             project_id: Project ID
 
         Returns:
-            datetime of last session, or None if no sessions recorded
+            datetime of last session (UTC), or None if no sessions recorded
         """
         try:
             with PooledConnection() as conn:
@@ -371,10 +373,11 @@ class MemoryBridge:
                 row = cursor.fetchone()
 
                 if row:
-                    # Convert milliseconds timestamp to datetime
+                    # Convert milliseconds timestamp to UTC datetime
+                    # CRITICAL: Must use UTC to match datetime.now(timezone.utc) in session-start.sh
                     timestamp_ms = row[0]
                     if isinstance(timestamp_ms, int):
-                        return datetime.fromtimestamp(timestamp_ms / 1000.0)
+                        return datetime.fromtimestamp(timestamp_ms / 1000.0, tz=timezone.utc).replace(tzinfo=None)
                     return None
 
                 return None
