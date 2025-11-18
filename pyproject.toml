@@ -32,6 +32,7 @@ dependencies = [
     "llama-cpp-python>=0.2.0",
     "huggingface-hub>=0.20.0",
     "pyyaml>=6.0",
+    "jinja2>=3.0",
     "psutil>=5.0.0",
     "pytest>=7.0",
     "black>=23.0",
@@ -62,6 +63,7 @@ athena-http = "athena.http.server:main"
 athena-fitness-check = "athena.cli.fitness_check:main"
 athena-impact-analysis = "athena.cli.impact_analysis:main"
 athena-spec-manage = "athena.cli.spec_manage:main"
+athena-doc-manage = "athena.cli.doc_manage:main"
 
 [tool.setuptools]
 packages = ["athena"]
