@@ -63,7 +63,7 @@ class EpisodicEvent(BaseModel):
     project_id: int
     session_id: str
     timestamp: datetime = Field(default_factory=datetime.now)
-    event_type: EventType
+    event_type: Optional[EventType] = None  # Optional to handle legacy data with unknown types
     content: str
     outcome: Optional[EventOutcome] = None
 

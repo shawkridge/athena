@@ -2,3 +2,6 @@ fastapi
 uvicorn
 python-dotenv
 aiohttp
+# Athena memory system - direct Python API
+# Install from local development directory
+-e /home/user/.work/athena[dev]

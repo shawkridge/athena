@@ -65,6 +65,16 @@ class EpisodicStore(BaseStore):
             except (ValueError, KeyError):
                 pass
 
+        # Parse event type - handle unknown types gracefully
+        event_type = None
+        if row_dict.get("event_type"):
+            try:
+                event_type = EventType(row_dict.get("event_type"))
+            except (ValueError, KeyError):
+                # Unknown event type in database - log and skip
+                # This can happen with legacy data or external sources
+                pass
+
         # Parse performance metrics from JSON
         perf_metrics = None
         if row_dict.get("performance_metrics"):
@@ -75,6 +85,16 @@ class EpisodicStore(BaseStore):
         if row_dict.get("test_passed") is not None:
             test_passed = bool(row_dict.get("test_passed"))
 
+        # Parse outcome - handle unknown outcomes gracefully
+        outcome = None
+        if row_dict.get("outcome"):
+            try:
+                outcome = EventOutcome(row_dict.get("outcome"))
+            except (ValueError, KeyError):
+                # Unknown outcome in database - log and skip
+                # This can happen with legacy data or external sources
+                pass
+
         return EpisodicEvent(
             id=row_dict.get("id"),
             project_id=row_dict.get("project_id"),
@@ -84,11 +104,9 @@ class EpisodicStore(BaseStore):
                 if row_dict.get("timestamp")
                 else None
             ),
-            event_type=(
-                EventType(row_dict.get("event_type")) if row_dict.get("event_type") else None
-            ),
+            event_type=event_type,
             content=row_dict.get("content"),
-            outcome=EventOutcome(row_dict.get("outcome")) if row_dict.get("outcome") else None,
+            outcome=outcome,
             context=context,
             duration_ms=row_dict.get("duration_ms"),
             files_changed=row_dict.get("files_changed", 0),

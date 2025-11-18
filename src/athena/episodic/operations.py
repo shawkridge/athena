@@ -286,18 +286,19 @@ class EpisodicOperations:
         if not all_events:
             return {
                 "total_events": 0,
-                "avg_importance": 0.0,
+                "quality_score": 0.0,
                 "time_span_days": 0,
             }
 
-        importances = [e.importance for e in all_events if e.importance]
+        # Use confidence instead of non-existent 'importance' field
+        confidences = [e.confidence for e in all_events if e.confidence is not None]
         timestamps = [e.timestamp for e in all_events if e.timestamp]
 
         return {
             "total_events": len(all_events),
-            "avg_importance": sum(importances) / len(importances) if importances else 0.0,
-            "min_importance": min(importances) if importances else 0.0,
-            "max_importance": max(importances) if importances else 0.0,
+            "quality_score": sum(confidences) / len(confidences) if confidences else 0.0,
+            "min_quality": min(confidences) if confidences else 0.0,
+            "max_quality": max(confidences) if confidences else 0.0,
             "earliest": min(timestamps).isoformat() if timestamps else None,
             "latest": max(timestamps).isoformat() if timestamps else None,
             "time_span_days": (
