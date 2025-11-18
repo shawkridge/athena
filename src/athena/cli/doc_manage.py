@@ -7,7 +7,8 @@ Usage:
 Commands:
     list            List documents
     create          Create a new document
-    generate        Generate document from specification
+    generate        Generate document from specification (template-based)
+    generate-ai     Generate document using AI from specification
     update          Update an existing document
     delete          Delete a document
     show            Show document details
@@ -17,8 +18,11 @@ Examples:
     # List all documents
     athena-doc-manage list
 
-    # Generate API docs from spec
+    # Generate API docs from spec (template-based)
     athena-doc-manage generate --spec-id 5 --type api_doc --output docs/api.md
+
+    # Generate TDD using AI
+    athena-doc-manage generate-ai --spec-id 5 --type tdd --preview
 
     # Create manual document
     athena-doc-manage create --name "Deployment Guide" --type deployment --file ops/deploy.md
@@ -41,6 +45,7 @@ from athena.architecture.doc_store import DocumentStore
 from athena.architecture.spec_store import SpecificationStore
 from athena.architecture.models import Document, DocumentType, DocumentStatus
 from athena.architecture.templates import TemplateManager, TemplateContext
+from athena.architecture.generators import AIDocGenerator, ContextAssembler
 
 
 def cmd_list(args):
@@ -212,6 +217,101 @@ def cmd_generate(args):
     print(f"   From spec: [{spec.id}] {spec.name}")
     if doc.file_path:
         print(f"   Saved to: {doc.file_path}")
+
+
+def cmd_generate_ai(args):
+    """Generate document using AI from specification."""
+    db = get_database()
+    doc_store = DocumentStore(db)
+    spec_store = SpecificationStore(db)
+
+    # Load specification
+    spec = spec_store.get(args.spec_id)
+    if not spec:
+        print(f"❌ Specification {args.spec_id} not found", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"\n🤖 Generating {args.type} from spec using AI: {spec.name}")
+
+    # Initialize AI generator
+    try:
+        ai_generator = AIDocGenerator(
+            api_key=args.api_key,
+            model=args.model,
+            temperature=args.temperature,
+        )
+    except ImportError as e:
+        print(f"❌ AI generator not available: {e}", file=sys.stderr)
+        print("   Install anthropic: pip install anthropic")
+        sys.exit(1)
+
+    # Assemble context
+    print(f"   Assembling context...")
+    assembler = ContextAssembler(spec_store=spec_store)
+    context = assembler.assemble_for_spec(
+        spec_id=args.spec_id,
+        doc_type=DocumentType(args.type),
+        include_related=not args.no_related,
+        target_audience=args.audience,
+        detail_level=args.detail_level,
+    )
+
+    print(f"   Context: {context.get_summary()}")
+
+    # Generate documentation
+    print(f"   Generating with {args.model}...")
+    try:
+        result = ai_generator.generate(
+            doc_type=DocumentType(args.type),
+            context=context,
+            custom_instructions=args.instructions,
+        )
+    except Exception as e:
+        print(f"❌ Generation failed: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"   Generated {len(result.content)} characters")
+    print(f"   Tokens: {result.total_tokens} ({result.prompt_tokens} prompt + {result.completion_tokens} completion)")
+    print(f"   Confidence: {result.confidence * 100:.0f}%")
+
+    # Show warnings if any
+    if result.warnings:
+        print(f"\n⚠️  Quality Warnings:")
+        for warning in result.warnings:
+            print(f"   - {warning}")
+
+    # Determine output file path
+    if args.output:
+        file_path = args.output
+    else:
+        # Auto-generate path based on doc type
+        file_path = f"docs/{args.type}/{spec.name.lower().replace(' ', '-')}.md"
+
+    # Convert to document and save
+    doc = result.to_document(
+        project_id=args.project_id,
+        name=args.name or f"{spec.name} Documentation",
+        version=args.version or spec.version,
+        file_path=file_path,
+        description=args.description or f"AI-generated {args.type} from {spec.name}",
+        based_on_spec_ids=[args.spec_id],
+        author=args.author,
+    )
+
+    doc_id = doc_store.create(doc, write_to_file=not args.no_write_file)
+
+    print(f"\n✅ Generated AI document {doc_id}: {doc.name}")
+    print(f"   Type: {doc.doc_type.value}")
+    print(f"   Model: {result.model}")
+    print(f"   From spec: [{spec.id}] {spec.name}")
+    if doc.file_path:
+        print(f"   Saved to: {doc.file_path}")
+
+    # Preview content if requested
+    if args.preview:
+        print(f"\n{'=' * 80}")
+        print(result.content[:500] + ("..." if len(result.content) > 500 else ""))
+        print(f"{'=' * 80}")
 
 
 def cmd_update(args):
@@ -417,6 +517,27 @@ def main():
     gen_parser.add_argument("--author", help="Author name")
     gen_parser.add_argument("--no-write-file", action="store_true", help="Don't write to filesystem")
     gen_parser.set_defaults(func=cmd_generate)
+
+    # Generate AI command
+    ai_parser = subparsers.add_parser("generate-ai", help="Generate document using AI from specification")
+    ai_parser.add_argument("--spec-id", type=int, required=True, help="Specification ID")
+    ai_parser.add_argument("--type", required=True, help="Document type to generate")
+    ai_parser.add_argument("--project-id", type=int, default=1, help="Project ID")
+    ai_parser.add_argument("--name", help="Document name (default: auto-generated)")
+    ai_parser.add_argument("--version", help="Version (default: spec version)")
+    ai_parser.add_argument("--output", help="Output file path (default: auto-generated)")
+    ai_parser.add_argument("--description", help="Description")
+    ai_parser.add_argument("--author", help="Author name")
+    ai_parser.add_argument("--model", default="claude-3-5-sonnet-20241022", help="Claude model to use")
+    ai_parser.add_argument("--temperature", type=float, default=0.7, help="Generation temperature (0-1)")
+    ai_parser.add_argument("--api-key", help="Anthropic API key (uses ANTHROPIC_API_KEY env var if not provided)")
+    ai_parser.add_argument("--instructions", help="Custom instructions for generation")
+    ai_parser.add_argument("--audience", default="technical", help="Target audience (technical/business/executive)")
+    ai_parser.add_argument("--detail-level", default="comprehensive", help="Detail level (brief/standard/comprehensive)")
+    ai_parser.add_argument("--no-related", action="store_true", help="Don't include related specs")
+    ai_parser.add_argument("--no-write-file", action="store_true", help="Don't write to filesystem")
+    ai_parser.add_argument("--preview", action="store_true", help="Show content preview")
+    ai_parser.set_defaults(func=cmd_generate_ai)
 
     # Update command
     update_parser = subparsers.add_parser("update", help="Update an existing document")
