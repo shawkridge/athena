@@ -1,93 +1,81 @@
-import { Card } from '@/components/common/Card'
-import { Stat } from '@/components/common/Stat'
-import { Badge } from '@/components/common/Badge'
-import { useAPI } from '@/hooks'
-import { useProject } from '@/context/ProjectContext'
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
-interface Skill {
-  id: string
-  name: string
-  category?: string
-  domain?: string
-  effectiveness: number
-  executions?: number
-  successRate?: number
-  description?: string
-  lastUsed?: string
-}
+export default function ProceduralMemoryPage() {
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
-interface ProceduralResponse {
-  skills: Skill[]
-  stats: {
-    totalSkills: number
-    avgEffectiveness: number
-    totalExecutions: number
-  }
-}
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const resp = await fetch('http://localhost:8000/api/memory/procedural')
+        if (resp.ok) setData(await resp.json())
+      } catch (error) {
+        console.error('Failed to fetch:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetch()
+  }, [])
 
-export const ProceduralMemoryPage = () => {
-  const { selectedProject } = useProject()
-
-  const apiUrl = selectedProject
-    ? `/api/procedural/skills?project_id=${selectedProject.id}`
-    : '/api/procedural/skills'
-
-  const { data, loading } = useAPI<ProceduralResponse>(apiUrl, [selectedProject?.id])
-
-  if (loading) {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse h-64 bg-gray-800 rounded" />
-      </div>
-    )
-  }
+  if (loading) return <div className="p-8">Loading...</div>
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-50">Layer 3: Procedural Memory</h1>
-        <p className="text-gray-400">
-          Learned skills and workflows
-          {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
-        </p>
+        <h1 className="text-3xl font-bold">Procedural Memory</h1>
+        <p className="text-gray-500 mt-2">Reusable workflows and procedures</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Stat label="Total Skills" value={data?.stats.totalSkills.toString() || '0'} />
-        <Stat label="Avg Effectiveness" value={`${Math.round(data?.stats.avgEffectiveness || 0)}%`} />
-        <Stat label="Total Executions" value={data?.stats.totalExecutions.toLocaleString() || '0'} />
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Procedures</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data?.itemCount}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Success Rate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{(data?.successRate * 100).toFixed(0)}%</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Quality</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data?.health?.quality}%</div>
+          </CardContent>
+        </Card>
       </div>
 
-      <Card header={<h3 className="text-lg font-semibold text-gray-50">Skills Library</h3>}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-700">
-                <th className="text-left py-2 px-3 text-gray-400">Skill</th>
-                <th className="text-left py-2 px-3 text-gray-400">Category</th>
-                <th className="text-left py-2 px-3 text-gray-400">Effectiveness</th>
-                <th className="text-left py-2 px-3 text-gray-400">Executions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data?.skills.map((skill) => (
-                <tr key={skill.id} className="border-b border-gray-700/50 hover:bg-gray-700/30">
-                  <td className="py-2 px-3 text-gray-50">{skill.name}</td>
-                  <td className="py-2 px-3"><Badge>{skill.category}</Badge></td>
-                  <td className="py-2 px-3">
-                    <div className="h-2 bg-gray-700 rounded w-20 overflow-hidden">
-                      <div className="h-full bg-green-500" style={{ width: `${skill.effectiveness}%` }} />
-                    </div>
-                  </td>
-                  <td className="py-2 px-3 text-gray-50">{skill.executions}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Top Procedures</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {data?.topProcedures?.map((proc: any, idx: number) => (
+              <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                <div>
+                  <p className="font-medium">{proc.name}</p>
+                  <p className="text-xs text-gray-500">Used {proc.uses} times</p>
+                </div>
+                <Badge variant="secondary">{(proc.successRate * 100).toFixed(0)}%</Badge>
+              </div>
+            ))}
+          </div>
+        </CardContent>
       </Card>
     </div>
   )
 }
-
-export default ProceduralMemoryPage

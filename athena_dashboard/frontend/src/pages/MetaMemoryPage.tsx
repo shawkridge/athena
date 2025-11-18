@@ -1,74 +1,80 @@
-import { Card, RefreshButton } from '@/components/common'
-import { GaugeChart } from '@/components/charts/GaugeChart'
-import { useRealtimeData } from '@/hooks'
-import { useProject } from '@/context/ProjectContext'
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
-interface MetaResponse {
-  quality: number
-  expertise: { domain: string; score: number }[]
-  attention: { layer: string; allocation: number }[]
-}
+export default function MetaMemoryPage() {
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
-export const MetaMemoryPage = () => {
-  const { selectedProject } = useProject()
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const resp = await fetch('http://localhost:8000/api/memory/meta')
+        if (resp.ok) setData(await resp.json())
+      } catch (error) {
+        console.error('Failed to fetch:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetch()
+  }, [])
 
-  const apiUrl = selectedProject
-    ? `/api/meta/quality?project_id=${selectedProject.id}`
-    : '/api/meta/quality'
-
-  const { data, loading, refetch, isConnected } = useRealtimeData<MetaResponse>({
-    url: apiUrl,
-    dependencies: [selectedProject?.id],
-    pollInterval: 5000,
-    enabled: true,
-  })
-
-  if (loading) return <div className="p-6 animate-pulse h-64 bg-gray-800 rounded" />
+  if (loading) return <div className="p-8">Loading...</div>
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-50">Layer 6: Meta-Memory</h1>
-          <p className="text-gray-400">
-            Quality metrics and system awareness
-            {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
-          </p>
-        </div>
-        <RefreshButton onRefresh={refetch} isConnected={isConnected} isLoading={loading} />
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold">Meta-Memory</h1>
+        <p className="text-gray-500 mt-2">Quality tracking, attention, and cognitive load</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="flex items-center justify-center">
-          <GaugeChart value={data?.quality || 0} title="Overall Quality" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Cognitive Load</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{(data?.cognitiveLoad?.current * 100).toFixed(0)}%</div>
+            <p className="text-xs text-gray-500 mt-1">{data?.cognitiveLoad?.status}</p>
+          </CardContent>
         </Card>
 
-        <Card header={<h3 className="text-lg font-semibold text-gray-50">Layer Attention</h3>}>
-          <div className="space-y-3">
-            {data?.attention.map((item) => (
-              <div key={item.layer} className="flex justify-between">
-                <span className="text-gray-400">{item.layer}</span>
-                <div className="h-2 bg-gray-700 rounded w-24 overflow-hidden">
-                  <div className="h-full bg-blue-500" style={{ width: `${item.allocation}%` }} />
-                </div>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Memory Quality</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{(data?.memoryQuality?.average * 100).toFixed(0)}%</div>
+            <p className="text-xs text-gray-500 mt-1">{data?.memoryQuality?.trend}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Quality Change</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{data?.memoryQuality?.recentChange}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Expertise Levels</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {Object.entries(data?.expertise || {}).map(([domain, level]: [string, any]) => (
+              <div key={domain} className="flex justify-between text-sm">
+                <span className="capitalize">{domain.replace(/_/g, ' ')}</span>
+                <Badge variant="secondary">{(Number(level) * 100).toFixed(0)}%</Badge>
               </div>
             ))}
           </div>
-        </Card>
-      </div>
-
-      <Card header={<h3 className="text-lg font-semibold text-gray-50">Domain Expertise</h3>}>
-        <div className="grid grid-cols-2 gap-4">
-          {data?.expertise.map((item) => (
-            <div key={item.domain} className="p-3 rounded bg-gray-700/30">
-              <p className="text-gray-50 font-medium">{item.domain}</p>
-              <p className="text-2xl font-bold text-blue-400">{Math.round(item.score)}%</p>
-            </div>
-          ))}
-        </div>
+        </CardContent>
       </Card>
     </div>
   )
 }
-
-export default MetaMemoryPage

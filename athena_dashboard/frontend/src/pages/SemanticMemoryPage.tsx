@@ -1,118 +1,78 @@
-import { useState } from 'react'
-import { Card } from '@/components/common/Card'
-import { SearchBar } from '@/components/common/SearchBar'
-import { Filter, type FilterOption } from '@/components/common/Filter'
-import { Stat } from '@/components/common/Stat'
-import { useAPI } from '@/hooks'
-import { useProject } from '@/context/ProjectContext'
-import { Badge } from '@/components/common/Badge'
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
-interface SemanticMemory {
-  id: string
-  content: string
-  domain: string
-  quality: number
-  lastAccessed: string
-}
+export default function SemanticMemoryPage() {
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
-interface SemanticResponse {
-  memories: SemanticMemory[]
-  total: number
-  stats: {
-    totalMemories: number
-    avgQuality: number
-    domains: Array<{ name: string; count: number }>
-  }
-}
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const resp = await fetch('http://localhost:8000/api/memory/semantic')
+        if (resp.ok) setData(await resp.json())
+      } catch (error) {
+        console.error('Failed to fetch:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetch()
+  }, [])
 
-export const SemanticMemoryPage = () => {
-  const { selectedProject } = useProject()
-  const [search, setSearch] = useState('')
-  const [domains, setDomains] = useState<string[]>([])
-
-  const queryParams = new URLSearchParams({
-    search,
-    ...(selectedProject && { project_id: selectedProject.id.toString() }),
-    ...(domains.length > 0 && { domains: domains.join(',') }),
-  })
-
-  const { data, loading } = useAPI<SemanticResponse>(
-    `/api/semantic/search?${queryParams}`,
-    [selectedProject?.id, search]
-  )
-
-  if (loading) {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-800 rounded w-1/3" />
-          <div className="h-48 bg-gray-800 rounded" />
-        </div>
-      </div>
-    )
-  }
-
-  const domainOptions: FilterOption[] =
-    data?.stats.domains.map((d) => ({
-      value: d.name,
-      label: `${d.name} (${d.count})`,
-    })) || []
+  if (loading) return <div className="p-8">Loading...</div>
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-50">Layer 2: Semantic Memory</h1>
-        <p className="text-gray-400">
-          Knowledge search and quality metrics
-          {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
-        </p>
+        <h1 className="text-3xl font-bold">Semantic Memory</h1>
+        <p className="text-gray-500 mt-2">Learned facts and insights</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Stat label="Total Memories" value={data?.stats.totalMemories.toLocaleString() || '0'} />
-        <Stat label="Avg Quality" value={`${Math.round(data?.stats.avgQuality || 0)}%`} />
-        <Stat label="Domains" value={data?.stats.domains.length.toString() || '0'} />
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Total Facts</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data?.itemCount}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Quality</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data?.health?.quality}%</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Storage Size</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data?.health?.storageSize}</div>
+          </CardContent>
+        </Card>
       </div>
 
-      <Card header={<h3 className="text-lg font-semibold text-gray-50">Search & Filter</h3>}>
-        <div className="space-y-4">
-          <SearchBar onSearch={setSearch} placeholder="Search knowledge..." />
-          <Filter
-            label="Domain"
-            options={domainOptions}
-            selected={domains}
-            onChange={setDomains}
-          />
-        </div>
-      </Card>
-
-      <Card header={<h3 className="text-lg font-semibold text-gray-50">Results</h3>}>
-        <div className="space-y-3">
-          {data?.memories.length ? (
-            data.memories.map((memory) => (
-              <div
-                key={memory.id}
-                className="p-4 rounded-lg border border-gray-700 bg-gray-800/50 hover:bg-gray-800"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <Badge variant="info">{memory.domain}</Badge>
-                    <p className="text-gray-50 mt-2">{memory.content}</p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between text-xs text-gray-400">
-                  <span>Quality: {memory.quality}%</span>
-                  <span>{memory.lastAccessed}</span>
-                </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Topic Distribution</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {Object.entries(data?.topicBreakdown || {}).map(([topic, count]: [string, any]) => (
+              <div key={topic} className="flex justify-between text-sm">
+                <span className="capitalize">{topic.replace(/_/g, ' ')}</span>
+                <Badge variant="secondary">{count}</Badge>
               </div>
-            ))
-          ) : (
-            <div className="text-center py-8 text-gray-400">No results found</div>
-          )}
-        </div>
+            ))}
+          </div>
+        </CardContent>
       </Card>
     </div>
   )
 }
-
-export default SemanticMemoryPage

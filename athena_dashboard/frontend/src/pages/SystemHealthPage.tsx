@@ -1,216 +1,139 @@
-import { Card } from '@/components/common/Card'
-import { GaugeChart } from '@/components/charts/GaugeChart'
-import { TimeSeriesChart } from '@/components/charts/TimeSeriesChart'
-import { useAPI } from '@/hooks'
-import { useProject } from '@/context/ProjectContext'
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
-interface LayerHealth {
-  name: string
-  health: number
-  status: 'healthy' | 'warning' | 'critical'
-  itemCount: number
-  queryTime: number
-  lastUpdated: string
-}
+export default function SystemHealthPage() {
+  const [health, setHealth] = useState<any>(null)
+  const [perf, setPerf] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
-interface SystemHealthData {
-  timestamp: string
-  overallHealth: number
-  databaseSize: number
-  queryLatency: number
-}
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const [healthResp, perfResp] = await Promise.all([
+          fetch('http://localhost:8000/api/system/health'),
+          fetch('http://localhost:8000/api/system/performance'),
+        ])
+        if (healthResp.ok) setHealth(await healthResp.json())
+        if (perfResp.ok) setPerf(await perfResp.json())
+      } catch (error) {
+        console.error('Failed to fetch:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetch()
+  }, [])
 
-interface SystemHealthResponse {
-  layers: LayerHealth[]
-  metrics: SystemHealthData[]
-}
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'healthy':
-      return 'bg-green-900/30 text-green-300'
-    case 'warning':
-      return 'bg-yellow-900/30 text-yellow-300'
-    case 'critical':
-      return 'bg-red-900/30 text-red-300'
-    default:
-      return 'bg-gray-700 text-gray-300'
-  }
-}
-
-export const SystemHealthPage = () => {
-  const { selectedProject } = useProject()
-
-  // Build URL with project_id if a project is selected
-  const apiUrl = selectedProject
-    ? `/api/system/health?project_id=${selectedProject.id}`
-    : '/api/system/health'
-
-  const { data, loading, error } = useAPI<SystemHealthResponse>(
-    apiUrl,
-    [selectedProject?.id]
-  )
-
-  if (loading) {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-800 rounded w-1/4" />
-          <div className="h-40 bg-gray-800 rounded" />
-        </div>
-      </div>
-    )
-  }
-
-  if (error || !data) {
-    return (
-      <div className="p-6">
-        <h1 className="text-3xl font-bold text-gray-50 mb-2">System Health</h1>
-        <div className="bg-red-900/20 border border-red-700 rounded-lg p-6 text-red-300">
-          {error?.message || 'Failed to load system health'}
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <div className="p-8">Loading...</div>
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-50">System Health</h1>
-        <p className="text-gray-400">8-layer health overview and performance metrics</p>
+        <h1 className="text-3xl font-bold">System Health</h1>
+        <p className="text-gray-500 mt-2">Performance metrics and resource utilization</p>
       </div>
 
-      {/* Overall Health Gauges */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="flex items-center justify-center">
-          {data.metrics.length > 0 && (
-            <GaugeChart
-              value={data.metrics[data.metrics.length - 1].overallHealth}
-              title="Overall Health"
-              color={data.metrics[data.metrics.length - 1].overallHealth >= 80 ? 'success' : 'warning'}
-            />
-          )}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold capitalize">{health?.status}</div>
+            <p className="text-xs text-gray-500 mt-1">{health?.uptime}</p>
+          </CardContent>
         </Card>
 
         <Card>
-          <div className="space-y-4">
-            <h3 className="font-semibold text-gray-50">Database</h3>
-            <div>
-              <p className="text-sm text-gray-400">Size</p>
-              <p className="text-2xl font-bold text-gray-50">
-                {data.metrics[data.metrics.length - 1]?.databaseSize.toFixed(2) || '0'} MB
-              </p>
-            </div>
-          </div>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Success Rate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{(health?.successRate * 100).toFixed(1)}%</div>
+          </CardContent>
         </Card>
 
         <Card>
-          <div className="space-y-4">
-            <h3 className="font-semibold text-gray-50">Performance</h3>
-            <div>
-              <p className="text-sm text-gray-400">Avg Query Time</p>
-              <p className="text-2xl font-bold text-gray-50">
-                {Math.round(data.metrics[data.metrics.length - 1]?.queryLatency || 0)} ms
-              </p>
-            </div>
-          </div>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Cache Hit Rate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{(perf?.cacheHitRate * 100).toFixed(0)}%</div>
+          </CardContent>
         </Card>
       </div>
 
-      {/* Performance Trend */}
-      <Card header={<h3 className="text-lg font-semibold text-gray-50">Performance Trend</h3>}>
-        <TimeSeriesChart
-          data={data.metrics}
-          lines={[
-            { key: 'overallHealth', stroke: '#10B981', name: 'Overall Health' },
-            { key: 'queryLatency', stroke: '#F59E0B', name: 'Query Latency (ms)' },
-          ]}
-          xAxisKey="timestamp"
-        />
-      </Card>
-
-      {/* Memory Layers */}
-      <Card header={<h3 className="text-lg font-semibold text-gray-50">Memory Layers Status</h3>}>
-        <div className="space-y-4">
-          {data.layers.map((layer) => (
-            <div
-              key={layer.name}
-              className={`p-4 rounded-lg border ${
-                layer.status === 'healthy'
-                  ? 'border-green-700/50 bg-green-900/10'
-                  : layer.status === 'warning'
-                    ? 'border-yellow-700/50 bg-yellow-900/10'
-                    : 'border-red-700/50 bg-red-900/10'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-3">
+      <Card>
+        <CardHeader>
+          <CardTitle>Memory Layers Status</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {health?.layers?.map((layer: any) => (
+              <div key={layer.name} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                 <div className="flex items-center gap-3">
-                  <div>
-                    <h4 className="font-semibold text-gray-50">{layer.name}</h4>
-                    <p className="text-xs text-gray-400">{layer.itemCount} items</p>
-                  </div>
+                  <div className="w-2 h-2 rounded-full bg-green-600" />
+                  <span className="font-medium">{layer.name}</span>
                 </div>
-                <span
-                  className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(layer.status)}`}
-                >
-                  {layer.status.charAt(0).toUpperCase() + layer.status.slice(1)}
-                </span>
+                <Badge variant="secondary">{layer.itemCount?.toLocaleString() || '0'}</Badge>
               </div>
-
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Health</span>
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 bg-gray-700 rounded-full w-32 overflow-hidden">
-                      <div
-                        className={`h-full ${
-                          layer.health >= 80
-                            ? 'bg-green-500'
-                            : layer.health >= 60
-                              ? 'bg-yellow-500'
-                              : 'bg-red-500'
-                        }`}
-                        style={{ width: `${layer.health}%` }}
-                      />
-                    </div>
-                    <span className="text-gray-50 font-semibold w-12 text-right">
-                      {Math.round(layer.health)}%
-                    </span>
-                  </div>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Avg Query Time</span>
-                  <span className="text-gray-50">{Math.round(layer.queryTime)}ms</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Last Updated</span>
-                  <span className="text-gray-50 text-xs">{layer.lastUpdated}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </CardContent>
       </Card>
 
-      {/* Alerts & Warnings */}
-      {data.layers.some((l) => l.status !== 'healthy') && (
-        <Card
-          header={<h3 className="text-lg font-semibold text-gray-50">⚠️ Alerts</h3>}
-          className="border-yellow-700/50 bg-yellow-900/10"
-        >
-          <div className="space-y-2">
-            {data.layers
-              .filter((l) => l.status !== 'healthy')
-              .map((layer) => (
-                <p key={layer.name} className="text-yellow-300 text-sm">
-                  {layer.name} is {layer.status} (Health: {Math.round(layer.health)}%)
-                </p>
-              ))}
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Resource Usage</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span>CPU</span>
+                <span className="font-medium">{perf?.cpuUsage}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${perf?.cpuUsage}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-sm mb-1">
+                <span>Memory</span>
+                <span className="font-medium">{perf?.memoryUsage}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-amber-600 h-2 rounded-full" style={{ width: `${perf?.memoryUsage}%` }} />
+              </div>
+            </div>
+          </CardContent>
         </Card>
-      )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Query Performance</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span>P50 Latency</span>
+              <Badge variant="secondary">{perf?.queryLatency?.p50}ms</Badge>
+            </div>
+            <div className="flex justify-between">
+              <span>P95 Latency</span>
+              <Badge variant="secondary">{perf?.queryLatency?.p95}ms</Badge>
+            </div>
+            <div className="flex justify-between">
+              <span>P99 Latency</span>
+              <Badge variant="secondary">{perf?.queryLatency?.p99}ms</Badge>
+            </div>
+            <div className="flex justify-between mt-3 pt-3 border-t">
+              <span>QPS</span>
+              <Badge variant="secondary">{perf?.throughput?.queriesPerSecond}</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
-
-export default SystemHealthPage

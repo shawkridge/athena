@@ -1,234 +1,106 @@
-import { Card, RefreshButton } from '@/components/common'
-import { BarChartComponent } from '@/components/charts/BarChart'
-import { PieChartComponent } from '@/components/charts/PieChart'
-import { Tabs, type Tab } from '@/components/common/Tabs'
-import { Stat } from '@/components/common/Stat'
-import { useRealtimeData } from '@/hooks'
-import { useProject } from '@/context/ProjectContext'
-import { useState } from 'react'
-import { format } from 'date-fns'
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
-interface ConsolidationRun {
-  id: string
-  startTime: string
-  endTime: string
-  status: 'completed' | 'running' | 'failed'
-  duration: number
-  patternsFound: number
-  system1Time: number
-  system2Time: number
-}
+export default function ConsolidationPage() {
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
-interface ConsolidationData {
-  currentProgress: number
-  lastRun: ConsolidationRun
-  runs: ConsolidationRun[]
-  statistics: {
-    totalRuns: number
-    avgPatternsPerRun: number
-    successRate: number
-    totalPatterns: number
-  }
-  patternDistribution: Array<{ name: string; value: number }>
-}
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const resp = await fetch('http://localhost:8000/api/system/consolidation')
+        if (resp.ok) setData(await resp.json())
+      } catch (error) {
+        console.error('Failed to fetch:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetch()
+  }, [])
 
-export const ConsolidationPage = () => {
-  const [activeTab, setActiveTab] = useState('overview')
-  const { selectedProject } = useProject()
-
-  // Build URL with project_id if a project is selected
-  const apiUrl = selectedProject
-    ? `/api/consolidation/analytics?project_id=${selectedProject.id}`
-    : '/api/consolidation/analytics'
-
-  const { data, loading, error, refetch, isConnected } = useRealtimeData<ConsolidationData>({
-    url: apiUrl,
-    dependencies: [selectedProject?.id],
-    pollInterval: 3000,  // Poll frequently for live consolidation progress
-    enabled: true,
-  })
-
-  if (loading) {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-800 rounded w-1/3" />
-          <div className="h-40 bg-gray-800 rounded" />
-        </div>
-      </div>
-    )
-  }
-
-  if (error || !data) {
-    return (
-      <div className="p-6">
-        <h1 className="text-3xl font-bold text-gray-50 mb-2">Layer 7: Consolidation</h1>
-        <div className="bg-red-900/20 border border-red-700 rounded-lg p-6 text-red-300">
-          {error?.message || 'Failed to load consolidation data'}
-        </div>
-      </div>
-    )
-  }
-
-  const tabs: Tab[] = [
-    {
-      id: 'overview',
-      label: 'Overview',
-      content: (
-        <div className="space-y-6">
-          {/* Progress */}
-          <Card>
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-50">Consolidation Progress</h3>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-400">Current run</span>
-                  <span className="text-gray-50 font-semibold">{data.currentProgress}%</span>
-                </div>
-                <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all"
-                    style={{ width: `${data.currentProgress}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Statistics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Stat
-              label="Total Runs"
-              value={data.statistics.totalRuns.toString()}
-            />
-            <Stat
-              label="Patterns Found"
-              value={data.statistics.totalPatterns.toString()}
-            />
-            <Stat
-              label="Avg/Run"
-              value={data.statistics.avgPatternsPerRun.toFixed(1)}
-            />
-            <Stat
-              label="Success Rate"
-              value={`${Math.round(data.statistics.successRate)}%`}
-            />
-          </div>
-
-          {/* Last Run Details */}
-          {data.lastRun && data.lastRun.status && (
-          <Card
-            header={<h3 className="text-lg font-semibold text-gray-50">Last Run</h3>}
-          >
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Status</span>
-                <span
-                  className={`font-semibold ${
-                    data.lastRun.status === 'completed'
-                      ? 'text-green-400'
-                      : data.lastRun.status === 'running'
-                        ? 'text-yellow-400'
-                        : 'text-red-400'
-                  }`}
-                >
-                  {data.lastRun.status.charAt(0).toUpperCase() + data.lastRun.status.slice(1)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Duration</span>
-                <span className="text-gray-50">{data.lastRun.duration}s</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Patterns Found</span>
-                <span className="text-gray-50">{data.lastRun.patternsFound}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Completed</span>
-                <span className="text-gray-50 text-sm">
-                  {format(new Date(data.lastRun.endTime), 'MMM dd, HH:mm:ss')}
-                </span>
-              </div>
-            </div>
-          </Card>
-          )}
-        </div>
-      ),
-    },
-    {
-      id: 'patterns',
-      label: 'Patterns',
-      content: (
-        <Card>
-          <PieChartComponent data={data.patternDistribution} />
-        </Card>
-      ),
-    },
-    {
-      id: 'history',
-      label: 'History',
-      content: (
-        <Card header={<h3 className="text-lg font-semibold text-gray-50">Run History</h3>}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="text-left py-2 px-3 text-gray-400 font-medium">Status</th>
-                  <th className="text-left py-2 px-3 text-gray-400 font-medium">Patterns</th>
-                  <th className="text-left py-2 px-3 text-gray-400 font-medium">Duration</th>
-                  <th className="text-left py-2 px-3 text-gray-400 font-medium">Completed</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.runs.map((run) => (
-                  <tr
-                    key={run.id}
-                    className="border-b border-gray-700/50 hover:bg-gray-700/30"
-                  >
-                    <td className="py-2 px-3">
-                      <span
-                        className={`px-2 py-1 rounded text-xs font-medium ${
-                          run.status === 'completed'
-                            ? 'bg-green-900/30 text-green-300'
-                            : run.status === 'running'
-                              ? 'bg-yellow-900/30 text-yellow-300'
-                              : 'bg-red-900/30 text-red-300'
-                        }`}
-                      >
-                        {run.status}
-                      </span>
-                    </td>
-                    <td className="py-2 px-3 text-gray-50">{run.patternsFound}</td>
-                    <td className="py-2 px-3 text-gray-50">{run.duration}s</td>
-                    <td className="py-2 px-3 text-gray-400 text-xs">
-                      {format(new Date(run.endTime), 'MMM dd, HH:mm')}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      ),
-    },
-  ]
+  if (loading) return <div className="p-8">Loading...</div>
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-50">Layer 7: Consolidation</h1>
-          <p className="text-gray-400">
-            Pattern extraction and dual-process reasoning
-            {selectedProject && <span className="ml-2 text-blue-400">(Viewing: {selectedProject.name})</span>}
-          </p>
-        </div>
-        <RefreshButton onRefresh={refetch} isConnected={isConnected} isLoading={loading} />
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold">Consolidation</h1>
+        <p className="text-gray-500 mt-2">Pattern extraction and memory compression</p>
       </div>
 
-      <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Consolidation Progress</span>
+            <Badge>{data?.progress}%</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div
+              className="bg-blue-600 h-2 rounded-full transition-all"
+              style={{ width: `${data?.progress}%` }}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-gray-600">Current Phase</p>
+              <p className="font-medium capitalize">{data?.currentPhase?.replace(/_/g, ' ')}</p>
+            </div>
+            <div>
+              <p className="text-gray-600">Status</p>
+              <p className="font-medium capitalize">{data?.status?.replace(/_/g, ' ')}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Consolidation Metrics</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Events Processed</span>
+              <Badge variant="secondary">{data?.metrics?.eventsProcessed?.toLocaleString()}</Badge>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span>Patterns Found</span>
+              <Badge variant="secondary">{data?.metrics?.patternsFound}</Badge>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span>Compression Ratio</span>
+              <Badge variant="secondary">{data?.metrics?.compressionRatio}x</Badge>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span>Learning Gain</span>
+              <Badge variant="secondary">{(data?.metrics?.learningGain * 100).toFixed(0)}%</Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Timeline</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Start Time</span>
+              <span>{new Date(data?.consolidationCycle?.startTime).toLocaleTimeString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Phase 1</span>
+              <span>{data?.consolidationCycle?.phase1_duration}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Phase 2</span>
+              <span>{data?.consolidationCycle?.phase2_duration}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
-
-export default ConsolidationPage

@@ -7,9 +7,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { LoadingSpinner } from './components/common/LoadingSpinner'
 
 // Lazy load all pages for code splitting
-const ModernOverviewPage = lazy(() => import('./pages/ModernOverviewPage'))
-const OverviewPage = lazy(() => import('./pages/OverviewPage'))
-const TaskManagementPage = lazy(() => import('./pages/TaskManagementPage'))
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const EpisodicMemoryPage = lazy(() => import('./pages/EpisodicMemoryPage'))
 const SemanticMemoryPage = lazy(() => import('./pages/SemanticMemoryPage'))
 const ProceduralMemoryPage = lazy(() => import('./pages/ProceduralMemoryPage'))
@@ -18,13 +16,6 @@ const KnowledgeGraphPage = lazy(() => import('./pages/KnowledgeGraphPage'))
 const MetaMemoryPage = lazy(() => import('./pages/MetaMemoryPage'))
 const ConsolidationPage = lazy(() => import('./pages/ConsolidationPage'))
 const SystemHealthPage = lazy(() => import('./pages/SystemHealthPage'))
-const HookExecutionPage = lazy(() => import('./pages/HookExecutionPage'))
-const WorkingMemoryPage = lazy(() => import('./pages/WorkingMemoryPage'))
-const RAGPlanningPage = lazy(() => import('./pages/RAGPlanningPage'))
-const LearningAnalyticsPage = lazy(() => import('./pages/LearningAnalyticsPage'))
-const ResearchPage = lazy(() => import('./pages/ResearchPage'))
-const PerformanceMonitoringPage = lazy(() => import('./pages/PerformanceMonitoringPage'))
-const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 
 function App() {
   // Suppress non-critical browser warnings and errors
@@ -78,10 +69,8 @@ function App() {
             <Suspense fallback={<LoadingSpinner message="Loading dashboard..." />}>
               <Routes>
               <Route element={<MainLayout />}>
-                <Route path="/" element={<ModernOverviewPage />} />
-                <Route path="/overview" element={<ModernOverviewPage />} />
-                <Route path="/overview-old" element={<OverviewPage />} />
-                <Route path="/tasks" element={<TaskManagementPage />} />
+                <Route path="/" element={<DashboardPage />} />
+                <Route path="/overview" element={<DashboardPage />} />
                 <Route path="/episodic" element={<EpisodicMemoryPage />} />
                 <Route path="/semantic" element={<SemanticMemoryPage />} />
                 <Route path="/procedural" element={<ProceduralMemoryPage />} />
@@ -90,13 +79,6 @@ function App() {
                 <Route path="/meta-memory" element={<MetaMemoryPage />} />
                 <Route path="/consolidation" element={<ConsolidationPage />} />
                 <Route path="/system-health" element={<SystemHealthPage />} />
-                <Route path="/hooks" element={<HookExecutionPage />} />
-                <Route path="/working-memory" element={<WorkingMemoryPage />} />
-                <Route path="/rag-planning" element={<RAGPlanningPage />} />
-                <Route path="/learning-analytics" element={<LearningAnalyticsPage />} />
-                <Route path="/research" element={<ResearchPage />} />
-                <Route path="/performance" element={<PerformanceMonitoringPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
               </Route>
             </Routes>
             </Suspense>
