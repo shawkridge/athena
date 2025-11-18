@@ -13,6 +13,8 @@ Commands:
     delete          Delete a document
     show            Show document details
     templates       List available templates
+    check-drift     Check for drift between documents and specs
+    sync            Sync documents with their source specifications
 
 Examples:
     # List all documents
@@ -23,6 +25,15 @@ Examples:
 
     # Generate TDD using AI
     athena-doc-manage generate-ai --spec-id 5 --type tdd --preview
+
+    # Check drift for all documents in project
+    athena-doc-manage check-drift --project-id 1
+
+    # Sync all drifted documents (dry run)
+    athena-doc-manage sync --project-id 1 --dry-run
+
+    # Sync specific document
+    athena-doc-manage sync --doc-id 5
 
     # Create manual document
     athena-doc-manage create --name "Deployment Guide" --type deployment --file ops/deploy.md
@@ -46,6 +57,7 @@ from athena.architecture.spec_store import SpecificationStore
 from athena.architecture.models import Document, DocumentType, DocumentStatus
 from athena.architecture.templates import TemplateManager, TemplateContext
 from athena.architecture.generators import AIDocGenerator, ContextAssembler
+from athena.architecture.sync import DriftDetector, SyncManager, StalenessChecker
 
 
 def cmd_list(args):
@@ -471,6 +483,216 @@ def cmd_templates(args):
     print(f"\nTotal: {len(templates)} templates")
 
 
+def cmd_check_drift(args):
+    """Check for drift between documents and specifications."""
+    db = get_database()
+    doc_store = DocumentStore(db)
+    spec_store = SpecificationStore(db)
+
+    detector = DriftDetector(spec_store, doc_store)
+
+    if args.doc_id:
+        # Check single document
+        try:
+            result = detector.check_document(
+                doc_id=args.doc_id,
+                staleness_threshold_days=args.staleness_days
+            )
+
+            if args.json:
+                print(json.dumps(result.to_dict(), indent=2))
+            else:
+                print(f"\n📊 Drift Check: {result.document.name}")
+                print("=" * 80)
+                print(f"Status: {result.status.value}")
+                print(f"Message: {result.message}")
+                if result.stored_hash:
+                    print(f"Stored hash: {result.stored_hash}")
+                if result.current_hash:
+                    print(f"Current hash: {result.current_hash}")
+                if result.spec_ids:
+                    print(f"Source specs: {result.spec_ids}")
+                if result.last_synced_at:
+                    print(f"Last synced: {result.last_synced_at.strftime('%Y-%m-%d %H:%M:%S')}")
+                if result.days_since_sync is not None:
+                    print(f"Days since sync: {result.days_since_sync}")
+                print(f"\nRecommendation: {result.recommendation}")
+
+                if result.needs_regeneration:
+                    print(f"\n⚠️  Document needs regeneration")
+
+        except Exception as e:
+            print(f"❌ Error checking drift: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    else:
+        # Check all documents in project
+        results = detector.check_project(
+            project_id=args.project_id,
+            staleness_threshold_days=args.staleness_days
+        )
+
+        if args.json:
+            output = [r.to_dict() for r in results]
+            print(json.dumps(output, indent=2))
+        else:
+            print(f"\n📊 Drift Check (Project {args.project_id})")
+            print("=" * 80)
+
+            # Group by status
+            by_status = {}
+            for result in results:
+                status = result.status.value
+                if status not in by_status:
+                    by_status[status] = []
+                by_status[status].append(result)
+
+            # Display summary
+            in_sync = len(by_status.get('in_sync', []))
+            drifted = len(by_status.get('drifted', []))
+            stale = len(by_status.get('stale', []))
+            missing_hash = len(by_status.get('missing_hash', []))
+            orphaned = len(by_status.get('orphaned', []))
+
+            print(f"\nSummary:")
+            print(f"  ✅ In sync: {in_sync}")
+            print(f"  ⚠️  Drifted: {drifted}")
+            print(f"  ⏰ Stale: {stale}")
+            print(f"  ❓ Missing hash: {missing_hash}")
+            print(f"  🗑️  Orphaned: {orphaned}")
+
+            # List documents needing attention
+            needs_attention = [r for r in results if r.needs_regeneration]
+            if needs_attention:
+                print(f"\n⚠️  Documents Needing Attention ({len(needs_attention)}):")
+                print("-" * 80)
+                for result in needs_attention[:10]:  # Show first 10
+                    print(f"\n[{result.document.id}] {result.document.name}")
+                    print(f"    Status: {result.status.value}")
+                    print(f"    {result.message}")
+
+                if len(needs_attention) > 10:
+                    print(f"\n... and {len(needs_attention) - 10} more")
+
+                print(f"\nRun with --json to see full details")
+            else:
+                print(f"\n✅ All documents are in sync!")
+
+
+def cmd_sync(args):
+    """Sync documents with their source specifications."""
+    db = get_database()
+    doc_store = DocumentStore(db)
+    spec_store = SpecificationStore(db)
+
+    # Initialize AI generator if needed
+    ai_generator = None
+    if not args.dry_run and not args.manual_only:
+        try:
+            ai_generator = AIDocGenerator(
+                api_key=args.api_key,
+                model=args.model
+            )
+        except ImportError:
+            print(f"⚠️  AI generator not available - will mark for manual review", file=sys.stderr)
+
+    # Initialize sync manager
+    sync_manager = SyncManager(
+        spec_store=spec_store,
+        doc_store=doc_store,
+        ai_generator=ai_generator
+    )
+
+    # Determine strategy
+    from athena.architecture.sync.sync_manager import SyncStrategy
+    if args.manual_only:
+        strategy = SyncStrategy.MANUAL
+    elif args.skip:
+        strategy = SyncStrategy.SKIP
+    else:
+        strategy = SyncStrategy.REGENERATE
+
+    if args.doc_id:
+        # Sync single document
+        try:
+            result = sync_manager.sync_document(
+                doc_id=args.doc_id,
+                strategy=strategy,
+                dry_run=args.dry_run
+            )
+
+            if args.json:
+                print(json.dumps(result.to_dict(), indent=2))
+            else:
+                print(f"\n🔄 Sync Result: {result.document.name}")
+                print("=" * 80)
+                print(f"Strategy: {result.strategy.value}")
+                print(f"Success: {result.success}")
+                if result.regenerated:
+                    print(f"Regenerated: Yes")
+                    if result.generation_time_seconds:
+                        print(f"Generation time: {result.generation_time_seconds:.1f}s")
+                if result.old_hash:
+                    print(f"Old hash: {result.old_hash}")
+                if result.new_hash:
+                    print(f"New hash: {result.new_hash}")
+                print(f"Message: {result.message}")
+
+                if result.success and result.regenerated:
+                    print(f"\n✅ Document successfully synced")
+                elif result.error:
+                    print(f"\n❌ Error: {result.error}")
+
+        except Exception as e:
+            print(f"❌ Sync failed: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    else:
+        # Sync all documents in project
+        results = sync_manager.sync_project(
+            project_id=args.project_id,
+            strategy=strategy,
+            dry_run=args.dry_run,
+            staleness_threshold_days=args.staleness_days
+        )
+
+        if args.json:
+            output = [r.to_dict() for r in results]
+            print(json.dumps(output, indent=2))
+        else:
+            summary = sync_manager.get_sync_summary(results)
+
+            print(f"\n🔄 Sync Results (Project {args.project_id})")
+            if args.dry_run:
+                print("   (DRY RUN - no changes made)")
+            print("=" * 80)
+
+            print(f"\nSummary:")
+            print(f"  Total documents: {summary['total']}")
+            print(f"  ✅ Successful: {summary['successful']}")
+            print(f"  ❌ Failed: {summary['failed']}")
+            print(f"  🔄 Regenerated: {summary['regenerated']}")
+            print(f"  ⏭️  Skipped: {summary['skipped']}")
+            print(f"  ✋ Manual review: {summary['manual_review_needed']}")
+
+            if summary['regenerated'] > 0:
+                print(f"\nGeneration Stats:")
+                print(f"  Total time: {summary['total_generation_time_seconds']:.1f}s")
+                print(f"  Average time: {summary['average_generation_time_seconds']:.1f}s")
+
+            # Show failures
+            failures = [r for r in results if not r.success]
+            if failures:
+                print(f"\n❌ Failed Documents ({len(failures)}):")
+                for result in failures[:5]:
+                    print(f"  - {result.document.name}: {result.error or result.message}")
+                if len(failures) > 5:
+                    print(f"  ... and {len(failures) - 5} more")
+
+            if args.dry_run and summary['total'] > 0:
+                print(f"\n💡 Run without --dry-run to actually sync documents")
+
+
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -569,6 +791,27 @@ def main():
     templates_parser = subparsers.add_parser("templates", help="List available templates")
     templates_parser.add_argument("--category", help="Filter by category (e.g., api, technical)")
     templates_parser.set_defaults(func=cmd_templates)
+
+    # Check-drift command
+    drift_parser = subparsers.add_parser("check-drift", help="Check for drift between documents and specs")
+    drift_parser.add_argument("--project-id", type=int, default=1, help="Project ID (default: 1)")
+    drift_parser.add_argument("--doc-id", type=int, help="Check specific document ID")
+    drift_parser.add_argument("--staleness-days", type=int, default=30, help="Staleness threshold in days (default: 30)")
+    drift_parser.add_argument("--json", action="store_true", help="Output as JSON")
+    drift_parser.set_defaults(func=cmd_check_drift)
+
+    # Sync command
+    sync_parser = subparsers.add_parser("sync", help="Sync documents with source specifications")
+    sync_parser.add_argument("--project-id", type=int, default=1, help="Project ID (default: 1)")
+    sync_parser.add_argument("--doc-id", type=int, help="Sync specific document ID")
+    sync_parser.add_argument("--dry-run", action="store_true", help="Check what would be synced without doing it")
+    sync_parser.add_argument("--staleness-days", type=int, default=30, help="Staleness threshold in days (default: 30)")
+    sync_parser.add_argument("--manual-only", action="store_true", help="Mark for manual review instead of regenerating")
+    sync_parser.add_argument("--skip", action="store_true", help="Skip sync (for testing)")
+    sync_parser.add_argument("--model", default="claude-3-5-sonnet-20241022", help="Claude model to use for regeneration")
+    sync_parser.add_argument("--api-key", help="Anthropic API key (uses ANTHROPIC_API_KEY env var if not provided)")
+    sync_parser.add_argument("--json", action="store_true", help="Output as JSON")
+    sync_parser.set_defaults(func=cmd_sync)
 
     # Parse arguments and run command
     args = parser.parse_args()
