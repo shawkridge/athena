@@ -572,19 +572,19 @@ def get_episodic_events():
         offset = request.args.get('offset', 0, type=int)
 
         cur.execute('''
-            SELECT id, content, created_at, metadata
+            SELECT id, memory_vector_id, session_id, timestamp
             FROM episodic_events
-            ORDER BY created_at DESC
+            ORDER BY timestamp DESC
             LIMIT %s OFFSET %s
         ''', (limit, offset))
 
         events = []
         for row in cur.fetchall():
             events.append({
-                'id': row['id'],
-                'content': row['content'],
-                'timestamp': row['created_at'].isoformat(),
-                'metadata': row['metadata'] or {},
+                'id': str(row['id']),
+                'memory_id': row['memory_vector_id'],
+                'session_id': row['session_id'],
+                'timestamp': row['timestamp'].isoformat() if row['timestamp'] else datetime.now().isoformat(),
             })
 
         cur.close()
@@ -783,10 +783,10 @@ def get_graph_stats():
         entity_count = cur.fetchone()['count']
 
         # Get relationship counts
-        cur.execute('SELECT COUNT(*) as count FROM relationships')
+        cur.execute('SELECT COUNT(*) as count FROM entity_relations')
         relationship_count = cur.fetchone()['count']
 
-        # Get community counts
+        # Get community counts (using communities table)
         cur.execute('SELECT COUNT(*) as count FROM communities')
         community_count = cur.fetchone()['count']
 
@@ -813,7 +813,7 @@ def get_graph_visualization():
 
         # Get nodes (entities)
         cur.execute('''
-            SELECT id, name, metadata
+            SELECT id, name, entity_type
             FROM entities
             ORDER BY id DESC
             LIMIT %s
@@ -824,13 +824,13 @@ def get_graph_visualization():
             nodes.append({
                 'id': str(row['id']),
                 'label': row['name'],
-                'type': row['metadata'].get('type', 'entity') if row['metadata'] else 'entity',
+                'type': row['entity_type'] or 'entity',
             })
 
-        # Get edges (relationships)
+        # Get edges (entity relations)
         cur.execute('''
-            SELECT id, entity_id_1, entity_id_2, relationship_type
-            FROM relationships
+            SELECT id, from_entity_id, to_entity_id, relation_type
+            FROM entity_relations
             ORDER BY id DESC
             LIMIT %s
         ''', (limit,))
@@ -839,9 +839,9 @@ def get_graph_visualization():
         for row in cur.fetchall():
             edges.append({
                 'id': str(row['id']),
-                'source': str(row['entity_id_1']),
-                'target': str(row['entity_id_2']),
-                'type': row['relationship_type'],
+                'source': str(row['from_entity_id']),
+                'target': str(row['to_entity_id']),
+                'type': row['relation_type'],
             })
 
         cur.close()
@@ -926,26 +926,27 @@ def get_working_memory():
         conn = get_db()
         cur = conn.cursor(cursor_factory=RealDictCursor)
 
-        # Get recent episodic events (working memory)
+        # Get recent episodic events (working memory) - use timestamp, not created_at
         cur.execute('''
-            SELECT id, content, created_at, metadata
+            SELECT id, memory_vector_id, session_id, timestamp
             FROM episodic_events
-            WHERE created_at > NOW() - INTERVAL '1 hour'
-            ORDER BY created_at DESC
+            WHERE timestamp > NOW() - INTERVAL '1 hour'
+            ORDER BY timestamp DESC
             LIMIT 7
         ''')
 
         items = []
         total_importance = 0
 
-        for row in cur.fetchall():
-            importance = int((row['metadata'].get('importance', 0.5) if row['metadata'] else 0.5) * 100)
+        for idx, row in enumerate(cur.fetchall()):
+            # Calculate importance based on recency
+            importance = max(30, 100 - (idx * 10))
             items.append({
                 'id': str(row['id']),
-                'title': row['content'][:100],
+                'title': f"Event {row['memory_vector_id']}",
                 'type': 'event',
                 'importance': importance,
-                'timestamp': int(row['created_at'].timestamp() * 1000),  # milliseconds
+                'timestamp': int(row['timestamp'].timestamp() * 1000) if row['timestamp'] else int(datetime.now().timestamp() * 1000),
             })
             total_importance += importance
 
