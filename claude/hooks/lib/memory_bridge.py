@@ -317,3 +317,134 @@ class MemoryBridge:
         except Exception as e:
             logger.warning(f"Error searching memories: {e}")
             return {"found": 0, "results": []}
+
+    def get_active_adrs(self, project_id: int, limit: int = 5) -> Dict[str, Any]:
+        """Get active (accepted) Architecture Decision Records.
+
+        Args:
+            project_id: Project ID
+            limit: Maximum ADRs to return
+
+        Returns:
+            Dict with ADR summaries
+        """
+        try:
+            with PerformanceTimer("get_active_adrs"):
+                cursor = self.conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT id, title, decision, created_at
+                    FROM architecture_decisions
+                    WHERE project_id = %s AND status = 'accepted'
+                    ORDER BY created_at DESC
+                    LIMIT %s
+                    """,
+                    (project_id, limit),
+                )
+
+                rows = cursor.fetchall()
+
+                adrs = [
+                    {
+                        "id": row[0],
+                        "title": row[1],
+                        "decision": row[2][:60] + "..." if len(row[2]) > 60 else row[2],
+                    }
+                    for row in rows
+                ]
+
+                return {"count": len(adrs), "adrs": adrs}
+        except Exception as e:
+            logger.warning(f"Error getting active ADRs: {e}")
+            return {"count": 0, "adrs": []}
+
+    def get_unsatisfied_constraints(
+        self, project_id: int, limit: int = 5
+    ) -> Dict[str, Any]:
+        """Get unsatisfied hard constraints that need attention.
+
+        Args:
+            project_id: Project ID
+            limit: Maximum constraints to return
+
+        Returns:
+            Dict with constraint summaries
+        """
+        try:
+            with PerformanceTimer("get_unsatisfied_constraints"):
+                cursor = self.conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT id, type, description, priority
+                    FROM architectural_constraints
+                    WHERE project_id = %s
+                      AND is_satisfied = false
+                      AND is_hard_constraint = true
+                    ORDER BY priority DESC
+                    LIMIT %s
+                    """,
+                    (project_id, limit),
+                )
+
+                rows = cursor.fetchall()
+
+                constraints = [
+                    {
+                        "id": row[0],
+                        "type": row[1],
+                        "description": row[2][:60] + "..."
+                        if len(row[2]) > 60
+                        else row[2],
+                        "priority": row[3],
+                    }
+                    for row in rows
+                ]
+
+                return {"count": len(constraints), "constraints": constraints}
+        except Exception as e:
+            logger.warning(f"Error getting unsatisfied constraints: {e}")
+            return {"count": 0, "constraints": []}
+
+    def get_effective_patterns(self, project_id: int, limit: int = 5) -> Dict[str, Any]:
+        """Get most effective design patterns for this project.
+
+        Args:
+            project_id: Project ID
+            limit: Maximum patterns to return
+
+        Returns:
+            Dict with pattern summaries
+        """
+        try:
+            with PerformanceTimer("get_effective_patterns"):
+                cursor = self.conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT DISTINCT dp.id, dp.name, dp.type, dp.effectiveness_score
+                    FROM design_patterns dp
+                    LEFT JOIN pattern_usage pu ON dp.id = pu.pattern_id
+                    WHERE pu.project_id = %s OR dp.id IN (
+                        SELECT pattern_id FROM pattern_usage WHERE project_id = %s
+                    )
+                    ORDER BY dp.effectiveness_score DESC NULLS LAST
+                    LIMIT %s
+                    """,
+                    (project_id, project_id, limit),
+                )
+
+                rows = cursor.fetchall()
+
+                patterns = [
+                    {
+                        "id": row[0],
+                        "name": row[1],
+                        "type": row[2],
+                        "effectiveness": row[3] or 0.0,
+                    }
+                    for row in rows
+                ]
+
+                return {"count": len(patterns), "patterns": patterns}
+        except Exception as e:
+            logger.warning(f"Error getting effective patterns: {e}")
+            return {"count": 0, "patterns": []}
