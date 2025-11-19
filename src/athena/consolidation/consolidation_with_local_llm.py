@@ -287,9 +287,7 @@ async def consolidate_with_local_reasoning(
     # Step 6: Mark events as consolidated
     if not dry_run:
         for event in events:
-            episodic_store.mark_event_consolidated(
-                event_id=event.id, consolidated_at=datetime.now()
-            )
+            episodic_store.mark_event_consolidated(event_id=event.id)
 
     # Step 7: Temporal KG synthesis
     kg_relations_count = 0

@@ -319,7 +319,7 @@ if __name__ == "__main__":
         confidence=0.9,
         # Different volatile fields (excluded from hash)
         id=999,
-        consolidation_status="consolidated",
+        lifecycle_status="consolidated",
     )
 
     hasher = EventHasher()

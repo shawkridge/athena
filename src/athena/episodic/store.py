@@ -926,17 +926,13 @@ class EpisodicStore(BaseStore):
 
         return [self._row_to_model(row) for row in rows]
 
-    def mark_event_consolidated(
-        self, event_id: int, consolidated_at: Optional[datetime] = None
-    ) -> None:
+    def mark_event_consolidated(self, event_id: int) -> None:
         """Mark an event as consolidated using lifecycle system.
 
         Args:
-            event_id: Event ID to mark
-            consolidated_at: When consolidation occurred (default: now)
+            event_id: Event ID to mark as consolidated
         """
-        if consolidated_at is None:
-            consolidated_at = datetime.now()
+        now = datetime.now()
 
         # Update using lifecycle system
         self.execute(
@@ -948,7 +944,7 @@ class EpisodicStore(BaseStore):
                 activation_count = activation_count + 1
             WHERE id = %s
         """,
-            (int(consolidated_at.timestamp()), event_id),
+            (int(now.timestamp()), event_id),
         )
 
         self.commit()
