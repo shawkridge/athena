@@ -956,7 +956,7 @@ class EpisodicStore(BaseStore):
                 activation_count = activation_count + 1
             WHERE id = %s
         """,
-            (int(now.timestamp()), event_id),
+            (now, event_id),
         )
 
         self.commit()
