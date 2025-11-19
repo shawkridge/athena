@@ -842,6 +842,145 @@ async def get_performance_statistics():
 # WEBSOCKET FOR REAL-TIME UPDATES
 # ============================================================================
 
+# ============================================================================
+# CONSCIOUSNESS METRICS (NEW - RESEARCH FEATURE)
+# ============================================================================
+
+# Initialize consciousness metrics system (once Athena is initialized)
+_consciousness_metrics = None
+
+
+@app.get("/api/consciousness/indicators")
+async def get_consciousness_indicators():
+    """Get current consciousness indicators (all 6 indicators)."""
+    try:
+        # Create metrics system if not already created
+        global _consciousness_metrics
+        if _consciousness_metrics is None:
+            from athena.consciousness import ConsciousnessMetrics
+
+            _consciousness_metrics = ConsciousnessMetrics()
+
+        # Measure consciousness
+        score = await _consciousness_metrics.measure_consciousness()
+
+        # Return as dict
+        return {
+            "status": "success",
+            "data": score.to_dict(),
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+        }
+
+
+@app.get("/api/consciousness/score")
+async def get_consciousness_score():
+    """Get overall consciousness score (0-10 scale)."""
+    try:
+        global _consciousness_metrics
+        if _consciousness_metrics is None:
+            from athena.consciousness import ConsciousnessMetrics
+
+            _consciousness_metrics = ConsciousnessMetrics()
+
+        # Get overall score
+        overall = await _consciousness_metrics.indicators.overall_score()
+
+        return {
+            "status": "success",
+            "score": round(overall, 2),
+            "scale": "0-10",
+            "baseline": 7.75,
+            "timestamp": datetime.now().isoformat(),
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+        }
+
+
+@app.get("/api/consciousness/history")
+async def get_consciousness_history(limit: int = Query(50, le=1000)):
+    """Get historical consciousness measurements."""
+    try:
+        global _consciousness_metrics
+        if _consciousness_metrics is None:
+            from athena.consciousness import ConsciousnessMetrics
+
+            _consciousness_metrics = ConsciousnessMetrics()
+
+        # Get history
+        history = _consciousness_metrics.get_history(limit=limit)
+
+        return {
+            "status": "success",
+            "measurements": len(history),
+            "data": [s.to_dict() for s in history],
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+        }
+
+
+@app.get("/api/consciousness/statistics")
+async def get_consciousness_statistics():
+    """Get consciousness measurement statistics."""
+    try:
+        global _consciousness_metrics
+        if _consciousness_metrics is None:
+            from athena.consciousness import ConsciousnessMetrics
+
+            _consciousness_metrics = ConsciousnessMetrics()
+
+        # Get statistics
+        stats = _consciousness_metrics.get_statistics()
+
+        return {
+            "status": "success",
+            "data": stats,
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+        }
+
+
+@app.get("/api/consciousness/comparison")
+async def get_consciousness_comparison(window_size: int = Query(10, le=100)):
+    """Compare consciousness indicators over a time window."""
+    try:
+        global _consciousness_metrics
+        if _consciousness_metrics is None:
+            from athena.consciousness import ConsciousnessMetrics
+
+            _consciousness_metrics = ConsciousnessMetrics()
+
+        # Get comparison
+        comparison = _consciousness_metrics.compare_indicators(window_size=window_size)
+
+        return {
+            "status": "success",
+            "data": comparison,
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+        }
+
+
+# ============================================================================
+# WEBSOCKET CONNECTIONS
+# ============================================================================
+
+
 class ConnectionManager:
     """Manage WebSocket connections."""
 
