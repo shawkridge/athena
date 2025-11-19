@@ -589,7 +589,3 @@ class SemanticStore(BaseStore):
             project_id=project_id,
             limit=limit,
         )
-
-
-# Backwards compatibility alias
-MemoryStore = SemanticStore

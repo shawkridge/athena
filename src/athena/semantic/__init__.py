@@ -2,6 +2,6 @@
 
 from .optimize import MemoryOptimizer
 from .search import SemanticSearch
-from .store import SemanticStore, MemoryStore  # MemoryStore is backwards compatibility alias
+from .store import SemanticStore
 
-__all__ = ["SemanticStore", "MemoryStore", "SemanticSearch", "MemoryOptimizer"]
+__all__ = ["SemanticStore", "SemanticSearch", "MemoryOptimizer"]
