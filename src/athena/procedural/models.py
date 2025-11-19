@@ -52,7 +52,7 @@ class Procedure(BaseModel):
 
     id: Optional[int] = None
     name: str
-    category: ProcedureCategory
+    category: Optional[ProcedureCategory] = ProcedureCategory.REFACTORING  # Default category
     description: Optional[str] = None
 
     # When to use
@@ -60,7 +60,7 @@ class Procedure(BaseModel):
     applicable_contexts: list[str] = Field(default_factory=list)  # e.g., ["react", "typescript"]
 
     # The procedure
-    template: str  # Template with {{variables}}
+    template: Optional[str] = None  # Template with {{variables}}
     steps: list[dict] = Field(default_factory=list)  # Step-by-step instructions
     examples: list[dict] = Field(default_factory=list)  # Example usages
 
