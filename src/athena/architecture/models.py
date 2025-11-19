@@ -429,6 +429,13 @@ class Document(BaseModel):
     last_synced_at: Optional[datetime] = Field(None, description="When doc was last synced with sources")
     sync_hash: Optional[str] = Field(None, description="Hash of source specs for drift detection")
 
+    # Manual edit tracking (Phase 4E)
+    ai_baseline_hash: Optional[str] = Field(None, description="Hash of last AI-generated content")
+    ai_baseline_content: Optional[str] = Field(None, description="Last AI-generated content (for 3-way merge)")
+    manual_override: bool = Field(default=False, description="Skip auto-sync (manual edits preserved)")
+    manual_edit_detected: bool = Field(default=False, description="Document manually edited since AI generation")
+    last_manual_edit_at: Optional[datetime] = Field(None, description="When document was last manually edited")
+
     # Validation
     validation_status: Optional[str] = Field(None, description="Document validation status")
     validated_at: Optional[datetime] = Field(None, description="When last validated")

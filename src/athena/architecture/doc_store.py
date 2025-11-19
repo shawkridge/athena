@@ -122,6 +122,41 @@ class DocumentStore(BaseStore):
             ON documents(status)
         """)
 
+        # Add Phase 4E columns for manual edit tracking (if they don't exist)
+        try:
+            cursor.execute("ALTER TABLE documents ADD COLUMN ai_baseline_hash TEXT")
+        except Exception:
+            pass  # Column already exists
+
+        try:
+            cursor.execute("ALTER TABLE documents ADD COLUMN ai_baseline_content TEXT")
+        except Exception:
+            pass  # Column already exists
+
+        try:
+            cursor.execute("ALTER TABLE documents ADD COLUMN manual_override INTEGER DEFAULT 0")
+        except Exception:
+            pass  # Column already exists
+
+        try:
+            cursor.execute("ALTER TABLE documents ADD COLUMN manual_edit_detected INTEGER DEFAULT 0")
+        except Exception:
+            pass  # Column already exists
+
+        try:
+            cursor.execute("ALTER TABLE documents ADD COLUMN last_manual_edit_at REAL")
+        except Exception:
+            pass  # Column already exists
+
+        # Create index for manual_override to speed up queries
+        try:
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_documents_manual_override
+                ON documents(manual_override)
+            """)
+        except Exception:
+            pass
+
         self.db.conn.commit()
         logger.debug("Documents schema initialized")
 

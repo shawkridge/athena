@@ -15,6 +15,14 @@ from .diff_engine import (
     ChangeType,
     SectionType,
 )
+from .conflict_resolver import (
+    ConflictDetector,
+    ConflictResolver,
+    ConflictResult,
+    ConflictStatus,
+    MergeResult,
+    MergeStrategy,
+)
 
 __all__ = [
     "DriftDetector",
@@ -32,4 +40,10 @@ __all__ = [
     "SpecChange",
     "ChangeType",
     "SectionType",
+    "ConflictDetector",
+    "ConflictResolver",
+    "ConflictResult",
+    "ConflictStatus",
+    "MergeResult",
+    "MergeStrategy",
 ]
