@@ -9,6 +9,8 @@ import { FilterDropdown } from '@/components/filter-dropdown'
 import { Pagination } from '@/components/pagination'
 import { ExportButton } from '@/components/export-button'
 import { DetailModal, DetailField } from '@/components/detail-modal'
+import { RefreshIndicator } from '@/components/refresh-indicator'
+import { CardSkeleton, TableSkeleton } from '@/components/skeleton'
 import api from '@/lib/api'
 
 export default function ResearchPage() {
@@ -17,16 +19,23 @@ export default function ResearchPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
   const [selectedTask, setSelectedTask] = useState<any>(null)
+  const [lastUpdated, setLastUpdated] = useState(new Date())
 
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading: isLoadingStats, refetch: refetchStats } = useQuery({
     queryKey: ['research-stats'],
     queryFn: () => api.getResearchStatistics(),
   })
 
-  const { data: tasks } = useQuery({
+  const { data: tasks, isLoading: isLoadingTasks, refetch: refetchTasks } = useQuery({
     queryKey: ['research-tasks', statusFilter],
     queryFn: () => api.getResearchTasks(statusFilter || undefined, 200), // Fetch more for client-side pagination
   })
+
+  const handleRefresh = () => {
+    refetchStats()
+    refetchTasks()
+    setLastUpdated(new Date())
+  }
 
   // Client-side filtering and pagination
   const filteredTasks = tasks?.tasks?.filter((task: any) =>
@@ -63,8 +72,8 @@ export default function ResearchPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="p-2 rounded-lg bg-cyan-100">
-            <FileSearch className="h-8 w-8 text-cyan-600" />
+          <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-900">
+            <FileSearch className="h-8 w-8 text-cyan-600 dark:text-cyan-400" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
@@ -76,34 +85,50 @@ export default function ResearchPage() {
             </p>
           </div>
         </div>
-        <ExportButton
-          data={filteredTasks}
-          filename={`research-tasks-${new Date().toISOString().split('T')[0]}`}
-        />
+        <div className="flex items-center space-x-3">
+          <RefreshIndicator
+            lastUpdated={lastUpdated}
+            onRefresh={handleRefresh}
+            refreshInterval={30000}
+            autoRefresh={true}
+          />
+          <ExportButton
+            data={filteredTasks}
+            filename={`research-tasks-${new Date().toISOString().split('T')[0]}`}
+          />
+        </div>
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-card border rounded-lg p-5">
-          <div className="text-sm text-muted-foreground mb-1">Total Tasks</div>
-          <div className="text-2xl font-bold">{stats?.total_tasks || 0}</div>
+      {isLoadingStats ? (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <CardSkeleton key={i} />
+          ))}
         </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-card border rounded-lg p-5">
+            <div className="text-sm text-muted-foreground mb-1">Total Tasks</div>
+            <div className="text-2xl font-bold">{stats?.total_tasks || 0}</div>
+          </div>
 
-        <div className="bg-card border rounded-lg p-5">
-          <div className="text-sm text-muted-foreground mb-1">Active Tasks</div>
-          <div className="text-2xl font-bold text-blue-600">{stats?.active_tasks || 0}</div>
-        </div>
+          <div className="bg-card border rounded-lg p-5">
+            <div className="text-sm text-muted-foreground mb-1">Active Tasks</div>
+            <div className="text-2xl font-bold text-blue-600">{stats?.active_tasks || 0}</div>
+          </div>
 
-        <div className="bg-card border rounded-lg p-5">
-          <div className="text-sm text-muted-foreground mb-1">Completed</div>
-          <div className="text-2xl font-bold text-green-600">{stats?.completed_tasks || 0}</div>
-        </div>
+          <div className="bg-card border rounded-lg p-5">
+            <div className="text-sm text-muted-foreground mb-1">Completed</div>
+            <div className="text-2xl font-bold text-green-600">{stats?.completed_tasks || 0}</div>
+          </div>
 
-        <div className="bg-card border rounded-lg p-5">
-          <div className="text-sm text-muted-foreground mb-1">Pending</div>
-          <div className="text-2xl font-bold text-orange-600">{stats?.pending_tasks || 0}</div>
+          <div className="bg-card border rounded-lg p-5">
+            <div className="text-sm text-muted-foreground mb-1">Pending</div>
+            <div className="text-2xl font-bold text-orange-600">{stats?.pending_tasks || 0}</div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Research Tasks Table */}
       <div className="bg-card border rounded-lg p-6">
@@ -125,7 +150,9 @@ export default function ResearchPage() {
           </div>
         </div>
 
-        {paginatedTasks && paginatedTasks.length > 0 ? (
+        {isLoadingTasks ? (
+          <TableSkeleton rows={pageSize} columns={6} />
+        ) : paginatedTasks && paginatedTasks.length > 0 ? (
           <>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -148,10 +175,10 @@ export default function ResearchPage() {
                         <span
                           className={`inline-flex px-2 py-1 rounded text-xs font-medium ${
                             task.status === 'completed'
-                              ? 'bg-green-100 text-green-800'
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                               : task.status === 'in_progress'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-gray-100 text-gray-800'
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
                           }`}
                         >
                           {task.status}
@@ -166,7 +193,7 @@ export default function ResearchPage() {
                       <td className="py-3">
                         <button
                           onClick={() => setSelectedTask(task)}
-                          className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-xs font-medium"
                         >
                           View Details
                         </button>

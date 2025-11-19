@@ -21,7 +21,10 @@ import {
   PlayCircle,
   Shield,
   TrendingUp,
+  Settings,
+  Star,
 } from 'lucide-react'
+import { useFavorites } from '@/providers/favorites-provider'
 
 const navigation = [
   { name: 'Overview', href: '/', icon: Home },
@@ -50,10 +53,12 @@ const navigation = [
       { name: 'Performance', href: '/performance', icon: TrendingUp },
     ],
   },
+  { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
+  const { favorites } = useFavorites()
 
   return (
     <aside className="w-64 bg-card border-r flex flex-col">
@@ -110,6 +115,32 @@ export function Sidebar() {
             )}
           </div>
         ))}
+
+        {/* Favorites Section */}
+        {favorites.length > 0 && (
+          <div>
+            <h3 className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Favorites
+            </h3>
+            <div className="space-y-1">
+              {favorites.slice(0, 5).map((favorite) => (
+                <Link
+                  key={favorite.id}
+                  href={favorite.path}
+                  className={cn(
+                    'flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                    pathname === favorite.path
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  )}
+                >
+                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  <span className="truncate">{favorite.title}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Footer */}

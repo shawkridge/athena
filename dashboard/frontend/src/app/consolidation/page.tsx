@@ -1,7 +1,7 @@
 'use client'
 
-import { useQuery } from '@tantml:function_calls>
-<invoke name="api" />
+import { useQuery } from '@tanstack/react-query'
+import api from '@/lib/api'
 import { formatNumber, formatDate, formatRelativeTime } from '@/lib/utils'
 import { Sparkles } from 'lucide-react'
 import { ScopeBadge } from '@/components/scope-badge'

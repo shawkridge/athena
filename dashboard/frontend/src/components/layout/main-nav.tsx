@@ -1,12 +1,15 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import { Bell, Settings, RefreshCw } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { ProjectSelector } from '@/components/project-selector'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export function MainNav() {
+  const router = useRouter()
   const { data: systemStatus, refetch, isRefetching } = useQuery({
     queryKey: ['system-status'],
     queryFn: api.getSystemStatus,
@@ -38,6 +41,9 @@ export function MainNav() {
           />
         </button>
 
+        {/* Theme Toggle */}
+        <ThemeToggle />
+
         {/* Notifications */}
         <button
           className="p-2 rounded-md hover:bg-accent transition-colors relative"
@@ -49,6 +55,7 @@ export function MainNav() {
 
         {/* Settings */}
         <button
+          onClick={() => router.push('/settings')}
           className="p-2 rounded-md hover:bg-accent transition-colors"
           title="Settings"
         >

@@ -1,11 +1,8 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
 import { MainNav } from '@/components/layout/main-nav'
 import { Sidebar } from '@/components/layout/sidebar'
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Athena Dashboard - Memory System Monitor',
@@ -20,7 +17,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className="font-sans antialiased">
         <Providers>
           <div className="flex h-screen overflow-hidden">
             {/* Sidebar */}

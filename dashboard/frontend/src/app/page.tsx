@@ -6,6 +6,9 @@ import { SystemStatusCard } from '@/components/system-status-card'
 import { MemoryLayerCard } from '@/components/memory-layer-card'
 import { RecentEventsCard } from '@/components/recent-events-card'
 import { ActivityChart } from '@/components/charts/activity-chart'
+import { CardSkeleton, ChartSkeleton } from '@/components/skeleton'
+import { TrendsChart } from '@/components/trends-chart'
+import { QuickStatsCard } from '@/components/quick-stats-card'
 import { Database, Brain, Workflow, Calendar, Network, Gauge, Sparkles, Map } from 'lucide-react'
 
 export default function DashboardPage() {
@@ -96,11 +99,34 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="space-y-6">
+        <div className="h-20">
+          <CardSkeleton />
+        </div>
+        <ChartSkeleton height={300} />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <CardSkeleton key={i} />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
       </div>
     )
   }
+
+  // Mock trend data for analytics (replace with real data from API)
+  const trendData = [
+    { timestamp: new Date(Date.now() - 6000), value: 120 },
+    { timestamp: new Date(Date.now() - 5000), value: 135 },
+    { timestamp: new Date(Date.now() - 4000), value: 145 },
+    { timestamp: new Date(Date.now() - 3000), value: 138 },
+    { timestamp: new Date(Date.now() - 2000), value: 152 },
+    { timestamp: new Date(Date.now() - 1000), value: 168 },
+    { timestamp: new Date(), value: 175 },
+  ]
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -115,9 +141,63 @@ export default function DashboardPage() {
         <SystemStatusCard status={systemStatus?.status} />
       </div>
 
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <QuickStatsCard
+          title="Total Events"
+          value={systemStatus?.subsystems?.memory?.episodic?.total_events || 0}
+          previousValue={8000}
+          format="number"
+          icon={Database}
+          iconColor="text-blue-600"
+          iconBgColor="bg-blue-100 dark:bg-blue-900/30"
+        />
+        <QuickStatsCard
+          title="Active Tasks"
+          value={systemStatus?.subsystems?.memory?.prospective?.active_tasks || 0}
+          previousValue={35}
+          format="number"
+          icon={Calendar}
+          iconColor="text-orange-600"
+          iconBgColor="bg-orange-100 dark:bg-orange-900/30"
+        />
+        <QuickStatsCard
+          title="Graph Entities"
+          value={systemStatus?.subsystems?.memory?.graph?.total_entities || 0}
+          previousValue={420}
+          format="number"
+          icon={Network}
+          iconColor="text-cyan-600"
+          iconBgColor="bg-cyan-100 dark:bg-cyan-900/30"
+        />
+        <QuickStatsCard
+          title="Procedures"
+          value={systemStatus?.subsystems?.memory?.procedural?.total_procedures || 0}
+          previousValue={95}
+          format="number"
+          icon={Workflow}
+          iconColor="text-green-600"
+          iconBgColor="bg-green-100 dark:bg-green-900/30"
+        />
+      </div>
+
       {/* System Activity Chart */}
       <div className="grid gap-6">
         <ActivityChart />
+      </div>
+
+      {/* Trend Analytics */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <TrendsChart
+          data={trendData}
+          title="Memory Activity Trend"
+          yAxisLabel="Events"
+        />
+        <TrendsChart
+          data={trendData.map((d) => ({ ...d, value: d.value * 0.8 }))}
+          title="Task Completion Trend"
+          yAxisLabel="Tasks"
+        />
       </div>
 
       {/* Memory Layers Grid */}

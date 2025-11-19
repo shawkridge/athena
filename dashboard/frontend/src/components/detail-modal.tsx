@@ -47,13 +47,14 @@ interface DetailFieldProps {
   label: string
   value: string | number | ReactNode
   className?: string
+  mono?: boolean
 }
 
-export function DetailField({ label, value, className = '' }: DetailFieldProps) {
+export function DetailField({ label, value, className = '', mono = false }: DetailFieldProps) {
   return (
     <div className={`space-y-1 ${className}`}>
       <div className="text-sm font-medium text-muted-foreground">{label}</div>
-      <div className="text-sm">{value || '-'}</div>
+      <div className={`text-sm ${mono ? 'font-mono text-xs' : ''}`}>{value || '-'}</div>
     </div>
   )
 }
