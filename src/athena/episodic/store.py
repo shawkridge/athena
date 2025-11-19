@@ -287,7 +287,7 @@ class EpisodicStore(BaseStore):
             (
                 event.project_id,
                 event.session_id,
-                event.timestamp,
+                int(event.timestamp.timestamp() * 1000),  # Convert to milliseconds (bigint)
                 event_type_str,
                 event.content,
                 outcome_str,
@@ -396,7 +396,7 @@ class EpisodicStore(BaseStore):
                     (
                         event.project_id,
                         event.session_id,
-                        event.timestamp,
+                        int(event.timestamp.timestamp() * 1000),  # Convert to milliseconds (bigint)
                         event_type_str,
                         event.content,
                         outcome_str,
@@ -517,6 +517,8 @@ class EpisodicStore(BaseStore):
             List of events
         """
         end_date = end_date or datetime.now()
+        start_ts = int(start_date.timestamp() * 1000)  # Convert to milliseconds
+        end_ts = int(end_date.timestamp() * 1000)
 
         rows = self.execute(
             """
@@ -524,7 +526,7 @@ class EpisodicStore(BaseStore):
             WHERE project_id = %s AND timestamp BETWEEN %s AND %s
             ORDER BY timestamp DESC
         """,
-            (project_id, start_date, end_date),
+            (project_id, start_ts, end_ts),
             fetch_all=True,
         )
 
@@ -592,7 +594,8 @@ class EpisodicStore(BaseStore):
         Returns:
             List of recent events
         """
-        cutoff = datetime.now() - timedelta(hours=hours)
+        cutoff_dt = datetime.now() - timedelta(hours=hours)
+        cutoff_ts = int(cutoff_dt.timestamp() * 1000)  # Convert to milliseconds
 
         rows = self.execute(
             """
@@ -678,10 +681,10 @@ class EpisodicStore(BaseStore):
             end = time_range.get("end")
             if start:
                 where_conditions.append("timestamp >= %s")
-                params.append(start)
+                params.append(int(start.timestamp() * 1000))  # Convert to milliseconds
             if end:
                 where_conditions.append("timestamp <= %s")
-                params.append(end)
+                params.append(int(end.timestamp() * 1000))  # Convert to milliseconds
 
         # Add session_id filter
         if session_id:
@@ -919,7 +922,7 @@ class EpisodicStore(BaseStore):
             AND timestamp >= %s
             AND timestamp <= %s
         """
-        params = [project_id, start, end]
+        params = [project_id, int(start.timestamp() * 1000), int(end.timestamp() * 1000)]
 
         # Filter by lifecycle status if provided
         if lifecycle_status:
@@ -1209,7 +1212,7 @@ class EpisodicStore(BaseStore):
             (
                 event.project_id,
                 event.session_id,
-                event.timestamp,
+                int(event.timestamp.timestamp() * 1000),  # Convert to milliseconds (bigint)
                 event.event_type,
                 event.content,
                 event.outcome,
