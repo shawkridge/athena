@@ -5,7 +5,7 @@ This version replaces direct SQL calls with store API calls for better
 abstraction, maintainability, and consistency with the rest of the codebase.
 
 Features:
-- Uses MemoryStore, EpisodicStore, ProceduralStore, ProspectiveStore
+- Uses SemanticStore, EpisodicStore, ProceduralStore, ProspectiveStore
 - Async/sync dual interface with run_async bridge
 - Same ML routing logic as v1 but cleaner implementation
 - Better error handling and logging
@@ -19,7 +19,7 @@ import numpy as np
 
 from ..core.database import Database
 from ..core.async_utils import run_async
-from ..memory.store import MemoryStore
+from ..semantic.store import SemanticStore
 from ..episodic.store import EpisodicStore
 from ..procedural.store import ProceduralStore
 from ..prospective.store import ProspectiveStore
@@ -54,7 +54,7 @@ class ConsolidationRouterV2:
     def __init__(
         self,
         db: Database,
-        memory_store: MemoryStore,
+        memory_store: SemanticStore,
         episodic_store: EpisodicStore,
         procedural_store: ProceduralStore,
         prospective_store: ProspectiveStore,
@@ -197,7 +197,7 @@ class ConsolidationRouterV2:
 
         try:
             if target_layer == TargetLayer.SEMANTIC:
-                # Use MemoryStore to create semantic memory
+                # Use SemanticStore to create semantic memory
                 from ..core.models import Memory, MemoryType
 
                 memory = Memory(

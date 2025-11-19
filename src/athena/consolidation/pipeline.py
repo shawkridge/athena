@@ -22,7 +22,7 @@ from .clustering import cluster_events_by_context
 from .pattern_extraction import extract_patterns, Pattern
 from .run_history import ConsolidationRunHistory, ConsolidationRunMetrics, ConsolidationStatus
 from ..episodic.store import EpisodicStore
-from ..memory.store import MemoryStore
+from ..semantic.store import SemanticStore
 from ..graph.store import GraphStore
 from ..temporal.kg_synthesis import TemporalKGSynthesis
 
@@ -66,7 +66,7 @@ class ConsolidationReport:
 def consolidate_episodic_to_semantic(
     project_id: int,
     episodic_store: EpisodicStore,
-    semantic_store: MemoryStore,
+    semantic_store: SemanticStore,
     graph_store: Optional[GraphStore] = None,
     time_window_hours: int = 24,
     min_pattern_confidence: float = 0.7,
@@ -279,7 +279,7 @@ def consolidate_episodic_to_semantic(
     )
 
 
-def _calculate_memory_quality(semantic_store: MemoryStore, project_id: int) -> float:
+def _calculate_memory_quality(semantic_store: SemanticStore, project_id: int) -> float:
     """
     Calculate overall memory quality score.
 
@@ -330,7 +330,7 @@ def _calculate_memory_quality(semantic_store: MemoryStore, project_id: int) -> f
 
 
 async def consolidation_daemon(
-    episodic_store: EpisodicStore, semantic_store: MemoryStore, interval_hours: int = 24
+    episodic_store: EpisodicStore, semantic_store: SemanticStore, interval_hours: int = 24
 ):
     """
     Background service that runs consolidation periodically.

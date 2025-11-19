@@ -16,8 +16,8 @@ from .search import SemanticSearch
 logger = logging.getLogger(__name__)
 
 
-class MemoryStore(BaseStore):
-    """High-level memory operations."""
+class SemanticStore(BaseStore):
+    """High-level semantic memory operations (Layer 2)."""
 
     table_name = "memories"
     model_class = Memory
@@ -28,7 +28,7 @@ class MemoryStore(BaseStore):
         embedding_model: Optional[str] = None,
         backend: Optional[str] = None,
     ):
-        """Initialize memory store with PostgreSQL + pgvector.
+        """Initialize semantic store with PostgreSQL + pgvector.
 
         Uses PostgreSQL exclusively for both storage and vector operations.
 
@@ -37,7 +37,7 @@ class MemoryStore(BaseStore):
             embedding_model: Model name/path for embeddings (default: from config/provider)
             backend: Database backend (always PostgreSQL with pgvector)
         """
-        logger.info("Initializing MemoryStore with PostgreSQL pgvector backend")
+        logger.info("Initializing SemanticStore with PostgreSQL pgvector backend")
         self.db = get_database(backend="postgres")
 
         super().__init__(self.db)
@@ -589,3 +589,7 @@ class MemoryStore(BaseStore):
             project_id=project_id,
             limit=limit,
         )
+
+
+# Backwards compatibility alias
+MemoryStore = SemanticStore

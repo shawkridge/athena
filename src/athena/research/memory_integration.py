@@ -3,7 +3,7 @@
 import logging
 from typing import Optional, List
 
-from athena.memory import MemoryStore
+from athena.semantic import SemanticStore
 from athena.graph.store import GraphStore
 from athena.episodic.store import EpisodicStore
 from athena.episodic.models import EpisodicEvent, EventType, EventOutcome
@@ -17,7 +17,7 @@ class ResearchMemoryIntegrator:
 
     def __init__(
         self,
-        memory_store: MemoryStore,
+        memory_store: SemanticStore,
         graph_store: GraphStore,
         episodic_store: EpisodicStore,
     ):

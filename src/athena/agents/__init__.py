@@ -19,7 +19,7 @@ and coordinate via shared memory layers.
 """
 
 from .coordinator import AgentCoordinator
-from .memory_coordinator import (
+from .semantic_coordinator import (
     MemoryCoordinatorAgent,
     get_coordinator,
     coordinate_memory_storage,

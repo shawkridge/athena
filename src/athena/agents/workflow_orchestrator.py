@@ -22,7 +22,7 @@ from .coordinator import AgentCoordinator
 from ..orchestration.adaptive_agent import AdaptiveAgent
 
 # Import core memory operations
-from ..memory.operations import store as store_fact
+from ..semantic.operations import store as store_fact
 
 logger = logging.getLogger(__name__)
 

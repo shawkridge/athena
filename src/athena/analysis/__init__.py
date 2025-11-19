@@ -7,7 +7,7 @@ from .project_analyzer import (
     PatternFound,
     FileMetrics,
 )
-from .memory_storage import ProjectAnalysisMemoryStorage
+from .semantic_storage import ProjectAnalysisMemoryStorage
 from .library_analyzer import (
     LibraryDependencyAnalyzer,
     LibraryAnalysis,

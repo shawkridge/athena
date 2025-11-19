@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from ..core.database import Database
 from ..episodic.models import EpisodicEvent, EventContext, EventOutcome, EventType
 from ..episodic.store import EpisodicStore
-from ..memory.store import MemoryStore
+from ..semantic.store import SemanticStore
 from ..procedural.store import ProceduralStore
 from ..procedural.models import Procedure, ProcedureCategory
 from ..graph.store import GraphStore
@@ -44,7 +44,7 @@ class TaskConsolidation:
         self.db = db
         self.prospective_store = ProspectiveStore(db)
         self.episodic_store = EpisodicStore(db)
-        self.semantic_store = MemoryStore(db.db_path)
+        self.semantic_store = SemanticStore(db.db_path)
         self.procedure_store = ProceduralStore(db)
         self.graph_store = GraphStore(db)
 

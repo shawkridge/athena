@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 from ..core.models import MemorySearchResult
-from ..memory.store import MemoryStore
+from ..semantic.store import SemanticStore
 from ..planning.models import (
     ExecutionOutcome,
     PlanningPattern,
@@ -287,7 +287,7 @@ class HybridPlanningSearch:
 
     def __init__(
         self,
-        memory_store: MemoryStore,
+        memory_store: SemanticStore,
         planning_store: PlanningStore,
         llm_client: Optional[LLMClient] = None,
     ):
@@ -543,7 +543,7 @@ class PlanningRAGRouter:
 
     def __init__(
         self,
-        memory_store: MemoryStore,
+        memory_store: SemanticStore,
         planning_store: PlanningStore,
         llm_client: Optional[LLMClient] = None,
     ):

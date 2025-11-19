@@ -3,7 +3,7 @@
 import logging
 
 from ..core.models import MemorySearchResult
-from ..memory.search import SemanticSearch
+from ..semantic.search import SemanticSearch
 from .llm_client import LLMClient
 
 logger = logging.getLogger(__name__)

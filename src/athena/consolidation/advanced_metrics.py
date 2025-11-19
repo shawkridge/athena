@@ -21,7 +21,7 @@ import numpy as np
 
 from ..core.embeddings import cosine_similarity
 from ..episodic.models import EpisodicEvent
-from ..memory.store import MemoryStore
+from ..semantic.store import SemanticStore
 
 
 class HallucinationRateCalculator:
@@ -249,7 +249,7 @@ class ClusteringCohesionCalculator:
     This metric uses semantic similarity to evaluate cluster quality.
     """
 
-    def __init__(self, semantic_store: Optional[MemoryStore] = None):
+    def __init__(self, semantic_store: Optional[SemanticStore] = None):
         """Initialize clustering cohesion calculator.
 
         Args:

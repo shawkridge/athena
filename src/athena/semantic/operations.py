@@ -13,7 +13,7 @@ import logging
 from typing import Any, Dict, List
 
 from ..core.database import Database
-from .store import MemoryStore
+from .store import SemanticStore
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class SemanticOperations:
     """Semantic memory operations."""
 
-    def __init__(self, db: Database, store: MemoryStore):
+    def __init__(self, db: Database, store: SemanticStore):
         self.db = db
         self.store = store
         self.logger = logger
@@ -74,7 +74,7 @@ class SemanticOperations:
 _operations: SemanticOperations | None = None
 
 
-def initialize(db: Database, store: MemoryStore) -> None:
+def initialize(db: Database, store: SemanticStore) -> None:
     """Initialize semantic operations."""
     global _operations
     _operations = SemanticOperations(db, store)

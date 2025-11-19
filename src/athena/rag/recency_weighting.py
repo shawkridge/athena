@@ -15,7 +15,7 @@ import logging
 from typing import List, Optional
 from datetime import datetime
 
-from ..memory.search import MemorySearchResult
+from ..semantic.search import MemorySearchResult
 from ..core.models import Memory
 
 logger = logging.getLogger(__name__)

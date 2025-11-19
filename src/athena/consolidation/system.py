@@ -8,7 +8,7 @@ from typing import Optional
 from ..core.database import Database
 from ..core.models import MemoryType
 from ..episodic.store import EpisodicStore
-from ..memory.store import MemoryStore
+from ..semantic.store import SemanticStore
 from ..meta.store import MetaMemoryStore
 from ..procedural.models import Procedure, ProcedureCategory
 from ..procedural.store import ProceduralStore
@@ -29,7 +29,7 @@ class ConsolidationSystem:
     def __init__(
         self,
         db: Database,
-        memory_store: MemoryStore,
+        memory_store: SemanticStore,
         episodic_store: EpisodicStore,
         procedural_store: ProceduralStore,
         meta_store: MetaMemoryStore,

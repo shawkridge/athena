@@ -10,7 +10,7 @@ from datetime import datetime
 
 # Import core memory operations
 from ..episodic.operations import remember as remember_event
-from ..memory.operations import store as store_fact, search as search_facts
+from ..semantic.operations import store as store_fact, search as search_facts
 from ..prospective.operations import (
     create_task as create_prospective_task,
     get_active_tasks as get_prospective_tasks,
