@@ -73,15 +73,15 @@ class ProspectiveOperations:
             description=description,
             due_date=due_date,
             priority=priority,
-            status=TaskStatus(status),
+            status=status,  # Use string status, not enum
             project_id=project_id,
             created_at=datetime.now(),
             completed_at=None,
         )
 
         # Store.create_task returns int (task_id), so convert to str
-        task_id = self.store.create_task(task)
-        return str(task_id)
+        task_id = await self.store.store(task)
+        return str(task_id if task_id else 0)
 
     async def list_tasks(
         self,
@@ -129,7 +129,7 @@ class ProspectiveOperations:
 
         Args:
             task_id: ProspectiveTask ID
-            status: New status (pending, in_progress, completed, cancelled)
+            status: New status (pending, active, completed, cancelled, blocked)
 
         Returns:
             True if updated successfully
@@ -138,7 +138,7 @@ class ProspectiveOperations:
         if not task:
             return False
 
-        task.status = TaskStatus(status)
+        task.status = status  # Store as string
         if status == "completed":
             task.completed_at = datetime.now()
 
@@ -146,7 +146,7 @@ class ProspectiveOperations:
         return True
 
     async def get_active_tasks(self, limit: int = 10) -> List[ProspectiveTask]:
-        """Get active (pending or in-progress) tasks.
+        """Get active (pending or active) tasks.
 
         Args:
             limit: Maximum tasks to return
@@ -155,9 +155,9 @@ class ProspectiveOperations:
             Active tasks sorted by priority
         """
         pending = await self.store.list(status="pending", limit=limit // 2)
-        in_progress = await self.store.list(status="in_progress", limit=limit // 2)
+        active = await self.store.list(status="active", limit=limit // 2)
 
-        all_tasks = pending + in_progress
+        all_tasks = pending + active
         # Sort by priority descending
         return sorted(all_tasks, key=lambda t: t.priority, reverse=True)[:limit]
 
