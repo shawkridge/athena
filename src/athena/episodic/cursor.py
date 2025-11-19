@@ -403,38 +403,6 @@ class CursorManager:
             db: Database instance for cursor persistence
         """
         self.db = db
-        self._init_schema()
-
-    def _init_schema(self) -> None:
-        """Create cursor storage table if not exists.
-
-        Database schema:
-            - source_id (TEXT, PRIMARY KEY): Unique identifier for event source
-            - cursor_data (TEXT): JSON-serialized cursor state
-            - updated_at (INTEGER): Unix timestamp of last update
-        """
-        cursor = self.db.get_cursor()
-
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS event_source_cursors (
-                source_id TEXT PRIMARY KEY,
-                cursor_data TEXT NOT NULL,
-                updated_at INTEGER NOT NULL
-            )
-        """
-        )
-
-        # Index for fast lookup by source_id (implicit due to PRIMARY KEY)
-        # Index for sorting by update time
-        cursor.execute(
-            """
-            CREATE INDEX IF NOT EXISTS idx_cursors_updated
-            ON event_source_cursors(updated_at DESC)
-        """
-        )
-
-        # commit handled by cursor context
 
     def get_cursor(self, source_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve stored cursor for a source.

@@ -157,7 +157,14 @@ class AdvisoryLock:
             self.release(lock_key)
 
     def cleanup_expired(self):
-        """Clean up expired locks."""
+        """Clean up expired locks.
+
+        DESIGN: Cleanup errors are logged but don't crash (background maintenance).
+        However, errors ARE VISIBLE in logs so issues can be debugged.
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+
         try:
             cursor = self.db.get_cursor()
             cursor.execute(
@@ -168,8 +175,13 @@ class AdvisoryLock:
                 (time.time(),),
             )
             # commit handled by cursor context
-        except (OSError, ValueError, TypeError, KeyError):
-            pass  # Ignore cleanup errors
+        except (OSError, ValueError, TypeError, KeyError) as e:
+            # Cleanup is best-effort (background maintenance), but we log failures
+            # so they're visible for debugging database/permission issues
+            logger.warning(
+                f"Failed to cleanup expired advisory locks: {type(e).__name__}: {e}. "
+                f"This may indicate database issues or permission problems."
+            )
 
 
 class ResourceManager:
@@ -345,7 +357,12 @@ class ResourceManager:
             amount: Amount changed (positive for allocate, negative for release)
             project_id: Project ID
             operation: Operation type
+
+        DESIGN: Audit logging errors are visible but don't crash resource operations.
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
         try:
             cursor = self.db.get_cursor()
             cursor.execute(
@@ -357,8 +374,14 @@ class ResourceManager:
                 (project_id, resource_type, operation, amount, int(time.time())),
             )
             # commit handled by cursor context
-        except (OSError, ValueError, TypeError, KeyError):
-            pass  # Don't fail if logging fails
+        except (OSError, ValueError, TypeError, KeyError) as e:
+            # Audit logging is best-effort (doesn't affect resource operations)
+            # but we log failures so they're visible for debugging
+            logger.warning(
+                f"Failed to log resource {operation} "
+                f"(resource={resource_type}, amount={amount}): "
+                f"{type(e).__name__}: {e}"
+            )
 
     def get_usage_stats(self, project_id: Optional[int] = None, hours: int = 24) -> Dict[str, Any]:
         """Get resource usage statistics.

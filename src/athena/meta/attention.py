@@ -21,7 +21,6 @@ class AttentionManager(BaseStore):
             db: Database instance
         """
         super().__init__(db)
-        self._init_schema()
 
     def _row_to_model(self, row) -> AttentionItem:
         """Convert database row to AttentionItem (required by BaseStore).
@@ -33,106 +32,6 @@ class AttentionManager(BaseStore):
             AttentionItem instance
         """
         return self._row_to_attention_item(row)
-
-    def _init_schema(self):
-        """Create schema for attention tables (idempotent)."""
-        # Attention items table
-        self.execute(
-            """
-            CREATE TABLE IF NOT EXISTS attention_items (
-                id SERIAL PRIMARY KEY,
-                project_id INTEGER NOT NULL,
-                item_type VARCHAR(50) NOT NULL,
-                item_id INTEGER NOT NULL,
-
-                salience_score REAL DEFAULT 0.5,
-                importance REAL DEFAULT 0.5,
-                relevance REAL DEFAULT 0.5,
-                recency REAL DEFAULT 0.5,
-
-                last_accessed TIMESTAMP,
-                access_count INTEGER DEFAULT 0,
-                activation_level REAL DEFAULT 0.0,
-
-                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                context TEXT DEFAULT '',
-
-                UNIQUE(project_id, item_type, item_id)
-            )
-        """
-        )
-
-        # Working memory table
-        self.execute(
-            """
-            CREATE TABLE IF NOT EXISTS working_memory (
-                id SERIAL PRIMARY KEY,
-                project_id INTEGER UNIQUE NOT NULL,
-
-                capacity INTEGER DEFAULT 7,
-                capacity_variance INTEGER DEFAULT 2,
-                current_load INTEGER DEFAULT 0,
-                cognitive_load REAL DEFAULT 0.0,
-
-                active_items TEXT DEFAULT '[]',
-                total_slots_used INTEGER DEFAULT 0,
-
-                overflow_threshold REAL DEFAULT 0.85,
-                overflow_items TEXT DEFAULT '[]',
-
-                last_consolidated TIMESTAMP,
-                consolidation_interval_hours INTEGER DEFAULT 8,
-
-                item_decay_rate REAL DEFAULT 0.1,
-                refresh_threshold REAL DEFAULT 0.3,
-
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """
-        )
-
-        # Attention budget table
-        self.execute(
-            """
-            CREATE TABLE IF NOT EXISTS attention_budgets (
-                id SERIAL PRIMARY KEY,
-                project_id INTEGER UNIQUE NOT NULL,
-
-                current_focus VARCHAR(50) NOT NULL,
-                focus_allocation TEXT DEFAULT '{}',
-
-                current_focus_level REAL DEFAULT 0.0,
-                context_switches INTEGER DEFAULT 0,
-                context_switch_cost REAL DEFAULT 0.0,
-
-                mental_energy REAL DEFAULT 1.0,
-                fatigue_level REAL DEFAULT 0.0,
-                optimal_session_length_minutes INTEGER DEFAULT 90,
-
-                distraction_sources TEXT DEFAULT '[]',
-                distraction_level REAL DEFAULT 0.0,
-
-                session_start TIMESTAMP,
-                session_end TIMESTAMP,
-                total_focused_time_minutes INTEGER DEFAULT 0,
-
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """
-        )
-
-        # Indices for performance
-        self.execute(
-            "CREATE INDEX IF NOT EXISTS idx_attention_items_project ON attention_items(project_id)"
-        )
-        self.execute(
-            "CREATE INDEX IF NOT EXISTS idx_attention_items_salience ON attention_items(salience_score DESC)"
-        )
-        self.execute(
-            "CREATE INDEX IF NOT EXISTS idx_attention_items_activation ON attention_items(activation_level DESC)"
-        )
 
     def add_attention_item(
         self,

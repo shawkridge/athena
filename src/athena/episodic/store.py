@@ -55,33 +55,48 @@ class EpisodicStore(BaseStore):
             phase=row_dict.get("context_phase"),
         )
 
-        # Parse evidence type - handle unknown types gracefully
+        # Parse evidence type - FAIL LOUD if unknown
+        # Design: Unknown enum values indicate database corruption or code/data mismatch
+        # We log warnings to make these visible for debugging
         from .models import CodeEventType, EvidenceType
 
         evidence_type = EvidenceType.OBSERVED  # Default
         if row_dict.get("evidence_type"):
             try:
                 evidence_type = EvidenceType(row_dict.get("evidence_type"))
-            except (ValueError, KeyError):
-                # Unknown evidence type - use default
-                pass
+            except (ValueError, KeyError) as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(
+                    f"Unknown evidence_type in database (event_id={row_dict.get('id')}): "
+                    f"{row_dict.get('evidence_type')}. Defaulting to OBSERVED. "
+                    f"This indicates data inconsistency that should be investigated."
+                )
 
         code_event_type = None
         if row_dict.get("code_event_type"):
             try:
                 code_event_type = CodeEventType(row_dict.get("code_event_type"))
             except (ValueError, KeyError):
-                pass
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(
+                    f"Unknown code_event_type in database (event_id={row_dict.get('id')}): "
+                    f"{row_dict.get('code_event_type')}. This indicates data inconsistency."
+                )
 
-        # Parse event type - handle unknown types gracefully
+        # Parse event type - FAIL LOUD if unknown
         event_type = None
         if row_dict.get("event_type"):
             try:
                 event_type = EventType(row_dict.get("event_type"))
             except (ValueError, KeyError):
-                # Unknown event type in database - log and skip
-                # This can happen with legacy data or external sources
-                pass
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(
+                    f"Unknown event_type in database (event_id={row_dict.get('id')}): "
+                    f"{row_dict.get('event_type')}. This indicates data inconsistency."
+                )
 
         # Parse performance metrics from JSON
         perf_metrics = None
@@ -93,15 +108,18 @@ class EpisodicStore(BaseStore):
         if row_dict.get("test_passed") is not None:
             test_passed = bool(row_dict.get("test_passed"))
 
-        # Parse outcome - handle unknown outcomes gracefully
+        # Parse outcome - FAIL LOUD if unknown
         outcome = None
         if row_dict.get("outcome"):
             try:
                 outcome = EventOutcome(row_dict.get("outcome"))
             except (ValueError, KeyError):
-                # Unknown outcome in database - log and skip
-                # This can happen with legacy data or external sources
-                pass
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(
+                    f"Unknown outcome in database (event_id={row_dict.get('id')}): "
+                    f"{row_dict.get('outcome')}. This indicates data inconsistency."
+                )
 
         return EpisodicEvent(
             id=row_dict.get("id"),

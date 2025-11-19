@@ -84,55 +84,6 @@ class WorkingMemoryAPI:
         # In-memory working memory buffer
         self._items: dict[int, WorkingMemoryItem] = {}
 
-        # Schema
-        self._ensure_schema()
-
-    def _ensure_schema(self):
-        """Ensure working memory tables exist."""
-        cursor = self.db.get_cursor()
-
-        # Working memory buffer
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS working_memory (
-                id SERIAL PRIMARY KEY,
-                project_id INTEGER,
-                event_id INTEGER NOT NULL UNIQUE,
-                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                recency_score REAL DEFAULT 1.0,
-                importance_score REAL DEFAULT 0.5,
-                distinctiveness_score REAL DEFAULT 0.5,
-
-                FOREIGN KEY (project_id) REFERENCES projects(id),
-                FOREIGN KEY (event_id) REFERENCES episodic_events(id)
-                    ON DELETE CASCADE
-            )
-        """
-        )
-
-        # Consolidation triggers log
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS consolidation_triggers (
-                id SERIAL PRIMARY KEY,
-                project_id INTEGER,
-                triggered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                trigger_type TEXT NOT NULL,
-                working_memory_size INTEGER,
-                capacity INTEGER,
-                consolidation_type TEXT,
-                consolidation_run_id INTEGER,
-
-                FOREIGN KEY (project_id) REFERENCES projects(id),
-                FOREIGN KEY (consolidation_run_id)
-                    REFERENCES consolidation_runs(id) ON DELETE SET NULL
-            )
-        """
-        )
-
-        self.db.commit()
-
     # ==================== Async Methods ====================
 
     async def push_async(

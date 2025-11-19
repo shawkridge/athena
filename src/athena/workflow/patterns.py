@@ -28,7 +28,6 @@ class WorkflowPatternStore(BaseStore):
             db: Database instance
         """
         super().__init__(db)
-        self._ensure_schema()
 
     def _ensure_schema(self):
         """Ensure workflow pattern tables exist."""

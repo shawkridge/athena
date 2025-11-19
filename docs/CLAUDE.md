@@ -219,6 +219,26 @@ Current: 8,128 episodic events, 101 procedures
 
 ---
 
+## Database Table Naming Convention
+
+**Principle**: Table names reflect **semantic meaning** (what data represents), NOT implementation details (how it's stored).
+
+| Layer | Concept | Table Name | Key Rationale |
+|-------|---------|-----------|---------------|
+| 1 | Episodic events | `episodic_events` | Temporal event storage |
+| 2 | Semantic learning | `semantic_memories` | Learned facts/patterns (stored as vectors, but name reflects purpose) |
+| 3 | Procedural workflows | `procedures` | Reusable learned workflows |
+| 4 | Prospective goals | `prospective_tasks`, `prospective_goals` | Future-oriented memory |
+| 5 | Knowledge graph | `entities`, `entity_relations`, `communities` | Concept relationships |
+| 6 | Meta-memory | `agent_domain_expertise`, `quality_thresholds` | Quality & cognitive metrics |
+| 7 | Consolidation | `consolidation_runs`, `extracted_patterns` | Pattern extraction metadata |
+
+**Critical Rule**: When adding code that queries tables, use the **semantic name** (e.g., `semantic_memories`), never implementation details (e.g., ~~`memory_vectors`~~). This makes code intention explicit and prevents silent failures from naming mismatches.
+
+**All references to `memory_vectors` should use `semantic_memories`** to maintain consistency across the codebase.
+
+---
+
 ## Key Design Patterns
 
 ### 1. Layer Initialization

@@ -27,63 +27,6 @@ class CodeIndexer:
         self.embedding_manager = embedding_manager
         self.index_table_created = False
 
-    def _init_schema(self) -> None:
-        """Initialize database schema for code indexing.
-
-        Note: In production, this integrates with existing Athena database.
-        """
-        if not self.db or self.index_table_created:
-            return
-
-        try:
-            self.db.execute(
-                """
-                CREATE TABLE IF NOT EXISTS code_index (
-                    id TEXT PRIMARY KEY,
-                    file_path TEXT NOT NULL,
-                    element_type TEXT NOT NULL,
-                    name TEXT NOT NULL,
-                    language TEXT NOT NULL,
-                    source_code TEXT,
-                    docstring TEXT,
-                    start_line INTEGER,
-                    end_line INTEGER,
-                    embedding BLOB,
-                    embedding_model TEXT,
-                    created_at TIMESTAMP,
-                    updated_at TIMESTAMP
-                )
-            """
-            )
-
-            # Create indices for fast lookup
-            self.db.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_code_element_type
-                ON code_index(element_type)
-            """
-            )
-
-            self.db.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_code_language
-                ON code_index(language)
-            """
-            )
-
-            self.db.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_code_file_path
-                ON code_index(file_path)
-            """
-            )
-
-            self.index_table_created = True
-            logger.info("Code index schema initialized")
-
-        except Exception as e:
-            logger.error(f"Error initializing code index schema: {e}")
-
     def index_elements(self, elements: List[CodeElement]) -> None:
         """Index a list of code elements.
 
@@ -227,38 +170,6 @@ class SpatialIndexer:
         """
         self.db = db
         self.relationships_table_created = False
-
-    def _init_schema(self) -> None:
-        """Initialize spatial relationships schema."""
-        if not self.db or self.relationships_table_created:
-            return
-
-        try:
-            self.db.execute(
-                """
-                CREATE TABLE IF NOT EXISTS code_relationships (
-                    id TEXT PRIMARY KEY,
-                    source_element TEXT NOT NULL,
-                    target_element TEXT NOT NULL,
-                    relationship_type TEXT NOT NULL,
-                    weight REAL,
-                    created_at TIMESTAMP
-                )
-            """
-            )
-
-            self.db.execute(
-                """
-                CREATE INDEX IF NOT EXISTS idx_relationships_source
-                ON code_relationships(source_element)
-            """
-            )
-
-            self.relationships_table_created = True
-            logger.info("Spatial index schema initialized")
-
-        except Exception as e:
-            logger.error(f"Error initializing spatial index: {e}")
 
     def add_relationship(
         self,

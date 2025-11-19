@@ -8,7 +8,7 @@ Wants=athena-dashboard-backend.service
 Type=simple
 User=user
 Group=user
-WorkingDirectory=/home/user/athena/dashboard/frontend
+WorkingDirectory=/home/user/.work/athena/dashboard/frontend
 
 # Environment variables
 Environment="NODE_ENV=production"
@@ -34,7 +34,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/user/athena
+ReadWritePaths=/home/user/.work/athena
 ProtectKernelTunables=true
 ProtectControlGroups=true
 RestrictRealtime=true

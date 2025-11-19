@@ -25,7 +25,6 @@ class EstimateAccuracyStore(BaseStore):
             db: Database instance
         """
         super().__init__(db)
-        self._ensure_schema()
 
     def _ensure_schema(self):
         """Ensure estimate accuracy tables exist."""

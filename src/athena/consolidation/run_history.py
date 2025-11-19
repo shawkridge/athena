@@ -176,7 +176,6 @@ class ConsolidationRunHistory:
             db: Database connection (PostgreSQL)
         """
         self.db = db
-        self._init_schema()
 
     def _init_schema(self) -> None:
         """Create schema if it doesn't exist (idempotent)."""

@@ -62,83 +62,6 @@ class ResearchStore(BaseStore):
             agent_results=agent_results,
         )
 
-    def _ensure_schema(self):
-        """Ensure research tables exist."""
-        cursor = self.db.get_cursor()
-
-        # Research tasks table
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS research_tasks (
-                id SERIAL PRIMARY KEY,
-                project_id INTEGER,
-                topic TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'pending',
-                created_at INTEGER NOT NULL,
-                started_at INTEGER,
-                completed_at INTEGER,
-                findings_count INTEGER DEFAULT 0,
-                entities_created INTEGER DEFAULT 0,
-                relations_created INTEGER DEFAULT 0,
-                notes TEXT,
-                agent_results TEXT,
-                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-            )
-        """
-        )
-
-        # Research findings table
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS research_findings (
-                id SERIAL PRIMARY KEY,
-                research_task_id INTEGER NOT NULL,
-                source TEXT NOT NULL,
-                title TEXT NOT NULL,
-                summary TEXT NOT NULL,
-                url TEXT,
-                credibility_score REAL DEFAULT 0.5,
-                created_at INTEGER NOT NULL,
-                stored_to_memory BOOLEAN DEFAULT 0,
-                memory_id INTEGER,
-                FOREIGN KEY (research_task_id) REFERENCES research_tasks(id) ON DELETE CASCADE
-            )
-        """
-        )
-
-        # Agent progress tracking
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS agent_progress (
-                id SERIAL PRIMARY KEY,
-                research_task_id INTEGER NOT NULL,
-                agent_name TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'pending',
-                findings_count INTEGER DEFAULT 0,
-                started_at INTEGER,
-                completed_at INTEGER,
-                error_message TEXT,
-                FOREIGN KEY (research_task_id) REFERENCES research_tasks(id) ON DELETE CASCADE
-            )
-        """
-        )
-
-        # Indices
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_research_tasks_project ON research_tasks(project_id)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_research_tasks_status ON research_tasks(status)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_research_findings_task ON research_findings(research_task_id)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_agent_progress_task ON agent_progress(research_task_id)"
-        )
-
-        # commit handled by cursor context
-
     def create_task(self, topic: str, project_id: Optional[int] = None) -> int:
         """Create a new research task.
 
@@ -473,40 +396,6 @@ class ResearchFeedbackStore(BaseStore):
             db: Database instance
         """
         super().__init__(db)
-
-    def _ensure_schema(self):
-        """Ensure research feedback table exists."""
-        cursor = self.db.get_cursor()
-
-        # Research feedback table
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS research_feedback (
-                id SERIAL PRIMARY KEY,
-                research_task_id INTEGER NOT NULL,
-                feedback_type TEXT NOT NULL DEFAULT 'query_refinement',
-                content TEXT NOT NULL,
-                agent_target TEXT,
-                created_at INTEGER NOT NULL,
-                parent_feedback_id INTEGER,
-                applied BOOLEAN DEFAULT FALSE,
-                applied_at INTEGER,
-                FOREIGN KEY (research_task_id) REFERENCES research_tasks(id) ON DELETE CASCADE,
-                FOREIGN KEY (parent_feedback_id) REFERENCES research_feedback(id) ON DELETE SET NULL
-            )
-        """
-        )
-
-        # Indices
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_feedback_task ON research_feedback(research_task_id)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_feedback_type ON research_feedback(feedback_type)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_feedback_agent ON research_feedback(agent_target)"
-        )
 
     def _row_to_model(self, row) -> ResearchFeedback:
         """Convert database row to ResearchFeedback model."""

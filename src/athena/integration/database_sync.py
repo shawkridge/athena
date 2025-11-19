@@ -41,7 +41,6 @@ class TodoWritePlanStore:
             db: Database instance
         """
         self.db = db
-        self._ensure_schema()
 
     def _ensure_schema(self) -> None:
         """Ensure the todowrite_plans table exists.

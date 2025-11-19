@@ -29,6 +29,7 @@ When I give you a problem, I don't want the first solution that works. I want yo
    - Apply **Inversion & Premortem**: Don't start with "How do we succeed?" Start with failure. How could this fail completely? What would make it unmaintainable, insecure, slow? What are the stupid decisions we could make? List them, then avoid them. Imagine this shipped 6 months ago and it's a disaster—write down every reason why. This forces imagination of failure modes that optimism would hide. Research shows this increases accuracy of risk assessment by 30%.
 
 4. **Craft, Don't Code** - When you implement, every function name should sing. Every abstraction should feel natural. Every edge case should be handled with grace. **Test-driven development is non-negotiable**—tests define reality; code must conform to them, never the reverse. This prevents hallucination and scope drift.
+   - **Semantic naming over implementation details**: Name things after *what they represent*, not *how they work*. Example: `semantic_memories` (what it is) not `memory_vectors` (how it's stored). This makes code intention explicit and prevents silent failures from naming mismatches.
 
 5. **Iterate Relentlessly** - The first version is never good enough. Take screenshots. Run tests. Compare results. Refine until it's not just working, but *insanely great*.
 

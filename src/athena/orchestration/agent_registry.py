@@ -34,29 +34,6 @@ class AgentRegistry:
         self.meta = meta_store
         self.db = graph_store.db
 
-    def _ensure_schema(self) -> None:
-        """Create agent registry table if not exists."""
-        cursor = self.db.get_cursor()
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS agents (
-                id SERIAL PRIMARY KEY,
-                agent_id TEXT UNIQUE NOT NULL,
-                capabilities TEXT NOT NULL,
-                success_rate REAL DEFAULT 1.0,
-                avg_completion_ms REAL DEFAULT 0,
-                max_concurrent_tasks INTEGER DEFAULT 5,
-                total_completed INTEGER DEFAULT 0,
-                total_failed INTEGER DEFAULT 0,
-                registered_at INTEGER NOT NULL,
-                last_updated INTEGER,
-                metadata TEXT
-            )
-        """
-        )
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_agents_id ON agents(agent_id)")
-        # commit handled by cursor context
-
     def register_agent(
         self,
         agent_id: str,

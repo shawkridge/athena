@@ -29,7 +29,7 @@ from .aggregation import (
     FindingCrossValidator,
     FindingAggregator,
 )
-from .semantic_integration import ResearchMemoryIntegrator
+from .memory_integration import ResearchMemoryIntegrator
 from .cache import ResearchQueryCache, CachedResult
 from .rate_limit import RateLimiter, RateLimitConfig, RateLimitError
 from .metrics import ResearchMetricsCollector, OperationMetrics

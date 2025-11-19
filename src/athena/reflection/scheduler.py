@@ -47,45 +47,6 @@ class ReflectionMetricsStore:
     def __init__(self, db):
         self.db = db
 
-    def _ensure_schema(self):
-        """Create metrics table if not exists."""
-        cursor = self.db.get_cursor()
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS reflection_metrics (
-                id INTEGER PRIMARY KEY,
-                project_id INTEGER NOT NULL,
-                timestamp DATETIME NOT NULL,
-                accuracy REAL,
-                false_positive_rate REAL,
-                gap_count INTEGER,
-                contradiction_count INTEGER,
-                memory_size_bytes INTEGER,
-                query_latency_ms REAL,
-                wm_utilization REAL,
-                cognitive_load TEXT,
-                workload_trend TEXT,
-                FOREIGN KEY(project_id) REFERENCES projects(id)
-            )
-        """
-        )
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS reflection_alerts (
-                id INTEGER PRIMARY KEY,
-                project_id INTEGER NOT NULL,
-                alert_type TEXT NOT NULL,
-                severity TEXT NOT NULL,
-                message TEXT NOT NULL,
-                recommended_action TEXT,
-                created_at DATETIME NOT NULL,
-                dismissed_at DATETIME,
-                FOREIGN KEY(project_id) REFERENCES projects(id)
-            )
-        """
-        )
-        # commit handled by cursor context
-
     def record_metrics(self, metrics: ReflectionMetrics) -> int:
         """Record reflection metrics."""
         cursor = self.db.get_cursor()

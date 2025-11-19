@@ -299,7 +299,7 @@ Be strict but fair. Focus on actionable feedback."""
             # Query semantic memories for project
             query = """
                 SELECT id, content FROM semantic_memories
-                WHERE project_id = ?
+                WHERE project_id = %s
                 ORDER BY created_at DESC
             """
             if limit:

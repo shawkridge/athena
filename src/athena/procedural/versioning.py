@@ -47,28 +47,6 @@ class ProcedureVersionStore:
             db: Database instance
         """
         self.db = db
-        self._init_schema()
-
-    def _init_schema(self):
-        """Create schema if not exists."""
-        self.db.execute(
-            """
-            CREATE TABLE IF NOT EXISTS procedure_versions (
-                id INTEGER PRIMARY KEY,
-                procedure_id INTEGER NOT NULL,
-                version INTEGER NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                extracted_from TEXT,
-                effectiveness_score REAL DEFAULT 0.0,
-                tags TEXT,
-                active BOOLEAN DEFAULT FALSE,
-                rollback_to INTEGER,
-                procedure_snapshot TEXT,
-                FOREIGN KEY (procedure_id) REFERENCES procedures(id),
-                UNIQUE(procedure_id, version)
-            )
-        """
-        )
 
     def create_version(
         self,

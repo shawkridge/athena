@@ -25,32 +25,6 @@ class DependencyStore(BaseStore):
             db: Database instance
         """
         super().__init__(db)
-        self._ensure_schema()
-
-    def _ensure_schema(self):
-        """Ensure task_dependencies table exists."""
-        if not hasattr(self.db, "get_cursor"):
-            # Async database, schema handled elsewhere
-            logger.debug("Async database detected, skipping sync schema")
-            return
-
-        cursor = self.db.get_cursor()
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS task_dependencies (
-                id SERIAL PRIMARY KEY,
-                project_id INTEGER NOT NULL,
-                from_task_id INTEGER NOT NULL,
-                to_task_id INTEGER NOT NULL,
-                dependency_type VARCHAR(50) DEFAULT 'blocks',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-                FOREIGN KEY (from_task_id) REFERENCES prospective_tasks(id) ON DELETE CASCADE,
-                FOREIGN KEY (to_task_id) REFERENCES prospective_tasks(id) ON DELETE CASCADE,
-                UNIQUE(from_task_id, to_task_id)
-            )
-        """
-        )
 
     def create_dependency(
         self, project_id: int, from_task_id: int, to_task_id: int, dependency_type: str = "blocks"

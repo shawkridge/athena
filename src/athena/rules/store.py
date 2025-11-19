@@ -32,23 +32,6 @@ class RulesStore(BaseStore):
             return None
         return self._row_to_rule_dict(row)
 
-    def _ensure_schema(self):
-        """Ensure all required tables exist."""
-        cursor = self.db.get_cursor()
-
-        # Check if tables already exist
-        cursor.execute(
-            """
-            SELECT table_name FROM information_schema.tables
-            WHERE table_schema='public' AND table_name='project_rules'
-        """
-        )
-        if cursor.fetchone() is None:
-            logger.warning(
-                "project_rules table not found. "
-                "Run migrations with: python -m athena.migrations.runner <db_path>"
-            )
-
     def create_rule(self, rule: Rule) -> Rule:
         """Create new rule.
 

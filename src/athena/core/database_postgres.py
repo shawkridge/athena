@@ -326,8 +326,8 @@ class PostgresDatabase:
             f"timeout={self.pool_timeout}s, max_idle={self.max_idle}s, max_lifetime={self.max_lifetime}s"
         )
 
-        # Initialize schema
-        await self._init_schema()
+        # Initialize schema via migration runner
+        await self._init_schema_via_migrations()
         self._initialized = True
 
     @asynccontextmanager
@@ -360,28 +360,42 @@ class PostgresDatabase:
         """
         return SyncCursor(self)
 
-    async def _init_schema(self):
-        """Create database schema if not exists.
+    async def _init_schema_via_migrations(self):
+        """Initialize schema using migration runner.
 
-        This is idempotent - safe to call multiple times.
+        Executes all pending migrations from schema/migrations/ directory.
+        This replaces the old _init_schema() method with a versioned approach.
         """
-        async with self.get_connection() as conn:
-            # Try to create pgvector extension (optional)
-            try:
-                await conn.execute("CREATE EXTENSION IF NOT EXISTS vector")
-                logger.info("pgvector extension available")
-            except Exception as e:
-                logger.warning(f"pgvector extension not available: {e}")
-                logger.info("Continuing without pgvector - vector operations will use JSON storage")
+        from ..schema.runner import MigrationRunner
 
-            # Apply PostgreSQL optimizations (Airweave pattern)
+        # Apply PostgreSQL optimizations first (session-level)
+        async with self.get_connection() as conn:
             await self._optimize_postgres(conn)
 
-            # Create all tables (from PHASE5_POSTGRESQL_SCHEMA.md)
-            await self._create_tables(conn)
-            await self._create_indices(conn)
+        # Run migrations
+        runner = MigrationRunner(self)
+        result = await runner.run_migrations()
 
-            await conn.commit()
+        # Log migration results
+        if result["applied"]:
+            logger.info(f"Applied migrations: {', '.join(result['applied'])}")
+        if result["skipped"]:
+            logger.debug(f"Skipped already-applied migrations: {', '.join(result['skipped'])}")
+        if result["errors"]:
+            logger.error(f"Migration errors: {result['errors']}")
+            raise RuntimeError(f"Schema migration failed: {result['errors']}")
+
+    async def _init_schema(self):
+        """Deprecated: Use _init_schema_via_migrations() instead.
+
+        Kept for backward compatibility. This method is now a no-op.
+        Schema initialization happens through the migration runner.
+        """
+        logger.warning(
+            "Database._init_schema() is deprecated. "
+            "Schema initialization now uses MigrationRunner. "
+            "Call initialize() instead."
+        )
 
     async def _optimize_postgres(self, conn: AsyncConnection):
         """Apply PostgreSQL session tuning parameters.
@@ -413,7 +427,23 @@ class PostgresDatabase:
             logger.warning(f"Failed to apply some PostgreSQL optimizations: {e}")
 
     async def _create_tables(self, conn: AsyncConnection):
-        """Create all 10 core tables."""
+        """Deprecated: Tables are now created via migration m001_initial_8layers.sql
+
+        This method is kept for backward compatibility but is no longer called.
+        All schema changes should go through the migration system.
+        """
+        logger.warning(
+            "Database._create_tables() is deprecated. "
+            "Schema is now managed through migrations in src/athena/schema/migrations/"
+        )
+        return
+
+    async def _create_tables_legacy(self, conn: AsyncConnection):
+        """Legacy implementation - no longer used.
+
+        Get embedding dimension from config
+
+        """
 
         # Get embedding dimension from config
 
@@ -444,7 +474,7 @@ class PostgresDatabase:
         # 2. Memory vectors table (unified)
         await conn.execute(
             f"""
-            CREATE TABLE IF NOT EXISTS memory_vectors (
+            CREATE TABLE IF NOT EXISTS semantic_memories (
                 id BIGSERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
                 content TEXT NOT NULL,
@@ -466,7 +496,7 @@ class PostgresDatabase:
                 ) STORED,
                 consolidation_state VARCHAR(50) DEFAULT 'unconsolidated',
                 consolidated_at TIMESTAMP,
-                superseded_by BIGINT REFERENCES memory_vectors(id) ON DELETE SET NULL,
+                superseded_by BIGINT REFERENCES semantic_memories(id) ON DELETE SET NULL,
                 version INT DEFAULT 1,
                 session_id VARCHAR(255),
                 event_type VARCHAR(50),
@@ -482,8 +512,8 @@ class PostgresDatabase:
             CREATE TABLE IF NOT EXISTS memory_relationships (
                 id SERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-                from_memory_id BIGINT NOT NULL REFERENCES memory_vectors(id) ON DELETE CASCADE,
-                to_memory_id BIGINT NOT NULL REFERENCES memory_vectors(id) ON DELETE CASCADE,
+                from_memory_id BIGINT NOT NULL REFERENCES semantic_memories(id) ON DELETE CASCADE,
+                to_memory_id BIGINT NOT NULL REFERENCES semantic_memories(id) ON DELETE CASCADE,
                 relationship_type VARCHAR(50) NOT NULL,
                 strength FLOAT DEFAULT 1.0,
                 created_at TIMESTAMP DEFAULT NOW(),
@@ -498,7 +528,7 @@ class PostgresDatabase:
             CREATE TABLE IF NOT EXISTS episodic_events (
                 id BIGSERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-                memory_vector_id BIGINT REFERENCES memory_vectors(id) ON DELETE SET NULL,
+                memory_vector_id BIGINT REFERENCES semantic_memories(id) ON DELETE SET NULL,
                 entity_id INT REFERENCES entities(id) ON DELETE SET NULL,
                 session_id VARCHAR(255) NOT NULL,
                 timestamp BIGINT NOT NULL,
@@ -586,7 +616,7 @@ class PostgresDatabase:
             CREATE TABLE IF NOT EXISTS code_metadata (
                 id BIGSERIAL PRIMARY KEY,
                 project_id INT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-                memory_vector_id BIGINT NOT NULL REFERENCES memory_vectors(id) ON DELETE CASCADE,
+                memory_vector_id BIGINT NOT NULL REFERENCES semantic_memories(id) ON DELETE CASCADE,
                 file_path TEXT NOT NULL,
                 language VARCHAR(50),
                 entity_type VARCHAR(50),
@@ -873,48 +903,62 @@ class PostgresDatabase:
         )
 
     async def _create_indices(self, conn: AsyncConnection):
-        """Create all indices for performance."""
+        """Deprecated: Indices are now created via migration m001_initial_8layers.sql
+
+        This method is kept for backward compatibility but is no longer called.
+        All schema changes should go through the migration system.
+        """
+        logger.warning(
+            "Database._create_indices() is deprecated. "
+            "Schema is now managed through migrations in src/athena/schema/migrations/"
+        )
+        return
+
+    async def _create_indices_legacy(self, conn: AsyncConnection):
+        """Legacy implementation - no longer used.
+
+        Create all indices for performance."""
 
         # Memory vector indices
         await conn.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_memory_project
-            ON memory_vectors(project_id)
+            ON semantic_memories(project_id)
         """
         )
 
         await conn.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_memory_type
-            ON memory_vectors(memory_type)
+            ON semantic_memories(memory_type)
         """
         )
 
         await conn.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_memory_consolidation
-            ON memory_vectors(consolidation_state)
+            ON semantic_memories(consolidation_state)
         """
         )
 
         await conn.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_memory_quality
-            ON memory_vectors(quality_score DESC)
+            ON semantic_memories(quality_score DESC)
         """
         )
 
         await conn.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_memory_accessed
-            ON memory_vectors(last_accessed DESC)
+            ON semantic_memories(last_accessed DESC)
         """
         )
 
         await conn.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_memory_session
-            ON memory_vectors(session_id)
+            ON semantic_memories(session_id)
         """
         )
 
@@ -922,7 +966,7 @@ class PostgresDatabase:
         await conn.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_memory_embedding_ivfflat
-            ON memory_vectors USING ivfflat (embedding vector_cosine_ops)
+            ON semantic_memories USING ivfflat (embedding vector_cosine_ops)
             WITH (lists = 100)
         """
         )
@@ -931,7 +975,7 @@ class PostgresDatabase:
         await conn.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_memory_content_fts
-            ON memory_vectors USING GIN (content_tsvector)
+            ON semantic_memories USING GIN (content_tsvector)
         """
         )
 
@@ -939,7 +983,7 @@ class PostgresDatabase:
         await conn.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_memory_project_type
-            ON memory_vectors(project_id, memory_type)
+            ON semantic_memories(project_id, memory_type)
             WHERE consolidation_state = 'consolidated'
         """
         )
@@ -947,7 +991,7 @@ class PostgresDatabase:
         await conn.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_memory_project_domain
-            ON memory_vectors(project_id, domain, consolidation_state)
+            ON semantic_memories(project_id, domain, consolidation_state)
         """
         )
 
@@ -1346,7 +1390,7 @@ class PostgresDatabase:
         async with self.get_connection() as conn:
             row = await conn.execute(
                 """
-                INSERT INTO memory_vectors (
+                INSERT INTO semantic_memories (
                     project_id, content, embedding, memory_type, domain, tags,
                     content_type, code_language, code_hash, session_id, event_type
                 )
@@ -1386,7 +1430,7 @@ class PostgresDatabase:
                 """
                 SELECT id, project_id, content, memory_type, domain, tags,
                        quality_score, consolidation_state, created_at, access_count
-                FROM memory_vectors
+                FROM semantic_memories
                 WHERE id = %s
                 """,
                 (memory_id,),
@@ -1435,7 +1479,7 @@ class PostgresDatabase:
         """
         async with self.get_connection() as conn:
             await conn.execute(
-                "DELETE FROM memory_vectors WHERE id = %s",
+                "DELETE FROM semantic_memories WHERE id = %s",
                 (memory_id,),
             )
             await conn.commit()
@@ -1450,7 +1494,7 @@ class PostgresDatabase:
         async with self.get_connection() as conn:
             await conn.execute(
                 """
-                UPDATE memory_vectors
+                UPDATE semantic_memories
                 SET last_accessed = NOW(),
                     access_count = access_count + 1,
                     last_retrieved = NOW()
@@ -1558,7 +1602,7 @@ class PostgresDatabase:
                      %s * COALESCE(ts_rank(m.content_tsvector, plainto_tsquery(%s)), 0))
                      as hybrid_score
 
-                FROM memory_vectors m
+                FROM semantic_memories m
                 WHERE {where_clause}
                     AND (
                         (1 - (m.embedding <=> '{embedding_str}'::vector)) > 0.3
@@ -1620,7 +1664,7 @@ class PostgresDatabase:
                     m.memory_type,
                     m.quality_score,
                     (1 - (m.embedding <=> %s::vector)) as similarity
-                FROM memory_vectors m
+                FROM semantic_memories m
                 WHERE m.project_id = %s
                     AND (1 - (m.embedding <=> %s::vector)) > %s
                 ORDER BY m.embedding <=> %s::vector
@@ -1670,7 +1714,7 @@ class PostgresDatabase:
                 SELECT
                     id, content, memory_type, quality_score, last_retrieved,
                     EXTRACT(EPOCH FROM (NOW() - last_retrieved)) as seconds_since_retrieval
-                FROM memory_vectors
+                FROM semantic_memories
                 WHERE project_id = %s
                     AND consolidation_state = 'labile'
                     AND last_retrieved IS NOT NULL
@@ -1712,7 +1756,7 @@ class PostgresDatabase:
         async with self.get_connection() as conn:
             await conn.execute(
                 """
-                UPDATE memory_vectors
+                UPDATE semantic_memories
                 SET consolidation_state = %s,
                     consolidated_at = CASE
                         WHEN %s = 'consolidated' THEN NOW()
@@ -1936,7 +1980,7 @@ class PostgresDatabase:
                 f"""
                 SELECT id, project_id, content, memory_type, created_at,
                        updated_at, last_accessed, usefulness_score, access_count
-                FROM memory_vectors
+                FROM semantic_memories
                 WHERE project_id = %s
                 ORDER BY {sort_clause}
                 LIMIT %s OFFSET %s

@@ -71,7 +71,7 @@ async def search_memories(
             f"dbname={dbname} user={user} password={password} host={host} port={port}"
         )
 
-        # Build query using memory_vectors table (replacement for semantic_memories)
+        # Build query using semantic_memories table (replacement for semantic_memories)
         where_clauses = ["1=1"]
         params = []
 
@@ -94,7 +94,7 @@ async def search_memories(
             await cursor.execute(
                 f"""
                 SELECT id, memory_type, domain, confidence, usefulness_score
-                FROM memory_vectors
+                FROM semantic_memories
                 WHERE {where_clause}
                 LIMIT %s
                 """,
@@ -121,7 +121,7 @@ async def search_memories(
             domain = mem.get("domain", "unknown")
             domain_dist[domain] = domain_dist.get(domain, 0) + 1
 
-        # Count by type (memory_type in memory_vectors table)
+        # Count by type (memory_type in semantic_memories table)
         type_dist = {}
         for mem in high_conf:
             mtype = mem.get("memory_type", "unknown")

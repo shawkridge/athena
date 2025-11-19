@@ -11,7 +11,7 @@ from .models import ResearchFinding, AgentProgress, AgentStatus, ResearchStatus
 # Note: agents module now contains ResearchCoordinator and specialized agents
 # RESEARCH_AGENTS defined locally in this module
 from .aggregation import FindingAggregator
-from .semantic_integration import ResearchMemoryIntegrator
+from .memory_integration import ResearchMemoryIntegrator
 from .cache import ResearchQueryCache
 from .rate_limit import RateLimiter
 from .metrics import ResearchMetricsCollector

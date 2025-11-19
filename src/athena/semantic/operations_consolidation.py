@@ -30,7 +30,7 @@ class ConsolidationOperations:
         now = datetime.now()
         self.db.execute(
             """
-            UPDATE memory_vectors
+            UPDATE semantic_memories
             SET consolidation_state = 'labile',
                 last_retrieved = %s
             WHERE id = %s

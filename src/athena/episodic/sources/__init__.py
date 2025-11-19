@@ -42,20 +42,31 @@ from ._base import BaseEventSource
 from .factory import EventSourceFactory
 
 # Import source implementations to auto-register them
+# DESIGN: Sources are OPTIONAL but must fail LOUDLY if used when unavailable
+# This allows graceful degradation (app starts without Slack) but prevents
+# silent failures (trying to use Slack crashes immediately with clear message)
+
+import logging
+logger = logging.getLogger(__name__)
+
+FileSystemEventSource = None
+GitHubEventSource = None
+SlackEventSource = None
+
 try:
     from .filesystem import FileSystemEventSource
-except ImportError:
-    FileSystemEventSource = None
+except ImportError as e:
+    logger.warning(f"FileSystemEventSource unavailable: {e}. Install with: pip install athena[filesystem]")
 
 try:
     from .github import GitHubEventSource
-except ImportError:
-    GitHubEventSource = None
+except ImportError as e:
+    logger.warning(f"GitHubEventSource unavailable: {e}. Install with: pip install aiohttp")
 
 try:
     from .slack import SlackEventSource
-except ImportError:
-    SlackEventSource = None
+except ImportError as e:
+    logger.warning(f"SlackEventSource unavailable: {e}. Install with: pip install slack-sdk")
 
 __all__ = [
     "BaseEventSource",

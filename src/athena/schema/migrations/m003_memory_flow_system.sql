@@ -50,10 +50,7 @@ CREATE TABLE IF NOT EXISTS activation_history (
     -- Consolidation state
     consolidation_strength FLOAT DEFAULT 0.0,
 
-    FOREIGN KEY (event_id) REFERENCES episodic_events(id) ON DELETE CASCADE,
-    INDEX idx_activation_event (event_id),
-    INDEX idx_activation_timestamp (timestamp),
-    INDEX idx_activation_tier (current_tier)
+    FOREIGN KEY (event_id) REFERENCES episodic_events(id) ON DELETE CASCADE
 );
 
 COMMENT ON TABLE activation_history IS
@@ -67,6 +64,11 @@ COMMENT ON COLUMN activation_history.interference_factor IS
 
 COMMENT ON COLUMN activation_history.current_tier IS
     'Memory tier: working (7±2 items, ~5-30 min), session (100 items, ~30 min-1 hr), episodic (unlimited, archived)';
+
+-- Create indexes on activation_history
+CREATE INDEX IF NOT EXISTS idx_activation_event ON activation_history(event_id);
+CREATE INDEX IF NOT EXISTS idx_activation_timestamp ON activation_history(timestamp);
+CREATE INDEX IF NOT EXISTS idx_activation_tier ON activation_history(current_tier);
 
 -- ============================================================================
 -- INDEXES FOR PERFORMANCE

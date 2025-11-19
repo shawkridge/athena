@@ -36,7 +36,6 @@ class LearningTracker:
             db: Database instance for storing outcomes
         """
         self.db = db
-        self._init_schema()
 
     def _init_schema(self):
         """Create learning outcomes table if it doesn't exist."""

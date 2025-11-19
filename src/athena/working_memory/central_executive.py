@@ -37,7 +37,6 @@ class CentralExecutive:
         self.max_wm_capacity = 7  # Miller's law: 7±2 items
         # Initialize saliency calculator for auto-focus
         self.saliency_calc = SaliencyCalculator(self.db)
-        self._init_schema()
 
     def _init_schema(self):
         """Ensure schema exists (for testing/standalone use)."""

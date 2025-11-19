@@ -27,37 +27,6 @@ class MetadataStore(BaseStore):
             db: Database instance
         """
         super().__init__(db)
-        self._ensure_schema()
-
-    def _ensure_schema(self):
-        """Ensure metadata columns exist on prospective_tasks."""
-        if not hasattr(self.db, "get_cursor"):
-            # Async database, schema handled elsewhere
-            logger.debug("Async database detected, skipping sync schema")
-            return
-
-        cursor = self.db.get_cursor()
-
-        # Add metadata columns if they don't exist
-        metadata_columns = [
-            ("effort_estimate", "INTEGER DEFAULT 0"),
-            ("effort_actual", "INTEGER DEFAULT 0"),
-            ("complexity_score", "INTEGER DEFAULT 5"),
-            ("priority_score", "INTEGER DEFAULT 5"),
-            ("tags", "TEXT DEFAULT '[]'"),
-            ("started_at", "TIMESTAMP"),
-            ("completed_at", "TIMESTAMP"),
-        ]
-
-        for col_name, col_def in metadata_columns:
-            try:
-                cursor.execute(f"ALTER TABLE prospective_tasks ADD COLUMN {col_name} {col_def}")
-                logger.debug(f"Added column: {col_name}")
-            except (OSError, ValueError, TypeError):
-                # Column already exists, continue
-                pass
-
-        self.db.commit()
 
     def set_metadata(
         self,

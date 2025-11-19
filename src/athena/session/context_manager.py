@@ -122,7 +122,6 @@ class SessionContextManager:
 
         self.db = db
         self._current_session: Optional[SessionContext] = None
-        self._ensure_schema()
 
     def _ensure_schema(self):
         """Create session-related tables if they don't exist."""

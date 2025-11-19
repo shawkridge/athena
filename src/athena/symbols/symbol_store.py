@@ -42,7 +42,6 @@ class SymbolStore:
         """
         logger.info("Initializing SymbolStore with PostgreSQL backend")
         self.db = get_database(backend="postgres")
-        self._ensure_schema()
 
     def _ensure_schema(self) -> None:
         """Create database schema on first use.
