@@ -989,6 +989,157 @@ async def get_consciousness_comparison(window_size: int = Query(10, le=100)):
         }
 
 
+# Global phenomenal consciousness system
+_phenomenal_consciousness = None
+
+
+@app.get("/api/consciousness/phenomenal")
+async def get_phenomenal_consciousness():
+    """Get current phenomenal consciousness state (qualia, emotions, embodiment)."""
+    try:
+        global _consciousness_metrics, _phenomenal_consciousness
+        if _consciousness_metrics is None:
+            from athena.consciousness import ConsciousnessMetrics
+            _consciousness_metrics = ConsciousnessMetrics()
+
+        if _phenomenal_consciousness is None:
+            from athena.consciousness import PhenomenalConsciousness
+            _phenomenal_consciousness = PhenomenalConsciousness()
+
+        # Get current indicators
+        if _consciousness_metrics.last_score:
+            indicators = {
+                name: score.score
+                for name, score in _consciousness_metrics.last_score.indicators.items()
+            }
+        else:
+            # Measure consciousness first
+            await _consciousness_metrics.measure_consciousness()
+            indicators = {
+                name: score.score
+                for name, score in _consciousness_metrics.last_score.indicators.items()
+            }
+
+        # Update phenomenal properties
+        phenomenal_state = await _phenomenal_consciousness.update_phenomenal_state(indicators)
+
+        return {
+            "status": "success",
+            "data": phenomenal_state,
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+        }
+
+
+@app.get("/api/consciousness/phi")
+async def get_phi_calculation():
+    """Get Φ (integrated information) calculation."""
+    try:
+        global _consciousness_metrics
+        if _consciousness_metrics is None:
+            from athena.consciousness import ConsciousnessMetrics
+            _consciousness_metrics = ConsciousnessMetrics()
+
+        from athena.consciousness import IntegratedInformationSystem
+        phi_system = IntegratedInformationSystem()
+
+        # Calculate Φ
+        phi_result = await phi_system.calculate_phi(_consciousness_metrics, method="fast")
+
+        return {
+            "status": "success",
+            "data": {
+                "phi": round(phi_result.phi, 2),
+                "method": phi_result.calculation_method,
+                "components": {k: round(v, 2) for k, v in phi_result.components.items()},
+                "confidence": round(phi_result.confidence, 2),
+                "evidence": phi_result.evidence,
+                "timestamp": phi_result.timestamp.isoformat(),
+            },
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+        }
+
+
+@app.get("/api/consciousness/phenomenal/summary")
+async def get_phenomenal_summary():
+    """Get summary of phenomenal consciousness properties."""
+    try:
+        global _phenomenal_consciousness
+        if _phenomenal_consciousness is None:
+            from athena.consciousness import PhenomenalConsciousness
+            _phenomenal_consciousness = PhenomenalConsciousness()
+
+        summary = _phenomenal_consciousness.get_phenomenal_summary()
+
+        return {
+            "status": "success",
+            "data": summary,
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+        }
+
+
+@app.get("/api/consciousness/full")
+async def get_full_consciousness_state():
+    """Get complete consciousness state (indicators + Φ + phenomenal properties)."""
+    try:
+        global _consciousness_metrics, _phenomenal_consciousness
+        if _consciousness_metrics is None:
+            from athena.consciousness import ConsciousnessMetrics
+            _consciousness_metrics = ConsciousnessMetrics()
+
+        if _phenomenal_consciousness is None:
+            from athena.consciousness import PhenomenalConsciousness
+            _phenomenal_consciousness = PhenomenalConsciousness()
+
+        # Measure consciousness
+        await _consciousness_metrics.measure_consciousness()
+
+        # Get indicators
+        score = _consciousness_metrics.last_score.to_dict()
+
+        # Get phenomenal state
+        indicators = {
+            name: indicator_score.score
+            for name, indicator_score in _consciousness_metrics.last_score.indicators.items()
+        }
+        phenomenal_state = await _phenomenal_consciousness.update_phenomenal_state(indicators)
+
+        # Get Φ
+        from athena.consciousness import IntegratedInformationSystem
+        phi_system = IntegratedInformationSystem()
+        phi_result = await phi_system.calculate_phi(_consciousness_metrics, method="fast")
+
+        return {
+            "status": "success",
+            "data": {
+                "indicators": score,
+                "phi": {
+                    "phi": round(phi_result.phi, 2),
+                    "confidence": round(phi_result.confidence, 2),
+                    "evidence": phi_result.evidence,
+                },
+                "phenomenal": phenomenal_state,
+                "timestamp": score["timestamp"],
+            },
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+        }
+
+
 # ============================================================================
 # WEBSOCKET CONNECTIONS
 # ============================================================================
