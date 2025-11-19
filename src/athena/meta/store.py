@@ -544,10 +544,10 @@ class MetaMemoryStore(BaseStore):
             return None
 
         return {
-            "coherence": quality.coherence or 0.5,
-            "usefulness": quality.usefulness or 0.5,
-            "trustworthiness": quality.trustworthiness or 0.5,
-            "completeness": quality.completeness or 0.5,
+            "usefulness_score": quality.usefulness_score or 0.5,
+            "confidence": quality.confidence or 1.0,
+            "relevance_decay": quality.relevance_decay or 1.0,
+            "access_count": quality.access_count or 0,
         }
 
     async def get_cognitive_load(self) -> Dict[str, Any]:

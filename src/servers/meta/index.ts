@@ -1,191 +1,249 @@
 /**
- * Meta-Memory Operations
+ * Meta-Memory Operations (Layer 6)
  *
- * Functions for quality metrics, expertise tracking, and cognitive load.
+ * Functions for quality metrics, expertise tracking, and cognitive load monitoring.
+ * All operations are available as direct Python async functions via:
+ *   from athena.meta.operations import rate_memory, get_expertise, etc.
  *
  * @packageDocumentation
+ * @implementation src/athena/meta/operations.py
  */
-
-export interface QualityMetrics {
-  compression: number; // 0-1, ratio of condensed vs original
-  recall: number; // 0-1, ability to retrieve when needed
-  consistency: number; // 0-1, consistency with other memories
-  expertise: Record<string, number>; // domain -> level
-}
-
-export interface MemoryHealth {
-  totalMemories: number;
-  averageConfidence: number;
-  averageUsefulness: number;
-  staleness: number; // 0-1, how outdated memories are
-  issues: string[];
-}
-
-declare const callMCPTool: (operation: string, params: unknown) => Promise<unknown>;
 
 /**
- * Get overall memory health
+ * Quality scores for a memory
  */
-export async function memoryHealth(): Promise<MemoryHealth> {
-  return (await callMCPTool('meta/memoryHealth', {})) as MemoryHealth;
+export interface MemoryQuality {
+  usefulness_score: number; // 0-1
+  confidence: number; // 0-1
+  relevance_decay: number; // 0-1
+  access_count?: number;
 }
 
 /**
- * Get expertise in a domain
+ * Expertise information for a topic
  */
-export async function getExpertise(domain?: string): Promise<Record<string, number>> {
-  return (await callMCPTool('meta/getExpertise', {
-    domain,
-  })) as Record<string, number>;
+export interface Expertise {
+  topic?: string;
+  level: "beginner" | "intermediate" | "advanced" | "expert";
+  memories: number;
+  confidence: number;
 }
 
 /**
- * Get cognitive load metrics
+ * Cognitive load metrics
  */
-export async function getCognitiveLoad(): Promise<{
-  workingMemory: number; // 0-1, working memory utilization
-  capacity: number; // 7±2 items
-  stress: number; // 0-1, cognitive stress level
-}> {
-  return (await callMCPTool('meta/getCognitiveLoad', {})) as {
-    workingMemory: number;
-    capacity: number;
-    stress: number;
-  };
+export interface CognitiveLoad {
+  episodic_load: number;
+  semantic_load: number;
+  total_memories: number;
+  load_percentage: number;
 }
 
 /**
- * Get quality metrics
+ * Meta-memory statistics
  */
-export async function getQualityMetrics(): Promise<QualityMetrics> {
-  return (await callMCPTool('meta/getQualityMetrics', {})) as QualityMetrics;
+export interface MetaStatistics {
+  total_memories_rated: number;
+  avg_quality: number;
+  expertise_domains: number;
+  avg_expertise: number;
+}
+
+// ============================================================================
+// Direct Operation Functions
+// These follow Athena's direct Python import pattern
+// @implementation src/athena/meta/operations.py
+// ============================================================================
+
+/**
+ * Rate a memory on quality, confidence, and usefulness.
+ *
+ * @param memory_id - Memory ID to rate
+ * @param quality - Quality score (0.0-1.0)
+ * @param confidence - Confidence score (0.0-1.0)
+ * @param usefulness - Usefulness score (0.0-1.0)
+ * @returns True if rating was stored
+ * @implementation src/athena/meta/operations.py:rate_memory
+ */
+export async function rate_memory(
+  memory_id: string,
+  quality?: number,
+  confidence?: number,
+  usefulness?: number
+): Promise<boolean> {
+  // In production: from athena.meta.operations import rate_memory
+  // return await rate_memory(memory_id, quality, confidence, usefulness)
+  throw new Error("Not implemented in TypeScript stub. Use Python directly.");
 }
 
 /**
- * Get attention metrics
+ * Get expertise scores for a topic or all topics.
+ *
+ * @param topic - Optional topic filter
+ * @param limit - Maximum results, default 10
+ * @returns Expertise scores
+ * @implementation src/athena/meta/operations.py:get_expertise
  */
-export async function getAttentionMetrics(): Promise<{
-  focusArea: string;
-  salience: Record<string, number>;
-  suppressedMemories: number;
-  activeThreads: number;
-}> {
-  return (await callMCPTool('meta/getAttentionMetrics', {})) as {
-    focusArea: string;
-    salience: Record<string, number>;
-    suppressedMemories: number;
-    activeThreads: number;
-  };
+export async function get_expertise(topic?: string, limit?: number): Promise<Expertise | Record<string, any>> {
+  throw new Error("Not implemented in TypeScript stub. Use Python directly.");
 }
 
 /**
- * Get memory usage statistics
+ * Get quality metrics for a memory.
+ *
+ * @param memory_id - Memory ID
+ * @returns Quality scores or null if not found
+ * @implementation src/athena/meta/operations.py:get_memory_quality
  */
-export async function getMemoryStats(): Promise<{
-  episodicCount: number;
-  semanticCount: number;
-  graphEntityCount: number;
-  procedureCount: number;
-  databaseSize: number; // bytes
-}> {
-  return (await callMCPTool('meta/getMemoryStats', {})) as {
-    episodicCount: number;
-    semanticCount: number;
-    graphEntityCount: number;
-    procedureCount: number;
-    databaseSize: number;
-  };
+export async function get_memory_quality(memory_id: string): Promise<MemoryQuality | null> {
+  throw new Error("Not implemented in TypeScript stub. Use Python directly.");
 }
 
 /**
- * Identify knowledge gaps
+ * Get current cognitive load metrics.
+ *
+ * @returns Cognitive load information
+ * @implementation src/athena/meta/operations.py:get_cognitive_load
  */
-export async function findGaps(): Promise<string[]> {
-  const result = (await callMCPTool('meta/findGaps', {})) as { gaps: string[] };
-  return result.gaps;
+export async function get_cognitive_load(): Promise<CognitiveLoad> {
+  throw new Error("Not implemented in TypeScript stub. Use Python directly.");
 }
 
 /**
- * Get memory recommendations
+ * Update cognitive load metrics.
+ *
+ * @param working_memory_items - Number of items in working memory
+ * @param active_tasks - Number of active tasks
+ * @param recent_accuracy - Recent accuracy score (0.0-1.0)
+ * @returns True if updated successfully
+ * @implementation src/athena/meta/operations.py:update_cognitive_load
  */
-export async function getRecommendations(): Promise<string[]> {
-  const result = (await callMCPTool('meta/getRecommendations', {})) as {
-    recommendations: string[];
-  };
-  return result.recommendations;
+export async function update_cognitive_load(
+  working_memory_items: number,
+  active_tasks: number,
+  recent_accuracy: number
+): Promise<boolean> {
+  throw new Error("Not implemented in TypeScript stub. Use Python directly.");
 }
 
 /**
- * Track memory improvement over time
+ * Get meta-memory statistics.
+ *
+ * @returns Dictionary with meta-statistics
+ * @implementation src/athena/meta/operations.py:get_statistics
  */
-export async function getProgressMetrics(): Promise<{
-  totalMemoriesStored: number;
-  memoryRetentionRate: number;
-  learningVelocity: number;
-}> {
-  return (await callMCPTool('meta/getProgressMetrics', {})) as {
-    totalMemoriesStored: number;
-    memoryRetentionRate: number;
-    learningVelocity: number;
-  };
+export async function get_statistics(): Promise<MetaStatistics> {
+  throw new Error("Not implemented in TypeScript stub. Use Python directly.");
 }
+
+// ============================================================================
+// Operation Metadata (for discovery)
+// ============================================================================
 
 export const operations = {
-  memoryHealth: {
-    name: 'memoryHealth',
-    description: 'Get memory health status',
-    category: 'read',
+  rate_memory: {
+    name: "rate_memory",
+    description: "Rate a memory on quality, confidence, and usefulness",
+    category: "write" as const,
+    parameters: ["memory_id", "quality", "confidence", "usefulness"],
   },
-  getExpertise: { name: 'getExpertise', description: 'Get expertise metrics', category: 'read' },
-  getCognitiveLoad: {
-    name: 'getCognitiveLoad',
-    description: 'Get cognitive load',
-    category: 'read',
+  get_expertise: {
+    name: "get_expertise",
+    description: "Get expertise scores for a topic or all topics",
+    category: "read" as const,
+    parameters: ["topic", "limit"],
   },
-  getQualityMetrics: {
-    name: 'getQualityMetrics',
-    description: 'Get quality metrics',
-    category: 'read',
+  get_memory_quality: {
+    name: "get_memory_quality",
+    description: "Get quality metrics for a memory",
+    category: "read" as const,
+    parameters: ["memory_id"],
   },
-  getAttentionMetrics: {
-    name: 'getAttentionMetrics',
-    description: 'Get attention metrics',
-    category: 'read',
+  get_cognitive_load: {
+    name: "get_cognitive_load",
+    description: "Get current cognitive load metrics",
+    category: "read" as const,
+    parameters: [],
   },
-  getMemoryStats: {
-    name: 'getMemoryStats',
-    description: 'Get memory statistics',
-    category: 'read',
+  update_cognitive_load: {
+    name: "update_cognitive_load",
+    description: "Update cognitive load metrics",
+    category: "write" as const,
+    parameters: ["working_memory_items", "active_tasks", "recent_accuracy"],
   },
-  findGaps: { name: 'findGaps', description: 'Find knowledge gaps', category: 'read' },
-  getRecommendations: {
-    name: 'getRecommendations',
-    description: 'Get recommendations',
-    category: 'read',
-  },
-  getProgressMetrics: {
-    name: 'getProgressMetrics',
-    description: 'Get progress metrics',
-    category: 'read',
+  get_statistics: {
+    name: "get_statistics",
+    description: "Get meta-memory statistics",
+    category: "read" as const,
+    parameters: [],
   },
 } as const;
 
+/**
+ * Get all available operations
+ */
 export function getOperations() {
   return Object.values(operations);
 }
 
+/**
+ * Get a specific operation by name
+ */
 export function getOperation(name: string) {
   return operations[name as keyof typeof operations];
 }
 
+/**
+ * Check if operation exists
+ */
 export function hasOperation(name: string): boolean {
   return name in operations;
 }
 
+/**
+ * Get all read operations
+ */
 export function getReadOperations() {
-  return getOperations().filter((op) => op.category === 'read');
+  return getOperations().filter((op) => op.category === "read");
 }
 
+/**
+ * Get all write operations
+ */
 export function getWriteOperations() {
-  return getOperations().filter((op) => op.category === 'write');
+  return getOperations().filter((op) => op.category === "write");
 }
+
+/**
+ * Quick reference for using Athena meta-memory operations:
+ *
+ * ```python
+ * from athena.meta.operations import (
+ *   rate_memory, get_expertise, get_memory_quality,
+ *   get_cognitive_load, update_cognitive_load, get_statistics
+ * )
+ *
+ * # Rate memories
+ * await rate_memory("memory_1", quality=0.8, confidence=0.9)
+ *
+ * # Track expertise
+ * expertise = await get_expertise(topic="Python")
+ *
+ * # Get quality metrics
+ * quality = await get_memory_quality("memory_1")
+ *
+ * # Monitor cognitive load
+ * load = await get_cognitive_load()
+ * await update_cognitive_load(5, 2, 0.85)
+ *
+ * # Get statistics
+ * stats = await get_statistics()
+ * ```
+ *
+ * Expertise levels: beginner, intermediate, advanced, expert
+ *
+ * Quality scores are 0.0-1.0 for:
+ * - usefulness_score: How useful the memory is
+ * - confidence: How confident we are in the information
+ * - relevance_decay: How relevant it remains over time
+ */
