@@ -287,7 +287,7 @@ class EpisodicStore(BaseStore):
             (
                 event.project_id,
                 event.session_id,
-                int(event.timestamp.timestamp()),
+                event.timestamp,
                 event_type_str,
                 event.content,
                 outcome_str,
@@ -396,7 +396,7 @@ class EpisodicStore(BaseStore):
                     (
                         event.project_id,
                         event.session_id,
-                        int(event.timestamp.timestamp()),
+                        event.timestamp,
                         event_type_str,
                         event.content,
                         outcome_str,
@@ -517,8 +517,6 @@ class EpisodicStore(BaseStore):
             List of events
         """
         end_date = end_date or datetime.now()
-        start_ts = int(start_date.timestamp())
-        end_ts = int(end_date.timestamp())
 
         rows = self.execute(
             """
@@ -526,7 +524,7 @@ class EpisodicStore(BaseStore):
             WHERE project_id = %s AND timestamp BETWEEN %s AND %s
             ORDER BY timestamp DESC
         """,
-            (project_id, start_ts, end_ts),
+            (project_id, start_date, end_date),
             fetch_all=True,
         )
 
@@ -594,7 +592,7 @@ class EpisodicStore(BaseStore):
         Returns:
             List of recent events
         """
-        cutoff = int((datetime.now() - timedelta(hours=hours)).timestamp())
+        cutoff = datetime.now() - timedelta(hours=hours)
 
         rows = self.execute(
             """
@@ -680,10 +678,10 @@ class EpisodicStore(BaseStore):
             end = time_range.get("end")
             if start:
                 where_conditions.append("timestamp >= %s")
-                params.append(int(start.timestamp()))
+                params.append(start)
             if end:
                 where_conditions.append("timestamp <= %s")
-                params.append(int(end.timestamp()))
+                params.append(end)
 
         # Add session_id filter
         if session_id:
@@ -921,7 +919,7 @@ class EpisodicStore(BaseStore):
             AND timestamp >= %s
             AND timestamp <= %s
         """
-        params = [project_id, int(start.timestamp()), int(end.timestamp())]
+        params = [project_id, start, end]
 
         # Filter by lifecycle status if provided
         if lifecycle_status:
@@ -1211,7 +1209,7 @@ class EpisodicStore(BaseStore):
             (
                 event.project_id,
                 event.session_id,
-                int(event.timestamp.timestamp()),
+                event.timestamp,
                 event.event_type,
                 event.content,
                 event.outcome,
