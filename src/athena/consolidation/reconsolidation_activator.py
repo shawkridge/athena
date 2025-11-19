@@ -121,13 +121,13 @@ class ReconsolidationActivator:
             async with self.db.get_connection() as conn:
                 # Find labile memories outside their window
                 result = await conn.execute(
-                    """
+                    f"""
                     SELECT id, last_activation
                     FROM episodic_events
                     WHERE lifecycle_status = %s
-                    AND NOW() > last_activation + INTERVAL '%d minutes'
+                    AND NOW() > last_activation + INTERVAL '{self.RECONSOLIDATION_WINDOW_MINUTES} minutes'
                     """,
-                    (self.LABILITY_STATE, self.RECONSOLIDATION_WINDOW_MINUTES),
+                    (self.LABILITY_STATE,),
                 )
 
                 labile_rows = await result.fetchall()

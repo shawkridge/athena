@@ -85,7 +85,7 @@ class ContradictionDetector:
                             (e1.outcome = 'success' AND e2.outcome = 'failure')
                             OR (e1.outcome = 'failure' AND e2.outcome = 'success')
                         )
-                    ORDER BY ABS(EXTRACT(EPOCH FROM (e2.timestamp - e1.timestamp)))
+                    ORDER BY ABS(e2.timestamp - e1.timestamp)
                     LIMIT 100
                     """,
                     (project_id,),

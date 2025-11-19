@@ -15,7 +15,7 @@ import re
 from typing import Optional
 
 from ..core.database import Database
-from ..episodic.models import EvidenceType, EventType, CodeEventType
+from ..episodic.models import EvidenceType, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -99,9 +99,8 @@ class EvidenceInferencer:
                 result = await conn.execute(
                     """
                     SELECT
-                        id, content, event_type, code_event_type,
-                        outcome, learned, confidence,
-                        file_path, symbol_name
+                        id, content, event_type,
+                        outcome, learned, confidence
                     FROM episodic_events
                     WHERE id = %s
                     """,
@@ -150,7 +149,7 @@ class EvidenceInferencer:
                     """
                     SELECT id FROM episodic_events
                     WHERE evidence_type IS NULL OR evidence_type = 'observed'
-                    ORDER BY created_at DESC
+                    ORDER BY timestamp DESC
                     LIMIT %s
                     """,
                     (limit,),
@@ -191,24 +190,23 @@ class EvidenceInferencer:
         """
         content = (event.get("content") or "").lower()
         event_type = event.get("event_type")
-        code_event_type = event.get("code_event_type")
         outcome = event.get("outcome")
         learned = event.get("learned")
 
-        # 1. Code event type - direct observation
-        if code_event_type:
+        # 1. Event type - direct observation for code-related events
+        if event_type:
             try:
-                cet = CodeEventType(code_event_type)
-                if cet in [
-                    CodeEventType.CODE_EDIT,
-                    CodeEventType.TEST_RUN,
-                    CodeEventType.BUG_DISCOVERY,
-                    CodeEventType.PERFORMANCE_PROFILE,
+                et = EventType(event_type)
+                if et in [
+                    EventType.CODE_EDIT,
+                    EventType.TEST_RUN,
+                    EventType.BUG_DISCOVERY,
+                    EventType.TOOL_USE,
                 ]:
                     return EvidenceType.OBSERVED
-                elif cet == CodeEventType.ARCHITECTURE_DECISION:
-                    return EvidenceType.DEDUCED
-            except ValueError:
+                elif et == EventType.LEARNING:
+                    return EvidenceType.LEARNED
+            except (ValueError, KeyError):
                 pass
 
         # 2. Event outcome - SUCCESS/FAILURE are observations

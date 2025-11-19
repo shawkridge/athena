@@ -35,7 +35,7 @@ logging.basicConfig(
     format="[%(asctime)s] %(levelname)s - %(name)s: %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler("/var/log/athena-dreams.log"),
+        logging.FileHandler(str(Path.home() / ".athena" / "dreams.log")),
     ]
 )
 
