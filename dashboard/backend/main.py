@@ -146,11 +146,12 @@ async def get_episodic_events(
     project_id: int = 1,
 ):
     """Get episodic events with pagination."""
+    # Note: project_id parameter kept for future multi-project support
+    # Currently Athena's recall() doesn't accept project_id, uses default project
     events = await recall(
         query="*",  # All events
         limit=limit,
         session_id=session_id,
-        project_id=project_id,
     )
 
     # Convert to dict for JSON serialization
