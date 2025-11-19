@@ -8,7 +8,7 @@ import logging
 from ..core.database_factory import get_database
 from ..core.base_store import BaseStore
 from ..core.embeddings import EmbeddingModel
-from ..core.models import Memory, MemorySearchResult, MemoryType, Project
+from ..core.models import Memory, MemorySearchResult, MemoryType, Project, ConsolidationState
 from ..core.async_utils import run_async
 from .optimize import SemanticOptimizer
 from .search import SemanticSearch
@@ -78,9 +78,20 @@ class SemanticStore(BaseStore):
             content=row.get("content"),
             memory_type=MemoryType(row.get("memory_type")) if row.get("memory_type") else None,
             tags=json.loads(row.get("tags", "[]")) if row.get("tags") else [],
-            embedding=row.get("embedding"),
             created_at=row.get("created_at"),
             updated_at=row.get("updated_at"),
+            last_accessed=row.get("last_accessed"),
+            last_retrieved=row.get("last_retrieved"),
+            access_count=row.get("access_count", 0),
+            usefulness_score=row.get("usefulness_score", 0.0),
+            embedding=row.get("embedding"),
+            consolidation_state=(
+                ConsolidationState(row.get("consolidation_state"))
+                if row.get("consolidation_state")
+                else ConsolidationState.CONSOLIDATED
+            ),
+            superseded_by=row.get("superseded_by"),
+            version=row.get("version", 1),
         )
 
     async def remember(
