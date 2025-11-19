@@ -145,11 +145,12 @@ class EvidenceInferencer:
         """
         try:
             async with self.db.get_connection() as conn:
-                # Get batch of events ordered by recency
+                # Get batch of events ordered by recency (only those without evidence_type)
                 result = await conn.execute(
                     """
                     SELECT id, content, event_type, outcome, learned, confidence
                     FROM episodic_events
+                    WHERE evidence_type IS NULL
                     ORDER BY timestamp DESC
                     LIMIT %s
                     """,
