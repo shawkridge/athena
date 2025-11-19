@@ -23,6 +23,7 @@ import {
   TrendingUp,
   Settings,
   Star,
+  Heart,
 } from 'lucide-react'
 import { useFavorites } from '@/providers/favorites-provider'
 
@@ -44,6 +45,7 @@ const navigation = [
   {
     name: 'Advanced',
     items: [
+      { name: 'Consciousness', href: '/consciousness', icon: Heart },
       { name: 'Research', href: '/research', icon: Search },
       { name: 'Code Intelligence', href: '/code', icon: Code },
       { name: 'Skills & Agents', href: '/skills', icon: Zap },
