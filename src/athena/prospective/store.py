@@ -220,41 +220,29 @@ class ProspectiveStore(BaseStore):
         Returns:
             ID of created task
         """
-        status_str = task.status.value if isinstance(task.status, TaskStatus) else task.status
-        priority_str = (
-            task.priority.value if isinstance(task.priority, TaskPriority) else task.priority
-        )
-        phase_str = task.phase.value if isinstance(task.phase, TaskPhase) else task.phase
-        plan_json = self.serialize_json(task.plan.dict()) if task.plan else None
+        # Status and priority are now simple values (not enums in model)
+        status_str = task.status
+        priority_int = task.priority
 
+        # Insert using actual database schema fields
         cursor = self.execute(
             """
             INSERT INTO prospective_tasks (
-                project_id, content, active_form,
-                created_at, due_at, completed_at,
-                status, priority, assignee,
-                phase, plan_json, plan_created_at,
-                notes, blocked_reason, failure_reason, lessons_learned
+                project_id, title, description,
+                created_at, due_date, completed_at,
+                status, priority
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """,
             (
                 task.project_id,
-                task.content,
-                task.active_form,
-                int(task.created_at.timestamp()),
-                int(task.due_at.timestamp()) if task.due_at else None,
-                int(task.completed_at.timestamp()) if task.completed_at else None,
-                status_str,
-                priority_str,
-                task.assignee,
-                phase_str,
-                plan_json,
-                int(task.plan_created_at.timestamp()) if task.plan_created_at else None,
-                task.notes,
-                task.blocked_reason,
-                task.failure_reason,
-                task.lessons_learned,
+                task.title,
+                task.description,
+                task.created_at,
+                task.due_date,
+                task.completed_at,
+                task.status,
+                task.priority,
             ),
         )
         self.commit()
@@ -1069,37 +1057,36 @@ class ProspectiveStore(BaseStore):
         if status_val == "in_progress":
             status_val = "active"
 
-        # Handle priority: convert numeric values to enum strings
-        priority_val = safe_get(row_dict, "priority", "medium")
-        if isinstance(priority_val, int):
-            # Map numeric priority to enum: 1=low, 2=medium, 3=high, 4=critical
-            priority_map = {1: "low", 2: "medium", 3: "high", 4: "critical"}
-            priority_val = priority_map.get(priority_val, "medium")
-        elif priority_val is None or priority_val == "":
-            priority_val = "medium"
+        # Handle priority: keep as integer (1-10)
+        priority_val = safe_get(row_dict, "priority", 5)
+        if priority_val is None:
+            priority_val = 5
 
+        # Map database fields to model (matching new schema)
         return ProspectiveTask(
             id=safe_get(row_dict, "id"),
             project_id=safe_get(row_dict, "project_id"),
-            content=safe_get(row_dict, "content") or "[No content]",
-            active_form=safe_get(row_dict, "active_form") or "[No description]",
+            title=safe_get(row_dict, "title") or safe_get(row_dict, "content") or "[Untitled]",
+            description=safe_get(row_dict, "description") or safe_get(row_dict, "active_form"),
             created_at=_to_datetime(created_at),
-            due_at=_to_datetime(due_at),
+            due_date=_to_datetime(due_at),  # due_at in DB, due_date in model
+            started_at=_to_datetime(safe_get(row_dict, "started_at")),
             completed_at=_to_datetime(completed_at),
-            status=TaskStatus(status_val) if status_val else TaskStatus.PENDING,
-            priority=TaskPriority(priority_val) if priority_val else TaskPriority.MEDIUM,
-            # Phase tracking
-            phase=phase,
-            plan=plan,
-            plan_created_at=_to_datetime(plan_created_at),
-            phase_started_at=_to_datetime(phase_started_at),
-            phase_metrics=phase_metrics,
-            actual_duration_minutes=safe_get(row_dict, "actual_duration_minutes"),
-            assignee=safe_get(row_dict, "assignee") or "",
-            notes=safe_get(row_dict, "notes") or "",
-            blocked_reason=safe_get(row_dict, "blocked_reason"),
-            failure_reason=safe_get(row_dict, "failure_reason"),
-            lessons_learned=safe_get(row_dict, "lessons_learned"),
+            status=status_val or "pending",
+            priority=priority_val,
+            goal_id=safe_get(row_dict, "goal_id"),
+            parent_task_id=safe_get(row_dict, "parent_task_id"),
+            estimated_effort_hours=safe_get(row_dict, "estimated_effort_hours"),
+            actual_effort_hours=safe_get(row_dict, "actual_effort_hours"),
+            completion_percentage=safe_get(row_dict, "completion_percentage", 0),
+            success_rate=safe_get(row_dict, "success_rate"),
+            related_memory_ids=safe_get(row_dict, "related_memory_ids"),
+            related_code_ids=safe_get(row_dict, "related_code_ids"),
+            related_test_name=safe_get(row_dict, "related_test_name"),
+            related_file_path=safe_get(row_dict, "related_file_path"),
+            checkpoint_id=safe_get(row_dict, "checkpoint_id"),
+            last_claude_sync_at=_to_datetime(safe_get(row_dict, "last_claude_sync_at")),
+            notes=safe_get(row_dict, "notes"),
         )
 
     # ==================== ASYNC WRAPPER API ====================
@@ -1132,9 +1119,9 @@ class ProspectiveStore(BaseStore):
         """
         tasks = self.list_tasks(limit=limit)
 
-        # Filter by status if specified
+        # Filter by status if specified (status is now a string, not enum)
         if status:
-            tasks = [t for t in tasks if t.status.value == status]
+            tasks = [t for t in tasks if t.status == status]
 
         return tasks
 

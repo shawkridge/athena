@@ -49,6 +49,7 @@ class EpisodicOperations:
         importance: float = 0.5,
         session_id: str = "default",
         spatial_context: str = "/",
+        project_id: int = 1,
     ) -> str:
         """Store an episodic event.
 
@@ -60,6 +61,7 @@ class EpisodicOperations:
             importance: Importance score (0.0-1.0)
             session_id: Session identifier
             spatial_context: File path or spatial location
+            project_id: Project identifier (default: 1)
 
         Returns:
             Memory ID of stored event
@@ -73,14 +75,14 @@ class EpisodicOperations:
         importance = max(0.0, min(1.0, importance))
 
         event = EpisodicEvent(
-            project_id=1,  # Default project
+            project_id=project_id,
             timestamp=datetime.now(),
             content=content,
             event_type=EventType.ACTION,
             context=EventContext(cwd=spatial_context),
             outcome=EventOutcome.SUCCESS,
             session_id=session_id,
-            importance=importance,
+            importance_score=importance,
         )
 
         await self.db.initialize()  # Ensure schema
@@ -95,6 +97,7 @@ class EpisodicOperations:
         time_range: Dict[str, datetime] | None = None,
         tags: List[str] | None = None,
         session_id: str | None = None,
+        project_id: int = 1,
     ) -> List[EpisodicEvent]:
         """Search episodic memories.
 
@@ -102,9 +105,10 @@ class EpisodicOperations:
             query: Search query string
             limit: Maximum results to return
             min_confidence: Minimum confidence threshold (0.0-1.0), filters by importance
-            time_range: Optional time range with 'start' and 'end' keys (not used in basic search)
-            tags: Optional tag filters (not used in basic search)
-            session_id: Optional session filter (not used in basic search)
+            time_range: Optional time range with 'start' and 'end' keys
+            tags: Optional tag filters
+            session_id: Optional session filter
+            project_id: Project identifier (default: 1)
 
         Returns:
             List of matching episodic events
@@ -112,37 +116,18 @@ class EpisodicOperations:
         if not query:
             return []
 
-        # Use store's search_events which requires project_id, query, and limit
-        project_id = 1  # Default project
-        results = self.store.search_events(project_id, query, limit=limit)
+        # Use store's search_events with all filters (delegated to database level)
+        results = self.store.search_events(
+            project_id=project_id,
+            query=query,
+            limit=limit,
+            min_importance=min_confidence,
+            time_range=time_range,
+            tags=tags,
+            session_id=session_id,
+        )
 
-        # Apply client-side filtering
-        filtered = results
-
-        # Filter by confidence (importance score)
-        filtered = [r for r in filtered if getattr(r, "importance_score", 0.5) >= min_confidence]
-
-        # Filter by time range if provided
-        if time_range:
-            start = time_range.get("start")
-            end = time_range.get("end")
-            filtered = [
-                r
-                for r in filtered
-                if (not start or r.timestamp >= start) and (not end or r.timestamp <= end)
-            ]
-
-        # Filter by tags if provided
-        if tags:
-            filtered = [
-                r for r in filtered if any(tag in tags for tag in (getattr(r, "tags", []) or []))
-            ]
-
-        # Filter by session_id if provided
-        if session_id:
-            filtered = [r for r in filtered if r.session_id == session_id]
-
-        return filtered
+        return results
 
     async def recall_recent(
         self,
@@ -168,17 +153,18 @@ class EpisodicOperations:
         self,
         session_id: str,
         limit: int = 100,
+        project_id: int = 1,
     ) -> List[EpisodicEvent]:
         """Get all events from a session.
 
         Args:
             session_id: Session identifier
             limit: Maximum events to return
+            project_id: Project identifier (default: 1)
 
         Returns:
             List of events from session
         """
-        project_id = 1  # Default project
         # Get all events for the project and filter by session
         all_events = self.store.list_events(
             project_id=project_id, limit=limit, order_by="timestamp DESC"
@@ -190,12 +176,14 @@ class EpisodicOperations:
         self,
         tags: List[str],
         limit: int = 100,
+        project_id: int = 1,
     ) -> List[EpisodicEvent]:
         """Get events matching tags.
 
         Args:
             tags: Tags to search for
             limit: Maximum events to return
+            project_id: Project identifier (default: 1)
 
         Returns:
             List of matching events
@@ -204,7 +192,6 @@ class EpisodicOperations:
             return []
 
         # Use search_events to find events matching tags
-        project_id = 1  # Default project
         query = " OR ".join(tags)
         return self.store.search_events(project_id, query, limit=limit)
 

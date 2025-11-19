@@ -32,10 +32,20 @@ class GraphStore(BaseStore[Entity]):
         Returns:
             Entity instance
         """
+        # Database stores entity_type as string, try to match to enum
+        entity_type_str = row.get("entity_type")
+        entity_type = None
+        if entity_type_str:
+            try:
+                entity_type = EntityType(entity_type_str)
+            except ValueError:
+                # If enum value doesn't match, store as string (database schema compatibility)
+                entity_type = entity_type_str
+
         return Entity(
             id=row.get("id"),
             name=row.get("name"),
-            entity_type=EntityType(row.get("entity_type")) if row.get("entity_type") else None,
+            entity_type=entity_type,
             project_id=row.get("project_id"),
             created_at=self.from_timestamp(row.get("created_at")),
             updated_at=self.from_timestamp(row.get("updated_at")),
@@ -223,16 +233,11 @@ class GraphStore(BaseStore[Entity]):
         if not row:
             return None
 
-        col_names = [
-            "id",
-            "name",
-            "entity_type",
-            "project_id",
-            "created_at",
-            "updated_at",
-            "metadata",
-        ]
-        return self._row_to_model(dict(zip(col_names, row)))
+        # execute() returns dicts, not tuples
+        return self._row_to_model(row if isinstance(row, dict) else dict(zip(
+            ["id", "name", "entity_type", "project_id", "created_at", "updated_at", "metadata"],
+            row
+        )))
 
     def find_entity(
         self, name: str, entity_type: str, project_id: Optional[int] = None
@@ -259,16 +264,11 @@ class GraphStore(BaseStore[Entity]):
         if not row:
             return None
 
-        col_names = [
-            "id",
-            "name",
-            "entity_type",
-            "project_id",
-            "created_at",
-            "updated_at",
-            "metadata",
-        ]
-        return self._row_to_model(dict(zip(col_names, row)))
+        # execute() returns dicts, not tuples
+        return self._row_to_model(row if isinstance(row, dict) else dict(zip(
+            ["id", "name", "entity_type", "project_id", "created_at", "updated_at", "metadata"],
+            row
+        )))
 
     def delete_entity(self, entity_id: int) -> bool:
         """Delete entity and all its relations/observations.
@@ -532,19 +532,14 @@ class GraphStore(BaseStore[Entity]):
             params.append(project_id)
 
         rows = self.execute(sql, params, fetch_all=True)
-        col_names = [
-            "id",
-            "name",
-            "entity_type",
-            "project_id",
-            "created_at",
-            "updated_at",
-            "metadata",
-        ]
 
         entities = []
         for row in rows or []:
-            entities.append(self._row_to_model(dict(zip(col_names, row))))
+            # execute() already returns dicts, not tuples
+            entities.append(self._row_to_model(row if isinstance(row, dict) else dict(zip(
+                ["id", "name", "entity_type", "project_id", "created_at", "updated_at", "metadata"],
+                row
+            ))))
 
         return entities
 

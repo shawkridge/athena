@@ -114,7 +114,8 @@ class GraphOperations:
         Returns:
             Entity object or None if not found
         """
-        return await self.store.get_entity(entity_id)
+        # get_entity is synchronous in the store
+        return self.store.get_entity(int(entity_id) if isinstance(entity_id, str) else entity_id)
 
     async def search_entities(
         self,
@@ -135,7 +136,15 @@ class GraphOperations:
         if not query:
             return []
 
-        return await self.store.search_entities(query, entity_type=entity_type, limit=limit)
+        # Store.search_entities is synchronous
+        results = self.store.search_entities(query)
+
+        # Filter by entity_type if specified
+        if entity_type:
+            results = [e for e in results if e.entity_type == entity_type]
+
+        # Apply limit
+        return results[:limit]
 
     async def find_related(
         self,
@@ -155,12 +164,17 @@ class GraphOperations:
         Returns:
             Related entities
         """
-        return await self.store.find_related(
+        # Store uses relation_types (plural) parameter and is synchronous
+        # Note: depth parameter is not supported by store.find_related
+        relation_types = [relationship_type] if relationship_type else None
+
+        results = self.store.find_related(
             entity_id=entity_id,
-            relationship_type=relationship_type,
-            limit=limit,
-            depth=depth,
+            relation_types=relation_types,
         )
+
+        # Apply limit
+        return results[:limit]
 
     async def get_communities(
         self,
@@ -190,13 +204,13 @@ class GraphOperations:
         Returns:
             True if updated successfully
         """
-        entity = await self.store.get_entity(entity_id)
+        # get_entity is sync, update_entity is async
+        entity = self.store.get_entity(int(entity_id) if isinstance(entity_id, str) else entity_id)
         if not entity:
             return False
 
         entity.importance = max(0.0, min(1.0, importance))
-        await self.store.update_entity(entity)
-        return True
+        return await self.store.update_entity(entity)
 
     async def get_statistics(self) -> Dict[str, Any]:
         """Get knowledge graph statistics.

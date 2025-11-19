@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 
 from ..core.database import Database
 from .store import ProspectiveStore
-from .models import ProspectiveTask, TaskStatus
+from .models import ProspectiveTask, TaskStatus, TaskPriority
 
 logger = logging.getLogger(__name__)
 
@@ -46,25 +46,26 @@ class ProspectiveOperations:
         description: str = "",
         due_date: datetime | None = None,
         priority: int = 5,
-        tags: List[str] | None = None,
         status: str = "pending",
+        project_id: int | None = None,
     ) -> str:
         """Create a new task.
 
         Args:
-            title: ProspectiveTask title
-            description: ProspectiveTask description
+            title: Task title
+            description: Task description
             due_date: Optional due date
             priority: Priority (1-10, default 5)
-            tags: Tags for categorization
-            status: ProspectiveTask status (pending, in_progress, completed, cancelled)
+            status: Task status (pending, in_progress, completed, cancelled)
+            project_id: Optional project ID
 
         Returns:
-            ProspectiveTask ID
+            Task ID as string
         """
         if not title:
             raise ValueError("title is required")
 
+        # Clamp priority to 1-10 range
         priority = max(1, min(10, priority))
 
         task = ProspectiveTask(
@@ -73,6 +74,7 @@ class ProspectiveOperations:
             due_date=due_date,
             priority=priority,
             status=TaskStatus(status),
+            project_id=project_id,
             created_at=datetime.now(),
             completed_at=None,
         )
@@ -236,8 +238,8 @@ async def create_task(
     description: str = "",
     due_date: datetime | None = None,
     priority: int = 5,
-    tags: List[str] | None = None,
     status: str = "pending",
+    project_id: int | None = None,
 ) -> str:
     """Create a task. See ProspectiveOperations.create_task for details."""
     ops = get_operations()
@@ -246,8 +248,8 @@ async def create_task(
         description=description,
         due_date=due_date,
         priority=priority,
-        tags=tags,
         status=status,
+        project_id=project_id,
     )
 
 

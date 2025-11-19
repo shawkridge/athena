@@ -43,7 +43,7 @@ from .pipeline import (
 )
 from ..core.llm_client import LocalLLMClient
 from ..episodic.store import EpisodicStore
-from ..memory.store import MemoryStore
+from ..semantic.store import SemanticStore
 from ..graph.store import GraphStore
 from ..monitoring.model_metrics import get_monitor
 from ..temporal.kg_synthesis import TemporalKGSynthesis
@@ -101,7 +101,7 @@ class EnhancedConsolidationReport(ConsolidationReport):
 async def consolidate_with_local_reasoning(
     project_id: int,
     episodic_store: EpisodicStore,
-    semantic_store: MemoryStore,
+    semantic_store: SemanticStore,
     graph_store: Optional[GraphStore] = None,
     time_window_hours: int = 24,
     min_pattern_confidence: float = 0.7,
@@ -177,7 +177,7 @@ async def consolidate_with_local_reasoning(
         project_id=project_id,
         start=cutoff_time,
         end=datetime.now(),
-        consolidation_status="unconsolidated",
+        lifecycle_status="active",  # Get active events for consolidation
     )
 
     if not events:
@@ -287,9 +287,7 @@ async def consolidate_with_local_reasoning(
     # Step 6: Mark events as consolidated
     if not dry_run:
         for event in events:
-            episodic_store.mark_event_consolidated(
-                event_id=event.id, consolidated_at=datetime.now()
-            )
+            episodic_store.mark_event_consolidated(event_id=event.id)
 
     # Step 7: Temporal KG synthesis
     kg_relations_count = 0
@@ -358,7 +356,7 @@ async def consolidate_with_local_reasoning(
 def consolidate_with_local_reasoning_sync(
     project_id: int,
     episodic_store: EpisodicStore,
-    semantic_store: MemoryStore,
+    semantic_store: SemanticStore,
     graph_store: Optional[GraphStore] = None,
     time_window_hours: int = 24,
     min_pattern_confidence: float = 0.7,

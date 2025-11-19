@@ -4,7 +4,6 @@ This replaces the hardcoded consolidation messages with actual pattern extractio
 clustering, and semantic memory creation.
 
 Implements System 1 (fast, heuristic) + System 2 (slow, LLM) dual-process reasoning.
-Integrated with SemanticContextEnricher for embeddings, cross-project linking, and LLM scoring.
 """
 
 import os
@@ -17,25 +16,14 @@ from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
-# Import semantic enricher for advanced context enhancement
-try:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../..'))
-    from athena.consolidation.semantic_context_enricher import SemanticContextEnricher
-    SEMANTIC_ENRICHER_AVAILABLE = True
-except ImportError:
-    SEMANTIC_ENRICHER_AVAILABLE = False
-    logger.debug("SemanticContextEnricher not available (optional feature)")
-
 
 class ConsolidationHelper:
     """Performs real consolidation on episodic events."""
 
     def __init__(self):
-        """Initialize with database connection and optional semantic enricher."""
+        """Initialize with database connection."""
         self.conn = None
-        self.semantic_enricher = None
         self._connect()
-        self._init_semantic_enricher()
 
     def _connect(self):
         """Connect to PostgreSQL database."""
@@ -53,23 +41,6 @@ class ConsolidationHelper:
         except Exception as e:
             logger.error(f"Failed to connect to PostgreSQL: {e}")
             raise
-
-    def _init_semantic_enricher(self):
-        """Initialize semantic context enricher if available."""
-        if SEMANTIC_ENRICHER_AVAILABLE:
-            try:
-                self.semantic_enricher = SemanticContextEnricher(
-                    embeddings_url=os.environ.get(
-                        "LLAMACPP_EMBEDDINGS_URL", "http://localhost:8001"
-                    ),
-                    reasoning_url=os.environ.get(
-                        "LLAMACPP_REASONING_URL", "http://localhost:8002"
-                    ),
-                )
-                logger.info("✓ Semantic context enricher initialized")
-            except Exception as e:
-                logger.warning(f"Failed to initialize semantic enricher: {e}")
-                self.semantic_enricher = None
 
     def close(self):
         """Close database connection."""
@@ -167,9 +138,6 @@ class ConsolidationHelper:
                     "discoveries_found": 0,
                 }
 
-            # Phase 1.5: Enrich events with project context (new context optimization)
-            self._enrich_events_with_context(project_id, events)
-
             # Phase 2: Cluster events by type and temporal proximity (System 1 - fast)
             clusters = self._cluster_events(events)
 
@@ -178,9 +146,6 @@ class ConsolidationHelper:
 
             # Phase 4: Identify discoveries (high-impact analysis events)
             discoveries = self._identify_discoveries(events)
-
-            # Phase 4.5: Optional semantic enrichment (embeddings, LLM scoring, cross-project linking)
-            semantic_stats = self._enrich_with_semantics(project_id, discoveries)
 
             # Phase 5: Create semantic memories from patterns
             created_memories = self._create_semantic_memories(
@@ -201,7 +166,6 @@ class ConsolidationHelper:
                 "semantic_memories_created": len(created_memories),
                 "procedures_extracted": len(procedures),
                 "events_consolidated": consolidated_count,
-                "semantic_enrichment": semantic_stats,
                 "patterns": patterns,
                 "discoveries": discoveries,
             }
@@ -265,215 +229,6 @@ class ConsolidationHelper:
         except Exception as e:
             logger.warning(f"Error getting unconsolidated events: {e}")
             return []
-
-    def _enrich_events_with_context(
-        self, project_id: int, events: List[Dict[str, Any]]
-    ) -> None:
-        """Enrich events with project context and actionability metadata.
-
-        Extracts and populates:
-        - project_name: Name of the project
-        - project_goal: Current project goal from active tasks
-        - project_phase_status: Current phase of the project
-        - importance_score: Event importance (0.0-1.0)
-        - actionability_score: How actionable is this event
-        - context_completeness_score: Whether event has sufficient context
-        - has_next_step: Whether discovery has a clear next action
-        - has_blocker: Whether discovery has blockers
-
-        This enables optimal working memory ranking.
-        """
-        try:
-            cursor = self.conn.cursor()
-
-            # Get project information
-            cursor.execute(
-                "SELECT name FROM projects WHERE id = %s",
-                (project_id,)
-            )
-            project_row = cursor.fetchone()
-            project_name = project_row[0] if project_row else "unknown"
-
-            # Get active project goals/tasks
-            cursor.execute(
-                """SELECT content, status FROM prospective_tasks
-                   WHERE project_id = %s AND status IN ('active', 'in_progress')
-                   ORDER BY priority DESC LIMIT 1""",
-                (project_id,)
-            )
-            goal_row = cursor.fetchone()
-            project_goal = goal_row[0] if goal_row else None
-            project_phase_status = goal_row[1] if goal_row else "unknown"
-
-            # Enrich each event with context
-            for event in events:
-                # Base context from project
-                event["project_name"] = project_name
-                event["project_goal"] = project_goal
-                event["project_phase_status"] = project_phase_status
-
-                # Calculate importance score based on event type and outcome
-                importance = 0.5  # Default
-                if event.get("outcome") == "success":
-                    importance = 0.7
-                elif event.get("outcome") == "failure":
-                    importance = 0.8  # Failures are often important to learn from
-                elif event.get("type", "").startswith("discovery:"):
-                    importance = 0.85  # Discoveries are highly important
-
-                event["importance_score"] = importance
-
-                # Calculate actionability (events with clear outcomes are more actionable)
-                actionability = 0.5
-                if event.get("outcome"):
-                    actionability = 0.8  # Events with outcomes are actionable
-                if event.get("type", "").startswith("decision:"):
-                    actionability = 0.9  # Decisions are very actionable
-
-                event["actionability_score"] = actionability
-
-                # Context completeness: has project context + goal + phase
-                completeness = 0.5
-                if project_name and project_goal and event.get("outcome"):
-                    completeness = 0.9  # High completeness
-
-                event["context_completeness_score"] = completeness
-
-                # Infer next steps and blockers from content
-                content_lower = (event.get("content") or "").lower()
-                event["has_next_step"] = any(
-                    word in content_lower
-                    for word in ["next", "then", "continue", "follow up", "todo", "should", "will"]
-                )
-                event["has_blocker"] = any(
-                    word in content_lower
-                    for word in ["blocked", "error", "fail", "issue", "problem", "critical", "urgent"]
-                )
-
-                event["required_decisions"] = None  # Can be populated via LLM if needed
-
-                # Update episodic_events table with enriched context
-                try:
-                    cursor.execute(
-                        """
-                        UPDATE episodic_events
-                        SET project_name = %s,
-                            project_goal = %s,
-                            project_phase_status = %s,
-                            importance_score = %s,
-                            actionability_score = %s,
-                            context_completeness_score = %s,
-                            has_next_step = %s,
-                            has_blocker = %s
-                        WHERE id = %s
-                        """,
-                        (
-                            project_name,
-                            project_goal,
-                            project_phase_status,
-                            importance,
-                            actionability,
-                            completeness,
-                            event["has_next_step"],
-                            event["has_blocker"],
-                            event["id"]
-                        )
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to update event {event.get('id')} with context: {e}")
-
-            self.conn.commit()
-            logger.debug(f"Enriched {len(events)} events with project context")
-
-        except Exception as e:
-            logger.error(f"Error enriching events with context: {e}")
-
-    def _enrich_with_semantics(
-        self, project_id: int, discoveries: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
-        """Enrich discoveries with semantic embeddings and LLM scoring.
-
-        This is an optional optimization that:
-        1. Generates embeddings for semantic search
-        2. Scores importance using reasoning model
-        3. Links related discoveries across projects
-        4. Creates semantic relationship graph
-
-        Args:
-            project_id: Project ID
-            discoveries: List of discovered items
-
-        Returns:
-            Statistics about semantic enrichment
-        """
-        if not self.semantic_enricher or not discoveries:
-            return {"status": "skipped", "reason": "enricher_unavailable"}
-
-        stats = {
-            "status": "success",
-            "discoveries_enriched": 0,
-            "embeddings_generated": 0,
-            "cross_project_links": 0,
-            "importance_scores_updated": 0,
-        }
-
-        try:
-            cursor = self.conn.cursor()
-
-            for discovery in discoveries:
-                try:
-                    # Get full event data for enrichment
-                    cursor.execute(
-                        """
-                        SELECT id, event_type, content, outcome, project_goal,
-                               project_name
-                        FROM episodic_events
-                        WHERE id = %s
-                        """,
-                        (discovery["id"],)
-                    )
-                    row = cursor.fetchone()
-                    if not row:
-                        continue
-
-                    event_id, event_type, content, outcome, project_goal, project_name = row
-
-                    # Apply semantic enrichment
-                    enrichment = self.semantic_enricher.enrich_event_with_semantics(
-                        self.conn,
-                        project_id,
-                        event_id,
-                        event_type,
-                        content,
-                        outcome,
-                        project_goal
-                    )
-
-                    if enrichment.get("embedding_generated"):
-                        stats["embeddings_generated"] += 1
-                    if enrichment.get("importance_scored"):
-                        stats["importance_scores_updated"] += 1
-                    stats["cross_project_links"] += enrichment.get("cross_project_found", 0)
-                    stats["discoveries_enriched"] += 1
-
-                    logger.debug(
-                        f"Enriched discovery {event_id}: "
-                        f"embedding={enrichment.get('embedding_generated')}, "
-                        f"importance={enrichment.get('importance_score', 0):.2f}"
-                    )
-
-                except Exception as e:
-                    logger.warning(f"Failed to enrich discovery {discovery.get('id')}: {e}")
-
-            self.conn.commit()
-
-        except Exception as e:
-            logger.error(f"Error during semantic enrichment: {e}")
-            stats["status"] = "error"
-            stats["error"] = str(e)
-
-        logger.info(f"Semantic enrichment stats: {stats}")
-        return stats
 
     def _cluster_events(self, events: List[Dict[str, Any]]) -> Dict[str, List[Dict]]:
         """Cluster events by type and temporal proximity (System 1 - fast).

@@ -12,7 +12,7 @@ from .episodic.models import EpisodicEvent, EventContext, EventType
 from .episodic.store import EpisodicStore
 from .graph.models import Entity, Relation
 from .graph.store import GraphStore
-from .memory.store import MemoryStore
+from .semantic.store import SemanticStore
 from .meta.store import MetaMemoryStore
 from .meta.quality_reweighter import QualityReweighter, LayerQualitySelector
 from .optimization.auto_tuner import AutoTuner, TuningStrategy
@@ -57,7 +57,7 @@ class UnifiedMemoryManager:
 
     def __init__(
         self,
-        semantic: "MemoryStore",
+        semantic: "SemanticStore",
         episodic: "EpisodicStore",
         procedural: "ProceduralStore",
         prospective: "ProspectiveStore",
@@ -945,7 +945,7 @@ class UnifiedMemoryManager:
         lexical_results = self._query_lexical(query, context, k)
 
         # 3. Fuse semantic + lexical using RRF
-        from .memory.lexical import reciprocal_rank_fusion
+        from .semantic.lexical import reciprocal_rank_fusion
 
         # Convert to (id, score) tuples for fusion
         semantic_tuples = [(i, r.get("similarity", 0.5)) for i, r in enumerate(semantic_results)]
@@ -984,7 +984,7 @@ class UnifiedMemoryManager:
 
     def _query_lexical(self, query: str, context: dict, k: int) -> list:
         """Query using BM25 lexical matching."""
-        from .memory.lexical import LexicalSearch
+        from .semantic.lexical import LexicalSearch
 
         project = self.project_manager.require_project()
         assert project.id is not None, "Project ID should not be None after require_project()"

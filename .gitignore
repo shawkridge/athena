@@ -122,6 +122,9 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
+# Ruff
+.ruff_cache/
+
 # Pyre type checker
 .pyre/
 
@@ -150,11 +153,7 @@ venv/
 .mcp.json
 settings.local.json
 
-# Allow hooks (tracked as part of project)
-!claude/
-!claude/hooks/
-!claude/hooks/**/*.sh
-!claude/hooks/**/*.py
+# .claude directory is tracked via symlink to ~/.claude
 
 # Temporary files
 *.tmp

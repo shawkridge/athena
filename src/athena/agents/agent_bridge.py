@@ -24,7 +24,7 @@ from typing import Dict, Any, Optional, List
 
 from ..core.async_utils import run_async_in_thread
 from ..episodic.operations import remember
-from ..memory.operations import store
+from ..semantic.operations import store
 from .research_coordinator import ResearchCoordinatorAgent
 from .code_analyzer import CodeAnalyzerAgent
 from .workflow_orchestrator import WorkflowOrchestratorAgent

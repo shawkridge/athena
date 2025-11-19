@@ -18,7 +18,7 @@ import numpy as np
 
 from ..episodic.models import EpisodicEvent
 from ..episodic.store import EpisodicStore
-from ..memory.store import MemoryStore
+from ..semantic.store import SemanticStore
 
 
 class ConsolidationQualityMetrics:
@@ -27,7 +27,7 @@ class ConsolidationQualityMetrics:
     def __init__(
         self,
         episodic_store: EpisodicStore,
-        semantic_store: MemoryStore,
+        semantic_store: SemanticStore,
     ):
         """Initialize consolidation quality metrics.
 

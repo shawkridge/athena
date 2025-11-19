@@ -25,7 +25,7 @@ from .coordinator import AgentCoordinator
 
 # Import core memory operations
 from ..episodic.operations import remember as remember_event
-from ..memory.operations import store as store_fact
+from ..semantic.operations import store as store_fact
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ class MemoryCoordinatorAgent(AgentCoordinator):
 
         try:
             # Query semantic memory for similar content
-            from ..memory.operations import search as search_semantic
+            from ..semantic.operations import search as search_semantic
 
             similar = await search_semantic(content, limit=1)
 

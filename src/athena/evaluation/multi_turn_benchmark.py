@@ -17,7 +17,7 @@ from enum import Enum
 from typing import Optional
 
 from ..core.models import Memory, MemoryType
-from ..memory.store import MemoryStore
+from ..semantic.store import SemanticStore
 
 logger = logging.getLogger(__name__)
 
@@ -301,7 +301,7 @@ class MultiTurnBenchmarkSuite:
 class MultiTurnBenchmarkEvaluator:
     """Evaluates memory system on multi-turn conversations."""
 
-    def __init__(self, memory_store: MemoryStore):
+    def __init__(self, memory_store: SemanticStore):
         """Initialize evaluator.
 
         Args:

@@ -48,14 +48,14 @@ class ProceduralOperations:
         tags: List[str] | None = None,
         success_rate: float = 0.5,
         source: str = "agent",
-    ) -> str:
+    ) -> int:
         """Extract and store a reusable procedure.
 
         Args:
             name: Procedure name
             description: What the procedure does
             steps: List of steps (each step is a dict with action, params, conditions)
-            tags: Tags for categorization
+            tags: Tags for categorization (not stored in current schema)
             success_rate: Success rate of this procedure (0.0-1.0)
             source: Source identifier
 
@@ -71,15 +71,16 @@ class ProceduralOperations:
             name=name,
             description=description,
             steps=steps,
-            tags=tags or [],
             success_rate=success_rate,
             created_at=datetime.now(),
             last_used=None,
-            use_count=0,
-            metadata={"source": source},
+            usage_count=0,
+            created_by=source,  # Store source as created_by
         )
 
-        return await self.store.store(procedure)
+        # store() returns a Procedure with ID set
+        stored_proc = await self.store.store(procedure)
+        return stored_proc.id or 0
 
     async def list_procedures(
         self,
@@ -91,25 +92,24 @@ class ProceduralOperations:
 
         Args:
             limit: Maximum procedures to return
-            tags: Optional tag filters (returns procedures with ANY of these tags)
-            min_success_rate: Minimum success rate threshold
+            tags: Optional tag filters (not supported in current schema)
+            min_success_rate: Minimum success rate threshold (applied after retrieval)
 
         Returns:
             List of procedures
         """
-        filters = {
-            "limit": limit,
-            "min_success_rate": min_success_rate,
-        }
+        # Get procedures from store
+        procedures = await self.store.list(limit=limit)
 
-        if tags:
-            filters["tags"] = tags
+        # Filter by success rate if specified
+        if min_success_rate > 0.0:
+            procedures = [p for p in procedures if p.success_rate >= min_success_rate]
 
-        return await self.store.list(**filters)
+        return procedures
 
     async def get_procedure(
         self,
-        procedure_id: str,
+        procedure_id: str | int,
     ) -> Optional[Procedure]:
         """Get a specific procedure by ID.
 
@@ -119,7 +119,9 @@ class ProceduralOperations:
         Returns:
             Procedure object or None if not found
         """
-        return await self.store.get(procedure_id)
+        # Convert string ID to int if needed
+        pid = int(procedure_id) if isinstance(procedure_id, str) else procedure_id
+        return await self.store.get(pid)
 
     async def search_procedures(
         self,
@@ -147,21 +149,22 @@ class ProceduralOperations:
     ) -> List[Procedure]:
         """Get procedures matching tags.
 
+        Note: Tags are not stored in the current database schema.
+        This method is deprecated and returns an empty list.
+
         Args:
-            tags: Tags to match
+            tags: Tags to match (not supported)
             limit: Maximum procedures to return
 
         Returns:
-            Procedures with matching tags
+            Empty list (tags not supported in current schema)
         """
-        if not tags:
-            return []
-
-        return await self.store.list(tags=tags, limit=limit)
+        # Tags are not supported in the current schema
+        return []
 
     async def update_procedure_success(
         self,
-        procedure_id: str,
+        procedure_id: str | int,
         success: bool,
     ) -> bool:
         """Update procedure success rate and use count.
@@ -173,18 +176,20 @@ class ProceduralOperations:
         Returns:
             True if updated successfully
         """
-        procedure = await self.store.get(procedure_id)
+        # Convert string ID to int if needed
+        pid = int(procedure_id) if isinstance(procedure_id, str) else procedure_id
+        procedure = await self.store.get(pid)
         if not procedure:
             return False
 
         # Update success rate (exponential moving average)
         old_success = procedure.success_rate
-        old_count = procedure.use_count
+        old_count = procedure.usage_count  # Use usage_count (not use_count)
         new_count = old_count + 1
         new_success = (old_success * old_count + (1.0 if success else 0.0)) / new_count
 
         procedure.success_rate = new_success
-        procedure.use_count = new_count
+        procedure.usage_count = new_count
         procedure.last_used = datetime.now()
 
         await self.store.update(procedure)
@@ -258,7 +263,7 @@ async def extract_procedure(
     tags: List[str] | None = None,
     success_rate: float = 0.5,
     source: str = "agent",
-) -> str:
+) -> int:
     """Extract and store a procedure. See ProceduralOperations.extract_procedure for details."""
     ops = get_operations()
     return await ops.extract_procedure(
@@ -281,7 +286,7 @@ async def list_procedures(
     return await ops.list_procedures(limit=limit, tags=tags, min_success_rate=min_success_rate)
 
 
-async def get_procedure(procedure_id: str) -> Optional[Procedure]:
+async def get_procedure(procedure_id: str | int) -> Optional[Procedure]:
     """Get a procedure. See ProceduralOperations.get_procedure for details."""
     ops = get_operations()
     return await ops.get_procedure(procedure_id)
@@ -299,7 +304,7 @@ async def get_procedures_by_tags(tags: List[str], limit: int = 20) -> List[Proce
     return await ops.get_procedures_by_tags(tags=tags, limit=limit)
 
 
-async def update_procedure_success(procedure_id: str, success: bool) -> bool:
+async def update_procedure_success(procedure_id: str | int, success: bool) -> bool:
     """Update procedure success. See ProceduralOperations.update_procedure_success for details."""
     ops = get_operations()
     return await ops.update_procedure_success(procedure_id=procedure_id, success=success)

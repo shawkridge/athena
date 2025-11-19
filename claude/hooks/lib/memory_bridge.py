@@ -15,8 +15,8 @@ import sys
 import json
 import logging
 import time
-from datetime import datetime, timedelta
-from typing import Any, Dict, Optional, List  # List for type hints
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Optional, List
 
 # Import connection pool and query cache for performance
 from connection_pool import get_connection_pool, PooledConnection
@@ -42,38 +42,6 @@ class PerformanceTimer:
         elapsed_ms = (time.time() - self.start_time) * 1000
         logger.debug(f"[PERF] {self.operation_name}: {elapsed_ms:.1f}ms")
         return False
-
-
-def truncate_by_importance(content: str, importance: float) -> str:
-    """Truncate content based on importance score (research-backed strategy).
-
-    Strategy: Context prioritization by importance ranking
-    - importance >= 0.7: Full context (critical items must be complete)
-    - 0.5 <= importance < 0.7: 200-char summary (balanced approach)
-    - importance < 0.5: 50-char summary (optional items)
-
-    Research: AI21 and Agenta recommend importance-ranking over fixed truncation.
-
-    Args:
-        content: Original content string
-        importance: Importance score (0.0-1.0)
-
-    Returns:
-        Appropriately truncated content
-    """
-    if importance >= 0.7:
-        # High importance: Keep full content
-        return content
-    elif importance >= 0.5:
-        # Medium importance: 200-char summary
-        if len(content) > 200:
-            return content[:200] + "..."
-        return content
-    else:
-        # Low importance: 50-char summary
-        if len(content) > 50:
-            return content[:50] + "..."
-        return content
 
 
 class MemoryBridge:
@@ -143,18 +111,9 @@ class MemoryBridge:
     def get_active_memories(
         self, project_id: int, limit: int = 7
     ) -> Dict[str, Any]:
-        """Get active working memory items (7±2 cognitive limit) with activation-based ranking.
+        """Get active working memory items (7±2 cognitive limit).
 
         Returns summary only (300 tokens max).
-
-        RANKING: Uses ACT-R style activation decay based on:
-        - Recency (time since last access)
-        - Frequency (access count)
-        - Importance (user-provided score)
-        - Actionability (whether item has clear next steps)
-        - Consolidation likelihood (whether pattern was extracted)
-
-        Only includes items with lifecycle_status='active' (not consolidated/archived).
 
         OPTIMIZATION (Phase 2): Results are cached with 5-minute L1 TTL and
         persistent L2 cache. Repeated calls within 5 minutes return from memory
@@ -165,39 +124,16 @@ class MemoryBridge:
             limit: Maximum items to return (default 7±2)
 
         Returns:
-            Dict with summary of active items (ranked by activation)
+            Dict with summary of active items
         """
         try:
             with PerformanceTimer("get_active_memories"):
-                # Activation-based ranking for lifecycle management
-                # Filter by lifecycle_status='active' to exclude consolidated/archived
-                # Compute activation using ACT-R decay function
+                # Query for cache lookup
                 query = """
-                SELECT
-                    id, event_type, content, timestamp,
-                    importance_score, actionability_score, context_completeness_score,
-                    project_name, project_goal, project_phase_status,
-                    lifecycle_status, consolidation_score, last_activation, activation_count,
-                    -- ACT-R activation decay formula
-                    -- base_level = -d * ln(t) where d=0.5, t=hours_since_access
-                    (-0.5 * LN(GREATEST(
-                        EXTRACT(EPOCH FROM (NOW() - last_activation)) / 3600.0,
-                        0.1
-                    ))) +
-                    -- Frequency bonus: ln(activation_count)
-                    (LN(GREATEST(activation_count, 1)) * 0.1) +
-                    -- Consolidation boost
-                    (COALESCE(consolidation_score, 0.0) * 1.0) +
-                    -- Importance boost
-                    (CASE WHEN COALESCE(importance_score, 0.0) > 0.7 THEN 1.5 ELSE 0.0 END) +
-                    -- Actionability boost
-                    (CASE WHEN COALESCE(actionability_score, 0.0) > 0.7 THEN 1.0 ELSE 0.0 END) +
-                    -- Success boost
-                    (CASE WHEN outcome = 'success' THEN 0.5 ELSE 0.0 END)
-                    as activation
+                SELECT id, event_type, content, timestamp, importance_score
                 FROM episodic_events
-                WHERE project_id = %s AND lifecycle_status = 'active'
-                ORDER BY activation DESC, timestamp DESC
+                WHERE project_id = %s
+                ORDER BY importance_score DESC, timestamp DESC
                 LIMIT %s
                 """
                 params = (project_id, limit)
@@ -217,230 +153,28 @@ class MemoryBridge:
                     # Cache result
                     self.cache.set(query, params, rows)
 
-                items = []
-                for row in rows:
-                    importance = row[4] or 0.5
-                    activation = row[14] or 0.0  # Computed activation score
-                    items.append({
+                items = [
+                    {
                         "id": row[0],
                         "type": row[1],
-                        "content": truncate_by_importance(row[2], importance),
+                        "content": row[2][:50] + "..." if len(row[2]) > 50 else row[2],
                         "timestamp": row[3],
-                        "importance": importance,
-                        "actionability": row[5] or 0.5,
-                        "context_completeness": row[6] or 0.5,
-                        "project": row[7],
-                        "goal": row[8],
-                        "phase": row[9],
-                        "lifecycle_status": row[10],  # active, consolidated, archived
-                        "consolidation_score": row[11] or 0.0,
-                        "activation_count": row[13] or 0,
-                        "activation": activation,  # ACT-R computed score
-                    })
+                        "importance": row[4] or 0.5,
+                    }
+                    for row in rows
+                ]
 
                 return {
                     "count": len(items),
                     "items": items,
-                    "ranking_method": "ACT-R activation decay (recency + frequency + importance + actionability)",
-                    "lifecycle_filter": "active only",
                     "activation_range": [
-                        min(i["activation"] for i in items) if items else 0,
-                        max(i["activation"] for i in items) if items else 1,
+                        min(i["importance"] for i in items) if items else 0,
+                        max(i["importance"] for i in items) if items else 1,
                     ],
                 }
         except Exception as e:
             logger.warning(f"Error getting active memories: {e}")
             return {"count": 0, "items": [], "activation_range": [0, 1]}
-
-    def semantic_search_memories(
-        self, project_id: int, query_embedding: List[float], limit: int = 5, threshold: float = 0.7
-    ) -> Dict[str, Any]:
-        """Search for memories using semantic similarity (pgvector).
-
-        Uses cosine similarity on embeddings to find semantically related items.
-
-        Args:
-            project_id: Project ID
-            query_embedding: Query embedding vector (768D)
-            limit: Maximum results to return
-            threshold: Minimum similarity score (0.0-1.0)
-
-        Returns:
-            Dict with search results and metadata
-        """
-        try:
-            with PerformanceTimer("semantic_search_memories"):
-                # Convert embedding to pgvector format string
-                embedding_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
-
-                # Query using pgvector cosine distance
-                # 1 - distance = similarity (1.0 = identical, 0.0 = opposite)
-                query = """
-                SELECT
-                    id, event_type, content, timestamp, project_name,
-                    importance_score, actionability_score,
-                    1 - (embedding <=> %s::vector) as similarity
-                FROM episodic_events
-                WHERE project_id = %s
-                  AND embedding IS NOT NULL
-                  AND 1 - (embedding <=> %s::vector) >= %s
-                ORDER BY similarity DESC
-                LIMIT %s
-                """
-                params = (embedding_str, project_id, embedding_str, threshold, limit)
-
-                with PooledConnection() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute(query, params)
-                    rows = cursor.fetchall()
-
-                items = [
-                    {
-                        "id": row[0],
-                        "type": row[1],
-                        "content": row[2][:200] + "..." if len(row[2]) > 200 else row[2],
-                        "timestamp": row[3],
-                        "project": row[4],
-                        "importance": row[5] or 0.5,
-                        "actionability": row[6] or 0.5,
-                        "similarity": float(row[7]) if row[7] else 0.0,
-                    }
-                    for row in rows
-                ]
-
-                return {
-                    "count": len(items),
-                    "items": items,
-                    "query_threshold": threshold,
-                    "search_method": "pgvector_cosine_similarity",
-                }
-        except Exception as e:
-            logger.warning(f"Error in semantic search: {e}")
-            return {"count": 0, "items": [], "search_method": "pgvector_cosine_similarity"}
-
-    def find_cross_project_discoveries(
-        self, project_id: int, query_embedding: List[float], limit: int = 3
-    ) -> Dict[str, Any]:
-        """Find similar discoveries in other projects.
-
-        Useful for cross-project knowledge transfer and identifying patterns.
-
-        Args:
-            project_id: Current project ID (to exclude)
-            query_embedding: Query embedding vector (768D)
-            limit: Maximum results from other projects
-
-        Returns:
-            Dict with cross-project discoveries
-        """
-        try:
-            with PerformanceTimer("find_cross_project_discoveries"):
-                embedding_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
-
-                # Find discoveries with high similarity (> 0.8) in other projects
-                query = """
-                SELECT
-                    e.id, e.project_id, p.name, e.content, e.event_type,
-                    e.timestamp, e.importance_score,
-                    1 - (e.embedding <=> %s::vector) as similarity
-                FROM episodic_events e
-                JOIN projects p ON e.project_id = p.id
-                WHERE e.project_id != %s
-                  AND e.event_type LIKE '%discovery%'
-                  AND e.embedding IS NOT NULL
-                  AND 1 - (e.embedding <=> %s::vector) > 0.8
-                ORDER BY similarity DESC
-                LIMIT %s
-                """
-                params = (embedding_str, project_id, embedding_str, limit)
-
-                with PooledConnection() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute(query, params)
-                    rows = cursor.fetchall()
-
-                discoveries = [
-                    {
-                        "id": row[0],
-                        "from_project_id": row[1],
-                        "from_project": row[2],
-                        "content": row[3][:200] + "..." if len(row[3]) > 200 else row[3],
-                        "type": row[4],
-                        "timestamp": row[5],
-                        "importance": row[6] or 0.5,
-                        "similarity": float(row[7]) if row[7] else 0.0,
-                    }
-                    for row in rows
-                ]
-
-                return {
-                    "count": len(discoveries),
-                    "discoveries": discoveries,
-                    "source_project_id": project_id,
-                }
-        except Exception as e:
-            logger.warning(f"Error finding cross-project discoveries: {e}")
-            return {"count": 0, "discoveries": []}
-
-    def get_related_discoveries_by_event(
-        self, project_id: int, event_id: int, limit: int = 5
-    ) -> Dict[str, Any]:
-        """Get discoveries related to a specific event via relationships.
-
-        Uses the event_relations table to find semantically linked discoveries.
-
-        Args:
-            project_id: Project ID
-            event_id: Event ID to find relations for
-            limit: Maximum related items
-
-        Returns:
-            Dict with related discoveries
-        """
-        try:
-            with PerformanceTimer("get_related_discoveries"):
-                # Find related events through relationship graph
-                query = """
-                SELECT
-                    e.id, e.event_type, e.content, e.timestamp,
-                    e.project_name, e.importance_score,
-                    er.strength as relationship_strength
-                FROM event_relations er
-                JOIN episodic_events e ON er.to_event_id = e.id
-                WHERE er.from_event_id = %s
-                  AND e.project_id = %s
-                  AND er.relation_type = 'semantic_related'
-                ORDER BY er.strength DESC
-                LIMIT %s
-                """
-                params = (event_id, project_id, limit)
-
-                with PooledConnection() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute(query, params)
-                    rows = cursor.fetchall()
-
-                related = [
-                    {
-                        "id": row[0],
-                        "type": row[1],
-                        "content": row[2][:200] + "..." if len(row[2]) > 200 else row[2],
-                        "timestamp": row[3],
-                        "project": row[4],
-                        "importance": row[5] or 0.5,
-                        "relationship_strength": float(row[6]) if row[6] else 0.0,
-                    }
-                    for row in rows
-                ]
-
-                return {
-                    "event_id": event_id,
-                    "count": len(related),
-                    "related": related,
-                }
-        except Exception as e:
-            logger.warning(f"Error getting related discoveries: {e}")
-            return {"event_id": event_id, "count": 0, "related": []}
 
     def get_active_goals(self, project_id: int, limit: int = 5) -> Dict[str, Any]:
         """Get active goals/tasks for project.
@@ -485,7 +219,7 @@ class MemoryBridge:
                 goals = [
                     {
                         "id": row[0],
-                        "title": truncate_by_importance(row[1], 0.6),  # Goals are mid-importance by default
+                        "title": row[1][:40] + "..." if len(row[1]) > 40 else row[1],
                         "status": row[2],
                         "priority": row[3],
                     }
@@ -523,7 +257,9 @@ class MemoryBridge:
             with PooledConnection() as conn:
                 cursor = conn.cursor()
 
-                timestamp = int(datetime.now().timestamp() * 1000)  # milliseconds
+                # Use UTC time for consistency with session-start.sh
+                # timezone-aware UTC datetime (modern approach)
+                timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)  # milliseconds
                 session_id = str(uuid.uuid4())[:8]  # Generate short session ID
 
                 cursor.execute(
@@ -600,7 +336,7 @@ class MemoryBridge:
                     {
                         "id": row[0],
                         "type": row[1],
-                        "content": truncate_by_importance(row[2], row[4] or 0.5),
+                        "content": row[2][:60] + "..." if len(row[2]) > 60 else row[2],
                         "timestamp": row[3],
                         "score": row[4] or 0.5,
                     }
@@ -619,7 +355,7 @@ class MemoryBridge:
             project_id: Project ID
 
         Returns:
-            datetime of last session, or None if no sessions recorded
+            datetime of last session (UTC), or None if no sessions recorded
         """
         try:
             with PooledConnection() as conn:
@@ -637,10 +373,11 @@ class MemoryBridge:
                 row = cursor.fetchone()
 
                 if row:
-                    # Convert milliseconds timestamp to datetime
+                    # Convert milliseconds timestamp to UTC datetime
+                    # CRITICAL: Must use UTC to match datetime.now(timezone.utc) in session-start.sh
                     timestamp_ms = row[0]
                     if isinstance(timestamp_ms, int):
-                        return datetime.fromtimestamp(timestamp_ms / 1000.0)
+                        return datetime.fromtimestamp(timestamp_ms / 1000.0, tz=timezone.utc).replace(tzinfo=None)
                     return None
 
                 return None

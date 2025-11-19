@@ -28,7 +28,7 @@ from athena.episodic.operations import (
     recall_recent,
     remember,
 )
-from athena.memory.operations import search, store
+from athena.semantic.operations import search, store
 from athena.procedural.operations import (
     extract_procedure,
     get_procedures_by_tags,
@@ -231,7 +231,7 @@ async def initialize_athena() -> bool:
         # Import and initialize all layer stores
         from athena.core.database import Database
         from athena.episodic.store import EpisodicStore
-        from athena.memory.store import MemoryStore
+        from athena.semantic.store import SemanticStore
         from athena.procedural.store import ProceduralStore
         from athena.prospective.store import ProspectiveStore
         from athena.graph.store import GraphStore
@@ -240,7 +240,7 @@ async def initialize_athena() -> bool:
 
         # Import each layer's operations module for initialization
         from athena.episodic import operations as episodic_ops
-        from athena.memory import operations as memory_ops
+        from athena.semantic import operations as semantic_ops
         from athena.procedural import operations as procedural_ops
         from athena.prospective import operations as prospective_ops
         from athena.graph import operations as graph_ops
@@ -257,7 +257,7 @@ async def initialize_athena() -> bool:
         from athena.integration.database_sync import initialize as init_todowrite_store
 
         episodic_store = EpisodicStore(db)
-        memory_store = MemoryStore(db)
+        semantic_store = SemanticStore(db)
         procedural_store = ProceduralStore(db)
         prospective_store = ProspectiveStore(db)
         graph_store = GraphStore(db)
@@ -269,7 +269,7 @@ async def initialize_athena() -> bool:
 
         # Initialize operations modules with their stores
         episodic_ops.initialize(db, episodic_store)
-        memory_ops.initialize(db, memory_store)
+        semantic_ops.initialize(db, semantic_store)
         procedural_ops.initialize(db, procedural_store)
         prospective_ops.initialize(db, prospective_store)
         graph_ops.initialize(db, graph_store)
@@ -278,7 +278,7 @@ async def initialize_athena() -> bool:
         # ConsolidationSystem requires multiple stores
         consolidation_system = ConsolidationSystem(
             db=db,
-            memory_store=memory_store,
+            memory_store=semantic_store,
             episodic_store=episodic_store,
             procedural_store=procedural_store,
             meta_store=meta_store,

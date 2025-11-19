@@ -99,11 +99,7 @@ class EpisodicStore(BaseStore):
             id=row_dict.get("id"),
             project_id=row_dict.get("project_id"),
             session_id=row_dict.get("session_id"),
-            timestamp=(
-                datetime.fromtimestamp(row_dict.get("timestamp"))
-                if row_dict.get("timestamp")
-                else None
-            ),
+            timestamp=self._parse_timestamp(row_dict.get("timestamp")),
             event_type=event_type,
             content=row_dict.get("content"),
             outcome=outcome,
@@ -114,12 +110,11 @@ class EpisodicStore(BaseStore):
             lines_deleted=row_dict.get("lines_deleted", 0),
             learned=row_dict.get("learned"),
             confidence=row_dict.get("confidence", 1.0),
-            consolidation_status=row_dict.get("consolidation_status", "unconsolidated"),
-            consolidated_at=(
-                datetime.fromtimestamp(row_dict.get("consolidated_at"))
-                if row_dict.get("consolidated_at")
-                else None
-            ),
+            # Use new lifecycle system
+            lifecycle_status=row_dict.get("lifecycle_status", "active"),
+            consolidation_score=row_dict.get("consolidation_score", 0.0),
+            last_activation=self._parse_timestamp(row_dict.get("last_activation")) or datetime.now(),
+            activation_count=row_dict.get("activation_count", 0),
             # Code-aware fields
             code_event_type=code_event_type,
             file_path=row_dict.get("file_path"),
@@ -166,6 +161,43 @@ class EpisodicStore(BaseStore):
         except (json.JSONDecodeError, ValueError, TypeError):
             return default
 
+    def _parse_timestamp(self, value: Any) -> Optional[datetime]:
+        """Safely parse timestamp from multiple formats.
+
+        Handles:
+        - Unix epoch integers (BIGINT from timestamp column)
+        - PostgreSQL TIMESTAMP objects (already datetime)
+        - None values (returns default)
+
+        Args:
+            value: Timestamp value from database
+
+        Returns:
+            datetime object or None
+        """
+        if value is None:
+            return None
+
+        # If already a datetime object, return as-is
+        if isinstance(value, datetime):
+            return value
+
+        # If numeric (Unix epoch), convert
+        if isinstance(value, (int, float)):
+            try:
+                return datetime.fromtimestamp(value)
+            except (ValueError, OSError, TypeError):
+                return None
+
+        # Handle string ISO format from PostgreSQL
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError:
+                return None
+
+        return None
+
     def _get_embedding_model(self):
         """Get or create cached embedding model (lazy-loaded)."""
         if self._embedding_model is None:
@@ -175,119 +207,20 @@ class EpisodicStore(BaseStore):
         return self._embedding_model
 
     def _ensure_schema(self):
-        """Ensure episodic memory tables exist."""
+        """Ensure episodic memory tables exist.
 
+        Note: Schema initialization is now handled exclusively by
+        database_postgres.py:_init_schema() for PostgreSQL async databases.
+        This method is retained for backward compatibility but is a no-op.
+        """
         # For PostgreSQL async databases, skip sync schema initialization
-        if not hasattr(self.db, "conn"):
-            import logging
+        # All schema management is now centralized in database_postgres.py
+        import logging
 
-            logger = logging.getLogger(__name__)
-            logger.debug(
-                f"{self.__class__.__name__}: PostgreSQL async database detected. Schema management handled by _init_schema()."
-            )
-            return
-        cursor = self.db.get_cursor()
-
-        # Events table
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS episodic_events (
-                id SERIAL PRIMARY KEY,
-                project_id INTEGER NOT NULL,
-                session_id TEXT NOT NULL,
-                timestamp INTEGER NOT NULL,
-                event_type TEXT NOT NULL,
-                content TEXT NOT NULL,
-                outcome TEXT,
-
-                context_cwd TEXT,
-                context_files TEXT,
-                context_task TEXT,
-                context_phase TEXT,
-
-                duration_ms INTEGER,
-                files_changed INTEGER DEFAULT 0,
-                lines_added INTEGER DEFAULT 0,
-                lines_deleted INTEGER DEFAULT 0,
-
-                learned TEXT,
-                confidence REAL DEFAULT 1.0,
-
-                consolidation_status TEXT DEFAULT 'unconsolidated',
-                consolidated_at INTEGER,
-
-                FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-            )
-        """
+        logger = logging.getLogger(__name__)
+        logger.debug(
+            f"{self.__class__.__name__}: Schema management delegated to PostgreSQL database._init_schema()."
         )
-
-        # Event outcomes/metrics
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS event_outcomes (
-                id SERIAL PRIMARY KEY,
-                event_id INTEGER NOT NULL,
-                metric_name TEXT NOT NULL,
-                metric_value TEXT NOT NULL,
-                FOREIGN KEY (event_id) REFERENCES episodic_events(id) ON DELETE CASCADE
-            )
-        """
-        )
-
-        # Event relations (cause → effect)
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS event_relations (
-                from_event_id INTEGER NOT NULL,
-                to_event_id INTEGER NOT NULL,
-                relation_type TEXT NOT NULL,
-                strength REAL DEFAULT 1.0,
-                PRIMARY KEY (from_event_id, to_event_id),
-                FOREIGN KEY (from_event_id) REFERENCES episodic_events(id) ON DELETE CASCADE,
-                FOREIGN KEY (to_event_id) REFERENCES episodic_events(id) ON DELETE CASCADE
-            )
-        """
-        )
-
-        # Vector embeddings for semantic search
-        cursor.execute(
-            """
-            CREATE VIRTUAL TABLE IF NOT EXISTS event_vectors USING vec0(
-                embedding FLOAT[768]
-            )
-        """
-        )
-
-        # Indices
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_events_timestamp ON episodic_events(timestamp DESC)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_events_project ON episodic_events(project_id, timestamp DESC)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_events_consolidation ON episodic_events(project_id, consolidation_status)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_events_session ON episodic_events(session_id)"
-        )
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_type ON episodic_events(event_type)")
-
-        # Event relation indices (temporal chains)
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_relations_from ON event_relations(from_event_id)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_relations_to ON event_relations(to_event_id)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_relations_type ON event_relations(relation_type)"
-        )
-
-        # Event outcomes index
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_outcomes_event ON event_outcomes(event_id)")
-
-        self.commit()
 
     def record_event(
         self,
@@ -664,16 +597,29 @@ class EpisodicStore(BaseStore):
 
         return [self._row_to_model(row) for row in rows]
 
-    def search_events(self, project_id: int, query: str, limit: int = 20) -> list[EpisodicEvent]:
-        """Search events by content using keyword matching.
+    def search_events(
+        self,
+        project_id: int,
+        query: str,
+        limit: int = 20,
+        min_importance: float = 0.0,
+        time_range: Optional[Dict[str, datetime]] = None,
+        tags: Optional[List[str]] = None,
+        session_id: Optional[str] = None,
+    ) -> list[EpisodicEvent]:
+        """Search events by content using keyword matching with optional filters.
 
         Args:
             project_id: Project ID
             query: Search query (supports multiple keywords)
             limit: Maximum results
+            min_importance: Minimum importance_score threshold (0.0-1.0)
+            time_range: Optional dict with 'start' and 'end' datetime keys
+            tags: Optional list of tags to filter by
+            session_id: Optional session ID to filter by
 
         Returns:
-            List of matching events
+            List of matching events, filtered at database level
         """
         # Split query into keywords and create LIKE conditions
         keywords = query.lower().split()
@@ -681,7 +627,7 @@ class EpisodicStore(BaseStore):
             return []
 
         # Build WHERE clause for keyword matching
-        where_conditions = []
+        where_conditions = ["project_id = %s"]
         params = [project_id]
 
         for keyword in keywords:
@@ -706,16 +652,37 @@ class EpisodicStore(BaseStore):
             where_conditions.append("LOWER(content) LIKE %s")
             params.append(f"%{keyword}%")
 
-        if not where_conditions:
-            # If no valid keywords, fall back to original behavior
-            where_conditions = ["content LIKE %s"]
-            params = [project_id, f"%{query}%"]
+        if len(where_conditions) == 1:
+            # If no valid keywords, fall back to search on full query
+            where_conditions.append("content LIKE %s")
+            params.append(f"%{query}%")
 
-        where_clause = " OR ".join(where_conditions)
+        # Add importance filter
+        if min_importance > 0.0:
+            where_conditions.append("COALESCE(importance_score, 0.5) >= %s")
+            params.append(min_importance)
+
+        # Add time range filter
+        if time_range:
+            start = time_range.get("start")
+            end = time_range.get("end")
+            if start:
+                where_conditions.append("timestamp >= %s")
+                params.append(int(start.timestamp()))
+            if end:
+                where_conditions.append("timestamp <= %s")
+                params.append(int(end.timestamp()))
+
+        # Add session_id filter
+        if session_id:
+            where_conditions.append("session_id = %s")
+            params.append(session_id)
+
+        where_clause = " AND ".join(where_conditions)
 
         sql = f"""
             SELECT * FROM episodic_events
-            WHERE project_id = %s AND ({where_clause})
+            WHERE {where_clause}
             ORDER BY timestamp DESC
             LIMIT %s
         """
@@ -921,7 +888,7 @@ class EpisodicStore(BaseStore):
         project_id: int,
         start: datetime,
         end: datetime,
-        consolidation_status: Optional[str] = None,
+        lifecycle_status: Optional[str] = None,
         limit: Optional[int] = None,
     ) -> list[EpisodicEvent]:
         """Get events within a time range.
@@ -930,7 +897,7 @@ class EpisodicStore(BaseStore):
             project_id: Project ID to filter by
             start: Start time (inclusive)
             end: End time (inclusive)
-            consolidation_status: Optional filter ('consolidated', 'unconsolidated', None for all)
+            lifecycle_status: Optional filter ('active', 'consolidated', 'archived', None for all)
             limit: Optional maximum number of events to return
 
         Returns:
@@ -939,50 +906,45 @@ class EpisodicStore(BaseStore):
         query = """
             SELECT * FROM episodic_events
             WHERE project_id = %s
-            AND timestamp >= ?
-            AND timestamp <= ?
+            AND timestamp >= %s
+            AND timestamp <= %s
         """
         params = [project_id, int(start.timestamp()), int(end.timestamp())]
 
-        if consolidation_status:
-            if consolidation_status == "unconsolidated":
-                query += (
-                    " AND (consolidation_status IS NULL OR consolidation_status = 'unconsolidated')"
-                )
-            else:
-                query += " AND consolidation_status = ?"
-                params.append(consolidation_status)
+        # Filter by lifecycle status if provided
+        if lifecycle_status:
+            query += " AND lifecycle_status = %s"
+            params.append(lifecycle_status)
 
         query += " ORDER BY timestamp DESC"
 
         if limit:
-            query += " LIMIT ?"
+            query += " LIMIT %s"
             params.append(limit)
 
         rows = self.execute(query, params, fetch_all=True)
 
         return [self._row_to_model(row) for row in rows]
 
-    def mark_event_consolidated(
-        self, event_id: int, consolidated_at: Optional[datetime] = None
-    ) -> None:
-        """Mark an event as consolidated.
+    def mark_event_consolidated(self, event_id: int) -> None:
+        """Mark an event as consolidated using lifecycle system.
 
         Args:
-            event_id: Event ID to mark
-            consolidated_at: When consolidation occurred (default: now)
+            event_id: Event ID to mark as consolidated
         """
-        if consolidated_at is None:
-            consolidated_at = datetime.now()
+        now = datetime.now()
 
+        # Update using lifecycle system
         self.execute(
             """
             UPDATE episodic_events
-            SET consolidation_status = 'consolidated',
-                consolidated_at = ?
+            SET lifecycle_status = 'consolidated',
+                consolidation_score = 1.0,
+                last_activation = %s,
+                activation_count = activation_count + 1
             WHERE id = %s
         """,
-            (int(consolidated_at.timestamp()), event_id),
+            (int(now.timestamp()), event_id),
         )
 
         self.commit()
@@ -1229,10 +1191,10 @@ class EpisodicStore(BaseStore):
                 project_id, session_id, timestamp, event_type, content, outcome,
                 context_cwd, context_files, context_task, context_phase, context_branch,
                 duration_ms, files_changed, lines_added, lines_deleted, learned, confidence,
-                consolidation_status, code_event_type, file_path, symbol_name, symbol_type,
+                code_event_type, file_path, symbol_name, symbol_type,
                 language, diff, git_commit, git_author, test_name, test_passed,
                 error_type, stack_trace, performance_metrics, code_quality_score
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
             (
                 event.project_id,
@@ -1252,7 +1214,6 @@ class EpisodicStore(BaseStore):
                 event.lines_deleted,
                 event.learned,
                 event.confidence,
-                event.consolidation_status,
                 event.code_event_type,
                 event.file_path,
                 event.symbol_name,

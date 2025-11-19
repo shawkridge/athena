@@ -5,7 +5,7 @@ from typing import Optional
 
 from ..core.models import MemorySearchResult
 from ..core.database import Database
-from ..memory.store import MemoryStore
+from ..semantic.store import SemanticStore
 from ..graph.store import GraphStore
 from ..temporal.kg_synthesis import TemporalKGSynthesis
 from .hyde import HyDEConfig, HyDERetriever
@@ -83,7 +83,7 @@ class RAGManager:
 
     def __init__(
         self,
-        memory_store: MemoryStore,
+        memory_store: SemanticStore,
         llm_client: Optional[LLMClient] = None,
         config: Optional[RAGConfig] = None,
         planning_store: Optional[object] = None,  # Optional PlanningStore

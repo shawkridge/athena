@@ -6,13 +6,13 @@ from typing import Optional
 
 from ..core.models import Project
 from ..core.async_utils import run_async
-from ..memory import MemoryStore
+from ..semantic import SemanticStore
 
 
 class ProjectManager:
     """Manage project detection and context."""
 
-    def __init__(self, store: MemoryStore):
+    def __init__(self, store: SemanticStore):
         """Initialize project manager.
 
         Args:
