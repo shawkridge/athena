@@ -519,6 +519,12 @@ class PostgresDatabase:
                 surprise_normalized FLOAT,
                 surprise_coherence FLOAT,
                 confidence FLOAT DEFAULT 1.0,
+                -- NEW lifecycle system (replaces consolidation_status/consolidated_at)
+                lifecycle_status VARCHAR(50) DEFAULT 'active',
+                consolidation_score FLOAT DEFAULT 0.0,
+                last_activation TIMESTAMP DEFAULT NOW(),
+                activation_count INT DEFAULT 0,
+                -- DEPRECATED: kept for backward compatibility during migration
                 consolidation_status VARCHAR(50) DEFAULT 'unconsolidated',
                 consolidated_at TIMESTAMP,
                 embedding vector(768)

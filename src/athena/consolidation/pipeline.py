@@ -122,13 +122,13 @@ def consolidate_episodic_to_semantic(
             logger = logging.getLogger(__name__)
             logger.warning(f"Failed to create consolidation run record: {e}")
 
-    # Step 1: Fetch unconsolidated events
+    # Step 1: Fetch unconsolidated events (using new lifecycle_status)
     cutoff_time = datetime.now() - timedelta(hours=time_window_hours)
     events = episodic_store.get_events_by_timeframe(
         project_id=project_id,
         start=cutoff_time,
         end=datetime.now(),
-        consolidation_status="unconsolidated",
+        lifecycle_status="active",  # Changed: use new lifecycle system
     )
 
     if not events:

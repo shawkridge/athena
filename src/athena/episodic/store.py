@@ -114,12 +114,15 @@ class EpisodicStore(BaseStore):
             lines_deleted=row_dict.get("lines_deleted", 0),
             learned=row_dict.get("learned"),
             confidence=row_dict.get("confidence", 1.0),
-            consolidation_status=row_dict.get("consolidation_status", "unconsolidated"),
-            consolidated_at=(
-                datetime.fromtimestamp(row_dict.get("consolidated_at"))
-                if row_dict.get("consolidated_at")
-                else None
+            # Use new lifecycle system
+            lifecycle_status=row_dict.get("lifecycle_status", "active"),
+            consolidation_score=row_dict.get("consolidation_score", 0.0),
+            last_activation=(
+                datetime.fromtimestamp(row_dict.get("last_activation"))
+                if row_dict.get("last_activation")
+                else datetime.now()
             ),
+            activation_count=row_dict.get("activation_count", 0),
             # Code-aware fields
             code_event_type=code_event_type,
             file_path=row_dict.get("file_path"),
@@ -664,16 +667,29 @@ class EpisodicStore(BaseStore):
 
         return [self._row_to_model(row) for row in rows]
 
-    def search_events(self, project_id: int, query: str, limit: int = 20) -> list[EpisodicEvent]:
-        """Search events by content using keyword matching.
+    def search_events(
+        self,
+        project_id: int,
+        query: str,
+        limit: int = 20,
+        min_importance: float = 0.0,
+        time_range: Optional[Dict[str, datetime]] = None,
+        tags: Optional[List[str]] = None,
+        session_id: Optional[str] = None,
+    ) -> list[EpisodicEvent]:
+        """Search events by content using keyword matching with optional filters.
 
         Args:
             project_id: Project ID
             query: Search query (supports multiple keywords)
             limit: Maximum results
+            min_importance: Minimum importance_score threshold (0.0-1.0)
+            time_range: Optional dict with 'start' and 'end' datetime keys
+            tags: Optional list of tags to filter by
+            session_id: Optional session ID to filter by
 
         Returns:
-            List of matching events
+            List of matching events, filtered at database level
         """
         # Split query into keywords and create LIKE conditions
         keywords = query.lower().split()
@@ -681,7 +697,7 @@ class EpisodicStore(BaseStore):
             return []
 
         # Build WHERE clause for keyword matching
-        where_conditions = []
+        where_conditions = ["project_id = %s"]
         params = [project_id]
 
         for keyword in keywords:
@@ -706,16 +722,37 @@ class EpisodicStore(BaseStore):
             where_conditions.append("LOWER(content) LIKE %s")
             params.append(f"%{keyword}%")
 
-        if not where_conditions:
-            # If no valid keywords, fall back to original behavior
-            where_conditions = ["content LIKE %s"]
-            params = [project_id, f"%{query}%"]
+        if len(where_conditions) == 1:
+            # If no valid keywords, fall back to search on full query
+            where_conditions.append("content LIKE %s")
+            params.append(f"%{query}%")
 
-        where_clause = " OR ".join(where_conditions)
+        # Add importance filter
+        if min_importance > 0.0:
+            where_conditions.append("COALESCE(importance_score, 0.5) >= %s")
+            params.append(min_importance)
+
+        # Add time range filter
+        if time_range:
+            start = time_range.get("start")
+            end = time_range.get("end")
+            if start:
+                where_conditions.append("timestamp >= %s")
+                params.append(int(start.timestamp()))
+            if end:
+                where_conditions.append("timestamp <= %s")
+                params.append(int(end.timestamp()))
+
+        # Add session_id filter
+        if session_id:
+            where_conditions.append("session_id = %s")
+            params.append(session_id)
+
+        where_clause = " AND ".join(where_conditions)
 
         sql = f"""
             SELECT * FROM episodic_events
-            WHERE project_id = %s AND ({where_clause})
+            WHERE {where_clause}
             ORDER BY timestamp DESC
             LIMIT %s
         """
@@ -922,6 +959,7 @@ class EpisodicStore(BaseStore):
         start: datetime,
         end: datetime,
         consolidation_status: Optional[str] = None,
+        lifecycle_status: Optional[str] = None,
         limit: Optional[int] = None,
     ) -> list[EpisodicEvent]:
         """Get events within a time range.
@@ -930,7 +968,8 @@ class EpisodicStore(BaseStore):
             project_id: Project ID to filter by
             start: Start time (inclusive)
             end: End time (inclusive)
-            consolidation_status: Optional filter ('consolidated', 'unconsolidated', None for all)
+            consolidation_status: DEPRECATED - use lifecycle_status instead
+            lifecycle_status: Optional filter ('active', 'consolidated', 'archived', None for all)
             limit: Optional maximum number of events to return
 
         Returns:
@@ -939,24 +978,29 @@ class EpisodicStore(BaseStore):
         query = """
             SELECT * FROM episodic_events
             WHERE project_id = %s
-            AND timestamp >= ?
-            AND timestamp <= ?
+            AND timestamp >= %s
+            AND timestamp <= %s
         """
         params = [project_id, int(start.timestamp()), int(end.timestamp())]
 
-        if consolidation_status:
+        # Support both old and new systems during transition
+        if lifecycle_status:
+            query += " AND lifecycle_status = %s"
+            params.append(lifecycle_status)
+        elif consolidation_status:
+            # Fallback to old system for backward compatibility
             if consolidation_status == "unconsolidated":
                 query += (
                     " AND (consolidation_status IS NULL OR consolidation_status = 'unconsolidated')"
                 )
             else:
-                query += " AND consolidation_status = ?"
+                query += " AND consolidation_status = %s"
                 params.append(consolidation_status)
 
         query += " ORDER BY timestamp DESC"
 
         if limit:
-            query += " LIMIT ?"
+            query += " LIMIT %s"
             params.append(limit)
 
         rows = self.execute(query, params, fetch_all=True)
@@ -966,23 +1010,29 @@ class EpisodicStore(BaseStore):
     def mark_event_consolidated(
         self, event_id: int, consolidated_at: Optional[datetime] = None
     ) -> None:
-        """Mark an event as consolidated.
+        """Mark an event as consolidated using new lifecycle system.
 
         Args:
             event_id: Event ID to mark
-            consolidated_at: When consolidation occurred (default: now)
+            consolidated_at: When consolidation occurred (default: now) - for new system
         """
         if consolidated_at is None:
             consolidated_at = datetime.now()
 
+        # Update using NEW lifecycle system (primary)
+        # Also update old fields for backward compatibility
         self.execute(
             """
             UPDATE episodic_events
-            SET consolidation_status = 'consolidated',
-                consolidated_at = ?
+            SET lifecycle_status = 'consolidated',
+                consolidation_score = 1.0,
+                last_activation = %s,
+                activation_count = activation_count + 1,
+                consolidation_status = 'consolidated',
+                consolidated_at = %s
             WHERE id = %s
         """,
-            (int(consolidated_at.timestamp()), event_id),
+            (int(consolidated_at.timestamp()), int(consolidated_at.timestamp()), event_id),
         )
 
         self.commit()
