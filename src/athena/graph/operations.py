@@ -45,12 +45,12 @@ class GraphOperations:
         entity_type: str,
         description: str = "",
         metadata: Dict[str, Any] | None = None,
-    ) -> str:
+    ) -> int:
         """Add an entity to the knowledge graph.
 
         Args:
             name: Entity name
-            entity_type: Type of entity (concept, person, place, thing, etc.)
+            entity_type: Type of entity (Project, Phase, Task, File, Function, Concept, Component, Process, Person, Decision, Pattern, Agent, Skill)
             description: Optional description
             metadata: Optional metadata dictionary
 
@@ -65,7 +65,6 @@ class GraphOperations:
             entity_type=entity_type,
             description=description,
             metadata=metadata or {},
-            importance=0.5,
         )
 
         return await self.store.add_entity(entity)
@@ -77,13 +76,13 @@ class GraphOperations:
         relationship_type: str,
         strength: float = 0.5,
         metadata: Dict[str, Any] | None = None,
-    ) -> str:
+    ) -> int:
         """Add a relationship between entities.
 
         Args:
             source_id: Source entity ID
             target_id: Target entity ID
-            relationship_type: Type of relationship
+            relationship_type: Type of relationship (contains, depends_on, implements, tests, caused_by, resulted_in, relates_to, active_in, assigned_to, has_skill)
             strength: Relation strength (0.0-1.0)
             metadata: Optional metadata
 
@@ -95,10 +94,17 @@ class GraphOperations:
 
         strength = max(0.0, min(1.0, strength))
 
+        # Convert string IDs to integers
+        try:
+            from_id = int(source_id) if isinstance(source_id, str) else source_id
+            to_id = int(target_id) if isinstance(target_id, str) else target_id
+        except (ValueError, TypeError):
+            raise ValueError("source_id and target_id must be numeric")
+
         relationship = Relation(
-            source_id=source_id,
-            target_id=target_id,
-            relationship_type=relationship_type,
+            from_entity_id=from_id,
+            to_entity_id=to_id,
+            relation_type=relationship_type,
             strength=strength,
             metadata=metadata or {},
         )
@@ -114,8 +120,13 @@ class GraphOperations:
         Returns:
             Entity object or None if not found
         """
-        # get_entity is synchronous in the store
-        return self.store.get_entity(int(entity_id) if isinstance(entity_id, str) else entity_id)
+        try:
+            # get_entity is synchronous in the store
+            entity_int_id = int(entity_id) if isinstance(entity_id, str) else entity_id
+            return self.store.get_entity(entity_int_id)
+        except (ValueError, TypeError):
+            # Invalid ID format
+            return None
 
     async def search_entities(
         self,
@@ -164,13 +175,25 @@ class GraphOperations:
         Returns:
             Related entities
         """
-        # Store uses relation_types (plural) parameter and is synchronous
-        # Note: depth parameter is not supported by store.find_related
+        try:
+            # Convert entity_id to integer
+            entity_int_id = int(entity_id) if isinstance(entity_id, str) else entity_id
+        except (ValueError, TypeError):
+            return []
+
+        # Store.find_related returns a coroutine and needs await
+        # relation_types should be a list of strings
         relation_types = [relationship_type] if relationship_type else None
 
-        results = self.store.find_related(
-            entity_id=entity_id,
+        # Validate depth parameter (recommend 1-5 range)
+        if depth < 1 or depth > 5:
+            depth = max(1, min(5, depth))  # Clamp to [1, 5]
+
+        results = await self.store.find_related(
+            entity_id=entity_int_id,
             relation_types=relation_types,
+            limit=limit,
+            depth=depth,
         )
 
         # Apply limit
@@ -195,7 +218,7 @@ class GraphOperations:
         entity_id: str,
         importance: float,
     ) -> bool:
-        """Update entity importance score.
+        """Update entity importance score (stored in metadata).
 
         Args:
             entity_id: Entity ID
@@ -204,12 +227,18 @@ class GraphOperations:
         Returns:
             True if updated successfully
         """
+        try:
+            entity_int_id = int(entity_id) if isinstance(entity_id, str) else entity_id
+        except (ValueError, TypeError):
+            return False
+
         # get_entity is sync, update_entity is async
-        entity = self.store.get_entity(int(entity_id) if isinstance(entity_id, str) else entity_id)
+        entity = self.store.get_entity(entity_int_id)
         if not entity:
             return False
 
-        entity.importance = max(0.0, min(1.0, importance))
+        # Store importance in metadata since Entity model doesn't have an importance field
+        entity.metadata["importance"] = max(0.0, min(1.0, importance))
         return await self.store.update_entity(entity)
 
     async def get_statistics(self) -> Dict[str, Any]:
@@ -223,13 +252,19 @@ class GraphOperations:
 
         entity_types = {}
         for entity in entities:
-            entity_types[entity.entity_type] = entity_types.get(entity.entity_type, 0) + 1
+            entity_type_str = entity.entity_type.value if hasattr(entity.entity_type, 'value') else str(entity.entity_type)
+            entity_types[entity_type_str] = entity_types.get(entity_type_str, 0) + 1
 
         relationship_types = {}
         for rel in relationships:
-            relationship_types[rel.relationship_type] = (
-                relationship_types.get(rel.relationship_type, 0) + 1
-            )
+            rel_type_str = rel.relation_type.value if hasattr(rel.relation_type, 'value') else str(rel.relation_type)
+            relationship_types[rel_type_str] = relationship_types.get(rel_type_str, 0) + 1
+
+        # Calculate average importance from metadata
+        importances = []
+        for entity in entities:
+            importance = entity.metadata.get("importance", 0.5)
+            importances.append(importance)
 
         return {
             "total_entities": len(entities),
@@ -237,7 +272,7 @@ class GraphOperations:
             "entity_types": entity_types,
             "relationship_types": relationship_types,
             "avg_importance": (
-                sum(e.importance for e in entities) / len(entities) if entities else 0.0
+                sum(importances) / len(importances) if importances else 0.0
             ),
         }
 

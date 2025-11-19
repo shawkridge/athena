@@ -634,41 +634,71 @@ class GraphStore(BaseStore[Entity]):
         return self.create_relation(relationship)
 
     async def find_related(
-        self, entity_id: int, relation_types: Optional[list[str]] = None, limit: int = 100
+        self, entity_id: int, relation_types: Optional[list[str]] = None, limit: int = 100, depth: int = 1
     ) -> list[Entity]:
-        """Find entities related to a given entity.
+        """Find entities related to a given entity using BFS traversal.
 
         Args:
             entity_id: Entity ID to find relations for
             relation_types: Optional list of relation types to filter
             limit: Maximum results to return
+            depth: Search depth (1 = direct only, 2 = 2 hops, etc.), default 1
 
         Returns:
-            List of related entities
+            List of related entities (sorted by distance from source)
         """
-        # Get relations for this entity
-        relations = self.get_entity_relations(entity_id=entity_id, relation_type=None, limit=limit)
+        if depth < 1:
+            return []
 
-        # Filter by relation type if specified
-        if relation_types:
-            relations = [r for r in relations if r.relation_type.value in relation_types]
+        visited = set()
+        related_entities_by_distance = {}  # distance -> list of entities
+        current_level = [entity_id]
+        current_distance = 0
 
-        # Get the related entity IDs
-        related_ids = set()
-        for rel in relations:
-            if rel.from_entity_id == entity_id:
-                related_ids.add(rel.to_entity_id)
-            else:
-                related_ids.add(rel.from_entity_id)
+        # BFS traversal
+        while current_level and current_distance < depth:
+            next_level = []
+            current_distance += 1
 
-        # Fetch the related entities
+            for eid in current_level:
+                if eid in visited:
+                    continue
+                visited.add(eid)
+
+                # Get relations for this entity
+                relations = self.get_entity_relations(entity_id=eid, relation_type=None)
+
+                # Filter by relation type if specified
+                if relation_types:
+                    relations = [r for r in relations if r.relation_type.value in relation_types]
+
+                # Find related entity IDs
+                for rel in relations:
+                    if rel.from_entity_id == eid and rel.to_entity_id not in visited:
+                        next_level.append(rel.to_entity_id)
+                    elif rel.to_entity_id == eid and rel.from_entity_id not in visited:
+                        next_level.append(rel.from_entity_id)
+
+            # Fetch entities for this level
+            if next_level:
+                if current_distance not in related_entities_by_distance:
+                    related_entities_by_distance[current_distance] = []
+
+                for eid in next_level:
+                    entity = self.get_entity(eid)
+                    if entity:
+                        related_entities_by_distance[current_distance].append(entity)
+
+            current_level = next_level
+
+        # Flatten results, sorted by distance (closer entities first)
         related_entities = []
-        for eid in list(related_ids)[:limit]:
-            entity = self.get_entity(eid)
-            if entity:
-                related_entities.append(entity)
+        for distance in sorted(related_entities_by_distance.keys()):
+            related_entities.extend(related_entities_by_distance[distance])
+            if len(related_entities) >= limit:
+                break
 
-        return related_entities
+        return related_entities[:limit]
 
     async def get_communities(self, limit: int = 10) -> list[dict]:
         """Get entity communities (clusters).
