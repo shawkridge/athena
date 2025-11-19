@@ -211,14 +211,14 @@ class ProceduralOperations:
             }
 
         success_rates = [p.success_rate for p in procedures if p.success_rate is not None]
-        use_counts = [p.use_count for p in procedures]
+        usage_counts = [p.usage_count for p in procedures]
 
         return {
             "total_procedures": len(procedures),
             "avg_success_rate": sum(success_rates) / len(success_rates) if success_rates else 0.0,
-            "total_uses": sum(use_counts),
-            "avg_uses_per_procedure": sum(use_counts) / len(procedures) if procedures else 0,
-            "most_used": max((p for p in procedures), key=lambda p: p.use_count, default=None),
+            "total_uses": sum(usage_counts),
+            "avg_uses_per_procedure": sum(usage_counts) / len(procedures) if procedures else 0,
+            "most_used": max((p for p in procedures), key=lambda p: p.usage_count, default=None),
         }
 
 
