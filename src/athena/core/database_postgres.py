@@ -519,6 +519,10 @@ class PostgresDatabase:
                 surprise_normalized FLOAT,
                 surprise_coherence FLOAT,
                 confidence FLOAT DEFAULT 1.0,
+                -- Evidence tracking (what kind of knowledge is this?)
+                evidence_type VARCHAR(50) DEFAULT 'observed',
+                source_id VARCHAR(500),
+                evidence_quality FLOAT DEFAULT 1.0,
                 -- Lifecycle system for consolidation tracking
                 lifecycle_status VARCHAR(50) DEFAULT 'active',
                 consolidation_score FLOAT DEFAULT 0.0,

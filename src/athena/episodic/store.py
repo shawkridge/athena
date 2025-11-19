@@ -55,8 +55,16 @@ class EpisodicStore(BaseStore):
             phase=row_dict.get("context_phase"),
         )
 
-        # Parse code-aware fields
-        from .models import CodeEventType
+        # Parse evidence type - handle unknown types gracefully
+        from .models import CodeEventType, EvidenceType
+
+        evidence_type = EvidenceType.OBSERVED  # Default
+        if row_dict.get("evidence_type"):
+            try:
+                evidence_type = EvidenceType(row_dict.get("evidence_type"))
+            except (ValueError, KeyError):
+                # Unknown evidence type - use default
+                pass
 
         code_event_type = None
         if row_dict.get("code_event_type"):
@@ -110,6 +118,10 @@ class EpisodicStore(BaseStore):
             lines_deleted=row_dict.get("lines_deleted", 0),
             learned=row_dict.get("learned"),
             confidence=row_dict.get("confidence", 1.0),
+            # Evidence tracking
+            evidence_type=evidence_type,
+            source_id=row_dict.get("source_id"),
+            evidence_quality=row_dict.get("evidence_quality", 1.0),
             # Use new lifecycle system
             lifecycle_status=row_dict.get("lifecycle_status", "active"),
             consolidation_score=row_dict.get("consolidation_score", 0.0),

@@ -46,6 +46,17 @@ class EventOutcome(str, Enum):
     ONGOING = "ongoing"
 
 
+class EvidenceType(str, Enum):
+    """Types of evidence for episodic events (source of knowledge)."""
+
+    OBSERVED = "observed"  # Directly witnessed/confirmed by user
+    INFERRED = "inferred"  # Derived from code analysis, logs, or context
+    DEDUCED = "deduced"  # Logically concluded from other facts
+    HYPOTHETICAL = "hypothetical"  # Speculative or assumed
+    LEARNED = "learned"  # Extracted as a procedure or pattern
+    EXTERNAL = "external"  # From external source (docs, web, etc.)
+
+
 class EventContext(BaseModel):
     """Context snapshot at time of event."""
 
@@ -79,6 +90,13 @@ class EpisodicEvent(BaseModel):
     # Learning
     learned: Optional[str] = None
     confidence: float = 1.0
+
+    # Evidence tracking (what kind of knowledge is this?)
+    evidence_type: EvidenceType = EvidenceType.OBSERVED  # How was this knowledge acquired?
+    source_id: Optional[str] = None  # ID of the source (file path, URL, agent ID, etc.)
+    evidence_quality: float = Field(
+        default=1.0, ge=0.0, le=1.0
+    )  # Quality of the evidence (0.0-1.0) - auto-inferred during consolidation
 
     # Lifecycle management (activation-based system for consolidation tracking)
     lifecycle_status: str = "active"  # 'active', 'consolidated', 'archived'
