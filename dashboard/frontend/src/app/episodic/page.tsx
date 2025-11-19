@@ -5,19 +5,23 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { formatDate, formatRelativeTime, getScoreColor, formatNumber } from '@/lib/utils'
 import { Database, Filter, Download } from 'lucide-react'
+import { useProjectStore } from '@/stores/project-store'
+import { ScopeBadge } from '@/components/scope-badge'
 
 export default function EpisodicMemoryPage() {
   const [limit, setLimit] = useState(100)
   const [sessionFilter, setSessionFilter] = useState<string>('')
+  const { currentProjectId, getCurrentProject } = useProjectStore()
+  const currentProject = getCurrentProject()
 
   const { data: stats } = useQuery({
-    queryKey: ['episodic-stats', sessionFilter],
-    queryFn: () => api.getEpisodicStatistics(sessionFilter || undefined),
+    queryKey: ['episodic-stats', sessionFilter, currentProjectId],
+    queryFn: () => api.getEpisodicStatistics(sessionFilter || undefined, currentProjectId),
   })
 
   const { data: eventsData, isLoading } = useQuery({
-    queryKey: ['episodic-events', limit, sessionFilter],
-    queryFn: () => api.getEpisodicEvents(limit, sessionFilter || undefined),
+    queryKey: ['episodic-events', limit, sessionFilter, currentProjectId],
+    queryFn: () => api.getEpisodicEvents(limit, sessionFilter || undefined, currentProjectId),
   })
 
   return (
@@ -29,7 +33,10 @@ export default function EpisodicMemoryPage() {
             <Database className="h-8 w-8 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Episodic Memory</h1>
+            <div className="flex items-center space-x-2">
+              <h1 className="text-3xl font-bold tracking-tight">Episodic Memory</h1>
+              <ScopeBadge scope="project" projectName={currentProject?.name} />
+            </div>
             <p className="text-muted-foreground mt-1">
               Event storage with spatial-temporal grounding
             </p>

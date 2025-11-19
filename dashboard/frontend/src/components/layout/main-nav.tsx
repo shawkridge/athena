@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { Bell, Settings, RefreshCw } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { ProjectSelector } from '@/components/project-selector'
 
 export function MainNav() {
   const { data: systemStatus, refetch, isRefetching } = useQuery({
@@ -22,6 +23,9 @@ export function MainNav() {
 
       {/* Right: Actions */}
       <div className="flex items-center space-x-4">
+        {/* Project Selector */}
+        <ProjectSelector />
+
         {/* Refresh button */}
         <button
           onClick={() => refetch()}

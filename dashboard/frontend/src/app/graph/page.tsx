@@ -6,19 +6,23 @@ import { api } from '@/lib/api'
 import { formatNumber } from '@/lib/utils'
 import { Network, Filter, Maximize2 } from 'lucide-react'
 import { GraphVisualization } from '@/components/graph/graph-visualization'
+import { useProjectStore } from '@/stores/project-store'
+import { ScopeBadge } from '@/components/scope-badge'
 
 export default function KnowledgeGraphPage() {
   const [entityTypeFilter, setEntityTypeFilter] = useState<string>('')
   const [limit, setLimit] = useState(100)
+  const { currentProjectId, getCurrentProject } = useProjectStore()
+  const currentProject = getCurrentProject()
 
   const { data: stats } = useQuery({
-    queryKey: ['graph-stats'],
-    queryFn: api.getGraphStatistics,
+    queryKey: ['graph-stats', currentProjectId],
+    queryFn: () => api.getGraphStatistics(currentProjectId),
   })
 
   const { data: entitiesData, isLoading } = useQuery({
-    queryKey: ['graph-entities', entityTypeFilter, limit],
-    queryFn: () => api.getEntities(entityTypeFilter || undefined, limit),
+    queryKey: ['graph-entities', entityTypeFilter, limit, currentProjectId],
+    queryFn: () => api.getEntities(entityTypeFilter || undefined, limit, currentProjectId),
   })
 
   const entityTypes = [
@@ -46,7 +50,10 @@ export default function KnowledgeGraphPage() {
             <Network className="h-8 w-8 text-cyan-600" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Knowledge Graph</h1>
+            <div className="flex items-center space-x-2">
+              <h1 className="text-3xl font-bold tracking-tight">Knowledge Graph</h1>
+              <ScopeBadge scope="project" projectName={currentProject?.name} />
+            </div>
             <p className="text-muted-foreground mt-1">
               Entities, relations, and communities
             </p>
