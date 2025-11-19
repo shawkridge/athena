@@ -17,6 +17,7 @@ class EntityType(str, Enum):
     FUNCTION = "Function"
     CONCEPT = "Concept"
     COMPONENT = "Component"
+    PROCESS = "Process"
     PERSON = "Person"
     DECISION = "Decision"
     PATTERN = "Pattern"

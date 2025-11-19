@@ -74,48 +74,45 @@ class TriggerType(str, Enum):
 
 
 class ProspectiveTask(BaseModel):
-    """Task with future intention and triggers."""
+    """Task with future intention and goals."""
 
+    # Core fields (match database schema)
     id: Optional[int] = None
-    project_id: Optional[int] = None  # None for cross-project tasks
-    content: str
-    active_form: str  # Present continuous form
+    project_id: Optional[int] = None
+    title: str  # Task title (required)
+    description: Optional[str] = None  # Task description
 
-    # Timing
+    # Timing (match database schema)
     created_at: datetime = Field(default_factory=datetime.now)
-    due_at: Optional[datetime] = None
+    due_date: Optional[datetime] = None  # Due date
+    started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
-    # Status
-    status: TaskStatus = TaskStatus.PENDING
-    priority: TaskPriority = TaskPriority.MEDIUM
+    # Status and Priority
+    status: str = "pending"  # pending, in_progress, completed, cancelled
+    priority: int = 5  # 1-10, default 5
 
-    # Phase (agentic workflow) - NEW FIELDS
-    phase: TaskPhase = TaskPhase.PLANNING  # Current execution phase
-    plan: Optional[Plan] = None  # Execution plan
-    plan_created_at: Optional[datetime] = None  # When plan was created
-    phase_started_at: Optional[datetime] = None  # When current phase started
-    phase_metrics: list[PhaseMetrics] = []  # History of phase transitions
-    actual_duration_minutes: Optional[float] = None  # Actual execution time
+    # Goal/Task relationships
+    goal_id: Optional[int] = None
+    parent_task_id: Optional[int] = None
 
-    # Assignment
-    assignee: str = "user"  # user|claude|sub-agent:name
+    # Effort tracking
+    estimated_effort_hours: Optional[float] = None
+    actual_effort_hours: Optional[float] = None
+    completion_percentage: int = 0
+    success_rate: Optional[float] = None
 
-    # Metadata
+    # Related resources
+    related_memory_ids: Optional[list[int]] = None
+    related_code_ids: Optional[list[int]] = None
+    related_test_name: Optional[str] = None
+    related_file_path: Optional[str] = None
+    checkpoint_id: Optional[int] = None
+    last_claude_sync_at: Optional[datetime] = None
+
+    # Extended metadata (optional, for future use)
+    # Can be populated from future schema additions
     notes: Optional[str] = None
-    blocked_reason: Optional[str] = None
-    failure_reason: Optional[str] = None  # Why task failed (if failed)
-    lessons_learned: Optional[str] = None  # What we learned from this task
-
-    # Learning Integration (FK to extracted_patterns)
-    learned_pattern_id: Optional[int] = None  # Pattern that informed this task
-
-    # Effort Prediction (Phase 1) - NEW FIELDS
-    effort_prediction: Optional[Dict[str, Any]] = (
-        None  # {effort, confidence, range, bias_factor, explanation}
-    )
-    effort_base_estimate: Optional[int] = None  # User's initial estimate in minutes
-    effort_task_type: Optional[str] = None  # Task type for prediction (feature, bugfix, etc)
 
     model_config = ConfigDict(use_enum_values=True)
 
