@@ -132,39 +132,67 @@ class EvidenceInferencer:
             return None
 
     async def infer_evidence_batch(self, limit: int = 1000) -> int:
-        """Infer evidence types for batch of events without evidence.
+        """Infer evidence types for batch of events.
 
         Called during consolidation dream to populate evidence types.
+        Processes most recent events first to prioritize recency.
 
         Args:
-            limit: Maximum number of events to process
+            limit: Maximum number of events to process per batch
 
         Returns:
             Number of events updated with inferred evidence types
         """
         try:
             async with self.db.get_connection() as conn:
-                # Find events without explicit evidence type (will be null or 'observed')
+                # Get batch of events ordered by recency
                 result = await conn.execute(
                     """
-                    SELECT id FROM episodic_events
-                    WHERE evidence_type IS NULL OR evidence_type = 'observed'
+                    SELECT id, content, event_type, outcome, learned, confidence
+                    FROM episodic_events
                     ORDER BY timestamp DESC
                     LIMIT %s
                     """,
                     (limit,),
                 )
 
-                event_ids = [row[0] for row in await result.fetchall()]
+                rows = await result.fetchall()
                 count = 0
 
-                for event_id in event_ids:
-                    inferred = await self.infer_evidence_type(event_id)
-                    if inferred:
-                        count += 1
+                # Process each event and infer its type
+                for row in rows:
+                    try:
+                        event_id = row[0]
+                        # Build dict manually from row tuple
+                        event_dict = {
+                            'id': row[0],
+                            'content': row[1],
+                            'event_type': row[2],
+                            'outcome': row[3],
+                            'learned': row[4],
+                            'confidence': row[5]
+                        }
+
+                        # Infer the evidence type
+                        inferred_type = self._infer_type_from_event(event_dict)
+
+                        if inferred_type:
+                            # Update the event with inferred type
+                            await conn.execute(
+                                """
+                                UPDATE episodic_events
+                                SET evidence_type = %s
+                                WHERE id = %s
+                                """,
+                                (inferred_type.value, event_id),
+                            )
+                            count += 1
+                    except Exception as e:
+                        logger.debug(f"Error inferring type for event {event_id}: {e}")
+                        continue
 
                 if count > 0:
-                    logger.info(f"Inferred evidence types for {count}/{len(event_ids)} events")
+                    logger.info(f"Inferred evidence types for {count}/{len(rows)} events")
 
                 return count
 
@@ -176,8 +204,8 @@ class EvidenceInferencer:
         """Infer evidence type from event characteristics.
 
         Priority order:
-        1. Code event type (CODE_EDIT, TEST_RUN → OBSERVED)
-        2. Outcome (SUCCESS/FAILURE → OBSERVED)
+        1. Event type keywords (tool_execution, code_edit → OBSERVED)
+        2. Outcome (success/failure → OBSERVED)
         3. Content keywords (highest scoring match)
         4. Learned field presence → LEARNED
         5. Default: OBSERVED
@@ -189,32 +217,38 @@ class EvidenceInferencer:
             Inferred EvidenceType
         """
         content = (event.get("content") or "").lower()
-        event_type = event.get("event_type")
-        outcome = event.get("outcome")
+        event_type = (event.get("event_type") or "").lower()
+        outcome = (event.get("outcome") or "").lower()
         learned = event.get("learned")
 
-        # 1. Event type - direct observation for code-related events
+        # 1. Event type - direct observation for code/tool-related events
+        # Note: event_type is stored as string in database, not enum
         if event_type:
-            try:
-                et = EventType(event_type)
-                if et in [
-                    EventType.CODE_EDIT,
-                    EventType.TEST_RUN,
-                    EventType.BUG_DISCOVERY,
-                    EventType.TOOL_USE,
-                ]:
-                    return EvidenceType.OBSERVED
-                elif et == EventType.LEARNING:
-                    return EvidenceType.LEARNED
-            except (ValueError, KeyError):
-                pass
+            # Tool execution and code-related events are observations
+            if event_type in [
+                "tool_execution",
+                "code_edit",
+                "test_run",
+                "bug_discovery",
+                "tool_use",
+                "test:edge_case",
+                "discovery:analysis",
+            ]:
+                return EvidenceType.OBSERVED
+            # Learning and consolidation events are learned
+            elif event_type in [
+                "learning",
+                "consolidation_session",
+                "consolidation:session",
+            ]:
+                return EvidenceType.LEARNED
 
-        # 2. Event outcome - SUCCESS/FAILURE are observations
-        if outcome in ["success", "failure"]:
+        # 2. Event outcome - success/failure are observations
+        if outcome in ["success", "failure", "recorded"]:
             return EvidenceType.OBSERVED
 
         # 3. Learned field present - procedure extraction
-        if learned and len(learned) > 10:
+        if learned and len(str(learned)) > 10:
             return EvidenceType.LEARNED
 
         # 4. Content keyword matching
@@ -231,7 +265,7 @@ class EvidenceInferencer:
         if scores[best_type] > 0:
             return best_type
 
-        # 5. Default
+        # 5. Default: tool_execution and unknown types → OBSERVED
         return EvidenceType.OBSERVED
 
     @staticmethod
