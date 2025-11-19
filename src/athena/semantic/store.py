@@ -113,26 +113,44 @@ class SemanticStore(BaseStore):
 
         Returns:
             ID of stored memory
+
+        Raises:
+            ValueError: If content is empty or memory_type is invalid
+            RuntimeError: If embedding generation or storage fails
         """
+        # Validate content
+        if not content or not content.strip():
+            raise ValueError("Memory content cannot be empty")
+
         # Convert string to enum if needed
-        if isinstance(memory_type, str):
-            memory_type = MemoryType(memory_type)
+        try:
+            if isinstance(memory_type, str):
+                memory_type = MemoryType(memory_type)
+        except ValueError as e:
+            raise ValueError(f"Invalid memory type: {memory_type}") from e
 
-        # Generate embedding
-        embedding = self.embedder.embed(content)
+        # Generate embedding with error handling
+        try:
+            embedding = self.embedder.embed(content)
+        except Exception as e:
+            logger.error(f"Failed to generate embedding: {e}")
+            raise RuntimeError(f"Embedding generation failed: {e}") from e
 
-        # Store in PostgreSQL with correct signature
-        # PostgreSQL expects: store_memory(project_id, content, embedding, memory_type, ...)
-        memory_type_str = (
-            memory_type.value if isinstance(memory_type, MemoryType) else str(memory_type)
-        )
-        memory_id = await self.db.store_memory(
-            project_id=project_id,
-            content=content,
-            embedding=embedding,
-            memory_type=memory_type_str,
-            tags=tags or [],
-        )
+        # Store in PostgreSQL with error handling
+        try:
+            memory_type_str = (
+                memory_type.value if isinstance(memory_type, MemoryType) else str(memory_type)
+            )
+            memory_id = await self.db.store_memory(
+                project_id=project_id,
+                content=content,
+                embedding=embedding,
+                memory_type=memory_type_str,
+                tags=tags or [],
+            )
+        except Exception as e:
+            logger.error(f"Failed to store memory: {e}")
+            raise RuntimeError(f"Memory storage failed: {e}") from e
 
         return memory_id
 
@@ -198,13 +216,29 @@ class SemanticStore(BaseStore):
         Args:
             query: Search query
             project_id: Project ID
-            k: Number of results
+            k: Number of results (must be > 0)
             memory_types: Optional filter by types
 
         Returns:
-            List of search results with similarity scores
+            List of search results with similarity scores (empty list if no results)
+
+        Raises:
+            ValueError: If query is empty or k is invalid
         """
-        return self.search.recall(query, project_id, k, memory_types)
+        # Validate inputs
+        if not query or not query.strip():
+            logger.warning("Empty search query provided")
+            return []
+
+        if k <= 0:
+            raise ValueError(f"k must be positive, got {k}")
+
+        try:
+            results = self.search.recall(query, project_id, k, memory_types)
+            return results or []
+        except Exception as e:
+            logger.error(f"Search failed for query '{query}': {e}")
+            return []  # Graceful degradation
 
     def recall_with_reranking(
         self, query: str, project_id: int, k: int = 5
