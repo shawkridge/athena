@@ -127,6 +127,19 @@ async def startup_event():
     success = await initialize_athena()
     if success:
         print("✅ Athena initialized successfully")
+
+        # Initialize episodic operations (required for episodic endpoints)
+        try:
+            from athena.episodic.operations import initialize as init_episodic
+            from athena.core.database import get_database
+            from athena.episodic.store import EpisodicStore
+
+            db = get_database()
+            store = EpisodicStore(db)
+            init_episodic(db, store)
+            print("✅ Episodic operations initialized")
+        except Exception as e:
+            print(f"⚠️ Episodic operations initialization: {e}")
     else:
         print("❌ Failed to initialize Athena - continuing with available features")
 
