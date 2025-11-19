@@ -14,6 +14,7 @@ Commands:
     show            Show document details
     templates       List available templates
     check-drift     Check for drift between documents and specs
+    diff            Show diff for document regeneration (preview changes)
     sync            Sync documents with their source specifications
 
 Examples:
@@ -28,6 +29,12 @@ Examples:
 
     # Check drift for all documents in project
     athena-doc-manage check-drift --project-id 1
+
+    # Show diff for a document (preview what would change)
+    athena-doc-manage diff --doc-id 5
+
+    # Sync with preview (show diff first, then ask for confirmation)
+    athena-doc-manage sync --doc-id 5 --preview
 
     # Sync all drifted documents (dry run)
     athena-doc-manage sync --project-id 1 --dry-run
@@ -57,7 +64,7 @@ from athena.architecture.spec_store import SpecificationStore
 from athena.architecture.models import Document, DocumentType, DocumentStatus
 from athena.architecture.templates import TemplateManager, TemplateContext
 from athena.architecture.generators import AIDocGenerator, ContextAssembler
-from athena.architecture.sync import DriftDetector, SyncManager, StalenessChecker
+from athena.architecture.sync import DriftDetector, SyncManager, StalenessChecker, DocumentDiffer
 
 
 def cmd_list(args):
@@ -579,6 +586,77 @@ def cmd_check_drift(args):
                 print(f"\n✅ All documents are in sync!")
 
 
+def cmd_diff(args):
+    """Show diff for document regeneration."""
+    db = get_database()
+    doc_store = DocumentStore(db)
+    spec_store = SpecificationStore(db)
+
+    # Get document
+    doc = doc_store.get(args.doc_id)
+    if not doc:
+        print(f"❌ Document {args.doc_id} not found", file=sys.stderr)
+        sys.exit(1)
+
+    # Initialize AI generator to compute what new content would be
+    try:
+        ai_generator = AIDocGenerator(
+            api_key=args.api_key,
+            model=args.model
+        )
+    except ImportError:
+        print(f"❌ AI generator not available - cannot compute diff", file=sys.stderr)
+        sys.exit(1)
+
+    # Generate new content (without saving)
+    try:
+        assembler = ContextAssembler(spec_store=spec_store)
+
+        if not doc.based_on_spec_ids:
+            print(f"❌ Document has no source specifications", file=sys.stderr)
+            sys.exit(1)
+
+        # Assemble context from specs
+        context = assembler.assemble_for_specs(doc.based_on_spec_ids)
+
+        # Generate new content
+        print(f"🤖 Generating new content to compare...")
+        result = ai_generator.generate(
+            doc_type=doc.doc_type,
+            context=context
+        )
+        new_content = result.content
+
+    except Exception as e:
+        print(f"❌ Failed to generate content: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Compute diff
+    differ = DocumentDiffer(spec_store=spec_store, doc_store=doc_store)
+    diff_result = differ.compute_diff(
+        doc_id=args.doc_id,
+        new_content=new_content,
+        show_cause=args.show_cause
+    )
+
+    # Output
+    if args.json:
+        print(json.dumps(diff_result.to_json(), indent=2))
+    elif args.markdown:
+        print(diff_result.to_markdown())
+    else:
+        # Rich terminal output
+        print(diff_result.to_text(color=not args.no_color, show_unchanged=args.show_unchanged))
+
+        # Actionable next steps
+        if diff_result.has_changes:
+            print("\n💡 Next Steps:")
+            print(f"   To apply these changes, run:")
+            print(f"   athena-doc-manage sync --doc-id {args.doc_id}")
+        else:
+            print("\n✅ No changes detected - document is up to date")
+
+
 def cmd_sync(args):
     """Sync documents with their source specifications."""
     db = get_database()
@@ -615,6 +693,53 @@ def cmd_sync(args):
     if args.doc_id:
         # Sync single document
         try:
+            # Preview mode: show diff before syncing
+            if hasattr(args, 'preview') and args.preview and not args.dry_run:
+                # Get document
+                doc = doc_store.get(args.doc_id)
+                if not doc:
+                    print(f"❌ Document {args.doc_id} not found", file=sys.stderr)
+                    sys.exit(1)
+
+                # Generate new content to compare
+                if ai_generator and doc.based_on_spec_ids:
+                    try:
+                        assembler = ContextAssembler(spec_store=spec_store)
+                        context = assembler.assemble_for_specs(doc.based_on_spec_ids)
+
+                        print(f"\n🤖 Generating new content for preview...")
+                        gen_result = ai_generator.generate(
+                            doc_type=doc.doc_type,
+                            context=context
+                        )
+                        new_content = gen_result.content
+
+                        # Compute diff
+                        differ = DocumentDiffer(spec_store=spec_store, doc_store=doc_store)
+                        diff_result = differ.compute_diff(
+                            doc_id=args.doc_id,
+                            new_content=new_content,
+                            show_cause=True
+                        )
+
+                        # Show diff
+                        print(diff_result.to_text(color=True, show_unchanged=False))
+
+                        # Ask for confirmation (unless --yes flag)
+                        if not hasattr(args, 'yes') or not args.yes:
+                            if diff_result.has_changes:
+                                response = input("\n❓ Apply these changes? [y/N] ")
+                                if response.lower() != 'y':
+                                    print("❌ Sync cancelled")
+                                    sys.exit(0)
+                            else:
+                                print("\n✅ No changes to apply")
+                                sys.exit(0)
+
+                    except Exception as e:
+                        print(f"⚠️  Preview failed: {e}", file=sys.stderr)
+                        print(f"   Proceeding with sync anyway...")
+
             result = sync_manager.sync_document(
                 doc_id=args.doc_id,
                 strategy=strategy,
@@ -800,11 +925,25 @@ def main():
     drift_parser.add_argument("--json", action="store_true", help="Output as JSON")
     drift_parser.set_defaults(func=cmd_check_drift)
 
+    # Diff command
+    diff_parser = subparsers.add_parser("diff", help="Show diff for document regeneration")
+    diff_parser.add_argument("--doc-id", type=int, required=True, help="Document ID to diff")
+    diff_parser.add_argument("--show-cause", action="store_true", default=True, help="Show spec changes that caused drift")
+    diff_parser.add_argument("--show-unchanged", action="store_true", help="Show unchanged sections")
+    diff_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
+    diff_parser.add_argument("--model", default="claude-3-5-sonnet-20241022", help="Claude model to use for generation")
+    diff_parser.add_argument("--api-key", help="Anthropic API key (uses ANTHROPIC_API_KEY env var if not provided)")
+    diff_parser.add_argument("--json", action="store_true", help="Output as JSON")
+    diff_parser.add_argument("--markdown", action="store_true", help="Output as Markdown")
+    diff_parser.set_defaults(func=cmd_diff)
+
     # Sync command
     sync_parser = subparsers.add_parser("sync", help="Sync documents with source specifications")
     sync_parser.add_argument("--project-id", type=int, default=1, help="Project ID (default: 1)")
     sync_parser.add_argument("--doc-id", type=int, help="Sync specific document ID")
     sync_parser.add_argument("--dry-run", action="store_true", help="Check what would be synced without doing it")
+    sync_parser.add_argument("--preview", action="store_true", help="Show diff before syncing and ask for confirmation")
+    sync_parser.add_argument("--yes", "-y", action="store_true", help="Auto-confirm (skip confirmation prompt)")
     sync_parser.add_argument("--staleness-days", type=int, default=30, help="Staleness threshold in days (default: 30)")
     sync_parser.add_argument("--manual-only", action="store_true", help="Mark for manual review instead of regenerating")
     sync_parser.add_argument("--skip", action="store_true", help="Skip sync (for testing)")

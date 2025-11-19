@@ -7,6 +7,14 @@ to keep documentation in sync with specifications.
 from .drift_detector import DriftDetector, DriftResult, DriftStatus
 from .sync_manager import SyncManager, SyncResult, SyncStrategy
 from .staleness_checker import StalenessChecker, StalenessResult, StalenessLevel
+from .diff_engine import (
+    DocumentDiffer,
+    DiffResult as DocumentDiffResult,
+    SectionChange,
+    SpecChange,
+    ChangeType,
+    SectionType,
+)
 
 __all__ = [
     "DriftDetector",
@@ -18,4 +26,10 @@ __all__ = [
     "StalenessChecker",
     "StalenessResult",
     "StalenessLevel",
+    "DocumentDiffer",
+    "DocumentDiffResult",
+    "SectionChange",
+    "SpecChange",
+    "ChangeType",
+    "SectionType",
 ]
