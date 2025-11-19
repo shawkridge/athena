@@ -177,7 +177,7 @@ async def consolidate_with_local_reasoning(
         project_id=project_id,
         start=cutoff_time,
         end=datetime.now(),
-        consolidation_status="unconsolidated",
+        lifecycle_status="active",  # Get active events for consolidation
     )
 
     if not events:

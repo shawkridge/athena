@@ -6,7 +6,8 @@
 2. Only document things that you need to
 3. Always use the optimal solution even if it takes long
 4. When in doubt ask questions, check memory and web research
-
+5. Don't keep dead code.
+6. Don't create mocks, placeholders, stubs, etc.
 ---
 
 <vision>

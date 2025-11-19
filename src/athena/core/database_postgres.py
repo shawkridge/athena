@@ -519,14 +519,11 @@ class PostgresDatabase:
                 surprise_normalized FLOAT,
                 surprise_coherence FLOAT,
                 confidence FLOAT DEFAULT 1.0,
-                -- NEW lifecycle system (replaces consolidation_status/consolidated_at)
+                -- Lifecycle system for consolidation tracking
                 lifecycle_status VARCHAR(50) DEFAULT 'active',
                 consolidation_score FLOAT DEFAULT 0.0,
                 last_activation TIMESTAMP DEFAULT NOW(),
                 activation_count INT DEFAULT 0,
-                -- DEPRECATED: kept for backward compatibility during migration
-                consolidation_status VARCHAR(50) DEFAULT 'unconsolidated',
-                consolidated_at TIMESTAMP,
                 embedding vector(768)
             )
         """
@@ -979,10 +976,11 @@ class PostgresDatabase:
         """
         )
 
+        # Create index on lifecycle_status for efficient filtering
         await conn.execute(
             """
-            CREATE INDEX IF NOT EXISTS idx_episodic_consolidation
-            ON episodic_events(consolidation_status)
+            CREATE INDEX IF NOT EXISTS idx_episodic_lifecycle
+            ON episodic_events(lifecycle_status)
         """
         )
 
@@ -1190,14 +1188,6 @@ class PostgresDatabase:
             """
             CREATE INDEX IF NOT EXISTS idx_episodic_temporal
             ON episodic_events(project_id, timestamp DESC)
-        """
-        )
-
-        # Consolidation pipeline: episodic_events(consolidation_status, confidence)
-        await conn.execute(
-            """
-            CREATE INDEX IF NOT EXISTS idx_episodic_consolidation
-            ON episodic_events(consolidation_status, confidence)
         """
         )
 

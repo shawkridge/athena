@@ -6,7 +6,7 @@ storage when events are ingested from multiple sources (CLI, MCP, git hooks, etc
 Deduplication Strategy
 ----------------------
 Events are considered duplicates if their *content* is identical, excluding:
-- Volatile metadata: id, created_at, consolidation_status, consolidated_at
+- Volatile metadata: id, created_at, lifecycle_status, last_activation
 - System-generated fields: embeddings (computed on-demand)
 - Internal tracking: surprise scores (recalculated during consolidation)
 
@@ -67,7 +67,7 @@ Usage Example
 ...     content="Fixed bug in user authentication",
 ...     context=EventContext(cwd="/home/user/project", files=["auth.py"]),
 ...     id=999,  # Different ID (excluded from hash)
-...     consolidation_status="consolidated"  # Different status (excluded)
+...     lifecycle_status="consolidated"  # Different status (excluded)
 ... )
 >>>
 >>> hasher = EventHasher()
@@ -94,8 +94,10 @@ class EventHasher:
     # Fields excluded from hash computation (volatile or system-generated)
     EXCLUDED_FIELDS = {
         "id",  # Database-assigned, not part of content
-        "consolidation_status",  # Changes during consolidation lifecycle
-        "consolidated_at",  # Updated during consolidation
+        "lifecycle_status",  # Changes during consolidation lifecycle
+        "last_activation",  # Updated during consolidation
+        "activation_count",  # Updated during consolidation
+        "consolidation_score",  # System-computed during consolidation
         # Note: timestamp IS included - events at different times are different
     }
 

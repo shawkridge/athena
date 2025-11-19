@@ -79,7 +79,7 @@ class EventProcessingPipeline:
     Stage 2: Hash computation
         - Computes SHA256 content hash for each event
         - Uses EventHasher for deterministic hashing
-        - Excludes volatile fields (id, consolidation_status)
+        - Excludes volatile fields (id, lifecycle_status)
 
     Stage 3: Action determination
         - Bulk database lookup for existing hashes

@@ -888,7 +888,6 @@ class EpisodicStore(BaseStore):
         project_id: int,
         start: datetime,
         end: datetime,
-        consolidation_status: Optional[str] = None,
         lifecycle_status: Optional[str] = None,
         limit: Optional[int] = None,
     ) -> list[EpisodicEvent]:
@@ -898,7 +897,6 @@ class EpisodicStore(BaseStore):
             project_id: Project ID to filter by
             start: Start time (inclusive)
             end: End time (inclusive)
-            consolidation_status: DEPRECATED - use lifecycle_status instead
             lifecycle_status: Optional filter ('active', 'consolidated', 'archived', None for all)
             limit: Optional maximum number of events to return
 
@@ -913,19 +911,10 @@ class EpisodicStore(BaseStore):
         """
         params = [project_id, int(start.timestamp()), int(end.timestamp())]
 
-        # Support both old and new systems during transition
+        # Filter by lifecycle status if provided
         if lifecycle_status:
             query += " AND lifecycle_status = %s"
             params.append(lifecycle_status)
-        elif consolidation_status:
-            # Fallback to old system for backward compatibility
-            if consolidation_status == "unconsolidated":
-                query += (
-                    " AND (consolidation_status IS NULL OR consolidation_status = 'unconsolidated')"
-                )
-            else:
-                query += " AND consolidation_status = %s"
-                params.append(consolidation_status)
 
         query += " ORDER BY timestamp DESC"
 
@@ -940,29 +929,26 @@ class EpisodicStore(BaseStore):
     def mark_event_consolidated(
         self, event_id: int, consolidated_at: Optional[datetime] = None
     ) -> None:
-        """Mark an event as consolidated using new lifecycle system.
+        """Mark an event as consolidated using lifecycle system.
 
         Args:
             event_id: Event ID to mark
-            consolidated_at: When consolidation occurred (default: now) - for new system
+            consolidated_at: When consolidation occurred (default: now)
         """
         if consolidated_at is None:
             consolidated_at = datetime.now()
 
-        # Update using NEW lifecycle system (primary)
-        # Also update old fields for backward compatibility
+        # Update using lifecycle system
         self.execute(
             """
             UPDATE episodic_events
             SET lifecycle_status = 'consolidated',
                 consolidation_score = 1.0,
                 last_activation = %s,
-                activation_count = activation_count + 1,
-                consolidation_status = 'consolidated',
-                consolidated_at = %s
+                activation_count = activation_count + 1
             WHERE id = %s
         """,
-            (int(consolidated_at.timestamp()), int(consolidated_at.timestamp()), event_id),
+            (int(consolidated_at.timestamp()), event_id),
         )
 
         self.commit()
@@ -1209,10 +1195,10 @@ class EpisodicStore(BaseStore):
                 project_id, session_id, timestamp, event_type, content, outcome,
                 context_cwd, context_files, context_task, context_phase, context_branch,
                 duration_ms, files_changed, lines_added, lines_deleted, learned, confidence,
-                consolidation_status, code_event_type, file_path, symbol_name, symbol_type,
+                code_event_type, file_path, symbol_name, symbol_type,
                 language, diff, git_commit, git_author, test_name, test_passed,
                 error_type, stack_trace, performance_metrics, code_quality_score
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
             (
                 event.project_id,
@@ -1232,7 +1218,6 @@ class EpisodicStore(BaseStore):
                 event.lines_deleted,
                 event.learned,
                 event.confidence,
-                event.consolidation_status,
                 event.code_event_type,
                 event.file_path,
                 event.symbol_name,
