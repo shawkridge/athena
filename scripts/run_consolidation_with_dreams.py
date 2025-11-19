@@ -26,6 +26,7 @@ from athena.consolidation.dreaming import DreamGenerator, DreamGenerationConfig
 from athena.consolidation.dream_store import DreamStore, DreamGenerationRun
 from athena.procedural.store import ProceduralStore
 from athena.consolidation.cross_project_synthesizer import ProcedureReference
+from athena.consolidation.memory_improvement_pipeline import MemoryImprovementPipeline
 
 
 # Configure logging
@@ -78,6 +79,22 @@ async def run_consolidation_with_dreams(strategy: str = "balanced", projects: li
         except Exception as e:
             logger.error(f"Consolidation failed: {e}", exc_info=True)
             consolidation_successful = False
+
+        # Step 1.5: Run memory improvements (evidence inference, contradiction detection, reconsolidation)
+        logger.info("Step 1.5: Running memory improvements...")
+
+        try:
+            pipeline = MemoryImprovementPipeline(db)
+            improvement_metrics = await pipeline.run_full_pipeline()
+            logger.info(
+                f"Memory improvements complete: "
+                f"labile_consolidated={improvement_metrics.get('labile_consolidated', 0)}, "
+                f"evidence_inferred={improvement_metrics.get('evidence_types_inferred', 0)}, "
+                f"contradictions_resolved={improvement_metrics.get('contradictions_resolved', 0)}"
+            )
+        except Exception as e:
+            logger.warning(f"Memory improvements had issues (non-critical): {e}", exc_info=True)
+            # Don't fail consolidation if memory improvements have issues
 
         # Step 2: Generate dreams from validated patterns
         logger.info("Step 2: Generating dreams from procedures...")
