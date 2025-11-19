@@ -1,12 +1,12 @@
-"""Memory optimization: pruning and scoring."""
+"""Semantic memory optimization: pruning and scoring."""
 
 import time
 
 from ..core.database import Database
 
 
-class MemoryOptimizer:
-    """Optimize memory storage through scoring and pruning."""
+class SemanticOptimizer:
+    """Optimize semantic memory storage through scoring and pruning."""
 
     def __init__(self, db: Database):
         """Initialize optimizer.

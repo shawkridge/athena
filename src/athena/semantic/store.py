@@ -10,7 +10,7 @@ from ..core.base_store import BaseStore
 from ..core.embeddings import EmbeddingModel
 from ..core.models import Memory, MemorySearchResult, MemoryType, Project
 from ..core.async_utils import run_async
-from .optimize import MemoryOptimizer
+from .optimize import SemanticOptimizer
 from .search import SemanticSearch
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class SemanticStore(BaseStore):
 
         # SemanticSearch uses PostgreSQL pgvector for vector operations
         self.search = SemanticSearch(self.db, self.embedder)
-        self.optimizer = MemoryOptimizer(self.db)
+        self.optimizer = SemanticOptimizer(self.db)
 
     @staticmethod
     def _should_use_postgres() -> bool:
