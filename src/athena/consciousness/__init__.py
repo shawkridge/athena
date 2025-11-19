@@ -53,6 +53,10 @@ from .phenomenal import (
     EmbodimentSystem,
     PhenomenalConsciousness,
 )
+from .validation import (
+    ExperimentResult,
+    ValidationExperiments,
+)
 
 __all__ = [
     # Indicators
@@ -82,4 +86,7 @@ __all__ = [
     "EmotionSystem",
     "EmbodimentSystem",
     "PhenomenalConsciousness",
+    # Validation
+    "ExperimentResult",
+    "ValidationExperiments",
 ]
