@@ -7,8 +7,8 @@
 
 import axios, { AxiosError } from 'axios'
 
-// Base API URL - points to Next.js API proxy which forwards to FastAPI backend
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+// Base API URL - points directly to FastAPI backend
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 const client = axios.create({
   baseURL: API_BASE_URL,
