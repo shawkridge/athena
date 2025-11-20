@@ -23,14 +23,18 @@ from athena import initialize_athena
 
 # Import coordination (multi-agent orchestration)
 try:
-    from athena.coordination import Orchestrator
-    from athena.coordination.operations import CoordinationOperations
+    from athena.coordination import (
+        Orchestrator,
+        CoordinationOperations,
+        initialize_coordination,
+    )
     from athena.coordination.models import AgentType, TaskStatus
     COORDINATION_AVAILABLE = True
 except ImportError:
     COORDINATION_AVAILABLE = False
     Orchestrator = None
     CoordinationOperations = None
+    initialize_coordination = None
     AgentType = None
     TaskStatus = None
 
@@ -265,17 +269,21 @@ async def startup_event():
         print(f"⚠️ Some advanced subsystems failed to initialize: {e}")
         print("   Core memory operations will still work")
 
-    # Initialize orchestration system
-    if COORDINATION_AVAILABLE:
+    # Initialize orchestration system (API-first approach)
+    if COORDINATION_AVAILABLE and initialize_coordination:
         try:
             global _orchestrator, _coordination_ops
-            _coordination_ops = CoordinationOperations(_postgres_db.conn)
-            _orchestrator = Orchestrator(_postgres_db.conn, tmux_session_name="athena_agents")
+            # Use the new API-first initialization
+            _coordination_ops = await initialize_coordination(_postgres_db)
+            _orchestrator = Orchestrator(_postgres_db, tmux_session_name="athena_agents")
             await _orchestrator.initialize_session()
-            print("✅ Orchestrator initialized")
+            print("✅ Orchestrator initialized (API-first)")
         except Exception as e:
             print(f"⚠️ Orchestrator initialization failed: {e}")
+            import traceback
+            traceback.print_exc()
             _orchestrator = None
+            _coordination_ops = None
     else:
         print("⚠️ Coordination module not available (orchestration disabled)")
 

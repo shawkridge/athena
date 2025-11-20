@@ -22,11 +22,29 @@ from .models import (
 
 
 class CoordinationOperations:
-    """Operations for multi-agent coordination."""
+    """Operations for multi-agent coordination.
+
+    Can be initialized with either:
+    - A CoordinationStore instance (preferred)
+    - A raw database object (legacy, will be wrapped)
+    """
 
     def __init__(self, db):
-        """Initialize with database connection."""
-        self.db = db
+        """Initialize with database connection or store.
+
+        Args:
+            db: Either a CoordinationStore instance or a Database object
+        """
+        # If it's a store, use it directly
+        # If it's a database object, we'll work with it for backwards compatibility
+        from .store import CoordinationStore
+        if isinstance(db, CoordinationStore):
+            self.store = db
+            self.db = db.db
+        else:
+            # Legacy: raw database object
+            self.store = None
+            self.db = db
 
     # ============================================================================
     # Agent Management Operations
@@ -54,19 +72,19 @@ class CoordinationOperations:
         agent_id = f"{agent_type.value}_{uuid.uuid4().hex[:8]}"
         caps = capabilities or AGENT_CAPABILITIES.get(agent_type, [])
 
-        await self.db.execute(
-            """
-            INSERT INTO agents (agent_id, agent_type, capabilities, status,
-                               tmux_pane_id, process_pid, last_heartbeat)
-            VALUES (%s, %s, %s, %s, %s, %s, NOW())
-            """,
-            agent_id,
-            agent_type.value,
-            caps,
-            AgentStatus.IDLE.value,
-            tmux_pane_id,
-            process_pid,
-        )
+        if self.store:
+            # Use store API
+            await self.store.create_agent(
+                agent_id=agent_id,
+                agent_type=agent_type.value,
+                capabilities=caps,
+                status=AgentStatus.IDLE.value,
+                tmux_pane_id=tmux_pane_id,
+                process_pid=process_pid,
+            )
+        else:
+            # Legacy: direct database access (for backwards compatibility)
+            raise NotImplementedError("Direct database access not supported. Please use CoordinationStore.")
 
         return agent_id
 
@@ -86,19 +104,22 @@ class CoordinationOperations:
         status: Optional[AgentStatus] = None,
     ) -> List[Agent]:
         """List agents with optional filters."""
-        query = "SELECT * FROM agents WHERE 1=1"
-        params = []
+        if self.store:
+            # Use store API
+            agents_data = await self.store.list_agents()
+            agents = [Agent.from_dict(d) for d in agents_data]
 
-        if agent_type:
-            query += " AND agent_type = %s"
-            params.append(agent_type.value)
+            # Apply filters if needed
+            if agent_type:
+                agents = [a for a in agents if a.agent_type == agent_type]
+            if status:
+                agents = [a for a in agents if a.status == status]
 
-        if status:
-            query += " AND status = %s"
-            params.append(status.value)
+            return agents
+        else:
+            # Legacy path not supported
+            raise NotImplementedError("Direct database access not supported. Please use CoordinationStore.")
 
-        rows = await self.db.fetch(query, *params)
-        return [Agent.from_dict(dict(row)) for row in rows]
 
     async def update_agent_status(
         self, agent_id: str, status: AgentStatus

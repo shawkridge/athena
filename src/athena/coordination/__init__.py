@@ -16,8 +16,24 @@ from .models import (
     AgentMetrics,
     AGENT_CAPABILITIES,
 )
+from .store import CoordinationStore
 from .operations import CoordinationOperations
 from .orchestrator import Orchestrator
+
+
+async def initialize_coordination(db) -> CoordinationOperations:
+    """Initialize coordination system with a database.
+
+    Args:
+        db: Athena Database instance
+
+    Returns:
+        CoordinationOperations ready to use
+    """
+    store = CoordinationStore(db)
+    await store.initialize()
+    ops = CoordinationOperations(store)
+    return ops
 from .agent_worker import AgentWorker
 from .memory_offload import MemoryOffloadManager, OrchestrationContextManager
 from .health_monitor import HealthMonitor, RecoveryPolicy
