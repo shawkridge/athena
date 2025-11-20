@@ -129,7 +129,59 @@ Athena → TodoWrite (reverse)
     2. [pending] Check todos appear in session-start...
 ```
 
-### 4. TodoWrite Sync Hook (Optional)
+### 4. Local JSON File Restoration
+
+**Modified File**: `~/.claude/hooks/session-start.sh` (added ~35 lines)
+
+**What It Does**:
+1. Detects current session ID via `CLAUDE_SESSION_ID` environment variable
+2. Finds the session's local todo file: `~/.claude/todos/{session-id}-agent-{agent-id}.json`
+3. Directly writes restored todos to that JSON file
+4. This ensures the TodoWrite tool UI sees the restored items
+
+**Why This Matters**:
+- Session-start hook outputs todos as formatted memory items (to stdout)
+- But TodoWrite tool's UI reads from local JSON files (`~/.claude/todos/`)
+- Without this step, todos would be injected into context but not visible in the TodoWrite list
+- This step bridges that gap by updating the local storage directly
+
+**Example**:
+```bash
+# Before /clear
+~/.claude/todos/54960474-29e9-4cc2-9923-0761061cae73-agent-54960474.json
+  [3 test todos]
+
+# After /clear + session-start fires
+~/.claude/todos/54960474-29e9-4cc2-9923-0761061cae73-agent-54960474.json
+  [3 test todos RESTORED from Athena]
+```
+
+### 5. TodoWrite Sync on Tool Use
+
+**Modified File**: `~/.claude/hooks/post-tool-use.sh` (added ~50 lines)
+
+**What It Does**:
+1. Detects when TodoWrite tool is invoked
+2. Reads the current session's local todo file
+3. Syncs each todo to Athena's `todowrite_plans` table
+4. This ensures changes made in the TodoWrite UI are persisted to database
+
+**Bidirectional Sync Flow**:
+```
+TodoWrite Tool Used
+  ↓
+post-tool-use hook fires
+  ↓
+Reads local JSON file (~/.claude/todos/)
+  ↓
+Syncs to Athena (todowrite_plans table)
+  ↓
+On next session-start
+  ↓
+Todos are restored from Athena back to local file
+```
+
+### 6. TodoWrite Sync Hook (Optional)
 
 **Location**: `~/.claude/hooks/todowrite-sync.sh` (76 lines)
 
@@ -183,7 +235,9 @@ You continue working as if the context never cleared.
 ### ✅ Implemented
 - ✓ TodoWriteSyncHelper module with full CRUD operations
 - ✓ Todowrite_plans table with bidirectional mapping
-- ✓ Session-start hook restore logic
+- ✓ Session-start hook restore logic (PostgreSQL → stdout)
+- ✓ **NEW**: Local JSON file restoration (PostgreSQL → `~/.claude/todos/`)
+- ✓ **NEW**: Post-tool-use sync (local JSON → PostgreSQL)
 - ✓ Status conversion (TodoWrite ↔ Athena)
 - ✓ Priority extraction from content
 - ✓ Test suite
@@ -194,6 +248,7 @@ You continue working as if the context never cleared.
 - Procedure extraction from completed todos
 - Performance metrics (sync times, restoration success rates)
 - Caching for frequently accessed todos
+- Conflict resolution when Athena and local files diverge
 
 ## Troubleshooting
 
@@ -224,11 +279,18 @@ You continue working as if the context never cleared.
 Created:
   ~/.claude/hooks/lib/todowrite_helper.py (283 lines)
   ~/.claude/hooks/todowrite-sync.sh (76 lines)
+  ~/.claude/hooks/restore-todos-to-local.sh (150+ lines, util/reference)
   ~/.claude/hooks/test_todowrite_sync.py (150+ lines)
   ~/.claude/hooks/TODOWRITE_SYNC_GUIDE.md (this file)
 
 Modified:
-  ~/.claude/hooks/session-start.sh (+50 lines, TodoWrite restoration)
+  ~/.claude/hooks/session-start.sh:
+    - +50 lines: TodoWrite restoration (PostgreSQL → stdout)
+    - +35 lines: Local JSON file restoration (PostgreSQL → ~/.claude/todos/)
+    - Total: +85 lines new functionality
+
+  ~/.claude/hooks/post-tool-use.sh:
+    - +50 lines: TodoWrite tool detection and sync (local JSON → PostgreSQL)
 
 Database:
   todowrite_plans (new table with 5 indexes)

@@ -164,6 +164,57 @@ try:
 except Exception as e:
     print(f"⚠ Event recording failed: {str(e)}", file=sys.stderr)
 
+# Phase 4: Handle TodoWrite tool - sync to Athena
+try:
+    # Check if this was a TodoWrite tool invocation
+    if tool_result.tool_name and 'todowrite' in tool_result.tool_name.lower():
+        print(f"✓ TodoWrite tool detected - syncing to Athena...", file=sys.stderr)
+
+        from todowrite_helper import TodoWriteSyncHelper
+        from pathlib import Path
+        import json
+
+        # Read the current session's todo file
+        session_id = os.environ.get('CLAUDE_SESSION_ID')
+        if session_id:
+            todos_dir = Path(os.path.expanduser('~/.claude/todos'))
+            todo_files = list(todos_dir.glob(f"{session_id}-agent-*.json"))
+
+            if todo_files:
+                todo_file = todo_files[0]
+                try:
+                    with open(todo_file, 'r') as f:
+                        current_todos = json.load(f)
+
+                    # Sync each todo to Athena
+                    sync_helper = TodoWriteSyncHelper()
+                    synced_count = 0
+
+                    for i, todo in enumerate(current_todos):
+                        result = sync_helper.store_todo_from_sync(
+                            todo_id=f"local_{i}_{abs(hash(todo.get('content', ''))) % 10000}",
+                            content=todo.get('content', ''),
+                            status=todo.get('status', 'pending'),
+                            active_form=todo.get('activeForm', ''),
+                            project_id=project['id'] if project else 1
+                        )
+                        if result:
+                            synced_count += 1
+
+                    if synced_count > 0:
+                        print(f"  ✓ Synced {synced_count} todos to Athena", file=sys.stderr)
+
+                except json.JSONDecodeError:
+                    print(f"  ⚠ Could not parse todo file", file=sys.stderr)
+                except Exception as e:
+                    print(f"  ⚠ Sync failed: {str(e)}", file=sys.stderr)
+            else:
+                print(f"  ⚠ No todo file found for session {session_id}", file=sys.stderr)
+
+except Exception as e:
+    # Silently skip TodoWrite sync if helper not available
+    pass
+
 # Phase 5: Prepare tool execution for response capture threading
 # This will be used by session-end.sh to thread complete conversations
 try:
