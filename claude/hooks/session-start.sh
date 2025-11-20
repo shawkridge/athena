@@ -92,6 +92,8 @@ try:
         project_id = project['id']
 
         # Load working memory (7±2 items with highest importance)
+        # Session checkpoints (importance_score=0.95) are automatically ranked high
+        # by get_active_memories() and appear naturally in the top items
         print(f"✓ Loading working memory from previous session...", file=sys.stderr)
 
         mem_result = bridge.get_active_memories(project_id, limit=7)
@@ -246,8 +248,14 @@ try:
                 )
 
                 if formatted_todos:
-                    print("## Active TodoWrite Items")
+                    print("## Restored Task List (from Previous Session)")
+                    print()
+                    print("Your previous session had the following active tasks:")
+                    print()
                     print(formatted_todos)
+                    print()
+                    print("**ACTION REQUIRED**: Please add these restored tasks to your TodoWrite to resume your workflow.")
+                    print("Use the TodoWrite tool to recreate each task with its original status and description.")
 
                 # User log (stderr)
                 print(f"  ✓ {len(todos)} active TodoWrite items (restored from memory):", file=sys.stderr)

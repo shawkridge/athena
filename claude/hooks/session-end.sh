@@ -34,6 +34,111 @@ OPERATIONS_COUNT="${OPERATIONS_COUNT:-0}"
 log_info "Session Duration: $SESSION_DURATION"
 log_info "Operations Recorded: $OPERATIONS_COUNT"
 
+# OPTIONAL: Phase 0 - Create session checkpoint if /clear is coming
+# This stores a warm resumption context for after context clearing
+log "Phase 0: Creating session checkpoint for potential /clear..."
+
+python3 << 'CHECKPOINT_EOF'
+import sys
+import os
+import logging
+from datetime import datetime, timezone
+import time
+from pathlib import Path
+
+logging.basicConfig(level=logging.WARNING)
+sys.path.insert(0, '/home/user/.claude/hooks/lib')
+
+try:
+    from memory_bridge import MemoryBridge
+    from todowrite_helper import TodoWriteSyncHelper
+    from connection_pool import PooledConnection
+
+    start_time = time.time()
+
+    with MemoryBridge() as bridge:
+        project_path = os.getcwd()
+        project = bridge.get_project_by_path(project_path)
+
+        if not project:
+            print("  ℹ No project context (skipping checkpoint)", file=sys.stderr)
+        else:
+            project_id = project['id']
+            checkpoint_parts = []
+
+            # Get active todos
+            try:
+                sync_helper = TodoWriteSyncHelper()
+                todos = sync_helper.get_active_todos(project_id=project_id)
+
+                if todos:
+                    active_todos = [t for t in todos if t.get('status') == 'in_progress']
+                    pending_todos = [t for t in todos if t.get('status') != 'completed']
+
+                    if active_todos or pending_todos:
+                        checkpoint_parts.append("## Active Tasks")
+                        for todo in active_todos[:2]:
+                            checkpoint_parts.append(f"- **IN PROGRESS**: {todo.get('content', 'Unnamed')}")
+                        for todo in pending_todos[:3]:
+                            if todo not in active_todos:
+                                status = todo.get('status', 'pending')
+                                checkpoint_parts.append(f"- **{status.upper()}**: {todo.get('content', 'Unnamed')}")
+            except Exception as e:
+                pass
+
+            # Get recent important findings
+            try:
+                with PooledConnection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        SELECT content, event_type
+                        FROM episodic_events
+                        WHERE project_id = %s
+                        AND importance_score > 0.6
+                        AND timestamp > extract(epoch from now() - interval '30 minutes') * 1000
+                        ORDER BY timestamp DESC
+                        LIMIT 3
+                    """, (project_id,))
+
+                    recent_findings = cursor.fetchall()
+                    if recent_findings:
+                        checkpoint_parts.append("## Recent Findings")
+                        for content, event_type in recent_findings[:2]:
+                            preview = content[:80] + "..." if len(content) > 80 else content
+                            checkpoint_parts.append(f"- **[{event_type}]**: {preview}")
+            except Exception as e:
+                pass
+
+            # Store checkpoint if there's content
+            if checkpoint_parts:
+                checkpoint_content = "\n".join(checkpoint_parts)
+                event_id = bridge.record_event(
+                    project_id=project_id,
+                    event_type="session_checkpoint",
+                    content=checkpoint_content,
+                    outcome="success"
+                )
+
+                if event_id:
+                    # Update importance to ensure high ranking at next SessionStart
+                    try:
+                        with PooledConnection() as conn:
+                            cursor = conn.cursor()
+                            cursor.execute(
+                                "UPDATE episodic_events SET importance_score = 0.95 WHERE id = %s",
+                                (event_id,)
+                            )
+                            conn.commit()
+                        elapsed_ms = (time.time() - start_time) * 1000
+                        print(f"  ✓ Checkpoint created (ID: {event_id}, {elapsed_ms:.0f}ms)", file=sys.stderr)
+                    except Exception as e:
+                        print(f"  ⚠ Could not update checkpoint importance: {str(e)}", file=sys.stderr)
+
+except Exception as e:
+    print(f"  ⚠ Checkpoint creation failed: {str(e)}", file=sys.stderr)
+
+CHECKPOINT_EOF
+
 # Phase 1: Run consolidation with balanced strategy
 log "Phase 1: Running consolidation (System 1 + selective System 2)..."
 
