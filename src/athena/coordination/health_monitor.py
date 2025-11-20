@@ -10,8 +10,8 @@ Detects and recovers from:
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Dict, Any
+from datetime import datetime, timezone
+from typing import List, Optional, Dict
 
 from .models import Agent, AgentStatus, Task, TaskStatus
 from .operations import CoordinationOperations
@@ -149,9 +149,7 @@ class HealthMonitor:
 
         try:
             # Mark agent as offline
-            await self.coordination_ops.update_agent_status(
-                agent.agent_id, AgentStatus.OFFLINE
-            )
+            await self.coordination_ops.update_agent_status(agent.agent_id, AgentStatus.OFFLINE)
 
             # Reassign its tasks
             tasks = await self.coordination_ops.get_agent_tasks(agent.agent_id)
@@ -170,9 +168,7 @@ class HealthMonitor:
                 logger.info(f"Attempting to respawn agent {agent.agent_id}")
                 await self.respawn_agent(agent)
             else:
-                logger.error(
-                    f"Agent {agent.agent_id} exceeded max restarts; giving up"
-                )
+                logger.error(f"Agent {agent.agent_id} exceeded max restarts; giving up")
 
         except Exception as e:
             logger.error(f"Error handling stale agent {agent.agent_id}: {e}")
@@ -201,7 +197,7 @@ class HealthMonitor:
                 else:
                     # Agent is alive but not making progress
                     # Try killing task and reassigning
-                    logger.warning(f"Task appears stuck; killing and reassigning")
+                    logger.warning("Task appears stuck; killing and reassigning")
                     await self.coordination_ops.fail_task(
                         task.task_id,
                         "Task stuck: no progress for extended time",
@@ -346,4 +342,4 @@ class RecoveryPolicy:
         strategy = RecoveryPolicy.STRATEGIES.get(failure_type, {})
         base_delay = strategy.get("backoff_seconds", 10)
         # Exponential backoff: 10s, 20s, 40s, etc.
-        return base_delay * (2 ** attempt_count)
+        return base_delay * (2**attempt_count)

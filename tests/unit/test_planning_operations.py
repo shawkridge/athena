@@ -2,8 +2,8 @@
 
 import pytest
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
-from typing import Dict, List, Any
+from unittest.mock import AsyncMock, MagicMock
+from typing import Dict, Any
 
 from athena.planning.operations import PlanningOperations
 
@@ -85,7 +85,8 @@ def mock_planning_store():
         return {
             "plan_id": plan_id,
             "total_effort_units": total,
-            "effort_by_phase": [total // (plan.get("depth", 1) or 1)] * max(1, plan.get("depth", 1)),
+            "effort_by_phase": [total // (plan.get("depth", 1) or 1)]
+            * max(1, plan.get("depth", 1)),
             "confidence": 0.75,
         }
 
@@ -292,9 +293,7 @@ class TestPlanningOperations:
 
         assert deep_units >= shallow_units
 
-    async def test_update_plan_status_pending_to_in_progress(
-        self, operations: PlanningOperations
-    ):
+    async def test_update_plan_status_pending_to_in_progress(self, operations: PlanningOperations):
         """Test updating plan status to in_progress."""
         plan = await operations.create_plan("Status Test")
         assert plan["status"] == "pending"

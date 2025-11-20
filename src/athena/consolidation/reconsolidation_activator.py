@@ -14,7 +14,6 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from ..core.database import Database
-from ..episodic.models import EpisodicEvent
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +60,7 @@ class ReconsolidationActivator:
                     """,
                     (self.LABILITY_STATE, event_id),
                 )
-                logger.debug(
-                    f"Memory {event_id} marked labile (window: {window_minutes} min)"
-                )
+                logger.debug(f"Memory {event_id} marked labile (window: {window_minutes} min)")
                 return True
         except Exception as e:
             logger.error(f"Error marking memory {event_id} labile: {e}")
@@ -147,9 +144,7 @@ class ReconsolidationActivator:
                         ([self.CONSOLIDATED_STATE] + ids),
                     )
 
-                    logger.info(
-                        f"Consolidated {count} labile memories (window expired)"
-                    )
+                    logger.info(f"Consolidated {count} labile memories (window expired)")
 
                 return count
 

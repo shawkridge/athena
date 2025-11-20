@@ -36,7 +36,12 @@ class OptimizationAgent(AgentWorker):
             agent_type=AgentType.OPTIMIZATION,
             db=db,
         )
-        self.capabilities = ["performance_optimization", "bottleneck_analysis", "resource_efficiency", "profiling"]
+        self.capabilities = [
+            "performance_optimization",
+            "bottleneck_analysis",
+            "resource_efficiency",
+            "profiling",
+        ]
 
     async def execute(self, task: Task) -> Dict[str, Any]:
         """
@@ -152,10 +157,14 @@ class OptimizationAgent(AgentWorker):
         """Generate optimization strategies."""
         strategies = []
         for bottleneck in bottlenecks:
-            strategies.append(f"{bottleneck['mitigation']} (Impact: {bottleneck['impact_percent']}%)")
+            strategies.append(
+                f"{bottleneck['mitigation']} (Impact: {bottleneck['impact_percent']}%)"
+            )
         return strategies
 
-    async def _simulate_optimizations(self, strategies: List[str], baseline: Dict) -> Dict[str, float]:
+    async def _simulate_optimizations(
+        self, strategies: List[str], baseline: Dict
+    ) -> Dict[str, float]:
         """Simulate optimizations to estimate improvements."""
         # Simulate 30% improvement from optimization strategies
         return {

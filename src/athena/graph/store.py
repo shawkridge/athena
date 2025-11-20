@@ -234,10 +234,24 @@ class GraphStore(BaseStore[Entity]):
             return None
 
         # execute() returns dicts, not tuples
-        return self._row_to_model(row if isinstance(row, dict) else dict(zip(
-            ["id", "name", "entity_type", "project_id", "created_at", "updated_at", "metadata"],
+        return self._row_to_model(
             row
-        )))
+            if isinstance(row, dict)
+            else dict(
+                zip(
+                    [
+                        "id",
+                        "name",
+                        "entity_type",
+                        "project_id",
+                        "created_at",
+                        "updated_at",
+                        "metadata",
+                    ],
+                    row,
+                )
+            )
+        )
 
     def find_entity(
         self, name: str, entity_type: str, project_id: Optional[int] = None
@@ -265,10 +279,24 @@ class GraphStore(BaseStore[Entity]):
             return None
 
         # execute() returns dicts, not tuples
-        return self._row_to_model(row if isinstance(row, dict) else dict(zip(
-            ["id", "name", "entity_type", "project_id", "created_at", "updated_at", "metadata"],
+        return self._row_to_model(
             row
-        )))
+            if isinstance(row, dict)
+            else dict(
+                zip(
+                    [
+                        "id",
+                        "name",
+                        "entity_type",
+                        "project_id",
+                        "created_at",
+                        "updated_at",
+                        "metadata",
+                    ],
+                    row,
+                )
+            )
+        )
 
     def delete_entity(self, entity_id: int) -> bool:
         """Delete entity and all its relations/observations.
@@ -536,10 +564,26 @@ class GraphStore(BaseStore[Entity]):
         entities = []
         for row in rows or []:
             # execute() already returns dicts, not tuples
-            entities.append(self._row_to_model(row if isinstance(row, dict) else dict(zip(
-                ["id", "name", "entity_type", "project_id", "created_at", "updated_at", "metadata"],
-                row
-            ))))
+            entities.append(
+                self._row_to_model(
+                    row
+                    if isinstance(row, dict)
+                    else dict(
+                        zip(
+                            [
+                                "id",
+                                "name",
+                                "entity_type",
+                                "project_id",
+                                "created_at",
+                                "updated_at",
+                                "metadata",
+                            ],
+                            row,
+                        )
+                    )
+                )
+            )
 
         return entities
 
@@ -634,7 +678,11 @@ class GraphStore(BaseStore[Entity]):
         return self.create_relation(relationship)
 
     async def find_related(
-        self, entity_id: int, relation_types: Optional[list[str]] = None, limit: int = 100, depth: int = 1
+        self,
+        entity_id: int,
+        relation_types: Optional[list[str]] = None,
+        limit: int = 100,
+        depth: int = 1,
     ) -> list[Entity]:
         """Find entities related to a given entity using BFS traversal.
 

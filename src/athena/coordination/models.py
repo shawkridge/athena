@@ -12,6 +12,7 @@ from typing import List, Optional, Dict, Any
 
 class AgentStatus(str, Enum):
     """Status of an agent."""
+
     IDLE = "idle"
     BUSY = "busy"
     FAILED = "failed"
@@ -20,6 +21,7 @@ class AgentStatus(str, Enum):
 
 class AgentType(str, Enum):
     """Types of specialist agents."""
+
     RESEARCH = "research"
     ANALYSIS = "analysis"
     SYNTHESIS = "synthesis"
@@ -33,6 +35,7 @@ class AgentType(str, Enum):
 
 class TaskStatus(str, Enum):
     """Status of a task."""
+
     PENDING = "PENDING"
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETED = "COMPLETED"
@@ -41,6 +44,7 @@ class TaskStatus(str, Enum):
 
 class TaskPriority(str, Enum):
     """Priority level of a task."""
+
     CRITICAL = "CRITICAL"
     HIGH = "HIGH"
     MEDIUM = "MEDIUM"
@@ -304,9 +308,7 @@ class AgentMetrics:
             return False
 
         if self.last_failure:
-            time_since_failure = (
-                datetime.now(timezone.utc) - self.last_failure
-            ).total_seconds()
+            time_since_failure = (datetime.now(timezone.utc) - self.last_failure).total_seconds()
             if time_since_failure < 300:  # Failed in last 5 minutes
                 return False
 

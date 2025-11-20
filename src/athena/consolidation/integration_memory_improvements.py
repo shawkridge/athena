@@ -12,7 +12,6 @@ Usage in dreaming.py or orchestrator.py:
     integrate_memory_improvements(consolidation_orchestrator, database)
 """
 
-import asyncio
 import logging
 from typing import Optional
 

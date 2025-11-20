@@ -17,7 +17,6 @@ All operations are direct Python async functions with zero protocol overhead.
 Perfect for AI agents, scripts, and applications that need to remember things.
 """
 
-
 # Re-export all operations for convenient importing
 from athena.episodic.operations import (
     get_by_session as episodic_get_by_session,

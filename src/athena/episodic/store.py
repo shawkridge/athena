@@ -64,8 +64,9 @@ class EpisodicStore(BaseStore):
         if row_dict.get("evidence_type"):
             try:
                 evidence_type = EvidenceType(row_dict.get("evidence_type"))
-            except (ValueError, KeyError) as e:
+            except (ValueError, KeyError):
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.warning(
                     f"Unknown evidence_type in database (event_id={row_dict.get('id')}): "
@@ -79,6 +80,7 @@ class EpisodicStore(BaseStore):
                 code_event_type = CodeEventType(row_dict.get("code_event_type"))
             except (ValueError, KeyError):
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.warning(
                     f"Unknown code_event_type in database (event_id={row_dict.get('id')}): "
@@ -92,6 +94,7 @@ class EpisodicStore(BaseStore):
                 event_type = EventType(row_dict.get("event_type"))
             except (ValueError, KeyError):
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.warning(
                     f"Unknown event_type in database (event_id={row_dict.get('id')}): "
@@ -115,6 +118,7 @@ class EpisodicStore(BaseStore):
                 outcome = EventOutcome(row_dict.get("outcome"))
             except (ValueError, KeyError):
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.warning(
                     f"Unknown outcome in database (event_id={row_dict.get('id')}): "
@@ -148,7 +152,8 @@ class EpisodicStore(BaseStore):
             # Use new lifecycle system
             lifecycle_status=row_dict.get("lifecycle_status", "active"),
             consolidation_score=row_dict.get("consolidation_score", 0.0),
-            last_activation=self._parse_timestamp(row_dict.get("last_activation")) or datetime.now(),
+            last_activation=self._parse_timestamp(row_dict.get("last_activation"))
+            or datetime.now(),
             activation_count=row_dict.get("activation_count", 0),
             # Code-aware fields
             code_event_type=code_event_type,

@@ -60,15 +60,19 @@ class SemanticOperations:
         results = self.store.search.recall(query=query, project_id=1, k=limit)
 
         # Convert MemorySearchResult to dict format for API compatibility
-        return [
-            {
-                "id": r.memory.id,
-                "content": r.memory.content,
-                "similarity": r.similarity,
-                "memory_type": str(r.memory.memory_type) if r.memory.memory_type else None,
-            }
-            for r in results
-        ] if results else []
+        return (
+            [
+                {
+                    "id": r.memory.id,
+                    "content": r.memory.content,
+                    "similarity": r.similarity,
+                    "memory_type": str(r.memory.memory_type) if r.memory.memory_type else None,
+                }
+                for r in results
+            ]
+            if results
+            else []
+        )
 
 
 _operations: SemanticOperations | None = None

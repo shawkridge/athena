@@ -252,12 +252,20 @@ class GraphOperations:
 
         entity_types = {}
         for entity in entities:
-            entity_type_str = entity.entity_type.value if hasattr(entity.entity_type, 'value') else str(entity.entity_type)
+            entity_type_str = (
+                entity.entity_type.value
+                if hasattr(entity.entity_type, "value")
+                else str(entity.entity_type)
+            )
             entity_types[entity_type_str] = entity_types.get(entity_type_str, 0) + 1
 
         relationship_types = {}
         for rel in relationships:
-            rel_type_str = rel.relation_type.value if hasattr(rel.relation_type, 'value') else str(rel.relation_type)
+            rel_type_str = (
+                rel.relation_type.value
+                if hasattr(rel.relation_type, "value")
+                else str(rel.relation_type)
+            )
             relationship_types[rel_type_str] = relationship_types.get(rel_type_str, 0) + 1
 
         # Calculate average importance from metadata
@@ -271,9 +279,7 @@ class GraphOperations:
             "total_relationships": len(relationships),
             "entity_types": entity_types,
             "relationship_types": relationship_types,
-            "avg_importance": (
-                sum(importances) / len(importances) if importances else 0.0
-            ),
+            "avg_importance": (sum(importances) / len(importances) if importances else 0.0),
         }
 
 

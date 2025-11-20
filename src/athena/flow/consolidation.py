@@ -4,11 +4,10 @@ Implements selective consolidation (based on activation) and temporal clustering
 (grouping related items by proximity).
 """
 
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime
 
 from ..core.database import Database
-from .models import TemporalCluster, ConsolidationRule, MemoryTier
+from .models import TemporalCluster, ConsolidationRule
 
 
 class SelectiveConsolidationEngine:
@@ -116,9 +115,7 @@ class SelectiveConsolidationEngine:
             rows = await result.fetchall()
             return len(rows) if rows else 0
 
-    async def apply_consolidation_rules(
-        self, rules: list[ConsolidationRule]
-    ) -> dict[str, int]:
+    async def apply_consolidation_rules(self, rules: list[ConsolidationRule]) -> dict[str, int]:
         """Apply custom consolidation rules.
 
         Args:
@@ -246,9 +243,7 @@ class TemporalClusteringEngine:
 
             # Finalize last cluster
             if current_cluster:
-                cluster = await self._finalize_cluster(
-                    clusters, current_cluster, cluster_start
-                )
+                cluster = await self._finalize_cluster(clusters, current_cluster, cluster_start)
                 clusters.append(cluster)
 
             return clusters
@@ -285,9 +280,7 @@ class TemporalClusteringEngine:
             cluster_coherence=coherence,
         )
 
-    async def consolidate_cluster(
-        self, cluster: TemporalCluster, promote_all: bool = True
-    ) -> int:
+    async def consolidate_cluster(self, cluster: TemporalCluster, promote_all: bool = True) -> int:
         """Consolidate all items in a cluster together.
 
         Args:

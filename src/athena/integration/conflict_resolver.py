@@ -16,8 +16,7 @@ Strategies:
 from __future__ import annotations
 
 import logging
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from ..core.database import Database
 from .todowrite_sync import (

@@ -1,7 +1,6 @@
 """Integration tests for semantic store operations."""
 
 import pytest
-import asyncio
 from datetime import datetime, timedelta
 from athena.semantic.store import SemanticStore
 from athena.core.models import Memory, MemoryType, ConsolidationState

@@ -4,10 +4,7 @@ Tests git worktree detection, path handling, and isolation mechanisms.
 """
 
 import pytest
-import os
-import tempfile
 import subprocess
-from pathlib import Path
 
 
 class TestGitWorktreeHelper:
@@ -55,6 +52,7 @@ class TestGitWorktreeHelper:
         """Test detection of main repository (not a worktree)."""
         # Import here to ensure sys.path is set up
         import sys
+
         sys.path.insert(0, "/home/user/.claude/hooks/lib")
         from git_worktree_helper import GitWorktreeHelper
 
@@ -70,6 +68,7 @@ class TestGitWorktreeHelper:
     def test_worktree_detection(self, git_repo):
         """Test detection of git worktree."""
         import sys
+
         sys.path.insert(0, "/home/user/.claude/hooks/lib")
         from git_worktree_helper import GitWorktreeHelper
 
@@ -103,6 +102,7 @@ class TestGitWorktreeHelper:
     def test_non_git_directory(self, tmp_path):
         """Test behavior in non-git directory."""
         import sys
+
         sys.path.insert(0, "/home/user/.claude/hooks/lib")
         from git_worktree_helper import GitWorktreeHelper
 
@@ -119,6 +119,7 @@ class TestGitWorktreeHelper:
     def test_get_isolation_key_git_repo(self, git_repo):
         """Test isolation key for git repository."""
         import sys
+
         sys.path.insert(0, "/home/user/.claude/hooks/lib")
         from git_worktree_helper import GitWorktreeHelper
 
@@ -131,6 +132,7 @@ class TestGitWorktreeHelper:
     def test_get_isolation_key_non_git(self, tmp_path):
         """Test isolation key for non-git directory."""
         import sys
+
         sys.path.insert(0, "/home/user/.claude/hooks/lib")
         from git_worktree_helper import GitWorktreeHelper
 
@@ -146,6 +148,7 @@ class TestGitWorktreeHelper:
     def test_is_same_project(self, git_repo):
         """Test project comparison across worktrees."""
         import sys
+
         sys.path.insert(0, "/home/user/.claude/hooks/lib")
         from git_worktree_helper import GitWorktreeHelper
 
@@ -180,6 +183,7 @@ class TestGitWorktreeHelper:
     def test_list_worktrees(self, git_repo):
         """Test listing all worktrees in a repository."""
         import sys
+
         sys.path.insert(0, "/home/user/.claude/hooks/lib")
         from git_worktree_helper import GitWorktreeHelper
 

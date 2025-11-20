@@ -55,8 +55,7 @@ class ConsolidationQualityMetrics:
         # Get episodic event count using named columns for proper row access
         cursor = self.episodic_store.db.get_cursor()
         cursor.execute(
-            "SELECT COUNT(*) as count FROM episodic_events WHERE session_id = %s",
-            (session_id,)
+            "SELECT COUNT(*) as count FROM episodic_events WHERE session_id = %s", (session_id,)
         )
         row = cursor.fetchone()
         event_count = row.get("count") if hasattr(row, "get") else row[0]
@@ -66,7 +65,7 @@ class ConsolidationQualityMetrics:
         # Get average content length from episodic events
         cursor.execute(
             "SELECT AVG(LENGTH(content)) as avg_len FROM episodic_events WHERE session_id = %s",
-            (session_id,)
+            (session_id,),
         )
         row = cursor.fetchone()
         avg_episodic_len = row.get("avg_len") if hasattr(row, "get") else row[0] or 0
@@ -75,7 +74,7 @@ class ConsolidationQualityMetrics:
         # Count tokens in semantic memories from this session
         cursor.execute(
             "SELECT COALESCE(SUM(LENGTH(content)), 0) as total_len FROM semantic_memories WHERE session_id = %s",
-            (session_id,)
+            (session_id,),
         )
         row = cursor.fetchone()
         semantic_len = row.get("total_len") if hasattr(row, "get") else row[0]
@@ -101,8 +100,7 @@ class ConsolidationQualityMetrics:
         """
         cursor = self.episodic_store.db.get_cursor()
         cursor.execute(
-            "SELECT COUNT(*) as count FROM episodic_events WHERE session_id = %s",
-            (session_id,)
+            "SELECT COUNT(*) as count FROM episodic_events WHERE session_id = %s", (session_id,)
         )
         row = cursor.fetchone()
         event_count = row.get("count") if hasattr(row, "get") else row[0]
@@ -118,8 +116,7 @@ class ConsolidationQualityMetrics:
         # Estimate recall based on data available
         # If we have episodic events and can create semantic memories, recall is high
         cursor.execute(
-            "SELECT COUNT(*) as count FROM semantic_memories WHERE session_id = %s",
-            (session_id,)
+            "SELECT COUNT(*) as count FROM semantic_memories WHERE session_id = %s", (session_id,)
         )
         row = cursor.fetchone()
         semantic_count = row.get("count") if hasattr(row, "get") else row[0]
@@ -153,8 +150,7 @@ class ConsolidationQualityMetrics:
         """
         cursor = self.episodic_store.db.get_cursor()
         cursor.execute(
-            "SELECT COUNT(*) as count FROM episodic_events WHERE session_id = %s",
-            (session_id,)
+            "SELECT COUNT(*) as count FROM episodic_events WHERE session_id = %s", (session_id,)
         )
         row = cursor.fetchone()
         event_count = row.get("count") if hasattr(row, "get") else row[0]
@@ -165,7 +161,7 @@ class ConsolidationQualityMetrics:
         # Get semantic memories (patterns) for this session via database
         cursor.execute(
             "SELECT id, usefulness_score FROM semantic_memories WHERE session_id = %s ORDER BY created_at DESC LIMIT 100",
-            (session_id,)
+            (session_id,),
         )
         semantic_memories = cursor.fetchall()
 

@@ -8,8 +8,7 @@ Provides methods to generate data for visualization of:
 """
 
 import logging
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime
 
 from .metrics import FlowMetricsTracker
 from ..core.database import Database
@@ -29,9 +28,7 @@ class FlowVisualizationHelper:
         self.db = db
         self.metrics = FlowMetricsTracker(db)
 
-    async def get_tier_distribution_chart_data(
-        self, hours: int = 24
-    ) -> dict:
+    async def get_tier_distribution_chart_data(self, hours: int = 24) -> dict:
         """Get data for tier distribution visualization.
 
         Returns data suitable for a pie chart or bar chart showing
@@ -50,9 +47,9 @@ class FlowVisualizationHelper:
             labels = []
             data = []
             colors = {
-                "active": "#4CAF50",      # Green
-                "session": "#2196F3",     # Blue
-                "archived": "#9E9E9E",    # Gray
+                "active": "#4CAF50",  # Green
+                "session": "#2196F3",  # Blue
+                "archived": "#9E9E9E",  # Gray
             }
 
             for tier, count in sorted(distribution.items()):
@@ -70,9 +67,7 @@ class FlowVisualizationHelper:
             logger.error(f"Error generating tier distribution chart: {e}")
             return {}
 
-    async def get_activation_decay_chart_data(
-        self, event_id: int, hours: int = 24
-    ) -> dict:
+    async def get_activation_decay_chart_data(self, event_id: int, hours: int = 24) -> dict:
         """Get data for activation decay curve visualization.
 
         Shows how an item's activation decreases over time due to
@@ -128,9 +123,7 @@ class FlowVisualizationHelper:
             logger.error(f"Error generating decay chart: {e}")
             return {}
 
-    async def get_consolidation_progress_data(
-        self, hours: int = 24
-    ) -> dict:
+    async def get_consolidation_progress_data(self, hours: int = 24) -> dict:
         """Get data showing consolidation progress over time.
 
         Shows:
@@ -169,9 +162,7 @@ class FlowVisualizationHelper:
             logger.error(f"Error generating consolidation data: {e}")
             return {}
 
-    async def get_rif_analysis_chart_data(
-        self, hours: int = 24
-    ) -> dict:
+    async def get_rif_analysis_chart_data(self, hours: int = 24) -> dict:
         """Get data for RIF (Retrieval-Induced Forgetting) analysis.
 
         Shows the suppression effect of RIF on similar items.
@@ -205,9 +196,7 @@ class FlowVisualizationHelper:
             logger.error(f"Error generating RIF chart: {e}")
             return {}
 
-    async def get_access_pattern_data(
-        self, hours: int = 24, top_n: int = 10
-    ) -> dict:
+    async def get_access_pattern_data(self, hours: int = 24, top_n: int = 10) -> dict:
         """Get data showing access patterns.
 
         Shows which items are accessed most frequently.
@@ -226,7 +215,7 @@ class FlowVisualizationHelper:
                 return {}
 
             event_ids = [f"Event {p['event_id']}" for p in patterns]
-            access_counts = [p['access_count'] for p in patterns]
+            access_counts = [p["access_count"] for p in patterns]
 
             return {
                 "type": "bar",
@@ -239,9 +228,7 @@ class FlowVisualizationHelper:
             logger.error(f"Error generating access pattern data: {e}")
             return {}
 
-    async def get_memory_health_dashboard(
-        self, hours: int = 24
-    ) -> dict:
+    async def get_memory_health_dashboard(self, hours: int = 24) -> dict:
         """Get comprehensive memory health dashboard data.
 
         Combines multiple metrics into a single dashboard view.
@@ -269,9 +256,7 @@ class FlowVisualizationHelper:
                     "mean_activation": consolidation.get("mean_activation", 0),
                     "working_memory_size": distribution.get("active", 0),
                     "session_cache_size": distribution.get("session", 0),
-                    "suppression_rate": (
-                        (1 - rif.get("mean_interference", 1.0)) * 100
-                    ),
+                    "suppression_rate": ((1 - rif.get("mean_interference", 1.0)) * 100),
                 },
             }
         except Exception as e:

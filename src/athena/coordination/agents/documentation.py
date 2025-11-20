@@ -36,7 +36,12 @@ class DocumentationAgent(AgentWorker):
             agent_type=AgentType.DOCUMENTATION,
             db=db,
         )
-        self.capabilities = ["api_documentation", "code_documentation", "user_guides", "technical_writing"]
+        self.capabilities = [
+            "api_documentation",
+            "code_documentation",
+            "user_guides",
+            "technical_writing",
+        ]
 
     async def execute(self, task: Task) -> Dict[str, Any]:
         """
@@ -78,7 +83,9 @@ class DocumentationAgent(AgentWorker):
 
             # Step 4: Generate documentation content
             await self.report_progress(60, findings={"stage": "generating_content"})
-            content = await self._generate_documentation_content(doc_type, sections, source_analysis)
+            content = await self._generate_documentation_content(
+                doc_type, sections, source_analysis
+            )
             results["content"] = content
 
             # Step 5: Extract and create code examples
@@ -193,7 +200,9 @@ class DocumentationAgent(AgentWorker):
         """Format documentation with proper styling."""
         formatted = content
         for example in examples:
-            formatted += f"\n### {example['title']}\n\n```{example['language']}\n{example['code']}\n```\n"
+            formatted += (
+                f"\n### {example['title']}\n\n```{example['language']}\n{example['code']}\n```\n"
+            )
         return formatted
 
     async def _generate_output_files(self, doc_type: str, content: str) -> List[str]:

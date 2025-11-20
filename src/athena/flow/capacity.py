@@ -4,10 +4,8 @@ Enforces Baddeley's working memory limit (7±2 items) and manages
 movement between working memory → session cache → episodic archive.
 """
 
-from typing import Optional
 
 from ..core.database import Database
-from .models import MemoryTier
 
 
 class TierCapacityManager:

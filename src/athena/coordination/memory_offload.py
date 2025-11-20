@@ -153,9 +153,7 @@ class MemoryOffloadManager:
             logger.error(f"Failed to restore state: {e}")
             return None
 
-    async def get_minimal_context(
-        self, state: OrchestrationState
-    ) -> Dict[str, Any]:
+    async def get_minimal_context(self, state: OrchestrationState) -> Dict[str, Any]:
         """
         Get minimal context for orchestrator (for lean context usage).
 
@@ -179,9 +177,7 @@ class MemoryOffloadManager:
                 "progress_pct": state.progress_percentage(),
             },
             "active_agents": state.active_agents[:3],  # Just IDs of active agents
-            "last_checkpoint": state.last_checkpoint.isoformat()
-            if state.last_checkpoint
-            else None,
+            "last_checkpoint": state.last_checkpoint.isoformat() if state.last_checkpoint else None,
         }
 
     async def estimate_context_tokens(self, state: OrchestrationState) -> int:
@@ -222,9 +218,7 @@ class MemoryOffloadManager:
         """
         return state.context_tokens_used > (state.context_tokens_limit * 0.8)
 
-    async def offload_and_resume(
-        self, state: OrchestrationState, athena_manager
-    ) -> bool:
+    async def offload_and_resume(self, state: OrchestrationState, athena_manager) -> bool:
         """
         Offload context and resume lean operation.
 
@@ -242,9 +236,7 @@ class MemoryOffloadManager:
 
         try:
             # 1. Checkpoint full state to memory
-            if not await self.checkpoint_orchestration_state(
-                state, reason="context_offload"
-            ):
+            if not await self.checkpoint_orchestration_state(state, reason="context_offload"):
                 logger.error("Failed to checkpoint before offload")
                 return False
 
@@ -276,9 +268,7 @@ class OrchestrationContextManager:
         self.athena = athena_manager
         self.offload_mgr = MemoryOffloadManager(db, athena_manager)
 
-    async def get_context_budget_remaining(
-        self, current_tokens: int, limit: int = 200000
-    ) -> int:
+    async def get_context_budget_remaining(self, current_tokens: int, limit: int = 200000) -> int:
         """Get remaining context tokens for orchestration."""
         return max(0, limit - current_tokens)
 
@@ -308,9 +298,7 @@ class OrchestrationContextManager:
 
         return None
 
-    async def auto_offload_if_needed(
-        self, state: OrchestrationState
-    ) -> bool:
+    async def auto_offload_if_needed(self, state: OrchestrationState) -> bool:
         """
         Automatically offload context if threshold exceeded.
 

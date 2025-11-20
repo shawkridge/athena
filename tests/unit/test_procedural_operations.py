@@ -1,11 +1,10 @@
 """Unit tests for procedural memory operations."""
 
 import pytest
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from athena.procedural.operations import ProceduralOperations
-from athena.procedural.models import Procedure, ProcedureCategory
+from athena.procedural.models import Procedure
 
 pytestmark = pytest.mark.asyncio
 

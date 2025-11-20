@@ -6,7 +6,6 @@ and its core classes are available.
 """
 
 import pytest
-from datetime import datetime, timedelta
 
 
 class TestAllLayersIntegration:
@@ -107,13 +106,13 @@ class TestAllLayersIntegration:
         }
 
         # Print results
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("8-LAYER MEMORY SYSTEM - STRUCTURAL VERIFICATION")
-        print("="*70)
+        print("=" * 70)
         for layer_name, cls in layers.items():
             status = "✅ AVAILABLE" if cls is not None else "❌ MISSING"
             print(f"{layer_name}: {status}")
-        print("="*70)
+        print("=" * 70)
 
         # Verify all are available
         assert all(cls is not None for cls in layers.values()), "Some layers are missing"
@@ -127,6 +126,7 @@ class TestLayersWithDatabase:
     async def db(self):
         """Initialize database for testing."""
         from src.athena.core.database import Database
+
         database = Database()
         await database.initialize()
         yield database
@@ -147,7 +147,6 @@ class TestLayersWithDatabase:
         from src.athena.meta.operations import MetaOperations
         from src.athena.meta.store import MetaMemoryStore
         from src.athena.consolidation.operations import ConsolidationOperations
-        from src.athena.consolidation.system import ConsolidationSystem
         from src.athena.planning.operations import PlanningOperations
         from src.athena.planning.store import PlanningStore
 
@@ -213,12 +212,12 @@ class TestLayersWithDatabase:
             results["Layer 8: Planning"] = f"❌ {str(e)[:50]}"
 
         # Print results
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("8-LAYER MEMORY SYSTEM - FUNCTIONAL VERIFICATION")
-        print("="*70)
+        print("=" * 70)
         for layer_name, status in results.items():
             print(f"{layer_name}: {status}")
-        print("="*70)
+        print("=" * 70)
 
         # Verify all are OK
         all_ok = all("✅" in status for status in results.values())

@@ -11,13 +11,12 @@ Main orchestration engine that:
 
 import asyncio
 import logging
-import subprocess
 import uuid
-from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
 try:
     import libtmux
+
     LIBTMUX_AVAILABLE = True
 except ImportError:
     LIBTMUX_AVAILABLE = False
@@ -159,9 +158,7 @@ class Orchestrator:
                     logger.warning(f"Could not create tmux pane for agent: {e}")
                     # Continue without tmux visualization
 
-            self.active_agents[agent_id] = await self.coordination_ops.get_agent(
-                agent_id
-            )
+            self.active_agents[agent_id] = await self.coordination_ops.get_agent(agent_id)
             return agent_id
 
         except Exception as e:
@@ -235,16 +232,14 @@ class Orchestrator:
             # TODO: Decompose task using planning layer
             # For now, assume task has been decomposed into subtasks
             subtasks = await self.coordination_ops.get_active_tasks()
-            self.state.decomposed_subtasks = [t.task_id for t in subtasks if t.task_id != parent_task_id]
+            self.state.decomposed_subtasks = [
+                t.task_id for t in subtasks if t.task_id != parent_task_id
+            ]
 
             # Start monitoring background tasks
             self._should_run = True
-            self._health_check_task = asyncio.create_task(
-                self._health_check_loop()
-            )
-            self._progress_monitor_task = asyncio.create_task(
-                self._progress_monitor_loop()
-            )
+            self._health_check_task = asyncio.create_task(self._health_check_loop())
+            self._progress_monitor_task = asyncio.create_task(self._progress_monitor_loop())
 
             # Assign agents to work
             await self._assign_work(max_concurrent_agents)
@@ -304,9 +299,7 @@ class Orchestrator:
             # Try to claim task
             claimed = await self.coordination_ops.claim_task(agent_id, task.task_id)
             if claimed:
-                logger.info(
-                    f"Assigned task {task.task_id} to agent {agent_id}"
-                )
+                logger.info(f"Assigned task {task.task_id} to agent {agent_id}")
 
     async def _get_or_spawn_agent(self, agent_type: AgentType) -> Optional[str]:
         """Get idle agent of type, or spawn new one."""
@@ -341,11 +334,9 @@ class Orchestrator:
         if not self.state:
             return False
 
-        return (
-            len(self.state.failed_tasks) > 0 or  # Stopped due to failures
-            len(self.state.completed_tasks) + len(self.state.failed_tasks)
-            == len(self.state.decomposed_subtasks)
-        )
+        return len(self.state.failed_tasks) > 0 or len(  # Stopped due to failures
+            self.state.completed_tasks
+        ) + len(self.state.failed_tasks) == len(self.state.decomposed_subtasks)
 
     async def _gather_results(self) -> Dict[str, Any]:
         """Gather results from completed tasks."""

@@ -6,7 +6,6 @@ for analysis and visualization.
 
 import logging
 from datetime import datetime
-from typing import Optional
 
 from ..core.database import Database
 
@@ -70,9 +69,7 @@ class FlowMetricsTracker:
             logger.error(f"Error recording activation change: {e}")
             return False
 
-    async def get_activation_timeline(
-        self, event_id: int, hours: int = 24
-    ) -> list[dict]:
+    async def get_activation_timeline(self, event_id: int, hours: int = 24) -> list[dict]:
         """Get activation history for an event over time.
 
         Args:
@@ -111,9 +108,7 @@ class FlowMetricsTracker:
             logger.error(f"Error retrieving activation timeline: {e}")
             return []
 
-    async def get_tier_distribution(
-        self, hours: int = 24
-    ) -> dict[str, int]:
+    async def get_tier_distribution(self, hours: int = 24) -> dict[str, int]:
         """Get distribution of items across tiers.
 
         Args:
@@ -140,9 +135,7 @@ class FlowMetricsTracker:
             logger.error(f"Error calculating tier distribution: {e}")
             return {}
 
-    async def get_consolidation_metrics(
-        self, hours: int = 24
-    ) -> dict:
+    async def get_consolidation_metrics(self, hours: int = 24) -> dict:
         """Get consolidation metrics for analysis.
 
         Args:
@@ -185,9 +178,7 @@ class FlowMetricsTracker:
             logger.error(f"Error calculating consolidation metrics: {e}")
             return {}
 
-    async def get_interference_analysis(
-        self, hours: int = 24
-    ) -> dict:
+    async def get_interference_analysis(self, hours: int = 24) -> dict:
         """Analyze RIF (Retrieval-Induced Forgetting) effects.
 
         Args:
@@ -224,9 +215,7 @@ class FlowMetricsTracker:
             logger.error(f"Error analyzing interference: {e}")
             return {}
 
-    async def get_access_patterns(
-        self, hours: int = 24, top_n: int = 10
-    ) -> list[dict]:
+    async def get_access_patterns(self, hours: int = 24, top_n: int = 10) -> list[dict]:
         """Get most frequently accessed items.
 
         Args:

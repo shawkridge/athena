@@ -8,9 +8,7 @@ This module integrates the orchestration system with Athena's learning layers:
 - Expertise tracking guides task-to-agent routing
 """
 
-import asyncio
 import logging
-from datetime import datetime
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 
@@ -20,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AgentPerformanceMetrics:
     """Metrics tracking agent effectiveness."""
+
     agent_id: str
     agent_type: str
     domain: str
@@ -77,7 +76,7 @@ class LearningIntegrationManager:
         domain: str,
         success: bool,
         duration_minutes: float,
-        result: Optional[str] = None
+        result: Optional[str] = None,
     ) -> bool:
         """Record task completion and update learning metrics.
 
@@ -105,7 +104,7 @@ class LearningIntegrationManager:
                 content=event_content,
                 event_type="agent_workflow",
                 tags=["orchestration", "agent_learning", domain, agent_id],
-                importance=0.7 if success else 0.4
+                importance=0.7 if success else 0.4,
             )
 
             # 2. Update performance metrics
@@ -115,9 +114,7 @@ class LearningIntegrationManager:
 
             # 3. Extract procedure if successful
             if success and self.procedural_store:
-                await self._extract_procedure(
-                    agent_id, task_content, domain, duration_minutes
-                )
+                await self._extract_procedure(agent_id, task_content, domain, duration_minutes)
 
             # 4. Update meta-memory with expertise
             if self.meta_store:
@@ -130,12 +127,7 @@ class LearningIntegrationManager:
             return False
 
     async def _update_performance_metrics(
-        self,
-        agent_id: str,
-        task_id: int,
-        domain: str,
-        success: bool,
-        duration_minutes: float
+        self, agent_id: str, task_id: int, domain: str, success: bool, duration_minutes: float
     ) -> None:
         """Update cached performance metrics for agent."""
         try:
@@ -153,25 +145,20 @@ class LearningIntegrationManager:
 
             # Update success rate
             metrics.success_rate = (
-                metrics.completed_tasks / metrics.total_tasks
-                if metrics.total_tasks > 0 else 0
+                metrics.completed_tasks / metrics.total_tasks if metrics.total_tasks > 0 else 0
             )
 
             # Update average duration
             old_avg = metrics.avg_duration_minutes
             metrics.avg_duration_minutes = (
-                (old_avg * (metrics.total_tasks - 1) + duration_minutes)
-                / metrics.total_tasks
-            )
+                old_avg * (metrics.total_tasks - 1) + duration_minutes
+            ) / metrics.total_tasks
 
             # Calculate expertise score (0-1 based on success rate and speed)
             # Success rate: 50% of score
             # Speed bonus: faster agents get +boost (assuming <5min is fast)
             speed_bonus = 0.2 if duration_minutes < 5 else (0.1 if duration_minutes < 15 else 0)
-            metrics.expertise_score = min(
-                metrics.success_rate * 0.5 + speed_bonus,
-                1.0
-            )
+            metrics.expertise_score = min(metrics.success_rate * 0.5 + speed_bonus, 1.0)
 
             self._performance_cache[agent_id] = metrics
 
@@ -182,11 +169,7 @@ class LearningIntegrationManager:
             logger.error(f"Failed to update metrics for {agent_id}: {e}")
 
     async def _extract_procedure(
-        self,
-        agent_id: str,
-        task_content: str,
-        domain: str,
-        duration_minutes: float
+        self, agent_id: str, task_content: str, domain: str, duration_minutes: float
     ) -> None:
         """Extract reusable procedure from successful task execution."""
         if not self.procedural_store:
@@ -197,9 +180,7 @@ class LearningIntegrationManager:
             procedure_name = f"execute_{domain}_workflow"
 
             # Check if similar procedure exists
-            existing = await self.procedural_store.list_procedures(
-                category=domain, limit=10
-            )
+            existing = await self.procedural_store.list_procedures(category=domain, limit=10)
 
             # Only create new procedure if we don't have many for this domain
             if len(existing) < 5:
@@ -209,10 +190,10 @@ class LearningIntegrationManager:
                     steps=[
                         {"step": 1, "action": "analyze_task", "description": task_content[:100]},
                         {"step": 2, "action": "execute", "description": f"Execute by {agent_id}"},
-                        {"step": 3, "action": "validate", "description": "Validate results"}
+                        {"step": 3, "action": "validate", "description": "Validate results"},
                     ],
                     success_rate=1.0,
-                    estimated_duration_minutes=duration_minutes
+                    estimated_duration_minutes=duration_minutes,
                 )
 
                 logger.info(f"Extracted procedure {procedure_name} from {agent_id}")
@@ -220,12 +201,7 @@ class LearningIntegrationManager:
         except Exception as e:
             logger.error(f"Failed to extract procedure: {e}")
 
-    async def _update_expertise(
-        self,
-        agent_id: str,
-        domain: str,
-        success: bool
-    ) -> None:
+    async def _update_expertise(self, agent_id: str, domain: str, success: bool) -> None:
         """Update meta-memory with agent expertise in domain."""
         if not self.meta_store:
             return
@@ -235,9 +211,7 @@ class LearningIntegrationManager:
             expertise_key = f"agent_{agent_id}_expertise_{domain}"
 
             # Get current expertise
-            current = await self.meta_store.get_expertise(
-                domain=domain, agent_id=agent_id
-            )
+            current = await self.meta_store.get_expertise(domain=domain, agent_id=agent_id)
 
             if current:
                 # Boost expertise on success
@@ -247,9 +221,7 @@ class LearningIntegrationManager:
 
             # Update meta-memory
             await self.meta_store.rate_memory(
-                memory_id=expertise_key,
-                quality_score=new_score,
-                usefulness=1.0 if success else 0.3
+                memory_id=expertise_key, quality_score=new_score, usefulness=1.0 if success else 0.3
             )
 
         except Exception as e:
@@ -269,7 +241,7 @@ class LearningIntegrationManager:
                 failed_tasks=0,
                 success_rate=0.0,
                 avg_duration_minutes=0.0,
-                expertise_score=0.5
+                expertise_score=0.5,
             )
         except Exception as e:
             logger.error(f"Failed to load metrics: {e}")
@@ -282,14 +254,10 @@ class LearningIntegrationManager:
                 failed_tasks=0,
                 success_rate=0.0,
                 avg_duration_minutes=0.0,
-                expertise_score=0.5
+                expertise_score=0.5,
             )
 
-    async def _persist_metrics(
-        self,
-        agent_id: str,
-        metrics: AgentPerformanceMetrics
-    ) -> None:
+    async def _persist_metrics(self, agent_id: str, metrics: AgentPerformanceMetrics) -> None:
         """Persist metrics to database."""
         try:
             # Store in episodic memory as metadata
@@ -299,7 +267,7 @@ class LearningIntegrationManager:
                 content=f"Agent metrics update: {metrics.to_dict()}",
                 event_type="agent_metrics",
                 tags=["agent_performance", agent_id, metrics.domain],
-                importance=0.3
+                importance=0.3,
             )
 
         except Exception as e:
@@ -324,9 +292,7 @@ class LearningIntegrationManager:
         return metrics.expertise_score
 
     async def get_best_agent_for_domain(
-        self,
-        domain: str,
-        available_agents: List[str]
+        self, domain: str, available_agents: List[str]
     ) -> Optional[str]:
         """Get best-performing agent for a domain.
 
@@ -361,16 +327,14 @@ class LearningIntegrationManager:
             return {"agents": []}
 
         return {
-            "agents": [
-                metrics.to_dict()
-                for metrics in self._performance_cache.values()
-            ],
+            "agents": [metrics.to_dict() for metrics in self._performance_cache.values()],
             "total_agents": len(self._performance_cache),
             "avg_success_rate": (
                 sum(m.success_rate for m in self._performance_cache.values())
                 / len(self._performance_cache)
-                if self._performance_cache else 0
-            )
+                if self._performance_cache
+                else 0
+            ),
         }
 
 
@@ -379,18 +343,14 @@ _learning_manager: Optional[LearningIntegrationManager] = None
 
 
 async def get_learning_manager(
-    db=None,
-    procedural_store=None,
-    meta_store=None
+    db=None, procedural_store=None, meta_store=None
 ) -> LearningIntegrationManager:
     """Get or initialize learning integration manager."""
     global _learning_manager
 
     if _learning_manager is None:
         _learning_manager = LearningIntegrationManager(
-            db=db,
-            procedural_store=procedural_store,
-            meta_store=meta_store
+            db=db, procedural_store=procedural_store, meta_store=meta_store
         )
 
     return _learning_manager

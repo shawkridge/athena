@@ -7,11 +7,11 @@ Implements neuroscience-inspired activation dynamics:
 """
 
 import math
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 from ..core.database import Database
-from .models import ActivationState, MemoryTier
+from .models import ActivationState
 
 
 class ActivationSystem:
@@ -98,9 +98,7 @@ class ActivationSystem:
             )
 
             # Find similar items (same event type, similar importance, recent)
-            similar_items = await self._find_similar_items(
-                conn, event_id, similarity_threshold
-            )
+            similar_items = await self._find_similar_items(conn, event_id, similarity_threshold)
 
             # Suppress similar items (RIF effect)
             for similar_id in similar_items:
@@ -131,9 +129,7 @@ class ActivationSystem:
             )
             return result.rowcount
 
-    async def _find_similar_items(
-        self, conn, event_id: int, threshold: float
-    ) -> list[int]:
+    async def _find_similar_items(self, conn, event_id: int, threshold: float) -> list[int]:
         """Find items similar to the given event.
 
         Similarity based on:
@@ -207,9 +203,7 @@ class ActivationSystem:
 
             # Compute current activation with decay
             base_activation = min(1.0, access_count / 10.0)  # Access count → base strength
-            current_activation = await self.compute_activation(
-                base_activation, last_access
-            )
+            current_activation = await self.compute_activation(base_activation, last_access)
 
             return ActivationState(
                 event_id=event_id,

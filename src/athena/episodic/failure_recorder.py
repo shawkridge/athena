@@ -62,7 +62,7 @@ The consolidation system will automatically:
 import logging
 from datetime import datetime
 from typing import Dict, Any, Optional
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 from .models import EpisodicEvent, EventType
 from .store import EpisodicStore
@@ -158,9 +158,7 @@ class FailureEventRecorder:
                 )
             )
 
-            self.logger.info(
-                f"Recorded failure event: {component}/{failure_type} (id={event_id})"
-            )
+            self.logger.info(f"Recorded failure event: {component}/{failure_type} (id={event_id})")
 
             return event_id
 
@@ -172,9 +170,7 @@ class FailureEventRecorder:
             )
             raise
 
-    async def record_import_failure(
-        self, module: str, dependency: str, solution: str = ""
-    ) -> int:
+    async def record_import_failure(self, module: str, dependency: str, solution: str = "") -> int:
         """Record an import failure (missing dependency).
 
         Args:
@@ -249,9 +245,7 @@ class FailureEventRecorder:
             },
         )
 
-    async def get_failures_by_type(
-        self, failure_type: str, limit: int = 100
-    ) -> list:
+    async def get_failures_by_type(self, failure_type: str, limit: int = 100) -> list:
         """Get all failures of a specific type.
 
         Used by consolidation system to extract patterns.

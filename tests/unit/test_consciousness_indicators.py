@@ -10,7 +10,7 @@ Tests all 6 consciousness indicators:
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime
 from athena.consciousness.indicators import (
     IndicatorScore,
     GlobalWorkspaceIndicator,
@@ -53,9 +53,7 @@ class TestIndicatorScore:
     def test_indicator_score_components(self):
         """Test components field."""
         components = {"component1": 4.5, "component2": 5.5}
-        score = IndicatorScore(
-            name="test", score=5.0, components=components
-        )
+        score = IndicatorScore(name="test", score=5.0, components=components)
         assert score.components == components
 
     def test_indicator_score_default_values(self):

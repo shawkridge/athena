@@ -5,7 +5,6 @@ from typing import Optional, List, Dict
 from dataclasses import dataclass
 
 
-
 @dataclass
 class ConflictResolution:
     """Record of a conflict resolution."""

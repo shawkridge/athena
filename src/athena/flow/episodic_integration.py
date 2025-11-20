@@ -184,9 +184,7 @@ class FlowAwareEpisodicStore:
 
         return results
 
-    async def get_consolidation_candidates(
-        self, threshold: float = 0.7
-    ) -> list[dict]:
+    async def get_consolidation_candidates(self, threshold: float = 0.7) -> list[dict]:
         """Get events ready for consolidation to semantic memory.
 
         Args:
@@ -204,9 +202,7 @@ class FlowAwareEpisodicStore:
                 results.append(
                     {
                         "event": event,
-                        "consolidation_score": candidate.get(
-                            "consolidation_score", 0
-                        ),
+                        "consolidation_score": candidate.get("consolidation_score", 0),
                         "access_count": candidate.get("access_count", 0),
                     }
                 )
@@ -227,9 +223,7 @@ class FlowAwareEpisodicStore:
         return await self.episodic.get_statistics()
 
 
-def wrap_episodic_store_with_flow(
-    store: EpisodicStore, db: Database
-) -> FlowAwareEpisodicStore:
+def wrap_episodic_store_with_flow(store: EpisodicStore, db: Database) -> FlowAwareEpisodicStore:
     """Wrap existing episodic store with flow routing.
 
     Useful for retrofitting existing code to use flow routing.

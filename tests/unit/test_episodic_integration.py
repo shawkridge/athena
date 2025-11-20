@@ -6,7 +6,6 @@ from athena.episodic.models import (
     EpisodicEvent,
     EventType,
     EventOutcome,
-    EventContext,
 )
 from athena.episodic.store import EpisodicStore
 from athena.episodic.activation import compute_activation

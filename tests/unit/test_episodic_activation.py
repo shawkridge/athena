@@ -1,7 +1,6 @@
 """Tests for episodic memory activation system (ACT-R decay)."""
 
 import pytest
-import math
 from datetime import datetime, timedelta
 from athena.episodic.models import EpisodicEvent, EventType, EventOutcome
 from athena.episodic.activation import compute_activation

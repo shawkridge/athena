@@ -7,8 +7,6 @@ This test checks that:
 3. Processes for populating each layer are present
 """
 
-import pytest
-import inspect
 
 
 class TestLayerPopulationProcesses:
@@ -30,9 +28,7 @@ class TestLayerPopulationProcesses:
         assert hasattr(ConsolidationSystem, "_create_memories_from_patterns")
 
         # Check semantic store has method to persist them
-        assert hasattr(SemanticStore, "store") or hasattr(
-            SemanticStore, "add_memory"
-        )
+        assert hasattr(SemanticStore, "store") or hasattr(SemanticStore, "add_memory")
 
         print("✅ Layer 2 (Semantic): Consolidation → _create_memories_from_patterns()")
         print("                      → SemanticStore.store()")
@@ -47,9 +43,7 @@ class TestLayerPopulationProcesses:
 
         # Check procedural store has method to persist them
         methods = [m for m in dir(ProceduralStore) if not m.startswith("_")]
-        has_store_method = any(
-            "store" in m or "save" in m or "add" in m for m in methods
-        )
+        has_store_method = any("store" in m or "save" in m or "add" in m for m in methods)
         assert has_store_method
 
         print("✅ Layer 3 (Procedural): Consolidation → _maybe_create_procedure()")
@@ -79,9 +73,7 @@ class TestLayerPopulationProcesses:
         assert any("entity" in m.lower() or "relation" in m.lower() for m in methods)
 
         print("✅ Layer 5 (Knowledge Graph): Consolidation → _synthesize_temporal_kg()")
-        print(
-            "                              → _extract_semantic_from_graph()"
-        )
+        print("                              → _extract_semantic_from_graph()")
         print("                              → GraphStore.add_entity()")
 
     def test_layer_6_meta_memory_populated_by_consolidation(self):

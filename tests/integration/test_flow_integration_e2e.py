@@ -8,11 +8,10 @@ Tests the complete workflow:
 """
 
 import pytest
-from datetime import datetime, timedelta
 
 from src.athena.core.database import Database, reset_database
 from src.athena.flow import FlowAwareEpisodicStore, get_flow_hooks_handler
-from src.athena.episodic.models import EpisodicEvent, EventType, EventOutcome
+from src.athena.episodic.models import EpisodicEvent, EventType
 
 
 @pytest.fixture

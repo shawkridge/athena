@@ -1,6 +1,5 @@
 """Tests for semantic memory models and data structures."""
 
-import pytest
 from datetime import datetime
 from athena.core.models import (
     Memory,

@@ -10,9 +10,7 @@ Live monitoring dashboard showing:
 import asyncio
 import logging
 import os
-import sys
 from datetime import datetime, timezone
-from typing import List, Dict, Any
 
 logger = logging.getLogger(__name__)
 
@@ -125,9 +123,7 @@ class MonitorDashboard:
             else:
                 heartbeat_str = "never"
 
-            print(
-                f"  {agent_id:<48} {status_str:<15} {task_id:<25} {heartbeat_str}"
-            )
+            print(f"  {agent_id:<48} {status_str:<15} {task_id:<25} {heartbeat_str}")
 
     async def _print_task_status(self) -> None:
         """Print task status summary."""
@@ -177,13 +173,14 @@ class MonitorDashboard:
         print("-" * 100)
 
         # Agent metrics
-        agents = await self.db.fetch("SELECT COUNT(*) as count FROM agents WHERE status != %s", "offline")
+        agents = await self.db.fetch(
+            "SELECT COUNT(*) as count FROM agents WHERE status != %s", "offline"
+        )
         active_agents = agents[0]["count"] if agents else 0
 
         # Task metrics
         in_progress = await self.db.fetch(
-            "SELECT COUNT(*) as count FROM prospective_tasks WHERE status = %s",
-            "IN_PROGRESS"
+            "SELECT COUNT(*) as count FROM prospective_tasks WHERE status = %s", "IN_PROGRESS"
         )
         in_progress_count = in_progress[0]["count"] if in_progress else 0
 
@@ -194,7 +191,7 @@ class MonitorDashboard:
             WHERE status != %s
             AND (NOW() - last_heartbeat) > INTERVAL '1 minute'
             """,
-            "offline"
+            "offline",
         )
         stale_count = stale[0]["count"] if stale else 0
 
@@ -206,9 +203,7 @@ class MonitorDashboard:
         """Print dashboard footer."""
         print("=" * 100)
         print(
-            "Commands: (q)uit | Refreshing every "
-            + str(self.refresh_interval_seconds)
-            + " seconds"
+            "Commands: (q)uit | Refreshing every " + str(self.refresh_interval_seconds) + " seconds"
         )
 
 

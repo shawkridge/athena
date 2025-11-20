@@ -5,8 +5,8 @@ Converts full datasets into summaries (<500 tokens) for model context.
 Philosophy: Return metrics, counts, IDs, and top-N items, never full objects.
 """
 
-from typing import Any, Dict, List, Optional, Union
-from dataclasses import dataclass, asdict
+from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
 import statistics
 from datetime import datetime
 
@@ -14,6 +14,7 @@ from datetime import datetime
 @dataclass
 class SummaryStats:
     """Statistics summary for any dataset."""
+
     total_count: int
     filtered_count: int
     avg_score: Optional[float] = None
@@ -32,8 +33,8 @@ class BaseSummarizer:
         items: List[Dict[str, Any]],
         score_field: Optional[str] = None,
         id_field: str = "id",
-        filter_fn = None,
-        limit: int = 3
+        filter_fn=None,
+        limit: int = 3,
     ) -> Dict[str, Any]:
         """
         Summarize a list of items.
@@ -49,11 +50,7 @@ class BaseSummarizer:
             Summary dict with counts and metrics
         """
         if not items:
-            return {
-                "total": 0,
-                "filtered": 0,
-                "empty": True
-            }
+            return {"total": 0, "filtered": 0, "empty": True}
 
         # Filter if needed
         filtered = items
@@ -63,7 +60,7 @@ class BaseSummarizer:
         summary = {
             "total": len(items),
             "filtered": len(filtered),
-            "top_ids": [item.get(id_field) for item in filtered[:limit]]
+            "top_ids": [item.get(id_field) for item in filtered[:limit]],
         }
 
         # Add score statistics if available
@@ -78,18 +75,13 @@ class BaseSummarizer:
 
     @staticmethod
     def summarize_temporal(
-        items: List[Dict[str, Any]],
-        timestamp_field: str = "timestamp"
+        items: List[Dict[str, Any]], timestamp_field: str = "timestamp"
     ) -> Dict[str, Any]:
         """Summarize time-based data."""
         if not items:
             return {"total": 0, "time_range": None}
 
-        timestamps = [
-            item.get(timestamp_field)
-            for item in items
-            if timestamp_field in item
-        ]
+        timestamps = [item.get(timestamp_field) for item in items if timestamp_field in item]
 
         if not timestamps:
             return {"total": len(items)}
@@ -98,20 +90,22 @@ class BaseSummarizer:
             "total": len(items),
             "earliest": min(timestamps),
             "latest": max(timestamps),
-            "time_span_days": (max(timestamps) - min(timestamps)).days if isinstance(timestamps[0], datetime) else None
+            "time_span_days": (
+                (max(timestamps) - min(timestamps)).days
+                if isinstance(timestamps[0], datetime)
+                else None
+            ),
         }
 
     @staticmethod
     def summarize_graph(
-        entities: List[Dict[str, Any]],
-        relations: List[Dict[str, Any]] = None,
-        id_field: str = "id"
+        entities: List[Dict[str, Any]], relations: List[Dict[str, Any]] = None, id_field: str = "id"
     ) -> Dict[str, Any]:
         """Summarize graph structure."""
         summary = {
             "entity_count": len(entities),
             "entity_types": {},
-            "top_entity_ids": [e.get(id_field) for e in entities[:5]]
+            "top_entity_ids": [e.get(id_field) for e in entities[:5]],
         }
 
         # Count by type
@@ -133,9 +127,7 @@ class BaseSummarizer:
 
     @staticmethod
     def summarize_distribution(
-        items: List[Dict[str, Any]],
-        category_field: str,
-        score_field: Optional[str] = None
+        items: List[Dict[str, Any]], category_field: str, score_field: Optional[str] = None
     ) -> Dict[str, Any]:
         """Summarize distribution across categories."""
         distribution = {}
@@ -154,8 +146,7 @@ class BaseSummarizer:
 
         if scores_by_category:
             summary["avg_score_by_category"] = {
-                cat: statistics.mean(scores)
-                for cat, scores in scores_by_category.items()
+                cat: statistics.mean(scores) for cat, scores in scores_by_category.items()
             }
 
         return summary
@@ -166,8 +157,7 @@ class EpisodicSummarizer(BaseSummarizer):
 
     @staticmethod
     def summarize_events(
-        events: List[Dict[str, Any]],
-        confidence_threshold: float = 0.7
+        events: List[Dict[str, Any]], confidence_threshold: float = 0.7
     ) -> Dict[str, Any]:
         """Summarize episodic events by filtering and statistics."""
         high_conf = [e for e in events if e.get("confidence", 0) > confidence_threshold]
@@ -179,10 +169,10 @@ class EpisodicSummarizer(BaseSummarizer):
             "confidence_distribution": {
                 "high": len([e for e in events if e.get("confidence", 0) > 0.8]),
                 "medium": len([e for e in events if 0.5 < e.get("confidence", 0) <= 0.8]),
-                "low": len([e for e in events if e.get("confidence", 0) <= 0.5])
+                "low": len([e for e in events if e.get("confidence", 0) <= 0.5]),
             },
             "top_3_ids": [e.get("id") for e in high_conf[:3]],
-            "event_types": EpisodicSummarizer._count_by_field(events, "event_type")
+            "event_types": EpisodicSummarizer._count_by_field(events, "event_type"),
         }
 
     @staticmethod
@@ -200,8 +190,7 @@ class SemanticSummarizer(BaseSummarizer):
 
     @staticmethod
     def summarize_search_results(
-        memories: List[Dict[str, Any]],
-        confidence_threshold: float = 0.7
+        memories: List[Dict[str, Any]], confidence_threshold: float = 0.7
     ) -> Dict[str, Any]:
         """Summarize semantic search results."""
         high_conf = [m for m in memories if m.get("confidence", 0) > confidence_threshold]
@@ -209,15 +198,29 @@ class SemanticSummarizer(BaseSummarizer):
         return {
             "total_results": len(memories),
             "high_confidence_count": len(high_conf),
-            "avg_confidence": statistics.mean([m.get("confidence", 0) for m in memories]) if memories else 0,
+            "avg_confidence": (
+                statistics.mean([m.get("confidence", 0) for m in memories]) if memories else 0
+            ),
             "confidence_percentiles": {
-                "p10": sorted([m.get("confidence", 0) for m in memories])[len(memories)//10] if memories else 0,
-                "p50": sorted([m.get("confidence", 0) for m in memories])[len(memories)//2] if memories else 0,
-                "p90": sorted([m.get("confidence", 0) for m in memories])[len(memories)*9//10] if memories else 0,
+                "p10": (
+                    sorted([m.get("confidence", 0) for m in memories])[len(memories) // 10]
+                    if memories
+                    else 0
+                ),
+                "p50": (
+                    sorted([m.get("confidence", 0) for m in memories])[len(memories) // 2]
+                    if memories
+                    else 0
+                ),
+                "p90": (
+                    sorted([m.get("confidence", 0) for m in memories])[len(memories) * 9 // 10]
+                    if memories
+                    else 0
+                ),
             },
             "top_5_ids": [m.get("id") for m in high_conf[:5]],
             "memory_types": SemanticSummarizer._count_by_field(memories, "type"),
-            "domains": SemanticSummarizer._count_by_field(memories, "domain")
+            "domains": SemanticSummarizer._count_by_field(memories, "domain"),
         }
 
 
@@ -228,7 +231,7 @@ class GraphSummarizer(BaseSummarizer):
     def summarize_traversal(
         entities: List[Dict[str, Any]],
         relations: List[Dict[str, Any]],
-        communities: Optional[List[List[str]]] = None
+        communities: Optional[List[List[str]]] = None,
     ) -> Dict[str, Any]:
         """Summarize graph traversal results."""
         summary = GraphSummarizer.summarize_graph(entities, relations)
@@ -236,7 +239,9 @@ class GraphSummarizer(BaseSummarizer):
         if communities:
             summary["community_count"] = len(communities)
             summary["avg_community_size"] = statistics.mean([len(c) for c in communities])
-            summary["largest_community_size"] = max(len(c) for c in communities) if communities else 0
+            summary["largest_community_size"] = (
+                max(len(c) for c in communities) if communities else 0
+            )
 
             # Find bridges (entities in multiple communities)
             all_entities = set()
@@ -251,9 +256,7 @@ class ConsolidationSummarizer(BaseSummarizer):
     """Summarizer for consolidation results."""
 
     @staticmethod
-    def summarize_patterns(
-        patterns: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+    def summarize_patterns(patterns: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Summarize extracted patterns."""
         if not patterns:
             return {"total_patterns": 0, "empty": True}
@@ -270,17 +273,16 @@ class ConsolidationSummarizer(BaseSummarizer):
             "top_5_by_confidence": [
                 {"type": p.get("type"), "confidence": p.get("confidence"), "id": p.get("id")}
                 for p in sorted(patterns, key=lambda x: x.get("confidence", 0), reverse=True)[:5]
-            ]
+            ],
         }
 
 
-class PlanningS ummarizer(BaseSummarizer):
+class PlanningSummarizer(BaseSummarizer):
     """Summarizer for planning results."""
 
     @staticmethod
     def summarize_decomposition(
-        tasks: List[Dict[str, Any]],
-        depth_levels: Optional[Dict] = None
+        tasks: List[Dict[str, Any]], depth_levels: Optional[Dict] = None
     ) -> Dict[str, Any]:
         """Summarize task decomposition."""
         if not tasks:
@@ -288,22 +290,26 @@ class PlanningS ummarizer(BaseSummarizer):
 
         return {
             "total_tasks": len(tasks),
-            "status_distribution": PlanningS ummarizer._count_by_field(tasks, "status"),
-            "priority_distribution": PlanningS ummarizer._count_by_field(tasks, "priority"),
-            "avg_estimated_effort": statistics.mean([t.get("estimated_effort", 0) for t in tasks if "estimated_effort" in t]),
+            "status_distribution": PlanningSummarizer._count_by_field(tasks, "status"),
+            "priority_distribution": PlanningSummarizer._count_by_field(tasks, "priority"),
+            "avg_estimated_effort": statistics.mean(
+                [t.get("estimated_effort", 0) for t in tasks if "estimated_effort" in t]
+            ),
             "depth_levels": depth_levels,
-            "critical_path_length": max([t.get("depth", 0) for t in tasks]) if tasks else 0
+            "critical_path_length": max([t.get("depth", 0) for t in tasks]) if tasks else 0,
         }
 
     @staticmethod
-    def summarize_validation(
-        validation_results: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def summarize_validation(validation_results: Dict[str, Any]) -> Dict[str, Any]:
         """Summarize plan validation results."""
         return {
             "valid": validation_results.get("valid", False),
-            "passed_properties": [p for p in validation_results.get("properties", []) if p.get("passed")],
-            "failed_properties": [p for p in validation_results.get("properties", []) if not p.get("passed")],
+            "passed_properties": [
+                p for p in validation_results.get("properties", []) if p.get("passed")
+            ],
+            "failed_properties": [
+                p for p in validation_results.get("properties", []) if not p.get("passed")
+            ],
             "confidence_score": validation_results.get("confidence_score", 0),
-            "total_checks": len(validation_results.get("properties", []))
+            "total_checks": len(validation_results.get("properties", [])),
         }

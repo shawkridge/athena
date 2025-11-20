@@ -47,6 +47,7 @@ from .factory import EventSourceFactory
 # silent failures (trying to use Slack crashes immediately with clear message)
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 FileSystemEventSource = None
@@ -56,7 +57,9 @@ SlackEventSource = None
 try:
     from .filesystem import FileSystemEventSource
 except ImportError as e:
-    logger.warning(f"FileSystemEventSource unavailable: {e}. Install with: pip install athena[filesystem]")
+    logger.warning(
+        f"FileSystemEventSource unavailable: {e}. Install with: pip install athena[filesystem]"
+    )
 
 try:
     from .github import GitHubEventSource

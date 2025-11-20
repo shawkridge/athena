@@ -7,10 +7,9 @@ Responsible for:
 - Validating migration integrity
 """
 
-import os
 import re
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 import logging
 
 logger = logging.getLogger(__name__)
@@ -76,7 +75,8 @@ class MigrationRunner:
     async def _ensure_version_table(self):
         """Create schema_versions table if it doesn't exist."""
         async with self.db.get_connection() as conn:
-            await conn.execute(f"""
+            await conn.execute(
+                f"""
                 CREATE TABLE IF NOT EXISTS {self.SCHEMA_VERSION_TABLE} (
                     version VARCHAR(10) PRIMARY KEY,
                     filename VARCHAR(255) NOT NULL,
@@ -84,7 +84,8 @@ class MigrationRunner:
                     applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     execution_time_ms INTEGER
                 )
-            """)
+            """
+            )
             await conn.commit()
 
     async def get_applied_versions(self) -> set:

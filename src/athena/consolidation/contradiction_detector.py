@@ -124,7 +124,9 @@ class ContradictionDetector:
                     contradictions.append(contradiction)
 
                 if contradictions:
-                    logger.info(f"Detected {len(contradictions)} contradictions in project {project_id}")
+                    logger.info(
+                        f"Detected {len(contradictions)} contradictions in project {project_id}"
+                    )
 
                 return contradictions
 

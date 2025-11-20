@@ -178,7 +178,7 @@ class PhiCalculator:
             corr_values = np.array(list(indicator_correlations.values()))
             # High correlations reduce integration (less independent info)
             redundancy = float(np.mean(corr_values))
-            integration *= (1 - redundancy * 0.3)
+            integration *= 1 - redundancy * 0.3
 
         # Φ is balance between integration and differentiation
         # High integration + high differentiation = high Φ
@@ -293,7 +293,9 @@ class PhiCalculator:
             components={
                 "integration": integration,
                 "differentiation": differentiation,
-                "pairwise_mi_mean": float(np.mean(list(pairwise_mi.values()))) if pairwise_mi else 0.0,
+                "pairwise_mi_mean": (
+                    float(np.mean(list(pairwise_mi.values()))) if pairwise_mi else 0.0
+                ),
                 "time_steps_used": min_length,
             },
             confidence=confidence,

@@ -13,8 +13,8 @@ Implements:
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Optional, Dict, List, Any
+from datetime import datetime
+from typing import Dict, List
 import logging
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,9 @@ class IndicatorScore:
     name: str  # Indicator name (e.g., "global_workspace")
     score: float  # Score 0-10
     timestamp: datetime = field(default_factory=datetime.now)
-    components: Dict[str, float] = field(default_factory=dict)  # Sub-components for detailed analysis
+    components: Dict[str, float] = field(
+        default_factory=dict
+    )  # Sub-components for detailed analysis
     confidence: float = 0.5  # Confidence in measurement (0-1)
     evidence: List[str] = field(default_factory=list)  # Why we assigned this score
 

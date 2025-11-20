@@ -1,9 +1,7 @@
 """Integration test configuration for semantic memory."""
 
 import pytest
-import os
 import asyncio
-from datetime import datetime
 
 
 @pytest.fixture(scope="session")

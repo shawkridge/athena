@@ -4,7 +4,7 @@ Tests the main ConsciousnessMetrics interface and scoring system.
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime
 from athena.consciousness.metrics import ConsciousnessMetrics, ConsciousnessScore
 from athena.consciousness.indicators import IndicatorScore
 
@@ -16,9 +16,7 @@ class TestConsciousnessScore:
         """Test creating a consciousness score."""
         now = datetime.now()
         indicators = {
-            "test_indicator": IndicatorScore(
-                name="test_indicator", score=5.0, confidence=0.7
-            )
+            "test_indicator": IndicatorScore(name="test_indicator", score=5.0, confidence=0.7)
         }
         score = ConsciousnessScore(
             timestamp=now,

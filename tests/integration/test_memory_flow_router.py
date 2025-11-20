@@ -8,7 +8,6 @@ Tests the complete memory flow pipeline:
 - Query routing (hot-first search)
 """
 
-import asyncio
 import pytest
 from datetime import datetime, timedelta
 
@@ -63,9 +62,7 @@ async def test_record_event_access_boosts_activation(router, episodic_store):
 
 
 @pytest.mark.asyncio
-async def test_working_memory_respects_baddeley_limit(
-    router, episodic_store
-):
+async def test_working_memory_respects_baddeley_limit(router, episodic_store):
     """Test that working memory enforces 7±2 hard limit."""
     # Create 15 test events
     event_ids = []
@@ -118,9 +115,7 @@ async def test_consolidation_promotes_strong_items(router, episodic_store):
 
 
 @pytest.mark.asyncio
-async def test_temporal_clustering_groups_recent_items(
-    router, episodic_store
-):
+async def test_temporal_clustering_groups_recent_items(router, episodic_store):
     """Test that temporal clustering groups temporally-related items."""
     # Create 5 events within 5 minutes
     now = datetime.now()
@@ -148,9 +143,7 @@ async def test_temporal_clustering_groups_recent_items(
 
 
 @pytest.mark.asyncio
-async def test_search_hot_first_prioritizes_working_memory(
-    router, episodic_store
-):
+async def test_search_hot_first_prioritizes_working_memory(router, episodic_store):
     """Test that hot-first search prioritizes working memory items."""
     # Create events in different tiers
     # Working memory item
@@ -181,9 +174,7 @@ async def test_search_hot_first_prioritizes_working_memory(
     # Working memory item should appear first
     if results:
         first_tier = results[0].get("tier", "")
-        assert first_tier == "active" or "session" in [
-            r.get("tier") for r in results
-        ]
+        assert first_tier == "active" or "session" in [r.get("tier") for r in results]
 
 
 @pytest.mark.asyncio
@@ -230,9 +221,7 @@ async def test_flow_health_returns_valid_metrics(router):
 
 
 @pytest.mark.asyncio
-async def test_get_working_memory_returns_active_items(
-    router, episodic_store
-):
+async def test_get_working_memory_returns_active_items(router, episodic_store):
     """Test that get_working_memory returns currently active items."""
     # Create some events
     for i in range(5):

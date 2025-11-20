@@ -4,9 +4,7 @@ Coordination Operations for Multi-Agent Orchestration
 Core operations for agent management, task assignment, and progress tracking.
 """
 
-import asyncio
 import uuid
-from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
 from .models import (
@@ -16,7 +14,6 @@ from .models import (
     Task,
     TaskStatus,
     TaskPriority,
-    CoordinationEvent,
     AGENT_CAPABILITIES,
 )
 
@@ -38,6 +35,7 @@ class CoordinationOperations:
         # If it's a store, use it directly
         # If it's a database object, we'll work with it for backwards compatibility
         from .store import CoordinationStore
+
         if isinstance(db, CoordinationStore):
             self.store = db
             self.db = db.db
@@ -84,15 +82,15 @@ class CoordinationOperations:
             )
         else:
             # Legacy: direct database access (for backwards compatibility)
-            raise NotImplementedError("Direct database access not supported. Please use CoordinationStore.")
+            raise NotImplementedError(
+                "Direct database access not supported. Please use CoordinationStore."
+            )
 
         return agent_id
 
     async def get_agent(self, agent_id: str) -> Optional[Agent]:
         """Get agent by ID."""
-        row = await self.db.fetch_one(
-            "SELECT * FROM agents WHERE agent_id = %s", agent_id
-        )
+        row = await self.db.fetch_one("SELECT * FROM agents WHERE agent_id = %s", agent_id)
 
         if row:
             return Agent.from_dict(dict(row))
@@ -118,12 +116,11 @@ class CoordinationOperations:
             return agents
         else:
             # Legacy path not supported
-            raise NotImplementedError("Direct database access not supported. Please use CoordinationStore.")
+            raise NotImplementedError(
+                "Direct database access not supported. Please use CoordinationStore."
+            )
 
-
-    async def update_agent_status(
-        self, agent_id: str, status: AgentStatus
-    ) -> bool:
+    async def update_agent_status(self, agent_id: str, status: AgentStatus) -> bool:
         """Update agent status."""
         result = await self.db.execute(
             """
@@ -148,9 +145,7 @@ class CoordinationOperations:
         )
         return result > 0
 
-    async def detect_stale_agents(
-        self, stale_threshold_seconds: int = 60
-    ) -> List[Agent]:
+    async def detect_stale_agents(self, stale_threshold_seconds: int = 60) -> List[Agent]:
         """Find agents with stale heartbeats."""
         rows = await self.db.fetch(
             """
@@ -166,9 +161,7 @@ class CoordinationOperations:
 
     async def deregister_agent(self, agent_id: str) -> bool:
         """Remove agent from registry."""
-        result = await self.db.execute(
-            "DELETE FROM agents WHERE agent_id = %s", agent_id
-        )
+        result = await self.db.execute("DELETE FROM agents WHERE agent_id = %s", agent_id)
         return result > 0
 
     # ============================================================================
@@ -233,9 +226,7 @@ class CoordinationOperations:
 
         return None
 
-    async def find_available_work(
-        self, agent_id: str, agent_type: AgentType
-    ) -> List[Task]:
+    async def find_available_work(self, agent_id: str, agent_type: AgentType) -> List[Task]:
         """
         Find pending tasks that agent can work on.
 
@@ -290,9 +281,7 @@ class CoordinationOperations:
         )
         return result > 0
 
-    async def complete_task(
-        self, task_id: str, outcome: str = "success"
-    ) -> bool:
+    async def complete_task(self, task_id: str, outcome: str = "success") -> bool:
         """Mark task as completed."""
         result = await self.db.execute(
             """
@@ -432,9 +421,7 @@ class CoordinationOperations:
 
         return task_ids
 
-    async def get_orchestration_status(
-        self, parent_task_id: str
-    ) -> Dict[str, Any]:
+    async def get_orchestration_status(self, parent_task_id: str) -> Dict[str, Any]:
         """Get status of orchestration for a task and its subtasks."""
         subtasks = await self.db.fetch(
             """

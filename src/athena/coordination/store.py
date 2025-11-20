@@ -7,7 +7,6 @@ using Athena's Database object API with correct psycopg AsyncConnection methods.
 
 import logging
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timezone
 
 from athena.core.database import Database
 
@@ -35,7 +34,8 @@ class CoordinationStore:
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cur:
                     # Create agents table
-                    await cur.execute("""
+                    await cur.execute(
+                        """
                         CREATE TABLE IF NOT EXISTS agents (
                             agent_id VARCHAR(255) PRIMARY KEY,
                             agent_type VARCHAR(50) NOT NULL,
@@ -49,10 +49,12 @@ class CoordinationStore:
                             created_at TIMESTAMP DEFAULT NOW(),
                             updated_at TIMESTAMP DEFAULT NOW()
                         )
-                    """)
+                    """
+                    )
 
                     # Create tasks table
-                    await cur.execute("""
+                    await cur.execute(
+                        """
                         CREATE TABLE IF NOT EXISTS agent_tasks (
                             task_id VARCHAR(255) PRIMARY KEY,
                             agent_id VARCHAR(255),
@@ -68,10 +70,12 @@ class CoordinationStore:
                             updated_at TIMESTAMP DEFAULT NOW(),
                             FOREIGN KEY(agent_id) REFERENCES agents(agent_id) ON DELETE SET NULL
                         )
-                    """)
+                    """
+                    )
 
                     # Create health checks table
-                    await cur.execute("""
+                    await cur.execute(
+                        """
                         CREATE TABLE IF NOT EXISTS agent_health_checks (
                             id SERIAL PRIMARY KEY,
                             agent_id VARCHAR(255) NOT NULL,
@@ -82,10 +86,12 @@ class CoordinationStore:
                             check_timestamp TIMESTAMP DEFAULT NOW(),
                             FOREIGN KEY(agent_id) REFERENCES agents(agent_id) ON DELETE CASCADE
                         )
-                    """)
+                    """
+                    )
 
                     # Create statistics table
-                    await cur.execute("""
+                    await cur.execute(
+                        """
                         CREATE TABLE IF NOT EXISTS agent_statistics (
                             agent_id VARCHAR(255) PRIMARY KEY,
                             total_tasks_assigned INTEGER DEFAULT 0,
@@ -96,7 +102,8 @@ class CoordinationStore:
                             last_updated TIMESTAMP DEFAULT NOW(),
                             FOREIGN KEY(agent_id) REFERENCES agents(agent_id) ON DELETE CASCADE
                         )
-                    """)
+                    """
+                    )
 
                 await conn.commit()
                 logger.info("Coordination tables initialized")
@@ -123,11 +130,14 @@ class CoordinationStore:
         try:
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cur:
-                    await cur.execute("""
+                    await cur.execute(
+                        """
                         INSERT INTO agents
                         (agent_id, agent_type, capabilities, status, tmux_pane_id, process_pid)
                         VALUES (%s, %s, %s, %s, %s, %s)
-                    """, (agent_id, agent_type, capabilities, status, tmux_pane_id, process_pid))
+                    """,
+                        (agent_id, agent_type, capabilities, status, tmux_pane_id, process_pid),
+                    )
                 await conn.commit()
                 return True
         except Exception as e:
@@ -139,10 +149,7 @@ class CoordinationStore:
         try:
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cur:
-                    await cur.execute(
-                        "SELECT * FROM agents WHERE agent_id = %s",
-                        (agent_id,)
-                    )
+                    await cur.execute("SELECT * FROM agents WHERE agent_id = %s", (agent_id,))
                     row = await cur.fetchone()
                     return dict(row) if row else None
         except Exception as e:
@@ -168,7 +175,7 @@ class CoordinationStore:
                 async with conn.cursor() as cur:
                     await cur.execute(
                         "UPDATE agents SET status = %s, updated_at = NOW() WHERE agent_id = %s",
-                        (status, agent_id)
+                        (status, agent_id),
                     )
                 await conn.commit()
                 return True
@@ -182,8 +189,7 @@ class CoordinationStore:
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cur:
                     await cur.execute(
-                        "UPDATE agents SET last_heartbeat = NOW() WHERE agent_id = %s",
-                        (agent_id,)
+                        "UPDATE agents SET last_heartbeat = NOW() WHERE agent_id = %s", (agent_id,)
                     )
                 await conn.commit()
                 return True
@@ -219,11 +225,14 @@ class CoordinationStore:
         try:
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cur:
-                    await cur.execute("""
+                    await cur.execute(
+                        """
                         INSERT INTO agent_tasks
                         (task_id, goal, status, priority, agent_id)
                         VALUES (%s, %s, %s, %s, %s)
-                    """, (task_id, goal, status, priority, agent_id))
+                    """,
+                        (task_id, goal, status, priority, agent_id),
+                    )
                 await conn.commit()
                 return True
         except Exception as e:
@@ -235,10 +244,7 @@ class CoordinationStore:
         try:
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cur:
-                    await cur.execute(
-                        "SELECT * FROM agent_tasks WHERE task_id = %s",
-                        (task_id,)
-                    )
+                    await cur.execute("SELECT * FROM agent_tasks WHERE task_id = %s", (task_id,))
                     row = await cur.fetchone()
                     return dict(row) if row else None
         except Exception as e:
@@ -253,7 +259,7 @@ class CoordinationStore:
                     if agent_id:
                         await cur.execute(
                             "SELECT * FROM agent_tasks WHERE agent_id = %s ORDER BY created_at DESC",
-                            (agent_id,)
+                            (agent_id,),
                         )
                     else:
                         await cur.execute("SELECT * FROM agent_tasks ORDER BY created_at DESC")
@@ -270,7 +276,7 @@ class CoordinationStore:
                 async with conn.cursor() as cur:
                     await cur.execute(
                         "UPDATE agent_tasks SET status = %s, updated_at = NOW() WHERE task_id = %s",
-                        (status, task_id)
+                        (status, task_id),
                     )
                 await conn.commit()
                 return True
@@ -285,7 +291,7 @@ class CoordinationStore:
                 async with conn.cursor() as cur:
                     await cur.execute(
                         "UPDATE agent_tasks SET progress_percentage = %s, updated_at = NOW() WHERE task_id = %s",
-                        (progress, task_id)
+                        (progress, task_id),
                     )
                 await conn.commit()
                 return True
@@ -298,11 +304,14 @@ class CoordinationStore:
         try:
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cur:
-                    await cur.execute("""
+                    await cur.execute(
+                        """
                         UPDATE agent_tasks
                         SET status = %s, completed_at = NOW(), result = %s, updated_at = NOW()
                         WHERE task_id = %s
-                    """, ("COMPLETED", result, task_id))
+                    """,
+                        ("COMPLETED", result, task_id),
+                    )
                 await conn.commit()
                 return True
         except Exception as e:
@@ -314,11 +323,14 @@ class CoordinationStore:
         try:
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cur:
-                    await cur.execute("""
+                    await cur.execute(
+                        """
                         UPDATE agent_tasks
                         SET status = %s, error_message = %s, updated_at = NOW()
                         WHERE task_id = %s
-                    """, ("FAILED", error, task_id))
+                    """,
+                        ("FAILED", error, task_id),
+                    )
                 await conn.commit()
                 return True
         except Exception as e:
@@ -341,11 +353,14 @@ class CoordinationStore:
         try:
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cur:
-                    await cur.execute("""
+                    await cur.execute(
+                        """
                         INSERT INTO agent_health_checks
                         (agent_id, status, cpu_percent, memory_mb, response_time_ms)
                         VALUES (%s, %s, %s, %s, %s)
-                    """, (agent_id, status, cpu_percent, memory_mb, response_time_ms))
+                    """,
+                        (agent_id, status, cpu_percent, memory_mb, response_time_ms),
+                    )
                 await conn.commit()
                 return True
         except Exception as e:
@@ -358,8 +373,7 @@ class CoordinationStore:
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cur:
                     await cur.execute(
-                        "SELECT * FROM agent_statistics WHERE agent_id = %s",
-                        (agent_id,)
+                        "SELECT * FROM agent_statistics WHERE agent_id = %s", (agent_id,)
                     )
                     row = await cur.fetchone()
                     return dict(row) if row else None
@@ -373,28 +387,43 @@ class CoordinationStore:
             async with self.db.get_connection() as conn:
                 async with conn.cursor() as cur:
                     await cur.execute("SELECT COUNT(*) FROM agents")
-                    agents = await cur.fetchval() if hasattr(cur, 'fetchval') else (await cur.fetchone())[0]
-
-                    await cur.execute(
-                        "SELECT COUNT(*) FROM agents WHERE status = %s",
-                        ("busy",)
+                    agents = (
+                        await cur.fetchval()
+                        if hasattr(cur, "fetchval")
+                        else (await cur.fetchone())[0]
                     )
-                    active_agents = await cur.fetchval() if hasattr(cur, 'fetchval') else (await cur.fetchone())[0]
+
+                    await cur.execute("SELECT COUNT(*) FROM agents WHERE status = %s", ("busy",))
+                    active_agents = (
+                        await cur.fetchval()
+                        if hasattr(cur, "fetchval")
+                        else (await cur.fetchone())[0]
+                    )
 
                     await cur.execute("SELECT COUNT(*) FROM agent_tasks")
-                    total_tasks = await cur.fetchval() if hasattr(cur, 'fetchval') else (await cur.fetchone())[0]
+                    total_tasks = (
+                        await cur.fetchval()
+                        if hasattr(cur, "fetchval")
+                        else (await cur.fetchone())[0]
+                    )
 
                     await cur.execute(
-                        "SELECT COUNT(*) FROM agent_tasks WHERE status = %s",
-                        ("COMPLETED",)
+                        "SELECT COUNT(*) FROM agent_tasks WHERE status = %s", ("COMPLETED",)
                     )
-                    completed_tasks = await cur.fetchval() if hasattr(cur, 'fetchval') else (await cur.fetchone())[0]
+                    completed_tasks = (
+                        await cur.fetchval()
+                        if hasattr(cur, "fetchval")
+                        else (await cur.fetchone())[0]
+                    )
 
                     await cur.execute(
-                        "SELECT COUNT(*) FROM agent_tasks WHERE status = %s",
-                        ("FAILED",)
+                        "SELECT COUNT(*) FROM agent_tasks WHERE status = %s", ("FAILED",)
                     )
-                    failed_tasks = await cur.fetchval() if hasattr(cur, 'fetchval') else (await cur.fetchone())[0]
+                    failed_tasks = (
+                        await cur.fetchval()
+                        if hasattr(cur, "fetchval")
+                        else (await cur.fetchone())[0]
+                    )
 
                     return {
                         "total_agents": agents,

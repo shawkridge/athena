@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from statistics import mean
 
 
-
 @dataclass
 class MetricsSnapshot:
     """Snapshot of executive function metrics."""

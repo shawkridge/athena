@@ -8,7 +8,7 @@ Validates:
 """
 
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +50,8 @@ class SchemaValidator:
         }
 
         # Overall validity
-        results["valid"] = (
-            all(v["exists"] for v in results["tables"].values())
-            and all(v["valid"] for v in results["columns"].values())
+        results["valid"] = all(v["exists"] for v in results["tables"].values()) and all(
+            v["valid"] for v in results["columns"].values()
         )
 
         return results

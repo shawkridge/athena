@@ -78,7 +78,9 @@ class ValidationAgent(AgentWorker):
             # Step 4: Calculate coverage and quality metrics
             await self.report_progress(70, findings={"stage": "analyzing_metrics"})
             if results["checks_total"] > 0:
-                results["coverage_percent"] = (results["checks_passed"] / results["checks_total"]) * 100
+                results["coverage_percent"] = (
+                    results["checks_passed"] / results["checks_total"]
+                ) * 100
                 results["passed"] = results["coverage_percent"] >= 80
 
             # Step 5: Generate recommendations
@@ -127,8 +129,16 @@ class ValidationAgent(AgentWorker):
         return {
             "passed_count": len(requirements) * 3 // 4,
             "issues": [
-                {"type": "performance", "severity": "warning", "description": "Response time above target"},
-                {"type": "documentation", "severity": "info", "description": "Missing edge case examples"},
+                {
+                    "type": "performance",
+                    "severity": "warning",
+                    "description": "Response time above target",
+                },
+                {
+                    "type": "documentation",
+                    "severity": "info",
+                    "description": "Missing edge case examples",
+                },
             ],
         }
 

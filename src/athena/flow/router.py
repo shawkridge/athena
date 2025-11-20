@@ -12,7 +12,7 @@ from .activation import ActivationSystem
 from .capacity import TierCapacityManager
 from .consolidation import SelectiveConsolidationEngine, TemporalClusteringEngine
 from .queries import QueryRouter
-from .models import FlowStatistics, MemoryTier
+from .models import FlowStatistics
 
 
 class MemoryFlowRouter:
@@ -41,9 +41,7 @@ class MemoryFlowRouter:
         self.clustering = TemporalClusteringEngine(db)
         self.queries = QueryRouter(db)
 
-    async def record_event_access(
-        self, event_id: int, boost: float = 0.5
-    ) -> None:
+    async def record_event_access(self, event_id: int, boost: float = 0.5) -> None:
         """Record event access, triggering activation boost and RIF.
 
         When an event is accessed:
@@ -113,9 +111,7 @@ class MemoryFlowRouter:
 
         return stats
 
-    async def run_temporal_clustering(
-        self, promote_all: bool = False
-    ) -> dict[str, int]:
+    async def run_temporal_clustering(self, promote_all: bool = False) -> dict[str, int]:
         """Run temporal clustering and consolidate related items together.
 
         Groups items by temporal proximity (default: 5-minute window) and
@@ -190,9 +186,7 @@ class MemoryFlowRouter:
 
             return items
 
-    async def get_statistics(
-        self, hours: int = 24
-    ) -> Optional[FlowStatistics]:
+    async def get_statistics(self, hours: int = 24) -> Optional[FlowStatistics]:
         """Get flow system statistics for a time period.
 
         Args:
@@ -216,9 +210,7 @@ class MemoryFlowRouter:
             )
             row = await result.fetchone()
             working, session, promoted = (
-                (row[0] or 0, row[1] or 0, row[2] or 0)
-                if row
-                else (0, 0, 0)
+                (row[0] or 0, row[1] or 0, row[2] or 0) if row else (0, 0, 0)
             )
 
             # Get activation statistics
@@ -235,9 +227,7 @@ class MemoryFlowRouter:
             )
             row = await result.fetchone()
             mean_act, max_act, min_act = (
-                (row[0] or 0, row[1] or 0, row[2] or 0)
-                if row
-                else (0, 0, 0)
+                (row[0] or 0, row[1] or 0, row[2] or 0) if row else (0, 0, 0)
             )
 
             return FlowStatistics(
@@ -252,9 +242,7 @@ class MemoryFlowRouter:
                 consolidation_rate=promoted / (working + session + 1),
             )
 
-    async def search_hot_first(
-        self, query: str, limit: int = 10
-    ) -> list[dict]:
+    async def search_hot_first(self, query: str, limit: int = 10) -> list[dict]:
         """Search memory hot-first: working → session → episodic.
 
         Args:
@@ -266,9 +254,7 @@ class MemoryFlowRouter:
         """
         return await self.queries.search_hot_first(query, limit=limit)
 
-    async def get_consolidation_candidates(
-        self, strength_threshold: float = 0.7
-    ) -> list[dict]:
+    async def get_consolidation_candidates(self, strength_threshold: float = 0.7) -> list[dict]:
         """Get events ready for consolidation to semantic memory.
 
         Args:
@@ -277,9 +263,7 @@ class MemoryFlowRouter:
         Returns:
             List of candidate events
         """
-        candidates = await self.consolidation.get_consolidation_candidates(
-            strength_threshold
-        )
+        candidates = await self.consolidation.get_consolidation_candidates(strength_threshold)
 
         # Get event details
         async with self.db.get_connection() as conn:

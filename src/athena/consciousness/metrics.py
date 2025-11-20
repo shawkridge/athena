@@ -8,10 +8,9 @@ Provides:
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional, Dict, List, Any
 import logging
-import json
 
 from .indicators import ConsciousnessIndicators, IndicatorScore
 

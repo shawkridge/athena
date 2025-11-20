@@ -218,7 +218,7 @@ class ProceduralStore(BaseStore[Procedure]):
                 procedure.last_used,
                 procedure.created_by,
             ),
-            fetch_one=True
+            fetch_one=True,
         )
         self.commit()
         return result[0] if result else None

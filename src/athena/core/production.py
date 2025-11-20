@@ -163,6 +163,7 @@ class AdvisoryLock:
         However, errors ARE VISIBLE in logs so issues can be debugged.
         """
         import logging
+
         logger = logging.getLogger(__name__)
 
         try:
@@ -361,6 +362,7 @@ class ResourceManager:
         DESIGN: Audit logging errors are visible but don't crash resource operations.
         """
         import logging
+
         logger = logging.getLogger(__name__)
 
         try:

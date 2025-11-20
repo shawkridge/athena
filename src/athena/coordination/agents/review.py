@@ -36,7 +36,12 @@ class CodeReviewAgent(AgentWorker):
             agent_type=AgentType.CODE_REVIEW,
             db=db,
         )
-        self.capabilities = ["code_review", "security_review", "quality_assessment", "best_practices"]
+        self.capabilities = [
+            "code_review",
+            "security_review",
+            "quality_assessment",
+            "best_practices",
+        ]
 
     async def execute(self, task: Task) -> Dict[str, Any]:
         """
@@ -84,16 +89,16 @@ class CodeReviewAgent(AgentWorker):
 
             # Step 6: Consolidate findings
             await self.report_progress(75, findings={"stage": "consolidating_findings"})
-            all_findings = (
-                static_findings + security_findings + practice_findings
-            )
+            all_findings = static_findings + security_findings + practice_findings
             results["findings"] = all_findings
             results["review_coverage_percent"] = 95
 
             # Calculate severity summary
             for finding in all_findings:
                 severity = finding.get("severity", "info")
-                results["severity_summary"][severity] = results["severity_summary"].get(severity, 0) + 1
+                results["severity_summary"][severity] = (
+                    results["severity_summary"].get(severity, 0) + 1
+                )
 
             # Step 7: Generate recommendations
             await self.report_progress(85, findings={"stage": "generating_recommendations"})

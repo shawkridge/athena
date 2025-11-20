@@ -3,8 +3,8 @@
 Tests branch name normalization, formatting, and display utilities.
 """
 
-import pytest
 import sys
+
 sys.path.insert(0, "/home/user/.claude/hooks/lib")
 
 from branch_formatter import BranchFormatter
@@ -107,7 +107,9 @@ class TestWorktreeLabel:
 
     def test_label_from_path(self):
         """Test generating label from worktree path."""
-        result = BranchFormatter.get_worktree_label(worktree_path="/home/user/.work/athena-feature-auth")
+        result = BranchFormatter.get_worktree_label(
+            worktree_path="/home/user/.work/athena-feature-auth"
+        )
         assert "auth" in result.lower()
 
     def test_label_branch_preferred(self):

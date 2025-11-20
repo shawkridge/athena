@@ -1,7 +1,6 @@
 """Consolidation and reconsolidation operations for semantic store."""
 
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -39,9 +38,7 @@ class ConsolidationOperations:
         )
         self.db.conn.commit()
 
-    def is_in_reconsolidation_window(
-        self, memory_id: int, window_minutes: int = 5
-    ) -> bool:
+    def is_in_reconsolidation_window(self, memory_id: int, window_minutes: int = 5) -> bool:
         """Check if memory is within reconsolidation window.
 
         Returns True if memory was retrieved within the specified window.
@@ -70,7 +67,6 @@ class ConsolidationOperations:
         Returns:
             List of memory versions in order
         """
-        from ..core.models import Memory
 
         history = []
         current_id = memory_id

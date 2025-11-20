@@ -82,7 +82,9 @@ class ResearchAgent(AgentWorker):
 
             await self.report_progress(100, findings=findings)
 
-            logger.info(f"Research task {task.task_id} completed with {len(findings['sources'])} sources")
+            logger.info(
+                f"Research task {task.task_id} completed with {len(findings['sources'])} sources"
+            )
             return findings
 
         except Exception as e:
@@ -122,9 +124,7 @@ class ResearchAgent(AgentWorker):
             "search_query": query,
         }
 
-    async def _analyze_findings(
-        self, research_results: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _analyze_findings(self, research_results: Dict[str, Any]) -> Dict[str, Any]:
         """
         Analyze research findings to extract insights.
 
@@ -150,9 +150,7 @@ class ResearchAgent(AgentWorker):
             "source_count": len(sources),
         }
 
-    async def _store_findings(
-        self, findings: Dict[str, Any], task: Task
-    ) -> List[str]:
+    async def _store_findings(self, findings: Dict[str, Any], task: Task) -> List[str]:
         """
         Store findings in Athena memory.
 

@@ -71,9 +71,7 @@ class TestBayesianSurprise:
         """Test surprise calculation using KL divergence."""
         tokens = ["hello", "world", "hello", "world", "goodbye"]
         # Index where pattern breaks (goodbye is unexpected)
-        surprise = surprise_calc.calculate_surprise(
-            tokens, 4, use_kl_divergence=True
-        )
+        surprise = surprise_calc.calculate_surprise(tokens, 4, use_kl_divergence=True)
         assert isinstance(surprise, (int, float))
         assert surprise >= 0.0
 
@@ -105,9 +103,7 @@ class TestBayesianSurprise:
         tokens = ["a", "b", "c", "d"]
         context_probs = np.array([0.25, 0.25, 0.25, 0.25])
 
-        surprise = surprise_calc.calculate_surprise(
-            tokens, 1, context_probs=context_probs
-        )
+        surprise = surprise_calc.calculate_surprise(tokens, 1, context_probs=context_probs)
         assert isinstance(surprise, (int, float))
 
     def test_surprise_empty_tokens_list(self, surprise_calc):
@@ -155,14 +151,10 @@ class TestBayesianSurprise:
         tokens = ["a", "b", "c", "d", "e"]
 
         # With KL divergence
-        surprise_kl = surprise_calc.calculate_surprise(
-            tokens, 2, use_kl_divergence=True
-        )
+        surprise_kl = surprise_calc.calculate_surprise(tokens, 2, use_kl_divergence=True)
 
         # Without KL divergence
-        surprise_no_kl = surprise_calc.calculate_surprise(
-            tokens, 2, use_kl_divergence=False
-        )
+        surprise_no_kl = surprise_calc.calculate_surprise(tokens, 2, use_kl_divergence=False)
 
         # Both should be valid floats
         assert isinstance(surprise_kl, (int, float))

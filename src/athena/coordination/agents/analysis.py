@@ -7,7 +7,6 @@ Specialist agent for:
 - Dependency analysis
 """
 
-import asyncio
 import logging
 from typing import Dict, Any
 

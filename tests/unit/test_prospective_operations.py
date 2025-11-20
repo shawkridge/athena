@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 from athena.prospective.operations import ProspectiveOperations
-from athena.prospective.models import ProspectiveTask, TaskStatus
+from athena.prospective.models import ProspectiveTask
 
 pytestmark = pytest.mark.asyncio
 

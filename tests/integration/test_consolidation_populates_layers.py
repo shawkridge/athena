@@ -11,13 +11,11 @@ This test validates that the consolidation system properly:
 
 import pytest
 import pytest_asyncio
-from datetime import datetime, timedelta
 
 from src.athena.core.database import Database
 from src.athena.episodic.store import EpisodicStore
 from src.athena.semantic.store import SemanticStore
 from src.athena.procedural.store import ProceduralStore
-from src.athena.prospective.store import ProspectiveStore
 from src.athena.graph.store import GraphStore
 from src.athena.meta.store import MetaMemoryStore
 from src.athena.consolidation.system import ConsolidationSystem
@@ -107,10 +105,12 @@ class TestConsolidationPopulatesLayers:
             cursor.execute("SELECT * FROM consolidation_runs WHERE id = %s", (run_id,))
             run = cursor.fetchone()
             assert run is not None
-            print(f"✅ Consolidation run recorded")
+            print("✅ Consolidation run recorded")
 
             # Check if patterns were extracted (use safe access for dict-like rows)
-            patterns_count = run.get("patterns_extracted") if hasattr(run, "get") else run[5] if run else 0
+            patterns_count = (
+                run.get("patterns_extracted") if hasattr(run, "get") else run[5] if run else 0
+            )
             print(f"  Patterns extracted: {patterns_count}")
 
         else:
@@ -170,9 +170,7 @@ class TestConsolidationPopulatesLayers:
             if after > before:
                 print(f"✅ Semantic layer populated: {after - before} new memories")
             else:
-                print(
-                    f"⚠️  No new semantic memories created (may need more events or patterns)"
-                )
+                print("⚠️  No new semantic memories created (may need more events or patterns)")
         else:
             print(f"⚠️  Not enough events ({event_count}) for consolidation test")
 
@@ -230,7 +228,7 @@ class TestConsolidationPopulatesLayers:
             if after > before:
                 print(f"✅ Procedural layer populated: {after - before} new procedures")
             else:
-                print(f"⚠️  No new procedures created")
+                print("⚠️  No new procedures created")
         else:
             print(f"⚠️  Not enough events ({event_count}) for procedural test")
 

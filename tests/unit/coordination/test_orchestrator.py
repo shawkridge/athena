@@ -13,15 +13,19 @@ Tests cover:
 
 import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime, timezone
 
 from athena.coordination.models import (
-    Agent, AgentType, AgentStatus, Task, TaskStatus, TaskPriority,
-    OrchestrationState
+    Agent,
+    AgentType,
+    AgentStatus,
+    Task,
+    TaskStatus,
+    TaskPriority,
+    OrchestrationState,
 )
 from athena.coordination.orchestrator import Orchestrator
-from athena.coordination.operations import CoordinationOperations
 
 
 # ============================================================================
@@ -45,12 +49,11 @@ def mock_coordination_ops():
 @pytest.fixture
 def orchestrator(mock_db, mock_coordination_ops):
     """Create orchestrator instance with mocked dependencies."""
-    with patch('athena.coordination.orchestrator.CoordinationOperations', return_value=mock_coordination_ops):
-        orch = Orchestrator(
-            db=mock_db,
-            tmux_session_name="test_athena",
-            context_token_limit=200000
-        )
+    with patch(
+        "athena.coordination.orchestrator.CoordinationOperations",
+        return_value=mock_coordination_ops,
+    ):
+        orch = Orchestrator(db=mock_db, tmux_session_name="test_athena", context_token_limit=200000)
         # Ensure coordination_ops is the mock
         orch.coordination_ops = mock_coordination_ops
         return orch
@@ -65,7 +68,7 @@ def sample_task():
         status=TaskStatus.PENDING,
         priority=TaskPriority.HIGH,
         description="Perform comprehensive code quality analysis",
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc),
     )
 
 
@@ -79,7 +82,7 @@ def sample_subtasks():
             status=TaskStatus.PENDING,
             priority=TaskPriority.HIGH,
             description="Identify design patterns and anti-patterns",
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         ),
         Task(
             task_id="subtask_002",
@@ -87,7 +90,7 @@ def sample_subtasks():
             status=TaskStatus.PENDING,
             priority=TaskPriority.HIGH,
             description="Calculate cyclomatic and cognitive complexity",
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         ),
         Task(
             task_id="subtask_003",
@@ -95,7 +98,7 @@ def sample_subtasks():
             status=TaskStatus.PENDING,
             priority=TaskPriority.MEDIUM,
             description="Map module dependencies and coupling",
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         ),
     ]
 
@@ -108,13 +111,13 @@ def sample_agents():
             agent_id="agent_analysis_001",
             agent_type=AgentType.ANALYSIS,
             capabilities=["code_analysis", "pattern_detection"],
-            status=AgentStatus.IDLE
+            status=AgentStatus.IDLE,
         ),
         Agent(
             agent_id="agent_validation_001",
             agent_type=AgentType.VALIDATION,
             capabilities=["testing", "quality_assessment"],
-            status=AgentStatus.IDLE
+            status=AgentStatus.IDLE,
         ),
     ]
 
@@ -145,7 +148,7 @@ class TestOrchestratorInitialization:
     @pytest.mark.asyncio
     async def test_initialize_session_without_libtmux(self, orchestrator):
         """Test session initialization when libtmux is not available."""
-        with patch('athena.coordination.orchestrator.LIBTMUX_AVAILABLE', False):
+        with patch("athena.coordination.orchestrator.LIBTMUX_AVAILABLE", False):
             result = await orchestrator.initialize_session()
             assert result is True  # Should succeed gracefully without tmux
 
@@ -167,10 +170,9 @@ class TestAgentManagement:
         orchestrator.coordination_ops.register_agent.return_value = agent.agent_id
 
         # Spawn agent (without tmux)
-        with patch('athena.coordination.orchestrator.LIBTMUX_AVAILABLE', False):
+        with patch("athena.coordination.orchestrator.LIBTMUX_AVAILABLE", False):
             agent_id = await orchestrator.spawn_agent(
-                agent_type=agent.agent_type,
-                capabilities=agent.capabilities
+                agent_type=agent.agent_type, capabilities=agent.capabilities
             )
 
         assert agent_id is not None
@@ -227,11 +229,11 @@ class TestTaskManagement:
                 title="Test",
                 status=TaskStatus.IN_PROGRESS,
                 priority=TaskPriority.HIGH,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             ),
             subtasks=sample_subtasks,
             assigned_agents={},
-            results={}
+            results={},
         )
 
         # Mock agent spawning
@@ -239,7 +241,9 @@ class TestTaskManagement:
         orchestrator.coordination_ops.create_task.return_value = "task_id"
 
         # Mock the spawn method to return agent IDs
-        with patch.object(orchestrator, '_get_or_spawn_agent', new_callable=AsyncMock) as mock_spawn:
+        with patch.object(
+            orchestrator, "_get_or_spawn_agent", new_callable=AsyncMock
+        ) as mock_spawn:
             mock_spawn.return_value = "agent_001"
 
             # Try to assign work with max_concurrent=2
@@ -269,14 +273,16 @@ class TestOrchestrationWorkflow:
         mock_coordination_ops.record_orchestration_event.return_value = True
 
         # Mock session initialization
-        with patch.object(orchestrator, 'initialize_session', new_callable=AsyncMock) as mock_init:
+        with patch.object(orchestrator, "initialize_session", new_callable=AsyncMock) as mock_init:
             mock_init.return_value = True
 
             # Mock health check and progress monitor
-            with patch.object(orchestrator, '_health_check_loop', new_callable=AsyncMock):
-                with patch.object(orchestrator, '_progress_monitor_loop', new_callable=AsyncMock):
+            with patch.object(orchestrator, "_health_check_loop", new_callable=AsyncMock):
+                with patch.object(orchestrator, "_progress_monitor_loop", new_callable=AsyncMock):
                     # Mock getting results
-                    with patch.object(orchestrator, '_gather_results', new_callable=AsyncMock) as mock_results:
+                    with patch.object(
+                        orchestrator, "_gather_results", new_callable=AsyncMock
+                    ) as mock_results:
                         mock_results.return_value = {"summary": "Task completed successfully"}
 
                         # Run orchestration with timeout
@@ -286,9 +292,9 @@ class TestOrchestrationWorkflow:
                                     task=sample_task,
                                     subtasks=sample_subtasks,
                                     max_concurrent=2,
-                                    timeout_seconds=1
+                                    timeout_seconds=1,
                                 ),
-                                timeout=2.0
+                                timeout=2.0,
                             )
                             assert result is not None
                         except asyncio.TimeoutError:
@@ -304,11 +310,11 @@ class TestOrchestrationWorkflow:
                 title="Test",
                 status=TaskStatus.IN_PROGRESS,
                 priority=TaskPriority.HIGH,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             ),
             subtasks=sample_subtasks,
             assigned_agents={},
-            results={}
+            results={},
         )
 
         # Initially not complete
@@ -330,11 +336,11 @@ class TestOrchestrationWorkflow:
                 title="Test",
                 status=TaskStatus.IN_PROGRESS,
                 priority=TaskPriority.HIGH,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             ),
             subtasks=sample_subtasks,
             assigned_agents={},
-            results={}
+            results={},
         )
 
         # Mark some tasks as completed, others as failed
@@ -362,7 +368,7 @@ class TestMonitoringAndHealth:
             agent_id="test_agent",
             agent_type=AgentType.ANALYSIS,
             capabilities=[],
-            status=AgentStatus.BUSY
+            status=AgentStatus.BUSY,
         )
         orchestrator.active_agents["test_agent"] = agent
 
@@ -370,7 +376,7 @@ class TestMonitoringAndHealth:
         orchestrator.coordination_ops.get_agent_health.return_value = {
             "agent_id": "test_agent",
             "status": AgentStatus.OFFLINE,
-            "heartbeat": None
+            "heartbeat": None,
         }
 
         # Run health check once
@@ -400,11 +406,11 @@ class TestMonitoringAndHealth:
                 title="Test",
                 status=TaskStatus.IN_PROGRESS,
                 priority=TaskPriority.HIGH,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             ),
             subtasks=[],
             assigned_agents={},
-            results={}
+            results={},
         )
 
         orchestrator._should_run = True
@@ -415,7 +421,7 @@ class TestMonitoringAndHealth:
             title="Test",
             status=TaskStatus.IN_PROGRESS,
             priority=TaskPriority.HIGH,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         # Run progress monitor briefly
@@ -447,15 +453,15 @@ class TestResultSynthesis:
                 title="Test",
                 status=TaskStatus.COMPLETED,
                 priority=TaskPriority.HIGH,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(timezone.utc),
             ),
             subtasks=sample_subtasks,
             assigned_agents={},
             results={
                 "subtask_001": "Pattern analysis results",
                 "subtask_002": "Complexity metrics",
-                "subtask_003": "Dependency graph"
-            }
+                "subtask_003": "Dependency graph",
+            },
         )
 
         # Mock result retrieval
@@ -487,7 +493,7 @@ class TestCleanup:
         }
 
         # Mock kill operations
-        with patch.object(orchestrator, 'kill_agent', new_callable=AsyncMock) as mock_kill:
+        with patch.object(orchestrator, "kill_agent", new_callable=AsyncMock) as mock_kill:
             mock_kill.return_value = True
 
             await orchestrator.cleanup()
@@ -505,8 +511,13 @@ class TestCleanup:
         await orchestrator.cleanup()
 
         # Tasks should be cleaned up
-        assert orchestrator._health_check_task is None or orchestrator._health_check_task.cancelled()
-        assert orchestrator._progress_monitor_task is None or orchestrator._progress_monitor_task.cancelled()
+        assert (
+            orchestrator._health_check_task is None or orchestrator._health_check_task.cancelled()
+        )
+        assert (
+            orchestrator._progress_monitor_task is None
+            or orchestrator._progress_monitor_task.cancelled()
+        )
 
 
 # ============================================================================
@@ -524,10 +535,9 @@ class TestErrorHandling:
         orchestrator.coordination_ops.register_agent.side_effect = Exception("Spawn failed")
 
         # Should handle gracefully
-        with patch('athena.coordination.orchestrator.LIBTMUX_AVAILABLE', False):
+        with patch("athena.coordination.orchestrator.LIBTMUX_AVAILABLE", False):
             agent_id = await orchestrator.spawn_agent(
-                agent_type=AgentType.ANALYSIS,
-                capabilities=[]
+                agent_type=AgentType.ANALYSIS, capabilities=[]
             )
 
         # May return None or raise, both are acceptable
@@ -541,7 +551,7 @@ class TestErrorHandling:
             title="Test",
             status=TaskStatus.PENDING,
             priority=TaskPriority.MEDIUM,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         agent_type = orchestrator._determine_agent_type(task)
@@ -560,27 +570,27 @@ class TestErrorHandling:
             root_task=sample_task,
             subtasks=[],  # Empty
             assigned_agents={},
-            results={}
+            results={},
         )
 
         # Mock methods
-        with patch.object(orchestrator, 'initialize_session', new_callable=AsyncMock) as mock_init:
+        with patch.object(orchestrator, "initialize_session", new_callable=AsyncMock) as mock_init:
             mock_init.return_value = True
 
-            with patch.object(orchestrator, '_orchestration_complete') as mock_complete:
+            with patch.object(orchestrator, "_orchestration_complete") as mock_complete:
                 mock_complete.return_value = True
 
-                with patch.object(orchestrator, '_gather_results', new_callable=AsyncMock) as mock_results:
+                with patch.object(
+                    orchestrator, "_gather_results", new_callable=AsyncMock
+                ) as mock_results:
                     mock_results.return_value = {}
 
                     try:
                         result = await asyncio.wait_for(
                             orchestrator.orchestrate(
-                                task=sample_task,
-                                subtasks=[],
-                                timeout_seconds=1
+                                task=sample_task, subtasks=[], timeout_seconds=1
                             ),
-                            timeout=2.0
+                            timeout=2.0,
                         )
                     except asyncio.TimeoutError:
                         pass  # Expected

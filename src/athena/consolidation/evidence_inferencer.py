@@ -15,7 +15,7 @@ import re
 from typing import Optional
 
 from ..core.database import Database
-from ..episodic.models import EvidenceType, EventType
+from ..episodic.models import EvidenceType
 
 logger = logging.getLogger(__name__)
 
@@ -166,12 +166,12 @@ class EvidenceInferencer:
                         event_id = row[0]
                         # Build dict manually from row tuple
                         event_dict = {
-                            'id': row[0],
-                            'content': row[1],
-                            'event_type': row[2],
-                            'outcome': row[3],
-                            'learned': row[4],
-                            'confidence': row[5]
+                            "id": row[0],
+                            "content": row[1],
+                            "event_type": row[2],
+                            "outcome": row[3],
+                            "learned": row[4],
+                            "confidence": row[5],
                         }
 
                         # Infer the evidence type

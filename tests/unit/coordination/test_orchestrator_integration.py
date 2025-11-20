@@ -5,13 +5,9 @@ Tests the orchestrator with realistic scenarios.
 """
 
 import pytest
-import asyncio
-from datetime import datetime, timezone
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, patch
 
-from athena.coordination.models import (
-    Agent, AgentType, AgentStatus, Task, TaskStatus, TaskPriority
-)
+from athena.coordination.models import Agent, AgentType, AgentStatus, Task, TaskStatus, TaskPriority
 from athena.coordination.orchestrator import Orchestrator
 
 
@@ -66,9 +62,15 @@ class TestAgentTypeDetection:
     def test_agent_type_enum_complete(self):
         """Test all agent types are defined."""
         expected_types = [
-            'research', 'analysis', 'synthesis', 'validation',
-            'optimization', 'documentation', 'code_review',
-            'debugging', 'testing'
+            "research",
+            "analysis",
+            "synthesis",
+            "validation",
+            "optimization",
+            "documentation",
+            "code_review",
+            "debugging",
+            "testing",
         ]
 
         actual_types = [t.value for t in AgentType]
@@ -96,7 +98,7 @@ class TestAgentSpawning:
         orch = Orchestrator(Mock())
 
         # Disable tmux
-        with patch('athena.coordination.orchestrator.LIBTMUX_AVAILABLE', False):
+        with patch("athena.coordination.orchestrator.LIBTMUX_AVAILABLE", False):
             # Should not crash even without tmux
             await orch.initialize_session()
             assert True  # If we get here, it didn't crash
@@ -104,10 +106,10 @@ class TestAgentSpawning:
     def test_agent_status_tracking(self):
         """Test agent status values are valid."""
         statuses = [s.value for s in AgentStatus]
-        assert 'idle' in statuses
-        assert 'busy' in statuses
-        assert 'failed' in statuses
-        assert 'offline' in statuses
+        assert "idle" in statuses
+        assert "busy" in statuses
+        assert "failed" in statuses
+        assert "offline" in statuses
 
 
 # ============================================================================
@@ -125,7 +127,7 @@ class TestTaskManagement:
             title="Test task",
             description="A test task",
             status=TaskStatus.PENDING,
-            priority=TaskPriority.MEDIUM
+            priority=TaskPriority.MEDIUM,
         )
 
         assert task.task_id == "test_task_1"
@@ -137,11 +139,7 @@ class TestTaskManagement:
 
     def test_task_status_transitions(self):
         """Test task status can transition properly."""
-        task = Task(
-            task_id="test_1",
-            title="Task",
-            description="Description"
-        )
+        task = Task(task_id="test_1", title="Task", description="Description")
 
         assert task.status == TaskStatus.PENDING
 
@@ -156,10 +154,10 @@ class TestTaskManagement:
     def test_task_priority_levels(self):
         """Test all priority levels exist."""
         priorities = [p.value for p in TaskPriority]
-        assert 'CRITICAL' in priorities
-        assert 'HIGH' in priorities
-        assert 'MEDIUM' in priorities
-        assert 'LOW' in priorities
+        assert "CRITICAL" in priorities
+        assert "HIGH" in priorities
+        assert "MEDIUM" in priorities
+        assert "LOW" in priorities
 
 
 # ============================================================================
@@ -176,7 +174,7 @@ class TestOrchestrationState:
             agent_id="agent_001",
             agent_type=AgentType.ANALYSIS,
             capabilities=["code_analysis", "pattern_detection"],
-            status=AgentStatus.IDLE
+            status=AgentStatus.IDLE,
         )
 
         assert agent.agent_id == "agent_001"
@@ -186,10 +184,7 @@ class TestOrchestrationState:
 
     def test_agent_capability_assignment(self):
         """Test agents can have capabilities assigned."""
-        agent = Agent(
-            agent_id="test_agent",
-            agent_type=AgentType.RESEARCH
-        )
+        agent = Agent(agent_id="test_agent", agent_type=AgentType.RESEARCH)
 
         # Should support empty capabilities
         assert agent.capabilities == []
@@ -222,7 +217,7 @@ class TestRealWorldScenarios:
             AgentType.ANALYSIS,
             AgentType.DOCUMENTATION,
             AgentType.SYNTHESIS,
-            AgentType.VALIDATION
+            AgentType.VALIDATION,
         }
 
         for agent_type in needed_types:
@@ -230,11 +225,7 @@ class TestRealWorldScenarios:
 
     def test_research_scenario_agents(self):
         """Test agents needed for research scenario."""
-        needed_types = {
-            AgentType.RESEARCH,
-            AgentType.SYNTHESIS,
-            AgentType.VALIDATION
-        }
+        needed_types = {AgentType.RESEARCH, AgentType.SYNTHESIS, AgentType.VALIDATION}
 
         for agent_type in needed_types:
             assert agent_type in AgentType
@@ -245,7 +236,7 @@ class TestRealWorldScenarios:
         orch = Orchestrator(Mock(), tmux_session_name="test")
 
         # Initialize without tmux (to avoid dependencies)
-        with patch('athena.coordination.orchestrator.LIBTMUX_AVAILABLE', False):
+        with patch("athena.coordination.orchestrator.LIBTMUX_AVAILABLE", False):
             result = await orch.initialize_session()
             assert result is True
 
@@ -295,10 +286,10 @@ class TestModelConsistency:
     def test_task_status_enum_complete(self):
         """Test all required task statuses exist."""
         statuses = [s.value for s in TaskStatus]
-        assert 'PENDING' in statuses
-        assert 'IN_PROGRESS' in statuses
-        assert 'COMPLETED' in statuses
-        assert 'FAILED' in statuses
+        assert "PENDING" in statuses
+        assert "IN_PROGRESS" in statuses
+        assert "COMPLETED" in statuses
+        assert "FAILED" in statuses
 
     def test_agent_type_count(self):
         """Test correct number of agent types."""
@@ -308,16 +299,9 @@ class TestModelConsistency:
 
     def test_agent_and_task_independence(self):
         """Test agents and tasks are independent models."""
-        agent = Agent(
-            agent_id="a1",
-            agent_type=AgentType.ANALYSIS
-        )
+        agent = Agent(agent_id="a1", agent_type=AgentType.ANALYSIS)
 
-        task = Task(
-            task_id="t1",
-            title="Task",
-            description="Desc"
-        )
+        task = Task(task_id="t1", title="Task", description="Desc")
 
         # Should be completely independent
         assert agent.agent_id != task.task_id

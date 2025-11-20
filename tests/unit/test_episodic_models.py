@@ -1,7 +1,6 @@
 """Tests for episodic memory models and data structures."""
 
-import pytest
-from datetime import datetime, timedelta
+from datetime import datetime
 from athena.episodic.models import (
     EpisodicEvent,
     EventType,

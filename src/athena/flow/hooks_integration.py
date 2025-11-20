@@ -7,7 +7,6 @@ Provides handlers for:
 - Periodic: Hourly decay cycle (background task)
 """
 
-import asyncio
 import logging
 from datetime import datetime
 from typing import Optional
@@ -89,9 +88,7 @@ class FlowHooksHandler:
             # Run all consolidation in sequence
             decay_stats = await router.process_decay()
             consolidation_stats = await router.run_consolidation_cycle()
-            clustering_stats = await router.run_temporal_clustering(
-                promote_all=False
-            )
+            clustering_stats = await router.run_temporal_clustering(promote_all=False)
 
             # Get final statistics
             final_health = await router.get_flow_health()

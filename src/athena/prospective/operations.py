@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 
 from ..core.database import Database
 from .store import ProspectiveStore
-from .models import ProspectiveTask, TaskStatus, TaskPriority
+from .models import ProspectiveTask
 
 logger = logging.getLogger(__name__)
 

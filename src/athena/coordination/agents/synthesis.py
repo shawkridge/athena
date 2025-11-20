@@ -7,7 +7,6 @@ Specialist agent for:
 - Result combination
 """
 
-import asyncio
 import logging
 from typing import Dict, Any
 

@@ -1,6 +1,5 @@
 """Tests for memory consolidation and reconsolidation logic."""
 
-import pytest
 from datetime import datetime, timedelta
 from athena.core.models import Memory, MemoryType, ConsolidationState
 

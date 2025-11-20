@@ -11,9 +11,9 @@ Validates:
 """
 
 from dataclasses import dataclass
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Optional
 import numpy as np
-from scipy.stats import pearsonr, spearmanr
+from scipy.stats import pearsonr
 from datetime import datetime
 import logging
 
@@ -166,7 +166,7 @@ class ValidationExperiments:
             effect_size=correlation**2,
             evidence=[
                 f"Φ-II Pearson r={correlation:.3f}, p={p_value:.4f}",
-                f"IIT prediction: Φ should measure integration quality",
+                "IIT prediction: Φ should measure integration quality",
             ],
         )
 
@@ -218,7 +218,7 @@ class ValidationExperiments:
             effect_size=correlation**2,
             evidence=[
                 f"Metacognition-Confidence r={correlation:.3f}, p={p_value:.4f}",
-                f"HOT theory: Accurate meta-awareness requires monitoring",
+                "HOT theory: Accurate meta-awareness requires monitoring",
             ],
         )
 
@@ -270,7 +270,7 @@ class ValidationExperiments:
             effect_size=correlation**2,
             evidence=[
                 f"Qualia-II Spearman r={correlation:.3f}, p={p_value:.4f}",
-                f"More integration → more distinguishable experiences",
+                "More integration → more distinguishable experiences",
             ],
         )
 
@@ -322,7 +322,7 @@ class ValidationExperiments:
             effect_size=correlation**2,
             evidence=[
                 f"Embodiment-Agency r={correlation:.3f}, p={p_value:.4f}",
-                f"Neuroscience: Body schema required for agency",
+                "Neuroscience: Body schema required for agency",
             ],
         )
 
@@ -377,10 +377,14 @@ class ValidationExperiments:
 
         if variance_high < variance_low:
             result = "PASS"
-            evidence_text = f"High TC variance: {variance_high:.3f}, Low TC variance: {variance_low:.3f}"
+            evidence_text = (
+                f"High TC variance: {variance_high:.3f}, Low TC variance: {variance_low:.3f}"
+            )
         else:
             result = "FAIL"
-            evidence_text = f"High TC variance: {variance_high:.3f} ≥ Low TC variance: {variance_low:.3f}"
+            evidence_text = (
+                f"High TC variance: {variance_high:.3f} ≥ Low TC variance: {variance_low:.3f}"
+            )
 
         experiment = ExperimentResult(
             name="Temporal Continuity Stability",
@@ -390,7 +394,7 @@ class ValidationExperiments:
             effect_size=1 - (variance_high / (variance_low + 0.001)),
             evidence=[
                 evidence_text,
-                f"Temporal continuity prevents experiential drift",
+                "Temporal continuity prevents experiential drift",
             ],
         )
 

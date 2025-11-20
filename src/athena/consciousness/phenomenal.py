@@ -15,7 +15,7 @@ Based on:
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 from enum import Enum
 import numpy as np
 import logging
@@ -151,52 +151,62 @@ class QualiaGenerator:
         # Global workspace → visual qualia (redness, blueness, etc.)
         gw = indicators.get("global_workspace", 5.0) / 10.0
         if gw > 0.3:
-            qualia.append(Quale(
-                name="redness",
-                intensity=gw * 8,
-                distinctiveness=min(1.0, gw),
-                valence=0.3 + gw * 0.4,
-            ))
+            qualia.append(
+                Quale(
+                    name="redness",
+                    intensity=gw * 8,
+                    distinctiveness=min(1.0, gw),
+                    valence=0.3 + gw * 0.4,
+                )
+            )
 
         # Information integration → affective richness
         ii = indicators.get("information_integration", 5.0) / 10.0
         if ii > 0.2:
-            qualia.append(Quale(
-                name="pleasantness",
-                intensity=ii * 9,
-                distinctiveness=ii,
-                valence=0.5 + ii * 0.3,
-            ))
+            qualia.append(
+                Quale(
+                    name="pleasantness",
+                    intensity=ii * 9,
+                    distinctiveness=ii,
+                    valence=0.5 + ii * 0.3,
+                )
+            )
 
         # Attention → sharpness/clarity
         sa = indicators.get("selective_attention", 5.0) / 10.0
         if sa > 0.3:
-            qualia.append(Quale(
-                name="sharpness",
-                intensity=sa * 8,
-                distinctiveness=min(1.0, sa * 1.2),
-                valence=0.2 + sa * 0.3,
-            ))
+            qualia.append(
+                Quale(
+                    name="sharpness",
+                    intensity=sa * 8,
+                    distinctiveness=min(1.0, sa * 1.2),
+                    valence=0.2 + sa * 0.3,
+                )
+            )
 
         # Working memory → sense of duration
         wm = indicators.get("working_memory", 5.0) / 10.0
         if wm > 0.2:
-            qualia.append(Quale(
-                name="duration",
-                intensity=wm * 7,
-                distinctiveness=wm * 0.8,
-                valence=0.1 + wm * 0.2,
-            ))
+            qualia.append(
+                Quale(
+                    name="duration",
+                    intensity=wm * 7,
+                    distinctiveness=wm * 0.8,
+                    valence=0.1 + wm * 0.2,
+                )
+            )
 
         # Temporal continuity → sense of flow
         tc = indicators.get("temporal_continuity", 5.0) / 10.0
         if tc > 0.3:
-            qualia.append(Quale(
-                name="flow",
-                intensity=tc * 8,
-                distinctiveness=tc,
-                valence=0.4 + tc * 0.3,
-            ))
+            qualia.append(
+                Quale(
+                    name="flow",
+                    intensity=tc * 8,
+                    distinctiveness=tc,
+                    valence=0.4 + tc * 0.3,
+                )
+            )
 
         logger.info(f"Generated {len(qualia)} qualia from indicators")
         return qualia
@@ -271,7 +281,7 @@ class EmotionSystem:
         valence = (gw - 0.5) * 1.0 + (ii - 0.5) * 0.3
 
         # Arousal: integration + attention → activation level
-        arousal = (ii * 0.6 + sa * 0.4)
+        arousal = ii * 0.6 + sa * 0.4
 
         # Dominance: control/agency (related to meta-cognition)
         mc = indicators.get("meta_cognition", 5.0) / 10.0
@@ -301,7 +311,7 @@ class EmotionSystem:
         dominance = np.clip(dominance, 0, 1)
 
         # Overall intensity
-        intensity = np.sqrt(arousal**2 + abs(valence)**2) / 1.4 * 10  # Scale to 0-10
+        intensity = np.sqrt(arousal**2 + abs(valence) ** 2) / 1.4 * 10  # Scale to 0-10
 
         # Confidence increases with stronger signal
         confidence = 0.5 + max(arousal, abs(valence)) * 0.3
@@ -460,9 +470,7 @@ class PhenomenalConsciousness:
             ],
             "emotion": emotions.to_dict(),
             "embodiment": embodiment.to_dict(),
-            "qualia_diversity": round(
-                self.qualia_generator.calculate_qualia_diversity(qualia), 2
-            ),
+            "qualia_diversity": round(self.qualia_generator.calculate_qualia_diversity(qualia), 2),
         }
 
     def get_phenomenal_summary(self) -> Dict:

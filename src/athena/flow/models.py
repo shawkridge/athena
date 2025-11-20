@@ -2,7 +2,6 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -10,9 +9,9 @@ from pydantic import BaseModel, Field, ConfigDict
 class MemoryTier(str, Enum):
     """Memory storage tier in the information flow hierarchy."""
 
-    WORKING = "working"      # 7±2 active items (Baddeley limit)
-    SESSION = "session"      # ~100 items (warm cache)
-    EPISODIC = "episodic"    # Unlimited storage
+    WORKING = "working"  # 7±2 active items (Baddeley limit)
+    SESSION = "session"  # ~100 items (warm cache)
+    EPISODIC = "episodic"  # Unlimited storage
 
 
 class ActivationState(BaseModel):
@@ -40,10 +39,10 @@ class ActivationState(BaseModel):
 class ConsolidationRule(BaseModel):
     """Rule for selective consolidation based on activation."""
 
-    min_activation: float = Field(default=0.7)    # Threshold for promotion
-    target_tier: MemoryTier                         # Where to promote
-    action: str                                      # 'promote', 'maintain', 'decay'
-    decay_rate: float = Field(default=0.1, ge=0.0) # Exponential decay parameter
+    min_activation: float = Field(default=0.7)  # Threshold for promotion
+    target_tier: MemoryTier  # Where to promote
+    action: str  # 'promote', 'maintain', 'decay'
+    decay_rate: float = Field(default=0.1, ge=0.0)  # Exponential decay parameter
 
     model_config = ConfigDict(use_enum_values=True)
 

@@ -12,7 +12,6 @@ from .models import (
     ProspectiveTask,
     TaskDependency,
     TaskPhase,
-    TaskPriority,
     TaskStatus,
     TaskTrigger,
     TriggerType,

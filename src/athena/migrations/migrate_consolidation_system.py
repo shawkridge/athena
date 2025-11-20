@@ -15,8 +15,6 @@ Timeline: One-time execution at next database upgrade
 """
 
 import logging
-from datetime import datetime
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 

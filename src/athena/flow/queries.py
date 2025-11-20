@@ -4,10 +4,8 @@ Implements hot-first search: searches working memory → session cache → episo
 archive to optimize for recency and activation.
 """
 
-from typing import Optional
 
 from ..core.database import Database
-from .models import MemoryTier
 
 
 class QueryRouter:
@@ -44,9 +42,7 @@ class QueryRouter:
         results = []
 
         # Search working memory first (most active, hot items)
-        working_results = await self._search_tier(
-            "active", query, limit, similarity_threshold
-        )
+        working_results = await self._search_tier("active", query, limit, similarity_threshold)
         results.extend(working_results)
 
         # If working memory didn't provide enough results, search session cache
@@ -65,9 +61,7 @@ class QueryRouter:
 
         return results[:limit]
 
-    async def _search_tier(
-        self, tier: str, query: str, limit: int, threshold: float
-    ) -> list[dict]:
+    async def _search_tier(self, tier: str, query: str, limit: int, threshold: float) -> list[dict]:
         """Search a single memory tier.
 
         Args:
@@ -196,9 +190,7 @@ class QueryRouter:
 
             return results
 
-    async def search_by_recency(
-        self, hours: int = 1, limit: int = 20
-    ) -> list[dict]:
+    async def search_by_recency(self, hours: int = 1, limit: int = 20) -> list[dict]:
         """Search for recent items (high activation).
 
         Args:

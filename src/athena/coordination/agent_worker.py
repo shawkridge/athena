@@ -15,7 +15,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
-from .models import Agent, AgentType, Task, TaskStatus
+from .models import AgentType, Task
 from .operations import CoordinationOperations
 
 logger = logging.getLogger(__name__)
@@ -265,9 +265,7 @@ class AgentWorker(ABC):
     # Utilities
     # ====================================================================
 
-    async def load_memory_context(
-        self, query: str, limit: int = 10
-    ) -> Optional[Any]:
+    async def load_memory_context(self, query: str, limit: int = 10) -> Optional[Any]:
         """
         Load context from Athena memory for a query.
 

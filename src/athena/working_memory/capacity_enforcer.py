@@ -7,7 +7,6 @@ Implements Baddeley's 7±2 working memory capacity model with:
 """
 
 import logging
-import math
 from typing import Optional, List, Dict, Any, Callable
 from datetime import datetime
 from dataclasses import dataclass

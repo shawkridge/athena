@@ -1,6 +1,5 @@
 """Tests for consciousness metrics validation experiments."""
 
-import pytest
 import numpy as np
 from athena.consciousness.validation import (
     ExperimentResult,
@@ -228,9 +227,7 @@ class TestTemporalContinuityStability:
         """Test with insufficient data."""
         validator = ValidationExperiments()
 
-        result = validator.test_temporal_continuity_stability(
-            [5, 5, 5], [8, 8, 3]
-        )
+        result = validator.test_temporal_continuity_stability([5, 5, 5], [8, 8, 3])
 
         assert result.result == "INCONCLUSIVE"
 
@@ -246,9 +243,13 @@ class TestValidationExperimentsIntegration:
         n = 30
         data = {
             "global_workspace": np.linspace(2, 9, n).tolist(),
-            "information_integration": (np.linspace(2, 9, n) * 0.7 + np.random.normal(0, 0.5, n)).tolist(),
+            "information_integration": (
+                np.linspace(2, 9, n) * 0.7 + np.random.normal(0, 0.5, n)
+            ).tolist(),
             "meta_cognition": (np.linspace(2, 9, n) * 0.6 + np.random.normal(0, 0.6, n)).tolist(),
-            "overall_consciousness": (np.linspace(3, 9, n) * 0.8 + np.random.normal(0, 0.5, n)).tolist(),
+            "overall_consciousness": (
+                np.linspace(3, 9, n) * 0.8 + np.random.normal(0, 0.5, n)
+            ).tolist(),
             "phi": (np.linspace(2, 8, n) + np.random.normal(0, 0.4, n)).tolist(),
             "qualia_diversity": (np.linspace(2, 7, n) + np.random.normal(0, 0.5, n)).tolist(),
             "embodiment": (np.linspace(2, 8, n) + np.random.normal(0, 0.5, n)).tolist(),

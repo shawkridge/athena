@@ -1,11 +1,9 @@
 """Unit tests for knowledge graph operations."""
 
 import pytest
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from athena.graph.operations import GraphOperations
-from athena.graph.models import Entity, Relation, EntityType, RelationType
 
 pytestmark = pytest.mark.asyncio
 
@@ -107,7 +105,7 @@ def mock_store():
         communities = []
         visited = set()
 
-        for entity_id in list(entities.keys())[:limit * 10]:
+        for entity_id in list(entities.keys())[: limit * 10]:
             if entity_id in visited:
                 continue
 

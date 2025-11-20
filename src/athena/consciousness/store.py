@@ -11,7 +11,6 @@ import logging
 
 from athena.core.database import Database
 from athena.consciousness.metrics import ConsciousnessScore
-from athena.consciousness.indicators import IndicatorScore
 
 logger = logging.getLogger(__name__)
 
@@ -398,9 +397,7 @@ class ConsciousnessStore:
         end_time = datetime.now()
         start_time = end_time - time_window
 
-        measurements = await self.get_measurements_in_range(
-            start_time, end_time, session_id
-        )
+        measurements = await self.get_measurements_in_range(start_time, end_time, session_id)
 
         if len(measurements) < 2:
             return None

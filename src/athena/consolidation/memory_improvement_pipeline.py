@@ -10,7 +10,7 @@ Designed to be called from the main dreaming.py during consolidation.
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from ..core.database import Database
 from .reconsolidation_activator import ReconsolidationActivator
@@ -60,11 +60,10 @@ class MemoryImprovementPipeline:
         }
 
         import time
+
         start_time = time.time()
 
-        logger.info(
-            f"Starting Memory Improvement Pipeline for project_id={project_id}"
-        )
+        logger.info(f"Starting Memory Improvement Pipeline for project_id={project_id}")
 
         try:
             # Step 1: Consolidate labile memories (close out reconsolidation windows)
@@ -95,8 +94,8 @@ class MemoryImprovementPipeline:
 
                 contradictions = []
                 for pid in project_ids:
-                    project_contradictions = await self.contradictions.detect_contradictions_in_project(
-                        pid
+                    project_contradictions = (
+                        await self.contradictions.detect_contradictions_in_project(pid)
                     )
                     contradictions.extend(project_contradictions)
 

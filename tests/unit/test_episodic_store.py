@@ -1,15 +1,14 @@
 """Tests for episodic memory storage operations."""
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime
 from athena.episodic.models import (
     EpisodicEvent,
     EventType,
     EventOutcome,
-    EventContext,
 )
 from athena.episodic.store import EpisodicStore
-from athena.core.database import get_database, reset_database
+from athena.core.database import get_database
 
 
 @pytest.fixture

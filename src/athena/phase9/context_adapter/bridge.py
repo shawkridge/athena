@@ -1,6 +1,5 @@
 """External system bridge for Phase 9.3: Infinite Context Adapter."""
 
-
 from athena.phase9.context_adapter.models import (
     ExportedInsight,
     ExternalDataMapping,

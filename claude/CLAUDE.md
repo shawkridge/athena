@@ -213,78 +213,150 @@ This gives you access to:
 
 </memory-system>
 
-## Athena Tools & Skills Available Globally
+## Athena: How It Works (For Me)
 
-**Status**: Athena tools and skills are now discoverable and usable from ANY project on this machine.
+### What Happens Automatically (No Action Needed)
+- **SessionStart hook**: Loads top 7±2 memories (worktree-boosted if in feature branch), detects context (worktree path, project)
+- **PostToolUse hook**: Records what I did as episodic events, tags with worktree/branch
+- **Todos**: Filtered per worktree automatically (different branches = different todo lists, no contamination)
+- **Memory prioritization**: Current worktree memories ranked +2.0 higher, all other worktree memories still accessible
+- **SessionEnd hook**: Consolidates learnings, extracts patterns, updates semantic memory
+- **Hook failures**: Degrade gracefully (no memory loaded = session continues normally)
 
-### Available Tools
+### What I Call When I Need It
 
-Athena provides filesystem-discoverable tools organized by capability:
-
-**Memory Tools** (`~/.work/athena/src/athena/tools/memory/`):
-- `recall(query, limit=10)` - Search memories semantically across all projects
-- `remember(content, event_type='action', tags=[])` - Store new memories
-- `forget(memory_id)` - Delete a memory
-
-**Planning Tools** (`~/.work/athena/src/athena/tools/planning/`):
-- `plan_task(description, depth=3)` - Decompose tasks into executable plans
-- `validate_plan(plan, scenarios=5)` - Verify plans using formal verification
-
-**Consolidation Tools** (`~/.work/athena/src/athena/tools/consolidation/`):
-- `consolidate(strategy='balanced', days_back=7)` - Extract patterns from memories
-- `get_patterns(limit=10)` - Retrieve learned patterns
-
-**Graph Tools** (`~/.work/athena/src/athena/tools/graph/`):
-- `query(pattern)` - Search knowledge graph
-- `analyze(entity)` - Analyze entity relationships
-
-**Retrieval Tools** (`~/.work/athena/src/athena/tools/retrieval/`):
-- `hybrid(query, limit=10)` - Advanced semantic + BM25 hybrid search
-
-### How to Use Athena Tools
-
-When working on any project, you can import and use Athena tools:
-
+**Store a finding** (async):
 ```python
-# Discover tools by exploring filesystem
-# ls ~/.work/athena/src/athena/tools/memory/
-
-# Import and use (example)
-from athena.manager import UnifiedMemoryManager
-
-async def my_task():
-    manager = UnifiedMemoryManager()
-    await manager.initialize()
-
-    # Search memories from previous sessions
-    results = await manager.recall("related query", limit=5)
-
-    # Store new learning
-    memory_id = await manager.remember("what I learned today", tags=["learning"])
-
-    # Get patterns Athena discovered
-    patterns = await manager.get_patterns(limit=3)
+from athena.episodic.operations import remember
+memory_id = await remember("Finding", tags=["x"], importance=0.8)  # Returns str (ID)
 ```
 
-### Available Skills
+**Retrieve context** (async):
+```python
+from athena.episodic.operations import recall
+results = await recall("query", limit=5)  # Returns list of dicts with: content, tags, importance, worktree_path
+```
 
-30+ reusable skills in `~/.claude/skills/` are automatically available:
+**Detect current context** (sync):
+```python
+from git_worktree_helper import GitWorktreeHelper
+info = GitWorktreeHelper.get_worktree_info()
+# Returns dict: {is_worktree: bool, worktree_path: str, worktree_branch: str, main_worktree_path: str, is_main_worktree: bool}
+# Graceful fallback: non-git dirs return worktree_path=cwd, is_worktree=False
+```
 
-- **Research Skills**: advanced-retrieval, deep-research, web-research, documentation-research
-- **Planning Skills**: advanced-planning, planning-coordination, task-decomposition
-- **Analysis Skills**: code-analyzer, pattern-extraction, hypothesis-validation, strategy-analysis
-- **Integration Skills**: research-synthesis, research-coordination, workflow-engineering
-- **System Skills**: graph-analysis, graph-navigation, memory-management, load-management, cost-estimation
+**Decompose complex task into parallel work** (async):
+```python
+from athena.coordination.orchestrator import Orchestrator
+orchestrator = Orchestrator(db)  # db from wherever it's initialized
+results = await orchestrator.orchestrate(parent_task_id, max_concurrent_agents=4)
+# Returns dict: {completed_tasks: [...], failed_tasks: [...], synthesis_result: ...}
+# Agent types auto-selected based on task skills, spawn in tmux panes, health-checked every 60s
+# If agent dies/stales, task reassigned automatically
+```
 
-Each skill includes documentation (SKILL.md) on when to use it and how to invoke it.
+**Store persistent learning** (async):
+```python
+from athena.semantic.operations import store
+fact_id = await store("Python is dynamic", topics=["programming"], confidence=0.95)  # Returns str (ID)
+```
 
-### How Athena Improves Your Work
+**Retrieve persistent facts** (async):
+```python
+from athena.semantic.operations import search
+facts = await search("python typing", limit=5)  # Returns list of dicts with: content, topics, confidence
+```
 
-1. **Cross-project memory**: Insights from Project A are available when working on Project B
-2. **Pattern learning**: Athena automatically extracts reusable workflows from your actions
-3. **Context injection**: Working memory (top 7±2 items) loaded at session start automatically
-4. **Consolidation**: Patterns extracted during sleep-like consolidation at session end
-5. **Knowledge graph**: Relationships between concepts across all projects
+**Extract procedure from past work** (async):
+```python
+from athena.procedural.operations import extract_procedure
+procedure = await extract_procedure(session_id, name="Pattern X")
+# Use when consolidating learnings into reusable workflows
+```
+
+**Create task in queue** (async, for agents to find):
+```python
+from athena.prospective.operations import create_task
+task_id = await create_task(
+    description="Analyze code",
+    required_skills=["code_analysis"],
+    priority="high",
+    parameters={},
+    depends_on=[]
+)
+```
+
+**Graph relationships** (async):
+```python
+from athena.graph.operations import add_entity, find_related
+await add_entity("AuthSystem", {"type": "feature", "status": "complete"})
+related = await find_related("AuthSystem")  # Returns related entities
+```
+
+**Consolidated async access** (recommended, async):
+```python
+from athena.manager import UnifiedMemoryManager
+manager = UnifiedMemoryManager()
+await manager.initialize()
+results = await manager.recall("query", limit=10)  # Single interface, all layers
+```
+
+### What I Assume About The Environment
+- PostgreSQL running on `localhost:5432` (or env vars: `ATHENA_POSTGRES_*`)
+- Hooks are active (memory loaded automatically at session start)
+- Database initialized with schema (created automatically on first run)
+- Git worktrees optional (system degrades gracefully in non-git directories)
+- Agents auto-spawned by hooks if needed, OR manually via orchestrator
+- Episodic memory already contains working memory (loaded by SessionStart hook)
+- All async operations need `await` (never fire-and-forget)
+- Connection pooling handles concurrency (don't create new connections)
+
+### When Memory Is Actually Useful
+- **Start of session**: Working memory already loaded (see top of session output)
+- **After tool execution**: Hook records action → available next time via recall()
+- **Cross-project**: Memories from all projects accessible (use tags/topics to filter)
+- **Consolidation**: Patterns extracted at SessionEnd → available next session as semantic facts
+- **Within session**: recall("recent pattern") finds things I just learned
+
+### Key Design I Need to Know
+- **Isolation**: Worktree filtering is query-based (WHERE worktree_path = X), not separate tables
+- **Prioritization**: +2.0 boost in ORDER BY calculation, memories not hidden—just ranked lower
+- **Coordination**: Agents don't talk directly; all communication via PostgreSQL (episodic/prospective tables)
+- **Fallback**: Non-git paths use cwd as isolation key (behavior identical)
+- **Recovery**: Stale agents detected (no heartbeat >60s) and respawned; tasks reassigned
+- **Graceful degradation**: Hook failures don't crash session; continue without memory
+
+### Common Patterns I'll Use
+**Pattern 1: Learn then remember**
+```python
+# Do analysis
+finding = analyze(data)
+# Store it
+await remember(f"Found X in Y", tags=["analysis"], importance=0.85)
+```
+
+**Pattern 2: Recall context for current task**
+```python
+context = await recall("similar problems", limit=5)
+if context:
+    apply_learned_approach(context[0])
+```
+
+**Pattern 3: Decompose into parallel work**
+```python
+# For large tasks
+results = await orchestrator.orchestrate("task_id", max_concurrent_agents=4)
+# Results auto-synthesized, agents auto-recovered if they fail
+```
+
+**Pattern 4: Store facts vs events**
+```python
+# Temporary finding (session-specific)
+await remember("Found bug X", tags=["bug_X"])
+
+# Permanent fact (useful across projects)
+await store("Python's GIL limits true parallelism", topics=["python", "concurrency"])
+```
 
 <execution-model>
 

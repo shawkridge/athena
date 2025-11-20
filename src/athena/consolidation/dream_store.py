@@ -1,17 +1,12 @@
 """Dream procedure storage and query operations."""
 
-import json
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any
 
 from ..core.database import Database
 from ..core.base_store import BaseStore
 from .dream_models import (
     DreamProcedure,
-    DreamType,
-    DreamTier,
     DreamStatus,
-    DreamGenerationRun,
-    DreamMetrics,
 )
 
 

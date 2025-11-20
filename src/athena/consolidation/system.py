@@ -423,7 +423,7 @@ class ConsolidationSystem:
                         self._maybe_create_procedure(pattern, events)
 
             return patterns_found
-        except Exception as e:
+        except Exception:
             raise  # Fail loudly - don't hide errors
 
     def _create_memories_from_patterns(self, project_id: Optional[int], run_id: int) -> int:
@@ -483,12 +483,12 @@ class ConsolidationSystem:
                             (pattern_id,),
                         )
 
-                except Exception as e:
+                except Exception:
                     raise  # Fail loudly - don't hide errors
 
             return memories_created
 
-        except Exception as e:
+        except Exception:
             raise  # Fail loudly - don't hide errors
 
     def _extract_common_pattern(self, events: list) -> str:
@@ -685,7 +685,8 @@ class ConsolidationSystem:
 
         if project_id:
             cursor.execute(
-                "SELECT COUNT(*) as count FROM semantic_memories WHERE project_id = %s", (project_id,)
+                "SELECT COUNT(*) as count FROM semantic_memories WHERE project_id = %s",
+                (project_id,),
             )
         else:
             cursor.execute("SELECT COUNT(*) as count FROM semantic_memories")
@@ -1127,51 +1128,63 @@ class ConsolidationSystem:
     async def _create_run_async(self, run: ConsolidationRun) -> int:
         """Async wrapper for _create_run."""
         import asyncio
+
         return await asyncio.to_thread(self._create_run, run)
 
     async def _score_memories_async(self, project_id: Optional[int]) -> float:
         """Async wrapper for _score_memories."""
         import asyncio
+
         return await asyncio.to_thread(self._score_memories, project_id)
 
     async def _prune_memories_async(self, project_id: Optional[int], threshold: float = 0.1) -> int:
         """Async wrapper for _prune_memories."""
         import asyncio
+
         return await asyncio.to_thread(self._prune_memories, project_id, threshold)
 
     async def _extract_patterns_async(self, project_id: Optional[int], run_id: int) -> int:
         """Async wrapper for _extract_patterns."""
         import asyncio
+
         return await asyncio.to_thread(self._extract_patterns, project_id, run_id)
 
-    async def _create_memories_from_patterns_async(self, project_id: Optional[int], run_id: int) -> int:
+    async def _create_memories_from_patterns_async(
+        self, project_id: Optional[int], run_id: int
+    ) -> int:
         """Async wrapper for _create_memories_from_patterns."""
         import asyncio
+
         return await asyncio.to_thread(self._create_memories_from_patterns, project_id, run_id)
 
     async def _resolve_conflicts_async(self, project_id: Optional[int]) -> int:
         """Async wrapper for _resolve_conflicts."""
         import asyncio
+
         return await asyncio.to_thread(self._resolve_conflicts, project_id)
 
     async def _strengthen_memories_async(self, project_id: Optional[int]):
         """Async wrapper for _strengthen_memories."""
         import asyncio
+
         return await asyncio.to_thread(self._strengthen_memories, project_id)
 
     async def _update_meta_statistics_async(self, project_id: Optional[int]):
         """Async wrapper for _update_meta_statistics."""
         import asyncio
+
         return await asyncio.to_thread(self._update_meta_statistics, project_id)
 
     async def _calculate_average_quality_async(self, project_id: Optional[int]) -> float:
         """Async wrapper for _calculate_average_quality."""
         import asyncio
+
         return await asyncio.to_thread(self._calculate_average_quality, project_id)
 
     async def _count_memories_async(self, project_id: Optional[int]) -> int:
         """Async wrapper for _count_memories."""
         import asyncio
+
         return await asyncio.to_thread(self._count_memories, project_id)
 
     async def _complete_run_async(
@@ -1192,6 +1205,7 @@ class ConsolidationSystem:
     ):
         """Async wrapper for _complete_run."""
         import asyncio
+
         return await asyncio.to_thread(
             self._complete_run,
             run_id,
@@ -1209,17 +1223,22 @@ class ConsolidationSystem:
             avg_information_density,
         )
 
-    async def _measure_consolidation_metrics_async(self, project_id: Optional[int], run_id: int) -> dict:
+    async def _measure_consolidation_metrics_async(
+        self, project_id: Optional[int], run_id: int
+    ) -> dict:
         """Async wrapper for _measure_consolidation_metrics."""
         import asyncio
+
         return await asyncio.to_thread(self._measure_consolidation_metrics, project_id, run_id)
 
     async def _synthesize_temporal_kg_async(self, project_id: Optional[int]):
         """Async wrapper for _synthesize_temporal_kg."""
         import asyncio
+
         return await asyncio.to_thread(self._synthesize_temporal_kg, project_id)
 
     async def _extract_semantic_from_graph_async(self, project_id: Optional[int]):
         """Async wrapper for _extract_semantic_from_graph."""
         import asyncio
+
         return await asyncio.to_thread(self._extract_semantic_from_graph, project_id)

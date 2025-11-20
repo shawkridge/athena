@@ -34,6 +34,8 @@ async def initialize_coordination(db) -> CoordinationOperations:
     await store.initialize()
     ops = CoordinationOperations(store)
     return ops
+
+
 from .agent_worker import AgentWorker
 from .memory_offload import MemoryOffloadManager, OrchestrationContextManager
 from .health_monitor import HealthMonitor, RecoveryPolicy

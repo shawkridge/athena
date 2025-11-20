@@ -113,7 +113,9 @@ class EpisodicEvent(BaseModel):
     consolidation_score: float = Field(
         default=0.0, ge=0.0, le=1.0
     )  # Likelihood pattern was extracted (0.0-1.0)
-    last_activation: datetime = Field(default_factory=datetime.now)  # Last time accessed/consolidated
+    last_activation: datetime = Field(
+        default_factory=datetime.now
+    )  # Last time accessed/consolidated
     activation_count: int = 0  # How many times retrieved or consolidated
 
     # Code-aware tracking (optional fields for code events)

@@ -2,9 +2,8 @@
 
 from typing import Optional
 import logging
-from datetime import datetime
 
-from ..core.models import Memory, MemoryType, ConsolidationState
+from ..core.models import Memory, MemoryType
 
 logger = logging.getLogger(__name__)
 

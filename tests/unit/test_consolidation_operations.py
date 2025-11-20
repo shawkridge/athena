@@ -1,9 +1,8 @@
 """Unit tests for consolidation memory operations."""
 
 import pytest
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
-from typing import Dict, List, Any
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock
 
 from athena.consolidation.operations import ConsolidationOperations
 from athena.consolidation.models import (
@@ -82,13 +81,15 @@ def mock_consolidation_system():
                 source_events=[1, 2, 3],
             )
             patterns[pattern_id] = pattern
-            pattern_list.append({
-                "id": pattern_id,
-                "type": str(pattern.pattern_type),
-                "content": pattern.pattern_content,
-                "frequency": pattern.occurrences,
-                "confidence": pattern.confidence,
-            })
+            pattern_list.append(
+                {
+                    "id": pattern_id,
+                    "type": str(pattern.pattern_type),
+                    "content": pattern.pattern_content,
+                    "frequency": pattern.occurrences,
+                    "confidence": pattern.confidence,
+                }
+            )
         return pattern_list
 
     async def extract_procedures_impl(memory_limit=50, min_success_rate=0.6):
@@ -213,9 +214,7 @@ class TestConsolidationOperations:
         # All patterns should meet frequency requirement
         assert all(p.get("frequency", 0) >= 3 or True for p in patterns)
 
-    async def test_extract_patterns_empty_on_no_matches(
-        self, operations: ConsolidationOperations
-    ):
+    async def test_extract_patterns_empty_on_no_matches(self, operations: ConsolidationOperations):
         """Test extracting patterns returns list (possibly empty) on no matches."""
         patterns = await operations.extract_patterns(min_frequency=1000)
 
@@ -249,9 +248,7 @@ class TestConsolidationOperations:
         assert procedures is not None
         assert all(p.get("success_rate", 0) >= 0.8 for p in procedures)
 
-    async def test_extract_procedures_with_memory_limit(
-        self, operations: ConsolidationOperations
-    ):
+    async def test_extract_procedures_with_memory_limit(self, operations: ConsolidationOperations):
         """Test extracting procedures with memory limit."""
         procedures = await operations.extract_procedures(memory_limit=25)
 
@@ -274,18 +271,14 @@ class TestConsolidationOperations:
         assert history is not None
         assert isinstance(history, list)
 
-    async def test_get_consolidation_history_with_limit(
-        self, operations: ConsolidationOperations
-    ):
+    async def test_get_consolidation_history_with_limit(self, operations: ConsolidationOperations):
         """Test getting consolidation history with limit."""
         history = await operations.get_consolidation_history(limit=5)
 
         assert history is not None
         assert len(history) <= 5
 
-    async def test_get_consolidation_history_large_limit(
-        self, operations: ConsolidationOperations
-    ):
+    async def test_get_consolidation_history_large_limit(self, operations: ConsolidationOperations):
         """Test getting consolidation history with large limit."""
         history = await operations.get_consolidation_history(limit=1000)
 
@@ -350,9 +343,7 @@ class TestConsolidationOperations:
         # Some patterns may have references
         assert patterns is not None
 
-    async def test_extract_procedures_return_structure(
-        self, operations: ConsolidationOperations
-    ):
+    async def test_extract_procedures_return_structure(self, operations: ConsolidationOperations):
         """Test extracted procedures have expected structure."""
         procedures = await operations.extract_procedures()
 
@@ -396,9 +387,7 @@ class TestConsolidationEdgeCases:
         # Should handle gracefully
         assert isinstance(patterns, list)
 
-    async def test_extract_procedures_with_zero_min_rate(
-        self, operations: ConsolidationOperations
-    ):
+    async def test_extract_procedures_with_zero_min_rate(self, operations: ConsolidationOperations):
         """Test extracting procedures with zero min success rate."""
         procedures = await operations.extract_procedures(min_success_rate=0.0)
         assert isinstance(procedures, list)
@@ -418,9 +407,7 @@ class TestConsolidationEdgeCases:
             # Also acceptable behavior
             pass
 
-    async def test_extract_patterns_negative_frequency(
-        self, operations: ConsolidationOperations
-    ):
+    async def test_extract_patterns_negative_frequency(self, operations: ConsolidationOperations):
         """Test that negative frequency is handled."""
         try:
             patterns = await operations.extract_patterns(min_frequency=-1)

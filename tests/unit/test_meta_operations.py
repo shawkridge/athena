@@ -1,11 +1,9 @@
 """Unit tests for meta-memory operations."""
 
 import pytest
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from athena.meta.operations import MetaOperations
-from athena.meta.models import DomainCoverage, MemoryQuality, ExpertiseLevel
 
 pytestmark = pytest.mark.asyncio
 
@@ -82,8 +80,7 @@ def mock_store():
         return {
             "total_memories_rated": len(quality_scores),
             "avg_quality": (
-                sum(s.get("quality", 0.5) for s in quality_scores.values())
-                / len(quality_scores)
+                sum(s.get("quality", 0.5) for s in quality_scores.values()) / len(quality_scores)
                 if quality_scores
                 else 0.5
             ),
