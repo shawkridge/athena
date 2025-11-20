@@ -411,3 +411,27 @@ class MemoryBridge:
         except Exception as e:
             logger.warning(f"Error getting last session time: {e}")
             return None
+
+    def get_memory_content(self, memory_id: int) -> Optional[str]:
+        """Get full content of a memory by ID.
+
+        Used by hooks to retrieve complete memory content (not truncated).
+
+        Args:
+            memory_id: Memory ID
+
+        Returns:
+            Full content string, or None if not found
+        """
+        try:
+            with PooledConnection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT content FROM episodic_events WHERE id = %s",
+                    (memory_id,),
+                )
+                row = cursor.fetchone()
+                return row[0] if row else None
+        except Exception as e:
+            logger.warning(f"Error getting memory content: {e}")
+            return None

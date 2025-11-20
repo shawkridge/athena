@@ -75,7 +75,7 @@ log "✓ Pre-analysis complete (silent unless alerts)"
 # This enables remembering questions asked in other projects
 log "Recording prompt to episodic memory..."
 
-python3 << 'PYTHON_EOF'
+python3 << PYTHON_EOF
 import sys
 import os
 import re

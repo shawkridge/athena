@@ -101,7 +101,11 @@ try:
         from session_context_manager import SessionContextManager  # Phase 3: Token efficiency
         from advanced_context_intelligence import AdvancedContextIntelligence, CrossSessionContinuity  # Phase 4: Advanced intelligence
 
-        session_mgr = SessionContextManager()
+        # Create NEW session manager (not tied to old session cache)
+        # This ensures working memory is shown even if it was recently injected
+        import uuid
+        new_session_id = f"session_start_{uuid.uuid4().hex[:8]}"
+        session_mgr = SessionContextManager(session_id=new_session_id)
 
         # Phase 4: Initialize cross-session continuity for smart resumption
         continuity = CrossSessionContinuity(session_id="session_start", project_id=project_id)
@@ -121,25 +125,42 @@ try:
 
         # INJECT TO CLAUDE: Working memory (stdout)
         if active_items:
-            # Convert to session manager format
-            memories = [
-                {
+            # Get full content for each memory (not truncated summary)
+            memories = []
+            for i, item in enumerate(active_items[:5]):
+                full_content = bridge.get_memory_content(item['id'])
+                if full_content is None:
+                    full_content = item['content']  # Fallback to truncated if full retrieval fails
+
+                # Working memory at session start is CRITICAL - boost composite score to ensure full formatting
+                # Uses HIGH_RELEVANCE_THRESHOLD (0.85) to trigger _format_full() instead of _format_reference()
+                memories.append({
                     "id": f"mem_working_{i}",
-                    "title": item['content'][:50],
-                    "content": item['content'],
+                    "title": full_content[:60] if len(full_content) > 60 else full_content,
+                    "content": full_content,
                     "type": item['type'],
                     "timestamp": item.get('timestamp'),
-                    "importance": item.get('importance', 0.5),
-                    "composite_score": item.get('importance', 0.5),
-                }
-                for i, item in enumerate(active_items[:5])
-            ]
+                    "importance": 0.9,  # Boost: session-start context is critical
+                    "composite_score": 0.9,  # Triggers _format_full() instead of _format_reference()
+                })
 
-            # Use adaptive formatting with token budget
-            formatted, injected_ids, tokens_used = session_mgr.format_context_adaptive(
-                memories=memories,
-                max_tokens=400  # Optimized: 400 tokens provides 288-token headroom for rich formatting
-            )
+            # Format memories directly (skip prioritizer to preserve pre-set composite_score)
+            # Working memory at session start is critical - format as full context
+            from session_context_manager import AdaptiveFormatter
+
+            formatted_lines = []
+            for mem in memories[:5]:
+                formatted_line, _ = AdaptiveFormatter.format_memory(
+                    memory_id=mem["id"],
+                    title=mem.get("title", "Memory"),
+                    content=mem.get("content", ""),
+                    relevance_score=mem.get("composite_score", 0.9),  # Use pre-set score
+                    memory_type=mem.get("type", "memory"),
+                    timestamp=mem.get("timestamp"),
+                )
+                formatted_lines.append(formatted_line)
+
+            formatted = "".join(formatted_lines)
 
             if formatted:
                 print("## Working Memory (Resuming)")
@@ -193,6 +214,54 @@ try:
                 print(f"    {i}. [{goal.get('status', 'unknown')}] {title_preview}", file=sys.stderr)
         else:
             print(f"  No active goals found", file=sys.stderr)
+
+        # Load active TodoWrite items (restored from Athena after /clear)
+        print(f"✓ Loading active TodoWrite items...", file=sys.stderr)
+
+        try:
+            from todowrite_helper import TodoWriteSyncHelper
+
+            sync_helper = TodoWriteSyncHelper()
+            todos = sync_helper.get_active_todos(project_id=project_id)
+
+            # INJECT TO CLAUDE: Active TodoWrite items (stdout)
+            if todos:
+                todo_memories = [
+                    {
+                        "id": f"todo_{i}",
+                        "title": todo.get('content', 'Unnamed task')[:60],
+                        "content": f"Status: {todo.get('status', 'pending')} | Action: {todo.get('activeForm', todo.get('content', ''))}",
+                        "type": "todo",
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "importance": 0.85 if todo.get('status') == 'in_progress' else 0.7,
+                        "composite_score": 0.85 if todo.get('status') == 'in_progress' else 0.7,
+                    }
+                    for i, todo in enumerate(todos[:5])
+                ]
+
+                # Use adaptive formatting
+                formatted_todos, todo_ids, todo_tokens = session_mgr.format_context_adaptive(
+                    memories=todo_memories,
+                    max_tokens=300
+                )
+
+                if formatted_todos:
+                    print("## Active TodoWrite Items")
+                    print(formatted_todos)
+
+                # User log (stderr)
+                print(f"  ✓ {len(todos)} active TodoWrite items (restored from memory):", file=sys.stderr)
+                for i, todo in enumerate(todos[:3], 1):
+                    content_preview = todo.get('content', 'Unnamed')[:40]
+                    status = todo.get('status', 'unknown')
+                    print(f"    {i}. [{status}] {content_preview}", file=sys.stderr)
+            else:
+                print(f"  No active TodoWrite items found", file=sys.stderr)
+
+        except ImportError:
+            print(f"  TodoWrite sync module not available (skipping)", file=sys.stderr)
+        except Exception as e:
+            print(f"  TodoWrite restoration error: {str(e)}", file=sys.stderr)
 
         elapsed_ms = (time.time() - start_time) * 1000
         print(f"✓ Session context initialized ({elapsed_ms:.0f}ms)", file=sys.stderr)
