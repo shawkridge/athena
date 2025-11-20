@@ -20,6 +20,13 @@ class EventType(str, Enum):
     DEPLOYMENT = "deployment"
     REFACTORING = "refactoring"
     DEBUGGING = "debugging"
+    TOOL_EXECUTION = "tool_execution"
+    CONSOLIDATION_SESSION = "CONSOLIDATION_SESSION"
+    SESSION_CHECKPOINT = "session_checkpoint"
+    DISCOVERY = "discovery"
+    LEARNING = "learning"
+    OBSERVATION = "observation"
+    REFLECTION = "reflection"
 
 
 class CodeEventType(str, Enum):
@@ -44,6 +51,9 @@ class EventOutcome(str, Enum):
     FAILURE = "failure"
     PARTIAL = "partial"
     ONGOING = "ongoing"
+    RECORDED = "recorded"
+    UNSPECIFIED = "unspecified"
+    UNKNOWN = "unknown"
 
 
 class EvidenceType(str, Enum):
