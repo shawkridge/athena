@@ -263,6 +263,42 @@ try:
         except Exception as e:
             print(f"  TodoWrite restoration error: {str(e)}", file=sys.stderr)
 
+        # RESTORE todos to local Claude Code JSON file
+        # This ensures the TodoWrite tool UI shows restored items, not just stdout
+        print(f"✓ Restoring TodoWrite items to local file...", file=sys.stderr)
+
+        try:
+            import json
+            from pathlib import Path
+            import glob as glob_module
+
+            todos_dir = Path(os.path.expanduser('~/.claude/todos'))
+            todos_dir.mkdir(parents=True, exist_ok=True)
+
+            # Strategy: Find the most recently modified agent todo file
+            # (Claude Code creates/updates these as agents run)
+            todo_files = list(todos_dir.glob("*-agent-*.json"))
+
+            if todo_files:
+                # Get the most recently modified file
+                most_recent = max(todo_files, key=lambda f: f.stat().st_mtime)
+
+                # Write restored todos to this file
+                if todos:
+                    with open(most_recent, 'w') as f:
+                        json.dump(todos, f, indent=2)
+                    print(f"  ✓ Restored {len(todos)} todos to {most_recent.name}", file=sys.stderr)
+                else:
+                    print(f"  No todos to restore to local file", file=sys.stderr)
+            else:
+                # No existing todo file found, create one with default naming
+                # This handles the case where no agent has been created yet
+                print(f"  ⚠ No existing todo file found in {todos_dir}", file=sys.stderr)
+                print(f"     TodoWrite UI may not show todos until a manual save occurs", file=sys.stderr)
+
+        except Exception as e:
+            print(f"  ⚠ Could not restore todos to local file: {str(e)}", file=sys.stderr)
+
         elapsed_ms = (time.time() - start_time) * 1000
         print(f"✓ Session context initialized ({elapsed_ms:.0f}ms)", file=sys.stderr)
 
