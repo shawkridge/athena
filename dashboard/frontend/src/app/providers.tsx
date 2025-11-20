@@ -1,12 +1,24 @@
 'use client'
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useState, type ReactNode } from 'react'
+import { useState, type ReactNode, useEffect } from 'react'
 import { ThemeProvider } from '@/providers/theme-provider'
 import { ToastProvider } from '@/providers/toast-provider'
 import { FavoritesProvider } from '@/providers/favorites-provider'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { CommandPalette } from '@/components/command-palette'
+import { useProjectStore } from '@/stores/project-store'
+
+// Initialize projects on app startup
+function ProjectInitializer({ children }: { children: ReactNode }) {
+  const fetchProjects = useProjectStore((state) => state.fetchProjects)
+
+  useEffect(() => {
+    fetchProjects()
+  }, [fetchProjects])
+
+  return <>{children}</>
+}
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -29,8 +41,10 @@ export function Providers({ children }: { children: ReactNode }) {
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
             <FavoritesProvider>
-              {children}
-              <CommandPalette />
+              <ProjectInitializer>
+                {children}
+                <CommandPalette />
+              </ProjectInitializer>
             </FavoritesProvider>
           </ToastProvider>
         </QueryClientProvider>

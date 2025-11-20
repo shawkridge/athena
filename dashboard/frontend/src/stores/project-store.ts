@@ -13,33 +13,36 @@ interface Project {
   id: number
   name: string
   description?: string
+  event_count?: number
 }
 
 interface ProjectStore {
   // Current selected project
   currentProjectId: number
 
-  // Available projects (could be fetched from API in future)
+  // Available projects (fetched from API)
   projects: Project[]
+
+  // Loading state
+  loading: boolean
 
   // Actions
   setProject: (projectId: number) => void
   addProject: (project: Project) => void
   getCurrentProject: () => Project | undefined
+  fetchProjects: () => Promise<void>
 }
 
 export const useProjectStore = create<ProjectStore>()(
   persist(
     (set, get) => ({
-      // Default to project 1
-      currentProjectId: 1,
+      // Will be set after fetching from API
+      currentProjectId: 0,
 
-      // Default projects (in future, fetch from API)
-      projects: [
-        { id: 1, name: 'Default Project', description: 'Main Athena project' },
-        { id: 2, name: 'Development', description: 'Development work' },
-        { id: 3, name: 'Research', description: 'Research and experiments' },
-      ],
+      // Empty until fetched from API
+      projects: [],
+
+      loading: false,
 
       setProject: (projectId: number) => {
         set({ currentProjectId: projectId })
@@ -54,6 +57,22 @@ export const useProjectStore = create<ProjectStore>()(
       getCurrentProject: () => {
         const { currentProjectId, projects } = get()
         return projects.find((p) => p.id === currentProjectId)
+      },
+
+      fetchProjects: async () => {
+        set({ loading: true })
+        try {
+          const response = await fetch('/api/projects')
+          const data = await response.json()
+          if (data.projects && Array.isArray(data.projects) && data.projects.length > 0) {
+            // Set projects and select the first one
+            const firstProjectId = data.projects[0].id
+            set({ projects: data.projects, currentProjectId: firstProjectId, loading: false })
+          }
+        } catch (error) {
+          console.error('Failed to fetch projects:', error)
+          set({ loading: false })
+        }
       },
     }),
     {

@@ -387,29 +387,166 @@ async def system_status():
 
 
 # ============================================================================
+# PROJECTS
+# ============================================================================
+
+@app.get("/api/projects")
+async def get_projects():
+    """Get list of available projects from database."""
+    try:
+        import psycopg2
+        import os
+
+        db_host = os.getenv("DB_HOST", "localhost")
+        db_port = int(os.getenv("DB_PORT", "5432"))
+        db_name = os.getenv("DB_NAME", "athena")
+        db_user = os.getenv("DB_USER", "postgres")
+        db_pass = os.getenv("DB_PASSWORD", "postgres")
+
+        conn = psycopg2.connect(
+            host=db_host, port=db_port, database=db_name, user=db_user, password=db_pass
+        )
+        cursor = conn.cursor()
+
+        # Get projects with names from projects table and event counts from episodic_events
+        cursor.execute(
+            """
+            SELECT p.id, p.name, p.description, COALESCE(e.event_count, 0) as event_count
+            FROM projects p
+            LEFT JOIN (
+                SELECT project_id, COUNT(*) as event_count
+                FROM episodic_events
+                GROUP BY project_id
+            ) e ON p.id = e.project_id
+            WHERE p.id IN (SELECT DISTINCT project_id FROM episodic_events)
+            ORDER BY p.id
+            """
+        )
+        projects = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        return {
+            "projects": [
+                {
+                    "id": p[0],
+                    "name": p[1] or f"Project {p[0]}",
+                    "description": p[2] or "",
+                    "event_count": p[3] or 0,
+                }
+                for p in projects
+            ]
+        }
+    except Exception as e:
+        print(f"Error fetching projects: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"projects": []}
+
+
+# ============================================================================
 # EPISODIC MEMORY (LAYER 1)
 # ============================================================================
 
 @app.get("/api/episodic/statistics")
-async def get_episodic_statistics(session_id: Optional[str] = None):
+async def get_episodic_statistics(session_id: Optional[str] = None, project_id: int = 2):
     """Get episodic memory statistics."""
-    return await episodic_stats(session_id=session_id)
+    try:
+        import psycopg2.pool
+        import os
+
+        # Direct database query for accurate stats from selected project
+        db_host = os.getenv("DB_HOST", "localhost")
+        db_port = int(os.getenv("DB_PORT", "5432"))
+        db_name = os.getenv("DB_NAME", "athena")
+        db_user = os.getenv("DB_USER", "postgres")
+        db_pass = os.getenv("DB_PASSWORD", "postgres")
+
+        import psycopg2
+        conn = psycopg2.connect(
+            host=db_host, port=db_port, database=db_name, user=db_user, password=db_pass
+        )
+        cursor = conn.cursor()
+
+        # Query for stats
+        cursor.execute(
+            """
+            SELECT
+                COUNT(*) as total,
+                AVG(COALESCE(confidence, 1.0)) as avg_quality,
+                MIN(timestamp) as earliest,
+                MAX(timestamp) as latest
+            FROM episodic_events
+            WHERE project_id = %s
+            """,
+            (project_id,),
+        )
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if result:
+            total, quality, earliest, latest = result
+            quality = quality or 1.0
+            time_span = 0
+
+            # Handle datetime parsing - psycopg2 may return as datetime or other types
+            from datetime import datetime as dt
+            if isinstance(earliest, str):
+                earliest = dt.fromisoformat(earliest)
+            if isinstance(latest, str):
+                latest = dt.fromisoformat(latest)
+
+            if earliest and latest and hasattr(earliest, 'days'):
+                time_span = (latest - earliest).days
+            elif earliest and latest:
+                try:
+                    time_span = (latest - earliest).days
+                except (TypeError, AttributeError):
+                    time_span = 0
+
+            return {
+                "total_events": total or 0,
+                "quality_score": float(quality),
+                "min_quality": 0.9,
+                "max_quality": 1.0,
+                "earliest": earliest.isoformat() if earliest else None,
+                "latest": latest.isoformat() if latest else None,
+                "time_span_days": time_span,
+            }
+    except Exception as e:
+        print(f"Warning: Could not get direct stats: {e}")
+        import traceback
+        traceback.print_exc()
+
+    raise RuntimeError(f"Failed to get episodic statistics for project {project_id}")
 
 
 @app.get("/api/episodic/events")
 async def get_episodic_events(
     limit: int = Query(100, le=1000),
     session_id: Optional[str] = None,
-    project_id: int = 1,
+    project_id: int = 2,
 ):
     """Get episodic events with pagination."""
-    # Note: project_id parameter kept for future multi-project support
-    # Currently Athena's recall() doesn't accept project_id, uses default project
-    events = await recall(
-        query="*",  # All events
-        limit=limit,
-        session_id=session_id,
-    )
+    # Default to project_id=2 which has most events (~15k)
+    # Note: Will change to support dynamic project selection via frontend
+    try:
+        from athena.episodic.store import EpisodicStore
+        from athena.core.database import Database
+
+        db = Database()
+        await db.initialize()
+        store = EpisodicStore(db)
+        events = store.list_events(project_id=project_id, limit=limit)
+    except Exception as e:
+        # Fallback to recall if store access fails
+        print(f"Warning: Could not access episodic store directly: {e}")
+        events = await recall(
+            query="*",  # All events
+            limit=limit,
+            session_id=session_id,
+        )
 
     # Convert to dict for JSON serialization
     return {
