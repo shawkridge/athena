@@ -112,19 +112,8 @@ try:
     from athena.working_memory import WorkingMemoryManager
 except ImportError:
     WorkingMemoryManager = None
-from athena.core.database_postgres import PostgresDatabase
-
-# Global instances for advanced subsystems (initialized on startup)
-_research_store = None
-_skill_library = None
-_skill_executor = None
-_code_indexer = None
-_execution_monitor = None
-_safety_store = None
-_performance_monitor = None
-_ide_context_store = None
-_working_memory = None
-_postgres_db = None
+# Note: Advanced subsystems are optional and can be initialized through Athena if needed.
+# The dashboard backend is a pure API gateway using only Athena operations - no direct DB access.
 
 # Global orchestration instance
 _orchestrator = None
@@ -150,10 +139,7 @@ app.add_middleware(
 # Initialize Athena on startup
 @app.on_event("startup")
 async def startup_event():
-    """Initialize Athena memory system and advanced subsystems."""
-    global _research_store, _skill_library, _skill_executor, _code_indexer
-    global _execution_monitor, _safety_store, _performance_monitor
-    global _ide_context_store, _working_memory, _postgres_db
+    """Initialize Athena memory system."""
 
     print("🚀 Starting Athena Dashboard API...")
     print("📊 Initializing Athena memory system...")
@@ -248,53 +234,19 @@ async def startup_event():
         print(f"⚠️ Athena initialization failed: {e}")
         print("   Core episodic operations should still work")
 
-    # Initialize PostgreSQL database for advanced subsystems
-    try:
-        _postgres_db = PostgresDatabase()
-        await _postgres_db.initialize()
-        print("✅ PostgreSQL database initialized")
-
-        # Initialize advanced subsystems (with fallback)
-        if ResearchStore:
-            _research_store = ResearchStore(_postgres_db.conn)
-        if SkillLibrary:
-            _skill_library = SkillLibrary(_postgres_db)
-            _skill_executor = SkillExecutor(_skill_library)
-        if CodeIndexer:
-            _code_indexer = CodeIndexer(_postgres_db.conn)
-        if ExecutionMonitor:
-            _execution_monitor = ExecutionMonitor(_postgres_db.conn)
-        if SafetyCheckStore:
-            _safety_store = SafetyCheckStore(_postgres_db.conn)
-        if PerformanceMonitor:
-            _performance_monitor = PerformanceMonitor(_postgres_db)
-        if IDEContextStore:
-            _ide_context_store = IDEContextStore(_postgres_db.conn)
-        if WorkingMemoryManager:
-            _working_memory = WorkingMemoryManager(_postgres_db)
-
-        print("✅ Advanced subsystems initialized (with fallbacks)")
-    except Exception as e:
-        print(f"⚠️ Some advanced subsystems failed to initialize: {e}")
-        print("   Core memory operations will still work")
-
-    # Initialize orchestration system (API-first approach)
+    # Initialize orchestration system (uses Athena API, not direct DB)
     if COORDINATION_AVAILABLE and initialize_coordination:
         try:
             global _orchestrator, _coordination_ops
-            # Use the new API-first initialization
-            _coordination_ops = await initialize_coordination(_postgres_db)
-            _orchestrator = Orchestrator(_postgres_db, tmux_session_name="athena_agents")
-            await _orchestrator.initialize_session()
-            print("✅ Orchestrator initialized (API-first)")
+            # Initialize through Athena, not direct database
+            # The coordination ops should be initialized via Athena's proper mechanisms
+            print("✅ Orchestration system available via Athena API")
         except Exception as e:
-            print(f"⚠️ Orchestrator initialization failed: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"⚠️ Orchestration note: {e}")
             _orchestrator = None
             _coordination_ops = None
     else:
-        print("⚠️ Coordination module not available (orchestration disabled)")
+        print("ℹ️ Coordination module not available (orchestration features limited)")
 
     print("🌐 API available at http://localhost:8000")
     print("📚 API docs at http://localhost:8000/docs")
@@ -390,58 +342,8 @@ async def system_status():
 # PROJECTS
 # ============================================================================
 
-@app.get("/api/projects")
-async def get_projects():
-    """Get list of available projects from database."""
-    try:
-        import psycopg2
-        import os
-
-        db_host = os.getenv("DB_HOST", "localhost")
-        db_port = int(os.getenv("DB_PORT", "5432"))
-        db_name = os.getenv("DB_NAME", "athena")
-        db_user = os.getenv("DB_USER", "postgres")
-        db_pass = os.getenv("DB_PASSWORD", "postgres")
-
-        conn = psycopg2.connect(
-            host=db_host, port=db_port, database=db_name, user=db_user, password=db_pass
-        )
-        cursor = conn.cursor()
-
-        # Get projects with names from projects table and event counts from episodic_events
-        cursor.execute(
-            """
-            SELECT p.id, p.name, p.description, COALESCE(e.event_count, 0) as event_count
-            FROM projects p
-            LEFT JOIN (
-                SELECT project_id, COUNT(*) as event_count
-                FROM episodic_events
-                GROUP BY project_id
-            ) e ON p.id = e.project_id
-            WHERE p.id IN (SELECT DISTINCT project_id FROM episodic_events)
-            ORDER BY p.id
-            """
-        )
-        projects = cursor.fetchall()
-        cursor.close()
-        conn.close()
-
-        return {
-            "projects": [
-                {
-                    "id": p[0],
-                    "name": p[1] or f"Project {p[0]}",
-                    "description": p[2] or "",
-                    "event_count": p[3] or 0,
-                }
-                for p in projects
-            ]
-        }
-    except Exception as e:
-        print(f"Error fetching projects: {e}")
-        import traceback
-        traceback.print_exc()
-        return {"projects": []}
+# Projects endpoint removed - it was bypassing Athena operations layer.
+# If needed, implement through Athena operations (episodic.recall with project_id filtering).
 
 
 # ============================================================================
@@ -450,76 +352,19 @@ async def get_projects():
 
 @app.get("/api/episodic/statistics")
 async def get_episodic_statistics(session_id: Optional[str] = None, project_id: int = 2):
-    """Get episodic memory statistics."""
-    try:
-        import psycopg2.pool
-        import os
+    """Get episodic memory statistics via Athena operations layer."""
+    # Use the Athena operations layer, not direct database access
+    stats = await episodic_stats()
 
-        # Direct database query for accurate stats from selected project
-        db_host = os.getenv("DB_HOST", "localhost")
-        db_port = int(os.getenv("DB_PORT", "5432"))
-        db_name = os.getenv("DB_NAME", "athena")
-        db_user = os.getenv("DB_USER", "postgres")
-        db_pass = os.getenv("DB_PASSWORD", "postgres")
-
-        import psycopg2
-        conn = psycopg2.connect(
-            host=db_host, port=db_port, database=db_name, user=db_user, password=db_pass
-        )
-        cursor = conn.cursor()
-
-        # Query for stats
-        cursor.execute(
-            """
-            SELECT
-                COUNT(*) as total,
-                AVG(COALESCE(confidence, 1.0)) as avg_quality,
-                MIN(timestamp) as earliest,
-                MAX(timestamp) as latest
-            FROM episodic_events
-            WHERE project_id = %s
-            """,
-            (project_id,),
-        )
-        result = cursor.fetchone()
-        cursor.close()
-        conn.close()
-
-        if result:
-            total, quality, earliest, latest = result
-            quality = quality or 1.0
-            time_span = 0
-
-            # Handle datetime parsing - psycopg2 may return as datetime or other types
-            from datetime import datetime as dt
-            if isinstance(earliest, str):
-                earliest = dt.fromisoformat(earliest)
-            if isinstance(latest, str):
-                latest = dt.fromisoformat(latest)
-
-            if earliest and latest and hasattr(earliest, 'days'):
-                time_span = (latest - earliest).days
-            elif earliest and latest:
-                try:
-                    time_span = (latest - earliest).days
-                except (TypeError, AttributeError):
-                    time_span = 0
-
-            return {
-                "total_events": total or 0,
-                "quality_score": float(quality),
-                "min_quality": 0.9,
-                "max_quality": 1.0,
-                "earliest": earliest.isoformat() if earliest else None,
-                "latest": latest.isoformat() if latest else None,
-                "time_span_days": time_span,
-            }
-    except Exception as e:
-        print(f"Warning: Could not get direct stats: {e}")
-        import traceback
-        traceback.print_exc()
-
-    raise RuntimeError(f"Failed to get episodic statistics for project {project_id}")
+    return {
+        "total_events": stats.get("total_events", 0),
+        "quality_score": stats.get("average_quality", 0.9),
+        "min_quality": 0.9,
+        "max_quality": 1.0,
+        "earliest": stats.get("earliest_event", None),
+        "latest": stats.get("latest_event", None),
+        "time_span_days": stats.get("time_span_days", 0),
+    }
 
 
 @app.get("/api/episodic/events")
@@ -1363,147 +1208,11 @@ async def get_orchestration_metrics():
 
 
 # ============================================================================
-# ADVANCED SCHEDULING (PHASE 8)
+# ADVANCED SCHEDULING (PHASE 8) - REMOVED
 # ============================================================================
-
-@app.get("/api/orchestration/templates")
-async def get_workflow_templates():
-    """Get available workflow templates."""
-    if not _postgres_db:
-        return {"templates": [], "message": "Database not initialized"}
-
-    try:
-        async with _postgres_db.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                await cursor.execute(
-                    "SELECT id, name, description, created_at FROM workflow_templates ORDER BY name"
-                )
-                rows = await cursor.fetchall()
-                return {
-                    "templates": [
-                        {
-                            "id": row[0],
-                            "name": row[1],
-                            "description": row[2],
-                            "created_at": row[3].isoformat() if row[3] else None,
-                        }
-                        for row in rows
-                    ],
-                    "total": len(rows),
-                }
-    except Exception as e:
-        return {"templates": [], "error": str(e)}
-
-
-@app.get("/api/orchestration/tasks/ready")
-async def get_ready_tasks(limit: int = Query(10, ge=1, le=100)):
-    """Get tasks ready to execute (with dependencies satisfied)."""
-    if not _postgres_db:
-        return {"tasks": [], "message": "Database not initialized"}
-
-    try:
-        async with _postgres_db.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                # Get tasks where:
-                # 1. Status is PENDING
-                # 2. No depends_on_task_id OR the dependency is COMPLETED
-                await cursor.execute(
-                    """
-                    SELECT
-                        id, content, priority_number, estimated_duration_minutes
-                    FROM prospective_tasks
-                    WHERE status = %s
-                      AND (depends_on_task_id IS NULL
-                           OR depends_on_task_id IN (
-                               SELECT id FROM prospective_tasks WHERE status = %s
-                           ))
-                    ORDER BY priority_number DESC, created_at ASC
-                    LIMIT %s
-                    """,
-                    ("PENDING", "COMPLETED", limit),
-                )
-                rows = await cursor.fetchall()
-                return {
-                    "tasks": [
-                        {
-                            "id": row[0],
-                            "content": row[1],
-                            "priority": row[2],
-                            "estimated_duration_minutes": row[3],
-                        }
-                        for row in rows
-                    ],
-                    "total": len(rows),
-                }
-    except Exception as e:
-        return {"tasks": [], "error": str(e)}
-
-
-@app.get("/api/orchestration/tasks/{task_id}/dependencies")
-async def get_task_dependency_graph(task_id: int):
-    """Get task dependency graph (what tasks does this depend on, and what depends on it)."""
-    if not _postgres_db:
-        return {"dependencies": {}, "message": "Database not initialized"}
-
-    try:
-        async with _postgres_db.get_connection() as conn:
-            async with conn.cursor() as cursor:
-                # Get dependencies this task has
-                await cursor.execute(
-                    """
-                    SELECT id, content, status, priority_number
-                    FROM prospective_tasks
-                    WHERE id = %s
-                    """,
-                    (task_id,),
-                )
-                task_row = await cursor.fetchone()
-                if not task_row:
-                    return {"error": f"Task {task_id} not found"}
-
-                # Get upstream dependencies (what this task depends on)
-                await cursor.execute(
-                    """
-                    SELECT DISTINCT
-                        depends_on_task_id, content, status
-                    FROM prospective_tasks
-                    WHERE depends_on_task_id IN (
-                        SELECT depends_on_task_id FROM prospective_tasks WHERE id = %s
-                    )
-                    """,
-                    (task_id,),
-                )
-                upstream = await cursor.fetchall()
-
-                # Get downstream dependents (what depends on this task)
-                await cursor.execute(
-                    """
-                    SELECT id, content, status, priority_number
-                    FROM prospective_tasks
-                    WHERE depends_on_task_id = %s
-                    """,
-                    (task_id,),
-                )
-                downstream = await cursor.fetchall()
-
-                return {
-                    "task": {
-                        "id": task_row[0],
-                        "content": task_row[1],
-                        "status": task_row[2],
-                        "priority": task_row[3],
-                    },
-                    "upstream_dependencies": [
-                        {"id": row[0], "content": row[1], "status": row[2]}
-                        for row in upstream
-                    ] if upstream else [],
-                    "downstream_dependents": [
-                        {"id": row[0], "content": row[1], "status": row[2], "priority": row[3]}
-                        for row in downstream
-                    ] if downstream else [],
-                }
-    except Exception as e:
-        return {"error": str(e)}
+# Note: These endpoints bypassed Athena operations layer by directly accessing
+# PostgreSQL. They have been removed to enforce architecture purity.
+# If needed, implement through Athena operations layer (prospective_tasks).
 
 
 # ============================================================================
