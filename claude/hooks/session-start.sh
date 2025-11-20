@@ -271,30 +271,47 @@ try:
             import json
             from pathlib import Path
             import glob as glob_module
+            import uuid
 
             todos_dir = Path(os.path.expanduser('~/.claude/todos'))
             todos_dir.mkdir(parents=True, exist_ok=True)
 
-            # Strategy: Find the most recently modified agent todo file
-            # (Claude Code creates/updates these as agents run)
-            todo_files = list(todos_dir.glob("*-agent-*.json"))
+            # Strategy: Use CLAUDE_SESSION_ID if available, fall back to most recent file
+            session_id = os.environ.get('CLAUDE_SESSION_ID')
+            todo_file = None
 
-            if todo_files:
-                # Get the most recently modified file
-                most_recent = max(todo_files, key=lambda f: f.stat().st_mtime)
+            if session_id:
+                # Look for todo files matching this session ID
+                session_files = list(todos_dir.glob(f"{session_id}-agent-*.json"))
+                if session_files:
+                    # Use the first matching file (should only be one per session)
+                    todo_file = session_files[0]
 
-                # Write restored todos to this file
-                if todos:
-                    with open(most_recent, 'w') as f:
-                        json.dump(todos, f, indent=2)
-                    print(f"  ✓ Restored {len(todos)} todos to {most_recent.name}", file=sys.stderr)
+            if not todo_file:
+                # Fallback: Find the most recently modified agent todo file
+                todo_files = list(todos_dir.glob("*-agent-*.json"))
+                if todo_files:
+                    todo_file = max(todo_files, key=lambda f: f.stat().st_mtime)
+
+            if not todo_file and todos:
+                # Last resort: Create a new file with a reasonable name
+                # Use session_id if available, otherwise generate a unique name
+                if session_id:
+                    agent_id = session_id
                 else:
-                    print(f"  No todos to restore to local file", file=sys.stderr)
+                    agent_id = str(uuid.uuid4())[:8]
+
+                todo_file = todos_dir / f"{agent_id}-agent-{agent_id}.json"
+                print(f"  ℹ Creating new todo file: {todo_file.name}", file=sys.stderr)
+
+            if todo_file and todos:
+                with open(todo_file, 'w') as f:
+                    json.dump(todos, f, indent=2)
+                print(f"  ✓ Restored {len(todos)} todos to {todo_file.name}", file=sys.stderr)
+            elif todos:
+                print(f"  ⚠ Could not determine todo file location", file=sys.stderr)
             else:
-                # No existing todo file found, create one with default naming
-                # This handles the case where no agent has been created yet
-                print(f"  ⚠ No existing todo file found in {todos_dir}", file=sys.stderr)
-                print(f"     TodoWrite UI may not show todos until a manual save occurs", file=sys.stderr)
+                print(f"  ℹ No todos to restore", file=sys.stderr)
 
         except Exception as e:
             print(f"  ⚠ Could not restore todos to local file: {str(e)}", file=sys.stderr)
