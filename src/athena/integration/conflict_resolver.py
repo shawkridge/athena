@@ -296,3 +296,30 @@ class ConflictResolutionStore:
     def __init__(self, db: Database):
         self.db = db
         self._ensure_schema()
+
+
+# Global singleton instances
+_conflict_resolver: Optional[AdaptiveConflictResolver] = None
+_resolution_store: Optional[ConflictResolutionStore] = None
+
+
+async def initialize(db: Database) -> None:
+    """Initialize conflict resolution system."""
+    global _conflict_resolver, _resolution_store
+    _conflict_resolver = AdaptiveConflictResolver(db)
+    _resolution_store = ConflictResolutionStore(db)
+    logger.info("Conflict resolution system initialized")
+
+
+def get_resolver() -> AdaptiveConflictResolver:
+    """Get the global conflict resolver instance."""
+    if _conflict_resolver is None:
+        raise RuntimeError("Conflict resolver not initialized. Call initialize() first.")
+    return _conflict_resolver
+
+
+def get_resolution_store() -> ConflictResolutionStore:
+    """Get the global resolution store instance."""
+    if _resolution_store is None:
+        raise RuntimeError("Resolution store not initialized. Call initialize() first.")
+    return _resolution_store
