@@ -2,6 +2,7 @@
 
 # IMPORTANT NOTES
 
+0. FAIL HARD, Don't hide errors, don't have fallbacks.
 1. We're AI first development environment with full agentic coding
 2. Only document things that you need to
 3. Always use the optimal solution even if it takes long

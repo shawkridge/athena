@@ -21,6 +21,14 @@ from typing import Any, Dict, Optional, List
 # Import connection pool and query cache for performance
 from connection_pool import get_connection_pool, PooledConnection
 from query_cache import get_query_cache, QueryCacheKey
+# Import worktree helper for memory prioritization
+from git_worktree_helper import GitWorktreeHelper
+# Import diagnostics for monitoring
+try:
+    from memory_diagnostics import MemoryDiagnostics
+    DIAGNOSTICS_AVAILABLE = True
+except ImportError:
+    DIAGNOSTICS_AVAILABLE = False
 
 # Configure logging (check environment for DEBUG)
 log_level = logging.DEBUG if os.environ.get('DEBUG') else logging.WARNING
@@ -116,8 +124,13 @@ class MemoryBridge:
         Uses ACT-R activation decay model instead of simple importance scoring:
         Activation = base_level_decay + frequency_bonus + consolidation_boost
                    + importance_boost + actionability_boost + success_boost
+                   + worktree_boost (prioritizes current worktree memories)
 
         Filters by lifecycle_status='active' to exclude consolidated events.
+
+        WORKTREE AWARENESS: Memories from all worktrees are accessible (cross-worktree),
+        but memories from the current worktree are boosted in activation ranking to
+        prioritize relevant context.
 
         Returns summary only (300 tokens max).
 
@@ -130,12 +143,16 @@ class MemoryBridge:
             limit: Maximum items to return (default 7±2)
 
         Returns:
-            Dict with summary of active items ranked by activation
+            Dict with summary of active items ranked by activation (worktree-prioritized)
         """
         try:
             with PerformanceTimer("get_active_memories"):
+                # Get current worktree context for prioritization
+                worktree_helper = GitWorktreeHelper()
+                current_worktree = worktree_helper.get_worktree_info().get("worktree_path")
+
                 # Query for cache lookup
-                # Uses ACT-R activation equation: base_level + frequency + consolidation + importance + actionability + success
+                # Uses ACT-R activation equation: base_level + frequency + consolidation + importance + actionability + success + worktree_boost
                 query = """
                 SELECT
                     id,
@@ -143,6 +160,7 @@ class MemoryBridge:
                     content,
                     timestamp,
                     importance_score,
+                    worktree_path,
                     (
                         -- Base level decay: -d * ln(time_since_access_hours) where d=0.5
                         (-0.5 * LN(GREATEST(EXTRACT(EPOCH FROM (NOW() - last_activation)) / 3600.0, 0.1)))
@@ -156,18 +174,20 @@ class MemoryBridge:
                         + CASE WHEN has_next_step = 1 OR actionability_score > 0.7 THEN 1.0 ELSE 0 END
                         -- Success boost: +0.5 if outcome='success'
                         + CASE WHEN outcome = 'success' THEN 0.5 ELSE 0 END
+                        -- Worktree boost: +2.0 if memory is from current worktree (prioritizes local context)
+                        + CASE WHEN worktree_path = %s THEN 2.0 ELSE 0 END
                     ) as activation
                 FROM episodic_events
                 WHERE project_id = %s AND lifecycle_status = 'active'
                 ORDER BY activation DESC, timestamp DESC
                 LIMIT %s
                 """
-                params = (project_id, limit)
+                params = (current_worktree, project_id, limit)
 
                 # Try cache first
                 cached = self.cache.get(query, params)
                 if cached is not None:
-                    logger.debug(f"get_active_memories cache hit (project={project_id})")
+                    logger.debug(f"get_active_memories cache hit (project={project_id}, worktree={current_worktree})")
                     rows = cached
                 else:
                     # Execute query
@@ -186,10 +206,21 @@ class MemoryBridge:
                         "content": row[2][:50] + "..." if len(row[2]) > 50 else row[2],
                         "timestamp": row[3],
                         "importance": row[4] or 0.5,
-                        "activation": row[5] or 0.0,
+                        "worktree_path": row[5],
+                        "activation": row[6] or 0.0,
                     }
                     for row in rows
                 ]
+
+                # Log prioritization analytics if diagnostics available
+                if DIAGNOSTICS_AVAILABLE and os.environ.get("DEBUG"):
+                    try:
+                        analysis = MemoryDiagnostics.log_memory_prioritization(
+                            project_id, items, current_worktree
+                        )
+                        logger.debug(f"Memory prioritization: {json.dumps(analysis)}")
+                    except Exception as e:
+                        logger.debug(f"Could not log memory diagnostics: {e}")
 
                 return {
                     "count": len(items),
@@ -198,10 +229,11 @@ class MemoryBridge:
                         min(i["activation"] for i in items) if items else 0,
                         max(i["activation"] for i in items) if items else 1,
                     ],
+                    "current_worktree": current_worktree,
                 }
         except Exception as e:
             logger.warning(f"Error getting active memories: {e}")
-            return {"count": 0, "items": [], "activation_range": [0, 1]}
+            return {"count": 0, "items": [], "activation_range": [0, 1], "current_worktree": None}
 
     def get_active_goals(self, project_id: int, limit: int = 5) -> Dict[str, Any]:
         """Get active goals/tasks for project.
@@ -265,10 +297,13 @@ class MemoryBridge:
         content: str,
         outcome: Optional[str] = None,
     ) -> Optional[int]:
-        """Record an event in episodic memory.
+        """Record an event in episodic memory with worktree context.
 
         OPTIMIZATION (Phase 2): Invalidates read cache since this is a write operation.
         Future reads will retrieve fresh data.
+
+        WORKTREE AWARENESS: Automatically captures current worktree path and branch
+        for proper memory prioritization and isolation.
 
         Args:
             project_id: Project ID
@@ -289,12 +324,19 @@ class MemoryBridge:
                 timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)  # milliseconds
                 session_id = str(uuid.uuid4())[:8]  # Generate short session ID
 
+                # Get current worktree context for memory tagging
+                worktree_helper = GitWorktreeHelper()
+                worktree_info = worktree_helper.get_worktree_info()
+                worktree_path = worktree_info.get("worktree_path")
+                worktree_branch = worktree_info.get("worktree_branch")
+
                 cursor.execute(
                     """
                     INSERT INTO episodic_events
                     (project_id, event_type, content, timestamp, outcome,
-                     session_id, consolidation_status, importance_score)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                     session_id, consolidation_status, importance_score,
+                     worktree_path, worktree_branch)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
                     (
@@ -306,6 +348,8 @@ class MemoryBridge:
                         session_id,
                         "unconsolidated",
                         0.5,  # Default importance
+                        worktree_path,
+                        worktree_branch,
                     ),
                 )
 
@@ -315,7 +359,7 @@ class MemoryBridge:
                 if result:
                     # Invalidate caches on successful write
                     self.cache.invalidate()
-                    logger.debug(f"Cache invalidated after event insert")
+                    logger.debug(f"Cache invalidated after event insert (worktree={worktree_path})")
                     return result[0]
                 return None
         except Exception as e:

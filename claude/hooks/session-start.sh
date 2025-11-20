@@ -222,8 +222,23 @@ try:
 
         try:
             from todowrite_helper import TodoWriteSyncHelper
+            from git_worktree_helper import GitWorktreeHelper
+            from branch_formatter import BranchFormatter
 
             sync_helper = TodoWriteSyncHelper()
+            worktree_helper = GitWorktreeHelper()
+
+            # Get current worktree context
+            worktree_info = worktree_helper.get_worktree_info()
+            branch_name = worktree_info.get("worktree_branch") or "main"
+
+            # Format branch name for display
+            worktree_label = BranchFormatter.get_worktree_label(
+                branch_name=branch_name,
+                worktree_path=worktree_info.get("worktree_path")
+            )
+
+            # Get todos for THIS worktree only
             todos = sync_helper.get_active_todos(project_id=project_id)
 
             # INJECT TO CLAUDE: Active TodoWrite items (stdout)
@@ -248,9 +263,9 @@ try:
                 )
 
                 if formatted_todos:
-                    print("## Restored Task List (from Previous Session)")
+                    print(f"## Restored Task List (from Previous Session - {worktree_label})")
                     print()
-                    print("Your previous session had the following active tasks:")
+                    print(f"Your previous session in **{worktree_label}** had the following active tasks:")
                     print()
                     print(formatted_todos)
                     print()

@@ -8,6 +8,7 @@ and Athena's planning system. Used by hooks to:
 3. Restore todos from Athena at session start
 
 This keeps todos persistent across /clear by storing them in PostgreSQL.
+Todos are isolated per git worktree (each feature branch gets its own task context).
 """
 
 import json
@@ -18,6 +19,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from connection_pool import PooledConnection
+from git_worktree_helper import GitWorktreeHelper
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,20 @@ class TodoWriteSyncHelper:
     def __init__(self):
         """Initialize sync helper."""
         self.now = datetime.utcnow().isoformat()
+        self.worktree_helper = GitWorktreeHelper()
+
+    def _get_worktree_context(self) -> Dict[str, Any]:
+        """Get current worktree context for isolation.
+
+        Returns:
+            Dict with worktree_path, worktree_branch, is_worktree
+        """
+        info = self.worktree_helper.get_worktree_info()
+        return {
+            "worktree_path": info.get("worktree_path"),
+            "worktree_branch": info.get("worktree_branch"),
+            "is_worktree": info.get("is_worktree", False),
+        }
 
     def ensure_todowrite_plans_table(self) -> bool:
         """Create todowrite_plans table if it doesn't exist.
@@ -145,6 +161,9 @@ class TodoWriteSyncHelper:
             if not self.ensure_todowrite_plans_table():
                 return None
 
+            # Get worktree context for isolation
+            worktree_ctx = self._get_worktree_context()
+
             # Convert TodoWrite status to Athena status
             athena_status = self.TODO_STATUS_TO_ATHENA.get(status, "pending")
 
@@ -157,17 +176,23 @@ class TodoWriteSyncHelper:
             with PooledConnection() as conn:
                 cursor = conn.cursor()
 
-                # Check if this todo already exists
+                # Check if this todo already exists IN THIS WORKTREE
                 cursor.execute(
-                    "SELECT id FROM todowrite_plans WHERE todo_id = %s",
-                    (todo_id,),
+                    """
+                    SELECT id FROM todowrite_plans
+                    WHERE todo_id = %s AND (
+                        worktree_path = %s
+                        OR (worktree_path IS NULL AND %s IS NULL)
+                    )
+                    """,
+                    (todo_id, worktree_ctx["worktree_path"], worktree_ctx["worktree_path"]),
                 )
                 existing = cursor.fetchone()
 
                 now_timestamp = int(time.time())
 
                 if existing:
-                    # Update existing
+                    # Update existing (in this worktree)
                     cursor.execute(
                         """
                         UPDATE todowrite_plans
@@ -175,11 +200,12 @@ class TodoWriteSyncHelper:
                             description = %s,
                             status = %s,
                             priority = %s,
+                            worktree_branch = %s,
                             original_todo = %s,
                             last_synced_at = %s,
                             sync_status = 'synced',
                             updated_at = %s
-                        WHERE todo_id = %s
+                        WHERE id = %s
                         RETURNING id
                         """,
                         (
@@ -187,6 +213,7 @@ class TodoWriteSyncHelper:
                             active_form,
                             athena_status,
                             priority,
+                            worktree_ctx["worktree_branch"],
                             json.dumps(
                                 {
                                     "content": content,
@@ -196,18 +223,20 @@ class TodoWriteSyncHelper:
                             ),
                             now_timestamp,
                             now_timestamp,
-                            todo_id,
+                            existing[0],
                         ),
                     )
                     row_id = cursor.fetchone()[0]
-                    logger.debug(f"Updated todo {todo_id} → plan {plan_id}")
+                    logger.debug(f"Updated todo {todo_id} in worktree {worktree_ctx['worktree_path']}")
                 else:
-                    # Insert new
+                    # Insert new (for this worktree)
                     cursor.execute(
                         """
                         INSERT INTO todowrite_plans
-                        (project_id, todo_id, plan_id, goal, description, status, phase, priority, original_todo, sync_status, created_at, updated_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'synced', %s, %s)
+                        (project_id, todo_id, plan_id, goal, description, status, phase, priority,
+                         worktree_path, worktree_branch, is_worktree, original_todo, sync_status,
+                         created_at, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'synced', %s, %s)
                         RETURNING id
                         """,
                         (
@@ -219,6 +248,9 @@ class TodoWriteSyncHelper:
                             athena_status,
                             self._determine_phase(status),
                             priority,
+                            worktree_ctx["worktree_path"],
+                            worktree_ctx["worktree_branch"],
+                            worktree_ctx["is_worktree"],
                             json.dumps(
                                 {
                                     "content": content,
@@ -231,7 +263,7 @@ class TodoWriteSyncHelper:
                         ),
                     )
                     row_id = cursor.fetchone()[0]
-                    logger.debug(f"Stored todo {todo_id} → plan {plan_id}")
+                    logger.debug(f"Stored todo {todo_id} in worktree {worktree_ctx['worktree_path']}")
 
                 conn.commit()
                 return row_id
@@ -241,34 +273,42 @@ class TodoWriteSyncHelper:
             return None
 
     def get_active_todos(self, project_id: int = 1) -> List[Dict[str, Any]]:
-        """Get all active and pending todos from Athena.
+        """Get all active and pending todos from Athena FOR CURRENT WORKTREE.
 
         Args:
             project_id: Project to query
 
         Returns:
-            List of todo dicts in TodoWrite format
+            List of todo dicts in TodoWrite format (isolated to current worktree)
         """
         try:
+            # Get worktree context for isolation
+            worktree_ctx = self._get_worktree_context()
+
             with PooledConnection() as conn:
                 cursor = conn.cursor()
 
-                # Query active/pending todos (not completed)
+                # Query active/pending todos FOR THIS WORKTREE ONLY
                 cursor.execute(
                     """
-                    SELECT todo_id, goal, description, status, original_todo
+                    SELECT todo_id, goal, description, status, original_todo, worktree_branch
                     FROM todowrite_plans
-                    WHERE project_id = %s AND status IN ('pending', 'in_progress')
+                    WHERE project_id = %s
+                      AND status IN ('pending', 'in_progress')
+                      AND (
+                          worktree_path = %s
+                          OR (worktree_path IS NULL AND %s IS NULL)
+                      )
                     ORDER BY created_at DESC
                     """,
-                    (project_id,),
+                    (project_id, worktree_ctx["worktree_path"], worktree_ctx["worktree_path"]),
                 )
 
                 rows = cursor.fetchall()
                 todos = []
 
                 for row in rows:
-                    todo_id, goal, description, status, original_todo_json = row
+                    todo_id, goal, description, status, original_todo_json, worktree_branch = row
 
                     # Try to use original todo if available
                     if original_todo_json:
@@ -302,7 +342,8 @@ class TodoWriteSyncHelper:
                             }
                         )
 
-                logger.debug(f"Retrieved {len(todos)} active todos for project {project_id}")
+                worktree_label = worktree_ctx["worktree_branch"] or worktree_ctx["worktree_path"] or "main"
+                logger.debug(f"Retrieved {len(todos)} active todos for worktree {worktree_label}")
                 return todos
 
         except Exception as e:
