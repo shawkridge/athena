@@ -59,8 +59,8 @@ try:
         project = bridge.get_project_by_path(project_path)
 
         if not project:
-            # Default to project 1
-            project = {'id': 1}
+            # Default to athena project (id=2) - this is the primary development project
+            project = {'id': 2}
 
         project_id = project['id']
 
