@@ -43,6 +43,12 @@ const navigation = [
     ],
   },
   {
+    name: 'Orchestration',
+    items: [
+      { name: 'Multi-Agent', href: '/orchestration', icon: Users },
+    ],
+  },
+  {
     name: 'Advanced',
     items: [
       { name: 'Consciousness', href: '/consciousness', icon: Heart },

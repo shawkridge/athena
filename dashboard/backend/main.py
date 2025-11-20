@@ -21,6 +21,19 @@ sys.path.insert(0, str(athena_root))
 # Import Athena initialization
 from athena import initialize_athena
 
+# Import coordination (multi-agent orchestration)
+try:
+    from athena.coordination import Orchestrator
+    from athena.coordination.operations import CoordinationOperations
+    from athena.coordination.models import AgentType, TaskStatus
+    COORDINATION_AVAILABLE = True
+except ImportError:
+    COORDINATION_AVAILABLE = False
+    Orchestrator = None
+    CoordinationOperations = None
+    AgentType = None
+    TaskStatus = None
+
 # Import all operations (use Athena's operations layer directly)
 from athena.episodic.operations import (
     recall,
@@ -108,6 +121,10 @@ _performance_monitor = None
 _ide_context_store = None
 _working_memory = None
 _postgres_db = None
+
+# Global orchestration instance
+_orchestrator = None
+_coordination_ops = None
 
 app = FastAPI(
     title="Athena Dashboard API",
@@ -247,6 +264,20 @@ async def startup_event():
     except Exception as e:
         print(f"⚠️ Some advanced subsystems failed to initialize: {e}")
         print("   Core memory operations will still work")
+
+    # Initialize orchestration system
+    if COORDINATION_AVAILABLE:
+        try:
+            global _orchestrator, _coordination_ops
+            _coordination_ops = CoordinationOperations(_postgres_db.conn)
+            _orchestrator = Orchestrator(_postgres_db.conn, tmux_session_name="athena_agents")
+            await _orchestrator.initialize_session()
+            print("✅ Orchestrator initialized")
+        except Exception as e:
+            print(f"⚠️ Orchestrator initialization failed: {e}")
+            _orchestrator = None
+    else:
+        print("⚠️ Coordination module not available (orchestration disabled)")
 
     print("🌐 API available at http://localhost:8000")
     print("📚 API docs at http://localhost:8000/docs")
@@ -913,6 +944,495 @@ async def get_performance_statistics():
 
 
 # ============================================================================
+# ORCHESTRATION (MULTI-AGENT COORDINATION)
+# ============================================================================
+
+@app.get("/api/orchestration/agents")
+async def get_orchestration_agents():
+    """Get list of all agents and their current status."""
+    if not _orchestrator or not _coordination_ops:
+        return {"agents": [], "total": 0, "message": "Orchestrator not initialized"}
+
+    try:
+        agents = await _coordination_ops.list_agents()
+        return {
+            "agents": [
+                {
+                    "id": a.agent_id,
+                    "type": a.agent_type.value if hasattr(a.agent_type, "value") else str(a.agent_type),
+                    "status": a.status,
+                    "capabilities": a.capabilities,
+                    "last_heartbeat": a.last_heartbeat.isoformat() if a.last_heartbeat else None,
+                    "current_task_id": a.current_task_id,
+                    "tasks_completed": a.tasks_completed,
+                }
+                for a in agents
+            ],
+            "total": len(agents),
+        }
+    except Exception as e:
+        return {"agents": [], "total": 0, "error": str(e)}
+
+
+@app.get("/api/orchestration/agents/{agent_id}")
+async def get_agent_details(agent_id: str):
+    """Get detailed status of a specific agent."""
+    if not _coordination_ops:
+        return {"message": "Orchestrator not initialized"}
+
+    try:
+        agent = await _coordination_ops.get_agent(agent_id)
+        if not agent:
+            return {"error": f"Agent {agent_id} not found"}
+
+        tasks = await _coordination_ops.get_agent_tasks(agent_id)
+        return {
+            "id": agent.agent_id,
+            "type": agent.agent_type.value if hasattr(agent.agent_type, "value") else str(agent.agent_type),
+            "status": agent.status,
+            "capabilities": agent.capabilities,
+            "last_heartbeat": agent.last_heartbeat.isoformat() if agent.last_heartbeat else None,
+            "current_task_id": agent.current_task_id,
+            "tasks_completed": agent.tasks_completed,
+            "assigned_tasks": [
+                {
+                    "id": t.id,
+                    "content": t.content,
+                    "status": t.status,
+                    "priority": t.priority,
+                }
+                for t in tasks
+            ],
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/orchestration/tasks")
+async def get_orchestration_tasks(
+    status: Optional[str] = None,
+    limit: int = Query(100, le=500),
+):
+    """Get orchestration tasks with optional status filter."""
+    if not _coordination_ops:
+        return {"tasks": [], "total": 0, "message": "Orchestrator not initialized"}
+
+    try:
+        tasks = await _coordination_ops.get_active_tasks()
+
+        # Filter by status if provided
+        if status:
+            tasks = [t for t in tasks if t.status == status]
+
+        # Limit results
+        tasks = tasks[:limit]
+
+        return {
+            "tasks": [
+                {
+                    "id": t.id,
+                    "content": t.content,
+                    "status": t.status,
+                    "priority": t.priority,
+                    "phase": t.phase if hasattr(t, "phase") else None,
+                    "assigned_agent_id": t.assigned_agent_id if hasattr(t, "assigned_agent_id") else None,
+                    "created_at": t.created_at.isoformat() if hasattr(t, "created_at") else None,
+                    "progress": t.progress if hasattr(t, "progress") else 0,
+                }
+                for t in tasks
+            ],
+            "total": len(tasks),
+        }
+    except Exception as e:
+        return {"tasks": [], "total": 0, "error": str(e)}
+
+
+@app.get("/api/orchestration/tasks/{task_id}")
+async def get_task_details(task_id: str):
+    """Get detailed status of a specific task."""
+    if not _coordination_ops:
+        return {"message": "Orchestrator not initialized"}
+
+    try:
+        # Try to get task from prospective memory
+        from athena.prospective.operations import get_task
+        task = await get_task(int(task_id))
+
+        if not task:
+            return {"error": f"Task {task_id} not found"}
+
+        return {
+            "id": task.id,
+            "content": task.content,
+            "status": task.status,
+            "priority": task.priority,
+            "phase": task.phase if hasattr(task, "phase") else None,
+            "assigned_agent_id": task.assigned_agent_id if hasattr(task, "assigned_agent_id") else None,
+            "created_at": task.created_at.isoformat() if hasattr(task, "created_at") else None,
+            "due_at": task.due_at.isoformat() if hasattr(task, "due_at") else None,
+            "progress": task.progress if hasattr(task, "progress") else 0,
+            "result": task.result if hasattr(task, "result") else None,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/api/orchestration/tasks")
+async def submit_orchestration_task(
+    task_content: str = Query(..., min_length=1, max_length=2000),
+    priority: int = Query(5, ge=1, le=10),
+):
+    """Submit a new task for orchestration."""
+    if not _orchestrator or not _coordination_ops:
+        return {"error": "Orchestrator not initialized"}
+
+    try:
+        from athena.prospective.operations import create_task
+
+        # Create task in prospective memory
+        task_id = await create_task(
+            content=task_content,
+            priority=priority,
+            phase="pending",
+        )
+
+        return {
+            "task_id": task_id,
+            "content": task_content,
+            "priority": priority,
+            "status": "pending",
+            "message": "Task submitted for orchestration",
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/orchestration/metrics")
+async def get_orchestration_metrics():
+    """Get overall orchestration metrics and health."""
+    if not _orchestrator or not _coordination_ops:
+        return {"message": "Orchestrator not initialized"}
+
+    try:
+        agents = await _coordination_ops.list_agents()
+        tasks = await _coordination_ops.get_active_tasks()
+        stale = await _coordination_ops.detect_stale_agents()
+
+        idle_agents = len([a for a in agents if a.status == "idle"])
+        busy_agents = len([a for a in agents if a.status == "busy"])
+        failed_agents = len([a for a in agents if a.status == "failed"])
+
+        pending_tasks = len([t for t in tasks if t.status == "pending"])
+        in_progress_tasks = len([t for t in tasks if t.status == "in_progress"])
+        completed_tasks = len([t for t in tasks if t.status == "completed"])
+
+        total_tasks = pending_tasks + in_progress_tasks + completed_tasks
+        progress_percent = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+
+        return {
+            "agents": {
+                "total": len(agents),
+                "idle": idle_agents,
+                "busy": busy_agents,
+                "failed": failed_agents,
+                "stale": len(stale),
+            },
+            "tasks": {
+                "pending": pending_tasks,
+                "in_progress": in_progress_tasks,
+                "completed": completed_tasks,
+                "total": total_tasks,
+            },
+            "progress": {
+                "percent": round(progress_percent, 2),
+                "completed": completed_tasks,
+                "total": total_tasks,
+            },
+            "health": {
+                "stale_agents": len(stale),
+                "failed_agents": failed_agents,
+                "status": "healthy" if failed_agents == 0 and len(stale) == 0 else "degraded",
+            },
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ============================================================================
+# ADVANCED SCHEDULING (PHASE 8)
+# ============================================================================
+
+@app.get("/api/orchestration/templates")
+async def get_workflow_templates():
+    """Get available workflow templates."""
+    if not _postgres_db:
+        return {"templates": [], "message": "Database not initialized"}
+
+    try:
+        async with _postgres_db.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute(
+                    "SELECT id, name, description, created_at FROM workflow_templates ORDER BY name"
+                )
+                rows = await cursor.fetchall()
+                return {
+                    "templates": [
+                        {
+                            "id": row[0],
+                            "name": row[1],
+                            "description": row[2],
+                            "created_at": row[3].isoformat() if row[3] else None,
+                        }
+                        for row in rows
+                    ],
+                    "total": len(rows),
+                }
+    except Exception as e:
+        return {"templates": [], "error": str(e)}
+
+
+@app.get("/api/orchestration/tasks/ready")
+async def get_ready_tasks(limit: int = Query(10, ge=1, le=100)):
+    """Get tasks ready to execute (with dependencies satisfied)."""
+    if not _postgres_db:
+        return {"tasks": [], "message": "Database not initialized"}
+
+    try:
+        async with _postgres_db.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                # Get tasks where:
+                # 1. Status is PENDING
+                # 2. No depends_on_task_id OR the dependency is COMPLETED
+                await cursor.execute(
+                    """
+                    SELECT
+                        id, content, priority_number, estimated_duration_minutes
+                    FROM prospective_tasks
+                    WHERE status = %s
+                      AND (depends_on_task_id IS NULL
+                           OR depends_on_task_id IN (
+                               SELECT id FROM prospective_tasks WHERE status = %s
+                           ))
+                    ORDER BY priority_number DESC, created_at ASC
+                    LIMIT %s
+                    """,
+                    ("PENDING", "COMPLETED", limit),
+                )
+                rows = await cursor.fetchall()
+                return {
+                    "tasks": [
+                        {
+                            "id": row[0],
+                            "content": row[1],
+                            "priority": row[2],
+                            "estimated_duration_minutes": row[3],
+                        }
+                        for row in rows
+                    ],
+                    "total": len(rows),
+                }
+    except Exception as e:
+        return {"tasks": [], "error": str(e)}
+
+
+@app.get("/api/orchestration/tasks/{task_id}/dependencies")
+async def get_task_dependency_graph(task_id: int):
+    """Get task dependency graph (what tasks does this depend on, and what depends on it)."""
+    if not _postgres_db:
+        return {"dependencies": {}, "message": "Database not initialized"}
+
+    try:
+        async with _postgres_db.get_connection() as conn:
+            async with conn.cursor() as cursor:
+                # Get dependencies this task has
+                await cursor.execute(
+                    """
+                    SELECT id, content, status, priority_number
+                    FROM prospective_tasks
+                    WHERE id = %s
+                    """,
+                    (task_id,),
+                )
+                task_row = await cursor.fetchone()
+                if not task_row:
+                    return {"error": f"Task {task_id} not found"}
+
+                # Get upstream dependencies (what this task depends on)
+                await cursor.execute(
+                    """
+                    SELECT DISTINCT
+                        depends_on_task_id, content, status
+                    FROM prospective_tasks
+                    WHERE depends_on_task_id IN (
+                        SELECT depends_on_task_id FROM prospective_tasks WHERE id = %s
+                    )
+                    """,
+                    (task_id,),
+                )
+                upstream = await cursor.fetchall()
+
+                # Get downstream dependents (what depends on this task)
+                await cursor.execute(
+                    """
+                    SELECT id, content, status, priority_number
+                    FROM prospective_tasks
+                    WHERE depends_on_task_id = %s
+                    """,
+                    (task_id,),
+                )
+                downstream = await cursor.fetchall()
+
+                return {
+                    "task": {
+                        "id": task_row[0],
+                        "content": task_row[1],
+                        "status": task_row[2],
+                        "priority": task_row[3],
+                    },
+                    "upstream_dependencies": [
+                        {"id": row[0], "content": row[1], "status": row[2]}
+                        for row in upstream
+                    ] if upstream else [],
+                    "downstream_dependents": [
+                        {"id": row[0], "content": row[1], "status": row[2], "priority": row[3]}
+                        for row in downstream
+                    ] if downstream else [],
+                }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ============================================================================
+# LEARNING INTEGRATION (PHASE 9)
+# ============================================================================
+
+_learning_manager = None
+
+async def get_learning_manager():
+    """Get or initialize learning manager."""
+    global _learning_manager
+    if _learning_manager is None and COORDINATION_AVAILABLE:
+        from athena.coordination import get_learning_manager as get_lm
+        _learning_manager = await get_lm(_postgres_db)
+    return _learning_manager
+
+
+@app.get("/api/orchestration/learning/agent-expertise")
+async def get_agent_expertise(agent_id: str, domain: str = "general"):
+    """Get agent expertise score for a specific domain."""
+    learning_mgr = await get_learning_manager()
+    if not learning_mgr:
+        return {"message": "Learning manager not initialized"}
+
+    try:
+        score = await learning_mgr.get_agent_expertise(agent_id, domain)
+        return {
+            "agent_id": agent_id,
+            "domain": domain,
+            "expertise_score": round(score, 2),
+            "expertise_level": (
+                "expert" if score >= 0.8
+                else "proficient" if score >= 0.6
+                else "learning" if score >= 0.4
+                else "novice"
+            )
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/orchestration/learning/best-agent-for-domain")
+async def get_best_agent(domain: str):
+    """Get best-performing agent for a domain."""
+    if not _orchestrator or not _coordination_ops:
+        return {"message": "Orchestrator not initialized"}
+
+    learning_mgr = await get_learning_manager()
+    if not learning_mgr:
+        return {"message": "Learning manager not initialized"}
+
+    try:
+        agents = await _coordination_ops.list_agents()
+        available_agents = [a.agent_id for a in agents if a.status != "failed"]
+
+        best_agent_id = await learning_mgr.get_best_agent_for_domain(
+            domain, available_agents
+        )
+
+        if best_agent_id:
+            agent = await _coordination_ops.get_agent(best_agent_id)
+            expertise = await learning_mgr.get_agent_expertise(best_agent_id, domain)
+            return {
+                "domain": domain,
+                "best_agent_id": best_agent_id,
+                "agent_type": agent.agent_type.value if hasattr(agent.agent_type, "value") else str(agent.agent_type),
+                "expertise_score": round(expertise, 2),
+                "recommendation": f"Route {domain} tasks to {best_agent_id}"
+            }
+        else:
+            return {
+                "domain": domain,
+                "best_agent_id": None,
+                "message": "No available agents"
+            }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/orchestration/learning/performance-summary")
+async def get_performance_summary():
+    """Get summary of all agent performance metrics."""
+    learning_mgr = await get_learning_manager()
+    if not learning_mgr:
+        return {"message": "Learning manager not initialized"}
+
+    try:
+        summary = await learning_mgr.get_performance_summary()
+        return {
+            "timestamp": datetime.now().isoformat(),
+            "total_agents_tracked": summary["total_agents"],
+            "overall_success_rate": round(summary.get("avg_success_rate", 0), 2),
+            "agents": summary["agents"],
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/api/orchestration/learning/record-task-completion")
+async def record_task_completion(
+    agent_id: str = Query(...),
+    task_id: int = Query(...),
+    task_content: str = Query(...),
+    domain: str = Query("general"),
+    success: bool = Query(True),
+    duration_minutes: float = Query(0),
+):
+    """Record task completion for learning system."""
+    learning_mgr = await get_learning_manager()
+    if not learning_mgr:
+        return {"error": "Learning manager not initialized"}
+
+    try:
+        result = await learning_mgr.record_task_completion(
+            agent_id=agent_id,
+            task_id=task_id,
+            task_content=task_content,
+            domain=domain,
+            success=success,
+            duration_minutes=duration_minutes
+        )
+
+        return {
+            "success": result,
+            "message": "Task completion recorded",
+            "agent_id": agent_id,
+            "task_id": task_id
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ============================================================================
 # WEBSOCKET FOR REAL-TIME UPDATES
 # ============================================================================
 
@@ -1232,6 +1752,59 @@ class ConnectionManager:
 
 
 manager = ConnectionManager()
+
+# Separate manager for orchestration updates
+orchestration_manager = ConnectionManager()
+
+
+@app.websocket("/ws/orchestration")
+async def websocket_orchestration_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time orchestration updates."""
+    await orchestration_manager.connect(websocket)
+
+    try:
+        while True:
+            if _coordination_ops:
+                try:
+                    # Get current orchestration state
+                    agents = await _coordination_ops.list_agents()
+                    tasks = await _coordination_ops.get_active_tasks()
+
+                    # Send updates
+                    await websocket.send_json(
+                        {
+                            "type": "orchestration_update",
+                            "agents": {
+                                "total": len(agents),
+                                "idle": len([a for a in agents if a.status == "idle"]),
+                                "busy": len([a for a in agents if a.status == "busy"]),
+                                "failed": len([a for a in agents if a.status == "failed"]),
+                            },
+                            "tasks": {
+                                "pending": len([t for t in tasks if t.status == "pending"]),
+                                "in_progress": len([t for t in tasks if t.status == "in_progress"]),
+                                "completed": len([t for t in tasks if t.status == "completed"]),
+                            },
+                            "timestamp": datetime.now().isoformat(),
+                        }
+                    )
+                except Exception as e:
+                    print(f"Error sending orchestration updates: {e}")
+            else:
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "message": "Orchestrator not available",
+                    }
+                )
+
+            await asyncio.sleep(2)  # Update every 2 seconds for real-time feel
+
+    except WebSocketDisconnect:
+        orchestration_manager.disconnect(websocket)
+    except Exception as e:
+        print(f"WebSocket orchestration error: {e}")
+        orchestration_manager.disconnect(websocket)
 
 
 @app.websocket("/ws/live-updates")

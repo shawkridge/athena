@@ -402,6 +402,59 @@ export const api = {
     const { data } = await client.get('/api/performance/statistics')
     return data
   },
+
+  // Orchestration (Multi-Agent Coordination)
+  getOrchestrationAgents: async () => {
+    const { data } = await client.get('/api/orchestration/agents')
+    return data
+  },
+
+  getAgentDetails: async (agentId: string) => {
+    const { data } = await client.get(`/api/orchestration/agents/${agentId}`)
+    return data
+  },
+
+  getOrchestrationTasks: async (status?: string, limit: number = 100) => {
+    const { data } = await client.get('/api/orchestration/tasks', {
+      params: { status, limit },
+    })
+    return data
+  },
+
+  getTaskDetails: async (taskId: string) => {
+    const { data } = await client.get(`/api/orchestration/tasks/${taskId}`)
+    return data
+  },
+
+  submitOrchestrationTask: async (taskContent: string, priority: number = 5) => {
+    const { data } = await client.post('/api/orchestration/tasks', null, {
+      params: { task_content: taskContent, priority },
+    })
+    return data
+  },
+
+  getOrchestrationMetrics: async () => {
+    const { data } = await client.get('/api/orchestration/metrics')
+    return data
+  },
+
+  // Advanced Scheduling
+  getWorkflowTemplates: async () => {
+    const { data } = await client.get('/api/orchestration/templates')
+    return data
+  },
+
+  getTaskDependencyGraph: async (taskId: number) => {
+    const { data } = await client.get(`/api/orchestration/tasks/${taskId}/dependencies`)
+    return data
+  },
+
+  getReadyTasks: async (limit: number = 10) => {
+    const { data } = await client.get('/api/orchestration/tasks/ready', {
+      params: { limit },
+    })
+    return data
+  },
 }
 
 export default api
