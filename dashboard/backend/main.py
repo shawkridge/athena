@@ -199,8 +199,8 @@ async def startup_event():
         # Meta
         try:
             from athena.meta.operations import initialize as init_meta
-            from athena.meta.store import MetaStore
-            init_meta(db, MetaStore(db))
+            from athena.meta.store import MetaMemoryStore
+            init_meta(db, MetaMemoryStore(db))
             print("✅ Meta operations initialized")
         except Exception as e:
             print(f"⚠️ Meta: {e}")
@@ -208,8 +208,17 @@ async def startup_event():
         # Consolidation
         try:
             from athena.consolidation.operations import initialize as init_consolidation
-            from athena.consolidation.store import ConsolidationStore
-            init_consolidation(db, ConsolidationStore(db))
+            from athena.consolidation.system import ConsolidationSystem
+            from athena.semantic.store import SemanticStore
+            from athena.procedural.store import ProceduralStore
+            consolidation_system = ConsolidationSystem(
+                db=db,
+                memory_store=SemanticStore(db),
+                episodic_store=None,  # Will be set by consolidation system
+                procedural_store=ProceduralStore(db),
+                meta_store=None,  # Will be set by consolidation system
+            )
+            init_consolidation(db, consolidation_system)
             print("✅ Consolidation operations initialized")
         except Exception as e:
             print(f"⚠️ Consolidation: {e}")
