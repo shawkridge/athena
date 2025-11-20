@@ -312,6 +312,9 @@ class DocumentStore(BaseStore):
                 last_synced_at = ?, sync_hash = ?,
                 validation_status = ?, validated_at = ?,
                 author = ?, reviewers = ?, tags = ?,
+                ai_baseline_hash = ?, ai_baseline_content = ?,
+                manual_override = ?, manual_edit_detected = ?,
+                last_manual_edit_at = ?,
                 updated_at = ?
             WHERE id = ?
         """, (
@@ -336,6 +339,11 @@ class DocumentStore(BaseStore):
             doc.author,
             json.dumps(doc.reviewers),
             json.dumps(doc.tags),
+            getattr(doc, 'ai_baseline_hash', None),
+            getattr(doc, 'ai_baseline_content', None),
+            1 if getattr(doc, 'manual_override', False) else 0,
+            1 if getattr(doc, 'manual_edit_detected', False) else 0,
+            getattr(doc, 'last_manual_edit_at', None).timestamp() if getattr(doc, 'last_manual_edit_at', None) else None,
             doc.updated_at.timestamp(),
             doc.id,
         ))
@@ -456,7 +464,7 @@ class DocumentStore(BaseStore):
         Returns:
             Document instance
         """
-        return Document(
+        doc = Document(
             id=row[0],
             project_id=row[1],
             name=row[2],
@@ -483,3 +491,17 @@ class DocumentStore(BaseStore):
             created_at=datetime.fromtimestamp(row[23]),
             updated_at=datetime.fromtimestamp(row[24]),
         )
+
+        # Add Phase 4E fields if present (safe for old databases)
+        if len(row) > 25:
+            doc.ai_baseline_hash = row[25]
+        if len(row) > 26:
+            doc.ai_baseline_content = row[26]
+        if len(row) > 27:
+            doc.manual_override = bool(row[27])
+        if len(row) > 28:
+            doc.manual_edit_detected = bool(row[28])
+        if len(row) > 29 and row[29]:
+            doc.last_manual_edit_at = datetime.fromtimestamp(row[29])
+
+        return doc

@@ -16,6 +16,9 @@ Commands:
     check-drift     Check for drift between documents and specs
     diff            Show diff for document regeneration (preview changes)
     sync            Sync documents with their source specifications
+    check-conflict  Check if document has manual edits that conflict
+    resolve-conflict Resolve conflicts between manual edits and AI
+    mark-manual     Mark or unmark document as manual override
 
 Examples:
     # List all documents
@@ -50,6 +53,18 @@ Examples:
 
     # Show document details
     athena-doc-manage show --doc-id 10
+
+    # Check if document has manual edits
+    athena-doc-manage check-conflict --doc-id 5
+
+    # Resolve conflict using 3-way merge
+    athena-doc-manage resolve-conflict --doc-id 5 --strategy merge
+
+    # Mark document as manual override (skip auto-sync)
+    athena-doc-manage mark-manual --doc-id 5
+
+    # Clear manual override (resume auto-sync)
+    athena-doc-manage mark-manual --doc-id 5 --clear
 """
 
 import argparse
@@ -64,7 +79,15 @@ from athena.architecture.spec_store import SpecificationStore
 from athena.architecture.models import Document, DocumentType, DocumentStatus
 from athena.architecture.templates import TemplateManager, TemplateContext
 from athena.architecture.generators import AIDocGenerator, ContextAssembler
-from athena.architecture.sync import DriftDetector, SyncManager, StalenessChecker, DocumentDiffer
+from athena.architecture.sync import (
+    DriftDetector,
+    SyncManager,
+    StalenessChecker,
+    DocumentDiffer,
+    ConflictDetector,
+    ConflictResolver,
+    MergeStrategy,
+)
 
 
 def cmd_list(args):
@@ -818,6 +841,197 @@ def cmd_sync(args):
                 print(f"\n💡 Run without --dry-run to actually sync documents")
 
 
+def cmd_check_conflict(args):
+    """Check if document has manual edits that conflict with specifications."""
+    db = get_database()
+    doc_store = DocumentStore(db)
+    detector = ConflictDetector(doc_store)
+
+    try:
+        result = detector.detect_conflict(args.doc_id)
+
+        if args.json:
+            output = {
+                "document_id": result.document.id,
+                "document_name": result.document.name,
+                "status": result.status.value,
+                "has_manual_edits": result.has_manual_edits,
+                "ai_baseline_hash": result.ai_baseline_hash,
+                "current_hash": result.current_hash,
+                "manual_edit_timestamp": result.manual_edit_timestamp.isoformat() if result.manual_edit_timestamp else None,
+                "conflicting_sections": result.conflicting_sections,
+                "recommendation": result.recommendation.value,
+                "message": result.message,
+            }
+            print(json.dumps(output, indent=2))
+        else:
+            print(f"\n📄 Document: {result.document.name}")
+            print("=" * 80)
+            print(f"Status: {result.status.value}")
+            print(f"Has manual edits: {'Yes' if result.has_manual_edits else 'No'}")
+
+            if result.ai_baseline_hash:
+                print(f"AI baseline hash: {result.ai_baseline_hash}")
+                print(f"Current hash: {result.current_hash}")
+
+            if result.manual_edit_timestamp:
+                print(f"Last manual edit: {result.manual_edit_timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
+
+            if result.conflicting_sections:
+                print(f"\nConflicting sections:")
+                for section in result.conflicting_sections:
+                    print(f"  - {section}")
+
+            print(f"\nRecommendation: {result.recommendation.value}")
+            print(f"Message: {result.message}")
+
+            if result.needs_resolution:
+                print(f"\n⚠️  This document needs conflict resolution before syncing")
+                print(f"   Use: athena-doc-manage resolve-conflict --doc-id {args.doc_id} --strategy {result.recommendation.value}")
+            else:
+                print(f"\n✅ No conflicts detected - safe to sync")
+
+    except ValueError as e:
+        print(f"❌ Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_resolve_conflict(args):
+    """Resolve conflicts between manual edits and AI regeneration."""
+    db = get_database()
+    doc_store = DocumentStore(db)
+    spec_store = SpecificationStore(db)
+    resolver = ConflictResolver(doc_store)
+
+    # Get document
+    doc = doc_store.get(args.doc_id)
+    if not doc:
+        print(f"❌ Document {args.doc_id} not found", file=sys.stderr)
+        sys.exit(1)
+
+    # Parse strategy
+    strategy = MergeStrategy(args.strategy)
+
+    # For merge strategies that need new AI content, generate it
+    new_ai_content = None
+    if strategy in (MergeStrategy.KEEP_AI, MergeStrategy.THREE_WAY_MERGE):
+        if not doc.based_on_spec_ids:
+            print(f"❌ Document has no source specifications - cannot regenerate", file=sys.stderr)
+            sys.exit(1)
+
+        try:
+            # Initialize AI generator
+            ai_generator = AIDocGenerator(
+                api_key=args.api_key,
+                model=args.model
+            )
+
+            # Assemble context
+            assembler = ContextAssembler(spec_store=spec_store)
+            context = assembler.assemble_for_specs(doc.based_on_spec_ids)
+
+            # Generate new content
+            print(f"\n🤖 Generating new AI content...")
+            gen_result = ai_generator.generate(
+                doc_type=doc.doc_type,
+                context=context
+            )
+            new_ai_content = gen_result.content
+
+        except Exception as e:
+            print(f"❌ AI generation failed: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    # Resolve conflict
+    try:
+        result = resolver.resolve_conflict(
+            doc_id=args.doc_id,
+            new_ai_content=new_ai_content or "",
+            strategy=strategy
+        )
+
+        if args.json:
+            output = {
+                "success": result.success,
+                "strategy": result.strategy.value,
+                "needs_review": result.needs_review,
+                "message": result.message,
+                "conflicts": result.conflicts,
+                "sections_merged": result.sections_merged,
+                "sections_conflicted": result.sections_conflicted,
+                "manual_sections_kept": result.manual_sections_kept,
+                "ai_sections_kept": result.ai_sections_kept,
+            }
+            print(json.dumps(output, indent=2))
+        else:
+            print(f"\n🔀 Conflict Resolution Result")
+            print("=" * 80)
+            print(f"Strategy: {result.strategy.value}")
+            print(f"Success: {'Yes' if result.success else 'No'}")
+            print(f"Needs review: {'Yes' if result.needs_review else 'No'}")
+            print(f"Message: {result.message}")
+
+            if result.sections_merged > 0:
+                print(f"\nMerge Statistics:")
+                print(f"  Sections merged: {result.sections_merged}")
+                print(f"  Manual sections kept: {result.manual_sections_kept}")
+                print(f"  AI sections kept: {result.ai_sections_kept}")
+                print(f"  Conflicted sections: {result.sections_conflicted}")
+
+            if result.conflicts:
+                print(f"\n⚠️  Conflicts detected ({len(result.conflicts)}):")
+                for conflict in result.conflicts[:10]:
+                    print(f"  - {conflict}")
+                if len(result.conflicts) > 10:
+                    print(f"  ... and {len(result.conflicts) - 10} more")
+
+            if result.success and result.merged_content:
+                if not args.dry_run:
+                    # Apply merged content
+                    doc.content = result.merged_content
+                    doc_store.update(doc, write_to_file=True)
+                    print(f"\n✅ Merged content applied to document")
+                else:
+                    print(f"\n💡 Dry run - no changes made")
+                    print(f"   Run without --dry-run to apply changes")
+
+            elif result.needs_review:
+                print(f"\n⚠️  Manual review required - conflicts could not be auto-resolved")
+                if result.merged_content:
+                    print(f"   Merged content available but needs human verification")
+                print(f"   Use --dry-run to preview changes before applying")
+
+    except ValueError as e:
+        print(f"❌ Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_mark_manual(args):
+    """Mark or unmark document as manual override."""
+    db = get_database()
+    doc_store = DocumentStore(db)
+    detector = ConflictDetector(doc_store)
+
+    try:
+        if args.clear:
+            # Clear manual override flag
+            success = detector.clear_manual_flag(args.doc_id)
+            if success:
+                print(f"✅ Manual override flag cleared for document {args.doc_id}")
+                print(f"   Document will now be included in auto-sync")
+        else:
+            # Set manual override flag
+            success = detector.mark_manual_override(args.doc_id)
+            if success:
+                print(f"✅ Document {args.doc_id} marked as manual override")
+                print(f"   This document will be skipped in auto-sync")
+                print(f"   Use --clear to resume auto-sync")
+
+    except ValueError as e:
+        print(f"❌ Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -951,6 +1165,30 @@ def main():
     sync_parser.add_argument("--api-key", help="Anthropic API key (uses ANTHROPIC_API_KEY env var if not provided)")
     sync_parser.add_argument("--json", action="store_true", help="Output as JSON")
     sync_parser.set_defaults(func=cmd_sync)
+
+    # Check-conflict command
+    check_conflict_parser = subparsers.add_parser("check-conflict", help="Check if document has manual edits")
+    check_conflict_parser.add_argument("--doc-id", type=int, required=True, help="Document ID to check")
+    check_conflict_parser.add_argument("--json", action="store_true", help="Output as JSON")
+    check_conflict_parser.set_defaults(func=cmd_check_conflict)
+
+    # Resolve-conflict command
+    resolve_conflict_parser = subparsers.add_parser("resolve-conflict", help="Resolve conflicts between manual edits and AI regeneration")
+    resolve_conflict_parser.add_argument("--doc-id", type=int, required=True, help="Document ID with conflict")
+    resolve_conflict_parser.add_argument("--strategy", required=True,
+                                        choices=["keep_manual", "keep_ai", "merge", "manual_review"],
+                                        help="Conflict resolution strategy")
+    resolve_conflict_parser.add_argument("--model", default="claude-3-5-sonnet-20241022", help="Claude model to use for AI generation")
+    resolve_conflict_parser.add_argument("--api-key", help="Anthropic API key (uses ANTHROPIC_API_KEY env var if not provided)")
+    resolve_conflict_parser.add_argument("--dry-run", action="store_true", help="Preview resolution without applying")
+    resolve_conflict_parser.add_argument("--json", action="store_true", help="Output as JSON")
+    resolve_conflict_parser.set_defaults(func=cmd_resolve_conflict)
+
+    # Mark-manual command
+    mark_manual_parser = subparsers.add_parser("mark-manual", help="Mark or unmark document as manual override")
+    mark_manual_parser.add_argument("--doc-id", type=int, required=True, help="Document ID")
+    mark_manual_parser.add_argument("--clear", action="store_true", help="Clear manual override flag (resume auto-sync)")
+    mark_manual_parser.set_defaults(func=cmd_mark_manual)
 
     # Parse arguments and run command
     args = parser.parse_args()

@@ -173,12 +173,8 @@ class ConflictDetector:
         doc.manual_override = True
         doc.last_manual_edit_at = datetime.now()
 
-        # Update in database (requires doc_store to support these fields)
-        self.doc_store.update(
-            doc_id,
-            manual_override=True,
-            last_manual_edit_at=datetime.now(),
-        )
+        # Update in database
+        self.doc_store.update(doc, write_to_file=False)
 
         return True
 
@@ -200,10 +196,7 @@ class ConflictDetector:
         doc.manual_override = False
 
         # Update in database
-        self.doc_store.update(
-            doc_id,
-            manual_override=False,
-        )
+        self.doc_store.update(doc, write_to_file=False)
 
         return True
 
