@@ -121,11 +121,16 @@ class EpisodicStore(BaseStore):
                     f"{row_dict.get('outcome')}. This indicates data inconsistency."
                 )
 
+        # Parse timestamp - use now() as fallback if parsing fails
+        parsed_timestamp = self._parse_timestamp(row_dict.get("timestamp"))
+        if parsed_timestamp is None:
+            parsed_timestamp = datetime.now()
+
         return EpisodicEvent(
             id=row_dict.get("id"),
             project_id=row_dict.get("project_id"),
             session_id=row_dict.get("session_id"),
-            timestamp=self._parse_timestamp(row_dict.get("timestamp")),
+            timestamp=parsed_timestamp,
             event_type=event_type,
             content=row_dict.get("content"),
             outcome=outcome,
@@ -1886,15 +1891,18 @@ class EpisodicStore(BaseStore):
         """List episodic events (async wrapper for list_events).
 
         Args:
-            filters: Optional filters (not currently used)
+            filters: Optional filters (project_id, session_id, etc.)
             limit: Maximum events to return
             **kwargs: Additional parameters
 
         Returns:
             List of episodic events
         """
-        # Use list_events with sensible defaults
-        return self.list_events(project_id=1, limit=limit)
+        # Extract filters
+        project_id = filters.get("project_id", 1) if filters else 1
+
+        # Use list_events with filters
+        return self.list_events(project_id=project_id, limit=limit)
 
     async def delete(self, event_id: int) -> bool:
         """Delete an event (async wrapper for delete_event).

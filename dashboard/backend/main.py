@@ -352,17 +352,17 @@ async def system_status():
 
 @app.get("/api/episodic/statistics")
 async def get_episodic_statistics(session_id: Optional[str] = None, project_id: int = 2):
-    """Get episodic memory statistics via Athena operations layer."""
-    # Use the Athena operations layer, not direct database access
-    stats = await episodic_stats()
+    """Get episodic memory statistics via Athena operations layer, filtered by project."""
+    # Use the Athena operations layer with project filtering
+    stats = await episodic_stats(project_id=project_id)
 
     return {
         "total_events": stats.get("total_events", 0),
-        "quality_score": stats.get("average_quality", 0.9),
-        "min_quality": 0.9,
-        "max_quality": 1.0,
-        "earliest": stats.get("earliest_event", None),
-        "latest": stats.get("latest_event", None),
+        "quality_score": stats.get("quality_score", 0.9),
+        "min_quality": stats.get("min_quality", 0.9),
+        "max_quality": stats.get("max_quality", 1.0),
+        "earliest": stats.get("earliest", None),
+        "latest": stats.get("latest", None),
         "time_span_days": stats.get("time_span_days", 0),
     }
 

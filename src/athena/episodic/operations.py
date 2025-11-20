@@ -255,11 +255,13 @@ class EpisodicOperations:
     async def get_statistics(
         self,
         session_id: str | None = None,
+        project_id: int | None = None,
     ) -> Dict[str, Any]:
         """Get statistics about episodic memories.
 
         Args:
             session_id: Optional session filter
+            project_id: Optional project filter
 
         Returns:
             Dictionary with statistics
@@ -267,6 +269,8 @@ class EpisodicOperations:
         filters = {}
         if session_id:
             filters["session_id"] = session_id
+        if project_id is not None:
+            filters["project_id"] = project_id
 
         all_events = await self.store.list(filters=filters, limit=10000)
 
@@ -418,7 +422,8 @@ async def delete_old(
 
 async def get_statistics(
     session_id: str | None = None,
+    project_id: int | None = None,
 ) -> Dict[str, Any]:
     """Get statistics. See EpisodicOperations.get_statistics for details."""
     ops = get_operations()
-    return await ops.get_statistics(session_id=session_id)
+    return await ops.get_statistics(session_id=session_id, project_id=project_id)
