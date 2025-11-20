@@ -111,7 +111,13 @@ class MemoryBridge:
     def get_active_memories(
         self, project_id: int, limit: int = 7
     ) -> Dict[str, Any]:
-        """Get active working memory items (7±2 cognitive limit).
+        """Get active working memory items (7±2 cognitive limit) ranked by ACT-R activation.
+
+        Uses ACT-R activation decay model instead of simple importance scoring:
+        Activation = base_level_decay + frequency_bonus + consolidation_boost
+                   + importance_boost + actionability_boost + success_boost
+
+        Filters by lifecycle_status='active' to exclude consolidated events.
 
         Returns summary only (300 tokens max).
 
@@ -124,16 +130,36 @@ class MemoryBridge:
             limit: Maximum items to return (default 7±2)
 
         Returns:
-            Dict with summary of active items
+            Dict with summary of active items ranked by activation
         """
         try:
             with PerformanceTimer("get_active_memories"):
                 # Query for cache lookup
+                # Uses ACT-R activation equation: base_level + frequency + consolidation + importance + actionability + success
                 query = """
-                SELECT id, event_type, content, timestamp, importance_score
+                SELECT
+                    id,
+                    event_type,
+                    content,
+                    timestamp,
+                    importance_score,
+                    (
+                        -- Base level decay: -d * ln(time_since_access_hours) where d=0.5
+                        (-0.5 * LN(GREATEST(EXTRACT(EPOCH FROM (NOW() - last_activation)) / 3600.0, 0.1)))
+                        -- Frequency bonus: ln(activation_count)
+                        + (LN(GREATEST(activation_count, 1)) * 0.1)
+                        -- Consolidation boost
+                        + (COALESCE(consolidation_score, 0) * 1.0)
+                        -- Importance boost: +1.5 if importance > 0.7
+                        + CASE WHEN importance_score > 0.7 THEN 1.5 ELSE 0 END
+                        -- Actionability boost: +1.0 if has_next_step or actionability > 0.7
+                        + CASE WHEN has_next_step = 1 OR actionability_score > 0.7 THEN 1.0 ELSE 0 END
+                        -- Success boost: +0.5 if outcome='success'
+                        + CASE WHEN outcome = 'success' THEN 0.5 ELSE 0 END
+                    ) as activation
                 FROM episodic_events
-                WHERE project_id = %s
-                ORDER BY importance_score DESC, timestamp DESC
+                WHERE project_id = %s AND lifecycle_status = 'active'
+                ORDER BY activation DESC, timestamp DESC
                 LIMIT %s
                 """
                 params = (project_id, limit)
@@ -160,6 +186,7 @@ class MemoryBridge:
                         "content": row[2][:50] + "..." if len(row[2]) > 50 else row[2],
                         "timestamp": row[3],
                         "importance": row[4] or 0.5,
+                        "activation": row[5] or 0.0,
                     }
                     for row in rows
                 ]
@@ -168,8 +195,8 @@ class MemoryBridge:
                     "count": len(items),
                     "items": items,
                     "activation_range": [
-                        min(i["importance"] for i in items) if items else 0,
-                        max(i["importance"] for i in items) if items else 1,
+                        min(i["activation"] for i in items) if items else 0,
+                        max(i["activation"] for i in items) if items else 1,
                     ],
                 }
         except Exception as e:
